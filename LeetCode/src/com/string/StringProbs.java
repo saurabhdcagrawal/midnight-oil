@@ -59,11 +59,29 @@ public class StringProbs {
 
 
       public boolean matchRegex(String s ,String p){
-
-
-
        return false;
       }
+
+//String concatenation works in O(n2) time
+      public String compression(String str){
+          //aabcccccaaa
+        StringBuilder cmpressed= new StringBuilder("");
+        int countChar=0;
+        for (int i=0;i<str.length();i++){
+           countChar++;
+          if(i+1>=str.length()||(str.charAt(i)!=str.charAt(i+1))){
+              cmpressed.append(str.charAt(i));
+              cmpressed.append(countChar);
+              countChar=0;
+          }
+        }
+          if (cmpressed.length()>=str.length())
+              return str;
+          else
+              return cmpressed.toString();
+
+      }
+
 
       public boolean isRotation(String s1,String s2){
         if (s1.length()!=s2.length())

@@ -15,6 +15,37 @@ public class Node {
         this.next = null;
     }
 
+    public static int size(Node head) {
+
+        int size = 0;
+        Node n = head;
+        while (n!= null) {
+            size++;
+            n=n.next;
+        }
+        return size;
+    }
+
+    public static void printNode(Node head){
+        Node n =head;
+        while(n.next!=null){
+            System.out.print(n.data+"->");
+            n=n.next;
+        }
+        System.out.print(n.data);
+        System.out.println("");
+    }
+
+    public void printNode(){
+        Node n=this;
+        while(n.next!=null){
+            System.out.print(n.data+"->");
+            n=n.next;
+        }
+        System.out.print(n.data);
+        System.out.println("");
+    }
+
     public void appendNode( int data) {
         Node n = this;
         while (n.next != null)
@@ -36,26 +67,6 @@ public class Node {
             n = n.next;
         }
        return head;
-    }
-
-    public static void printNode(Node head){
-        Node n =head;
-        while(n.next!=null){
-            System.out.print(n.data+"->");
-            n=n.next;
-        }
-        System.out.print(n.data);
-        System.out.println("");
-    }
-
-    public void printNode(){
-    Node n=this;
-    while(n.next!=null){
-    System.out.print(n.data+"->");
-     n=n.next;
-        }
-     System.out.print(n.data);
-    System.out.println("");
     }
 
     public static Node removeDuplicates(Node head){
@@ -84,17 +95,31 @@ public class Node {
      n=n.next;
      }*/
     }
-
-    public static int size(Node head) {
-
-        int size = 0;
-        Node n = head;
-        while (n!= null) {
-            size++;
-            n=n.next;
+   //5->7->9->11
+    public Node insertInSortedList(Node head ,int val){
+        Node newNode = new Node(val);
+        Node current=head;Node temp=head;
+        if(head==null) return newNode;
+        while(current!=null && current.data<=val){
+        temp=current;
+        current=current.next;
         }
-        return size;
-    }
+        temp.next=newNode;
+        newNode.next=current;
+        return head;
+        }
+          //5->7->9->11->12
+        public void displayLinkedListFromEnd(Node head){
+        if(head==null)
+        return;
+        else{
+            displayLinkedListFromEnd(head.next);
+            System.out.print(head.data);
+          }
+        }
+
+
+
    /* public static Node removeDuplicatesLinkedList(Node head){
 
         Hashtable t = new Hashtable();
@@ -160,7 +185,7 @@ public class Node {
 
      //Determine loop linked list
     //at the point of meet ,they are k nodes away from the mstart of the loop
-public Node getBeginning(Node head){
+   public Node getBeginning(Node head){
 
     if(head==null)
         return null;
@@ -186,6 +211,26 @@ public Node getBeginning(Node head){
 
     return fastPointer;
     }
+
+    public Node determineLoopHashTable(Node head){
+        if(head==null)
+            return null;
+        Node n= head;
+        java.util.Hashtable t = new java.util.Hashtable();
+        while(n!=null){
+         if(t.containsKey(n)){
+          return  n;
+         }
+         else{
+          t.put(n,n);
+         }
+          n=n.next;
+         }
+         return  null;
+      }
+
+     // 5->7->8->10->12
+
 
     //3
    //5->7->8->9->1
@@ -287,6 +332,56 @@ public Node getBeginning(Node head){
             result.setTail(n);
             return result;
          }
+         //          | |
+         //1->4->5->7->9
+         //n=4
+    //p2.next ,comes to the last node but does not go in while loop
+    //p2==null goes to all node ,so print last data ,when coming out refremce
+    //points to null
+    public Node getNthNodeFromEnd(Node head ,int n){
+          if(head==null || n==1) return null;
+          Node p1=head ,p2=head;
+          //p2 advances by n-1
+          for(int i=1;i<n;i++){
+              //length of list is less than n
+              if(p2==null)
+                  return null;
+              p2=p2.next;
+          }
+          while(p2.next!=null){
+          p1=p1.next;
+          p2=p2.next;
+          }
+          return  p1;
+         }
+         //L+N-1;
+
+    public Node getNthNodeFromEndHashTable(Node head ,int n){
+        HashMap <Integer,Node> nodeMap= new HashMap<Integer, Node>();
+        Node p=head;int count=1;
+        while(p!=null){
+         nodeMap.put(count,p);
+         count++;
+         p=p.next;
+         }
+         int length=count;
+         return nodeMap.get(length+1-n);
+    }
+          //5->4->3->2->1
+          public static Node reverseLinkedList(Node head){
+          //3 pointers
+          Node current=head, previous=null,nextNode= null;
+          while(current!=null){
+           nextNode=current.next;
+           current.next=previous;
+           previous=current;
+           current=nextNode;
+           }
+           head=previous;
+           return  head;
+          }
+
+        // 5->7->9->22->33
 
 
 }

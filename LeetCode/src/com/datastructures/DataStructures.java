@@ -17,6 +17,8 @@ public class DataStructures {
         number1.appendNode(3);
         Node.printNode(number1);
 
+
+
         Node number2= new Node(5);
         number2.appendNode(6);
         number2.appendNode(4);
@@ -35,6 +37,14 @@ public class DataStructures {
        Node dups_removed=Node.removeDuplicates(n);
        dups_removed.printNode();
 
+       System.out.println("Reversed linked list");
+        Node toBeRev= new Node(2);
+        toBeRev.appendNode(4);
+        toBeRev.appendNode(3);
+        toBeRev.appendNode(10);
+        Node.printNode(toBeRev);
+        Node reversed=Node.reverseLinkedList(toBeRev);
+        Node.printNode(reversed);
     }
 
 
