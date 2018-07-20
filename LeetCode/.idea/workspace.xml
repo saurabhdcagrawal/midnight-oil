@@ -41,8 +41,12 @@
       <file leaf-file-name="ArrayTransformation.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/com/datastructures/ArrayTransformation.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="156">
-              <caret line="36" column="5" lean-forward="true" selection-start-line="36" selection-start-column="5" selection-end-line="45" selection-end-column="6" />
+            <state relative-caret-position="258">
+              <caret line="59" column="34" lean-forward="true" selection-start-line="59" selection-start-column="34" selection-end-line="59" selection-end-column="34" />
+              <folding>
+                <element signature="imports" expanded="true" />
+                <element signature="e#1460#1469#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -130,15 +134,15 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find />
-      <find />
+      <find>public boolean isUniqueChars\(String word\)\{\n\n     if \(word\.length\(\)\&gt;128\)\n     return false\;\n\n     boolean \[\] arr\= new boolean \[128\]\;\n     for\(i\=0\;i\&lt;word\.length\(\)\;i\+\+\)\{\n     int val\=word\.charAt\(i\)\;\n     if\(arr\[val\]\=\=true\)\n         return false\;\n     else \n         arr\[val\]\=true\;     \n\n     \}\n\n\n     return true\;\n     \}</find>
+      <find>package com\.datastructures\;\n\npublic class Node\{\n\n int data\;\n Node next\;\n\n public Node \(int data\)\{\n  this\.data\=data\;\n  this\.next\=null\;\n \}\n\n public void appendNode\(Node head\,int data\) \{\n     Node n \=head\;\n     while\(n\.next\!\=null\)\n     n\=n\.next\;\n     Node end \= new Node\(data\)\;\n     n\.next \= end\;\n \}\n \n public Node deleteNode\(Node head\,int data\)\{\n  if \(head\.data\=\=data\)\n  return head\.next\;\n  \n  Node n \=head\;\n  while\(n\.next\!\=null\)\{\n  if\(n\.next\.data\=\=data\)\n  n\.next\=n\.next\.next\;\n  n\=n\.next\;\n  \}\n   return head\;\n \}\n\}\n</find>
       <find>sum</find>
       <find>loop</find>
       <find>size</find>
       <find>reverseLinkedList</find>
     </findStrings>
     <dirStrings>
-      <dir />
+      <dir>C:\Users\Saurabh Agrawal\IdeaProjects\LeetCode\src\com\datastructures</dir>
     </dirStrings>
   </component>
   <component name="IdeDocumentHistory">
@@ -165,7 +169,7 @@
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="7">
+  <component name="ProjectFrameBounds" extendedState="6">
     <option name="x" value="-30" />
     <option name="y" value="105" />
     <option name="width" value="1890" />
@@ -727,8 +731,12 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/com/datastructures/ArrayTransformation.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="156">
-          <caret line="36" column="5" lean-forward="true" selection-start-line="36" selection-start-column="5" selection-end-line="45" selection-end-column="6" />
+        <state relative-caret-position="258">
+          <caret line="59" column="34" lean-forward="true" selection-start-line="59" selection-start-column="34" selection-end-line="59" selection-end-column="34" />
+          <folding>
+            <element signature="imports" expanded="true" />
+            <element signature="e#1460#1469#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

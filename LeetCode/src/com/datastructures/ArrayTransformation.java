@@ -1,7 +1,8 @@
 package com.datastructures;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-
+import java.util.List;
 public class ArrayTransformation {
 
 
@@ -46,6 +47,20 @@ public class ArrayTransformation {
      }
     }
 
+   //[4,3,2,7,8,2,3,1]
+    public List<Integer> findDisappearedElements(int[] nums){
+        for(int i=0;i<nums.length;i++){
+            int val=Math.abs(nums[i]);
+            if(nums[val-1]>0)
+         nums[val-1]=-1*nums[val-1];
+     }
+     List<Integer> disappeared_elems = new ArrayList<Integer>();
+     for(int i=0;i<nums.length;i++){
+          if (nums[i]>0)
+              disappeared_elems.add(i+1);
+     }
+      return disappeared_elems;
+    }
 //Pass  by reference
     public static void main(String args[]){
       int[] arr=new int[]{0,1,1,1,0,2};
