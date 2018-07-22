@@ -17,6 +17,16 @@ public class StackMinOperationUsingMinNode extends Stack<MinNode> {
          return this.peek().min;
      }
 
+     public Integer popMinNode(){
+      MinNode mn= super.pop();
+      return mn.data;
+     }
+
+
+    public Integer peekMinNode(){
+        MinNode mn= super.peek();
+        return mn.data;
+    }
 }
 
  class MinNode{

@@ -18,6 +18,7 @@ public class StackMinOperationUsingMinStack extends Stack {
      super.push(data);
      }
 
+     @Override
      public Integer pop(){
          //Type cast
       Integer val=(Integer)super.pop();
