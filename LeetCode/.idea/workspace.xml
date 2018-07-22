@@ -17,18 +17,6 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="Node.java" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/com/datastructures/Node.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="6239">
-              <caret line="370" column="24" selection-start-line="370" selection-start-column="24" selection-end-line="370" selection-end-column="24" />
-              <folding>
-                <element signature="imports" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="CommonStockProblem.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/com/company/CommonStockProblem.java">
           <provider selected="true" editor-type-id="text-editor">
@@ -41,7 +29,7 @@
       <file leaf-file-name="ArrayTransformation.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/com/datastructures/ArrayTransformation.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="258">
+            <state relative-caret-position="969">
               <caret line="59" column="34" selection-start-line="59" selection-start-column="34" selection-end-line="59" selection-end-column="34" />
               <folding>
                 <element signature="imports" expanded="true" />
@@ -53,24 +41,47 @@
       <file leaf-file-name="Stack.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/com/datastructures/Stack.java">
           <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="595">
+              <caret line="37" column="14" selection-start-line="37" selection-start-column="14" selection-end-line="37" selection-end-column="14" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="StackProblems.java" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/com/datastructures/StackProblems.java">
+          <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="316">
-              <caret line="37" column="14" lean-forward="true" selection-start-line="37" selection-start-column="14" selection-end-line="37" selection-end-column="14" />
+              <caret line="30" selection-start-line="30" selection-end-line="30" />
               <folding>
-                <element signature="e#210#211#0" expanded="true" />
-                <element signature="e#230#231#0" expanded="true" />
+                <element signature="e#226#237#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="StackProblems.java" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/src/com/datastructures/StackProblems.java">
+      <file leaf-file-name="StackMinOperationUsingMinStack.java" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/com/datastructures/StackMinOperationUsingMinStack.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="309">
-              <caret line="37" column="1" lean-forward="true" selection-start-line="37" selection-start-column="1" selection-end-line="37" selection-end-column="1" />
-              <folding>
-                <element signature="e#185#196#0" expanded="true" />
-              </folding>
+            <state relative-caret-position="71">
+              <caret line="9" column="29" selection-start-line="9" selection-start-column="29" selection-end-line="9" selection-end-column="29" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="StackMinOperationUsingMinNode.java" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/com/datastructures/StackMinOperationUsingMinNode.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="85">
+              <caret line="12" column="4" selection-start-line="12" selection-start-column="4" selection-end-line="12" selection-end-column="4" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Stack.java" pinned="false" current-in-tab="false">
+        <entry file="jar://C:/Program Files/Java/jdk1.7.0_79/src.zip!/java/util/Stack.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="104">
+              <caret line="79" column="29" selection-start-line="79" selection-start-column="26" selection-end-line="79" selection-end-column="29" />
             </state>
           </provider>
         </entry>
@@ -80,24 +91,6 @@
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="255">
               <caret line="15" column="31" selection-start-line="15" selection-start-column="31" selection-end-line="15" selection-end-column="31" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Result.java" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/com/datastructures/assist/Result.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="119">
-              <caret line="7" selection-start-line="7" selection-end-line="7" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="DataStructures.java" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/com/datastructures/DataStructures.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="748">
-              <caret line="44" column="32" selection-start-line="44" selection-start-column="32" selection-end-line="44" selection-end-column="32" />
             </state>
           </provider>
         </entry>
@@ -142,6 +135,7 @@
       <find>loop</find>
       <find>size</find>
       <find>reverseLinkedList</find>
+      <find>pop</find>
     </findStrings>
     <dirStrings>
       <dir>C:\Users\Saurabh Agrawal\IdeaProjects\LeetCode\src\com\datastructures</dir>
@@ -169,6 +163,10 @@
         <option value="$PROJECT_DIR$/src/com/datastructures/ArrayTransformation.java" />
         <option value="$PROJECT_DIR$/src/com/datastructures/Stack.java" />
         <option value="$PROJECT_DIR$/src/com/datastructures/StackProblems.java" />
+        <option value="$PROJECT_DIR$/src/com/datastructures/StackWithMin.java" />
+        <option value="$PROJECT_DIR$/src/com/datastructures/StackWithMinUsingMinStack.java" />
+        <option value="$PROJECT_DIR$/src/com/datastructures/StackMinOperationUsingMinStack.java" />
+        <option value="$PROJECT_DIR$/src/com/datastructures/StackMinOperationUsingMinNode.java" />
       </list>
     </option>
   </component>
@@ -183,6 +181,8 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="PackagesPane" />
+      <pane id="Scope" />
       <pane id="AndroidView" />
       <pane id="ProjectPane">
         <subPane>
@@ -235,8 +235,6 @@
           <select />
         </subPane>
       </pane>
-      <pane id="Scope" />
-      <pane id="PackagesPane" />
     </panes>
   </component>
   <component name="RunDashboard">
@@ -251,19 +249,9 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Application.StackProblems">
+  <component name="RunManager" selected="Application.StackMinOperationUsingMinStack">
     <configuration name="ArrayTransformation" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="com.datastructures.ArrayTransformation" />
-      <module name="LeetCode" />
-      <extension name="coverage">
-        <pattern>
-          <option name="PATTERN" value="com.datastructures.*" />
-          <option name="ENABLED" value="true" />
-        </pattern>
-      </extension>
-    </configuration>
-    <configuration name="CommonStockProblem" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
-      <option name="MAIN_CLASS_NAME" value="com.company.CommonStockProblem" />
       <module name="LeetCode" />
       <extension name="coverage">
         <pattern>
@@ -289,6 +277,16 @@
       <RunnerSettings RunnerId="Run" />
       <ConfigurationWrapper RunnerId="Run" />
     </configuration>
+    <configuration name="StackMinOperationUsingMinStack" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.datastructures.StackMinOperationUsingMinStack" />
+      <module name="LeetCode" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.datastructures.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+    </configuration>
     <configuration name="StackProblems" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="com.datastructures.StackProblems" />
       <module name="LeetCode" />
@@ -301,18 +299,18 @@
     </configuration>
     <list>
       <item itemvalue="Application.Main" />
-      <item itemvalue="Application.CommonStockProblem" />
       <item itemvalue="Application.DataStructures" />
       <item itemvalue="Application.ArrayTransformation" />
       <item itemvalue="Application.StackProblems" />
+      <item itemvalue="Application.StackMinOperationUsingMinStack" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Application.StackMinOperationUsingMinStack" />
         <item itemvalue="Application.StackProblems" />
         <item itemvalue="Application.ArrayTransformation" />
         <item itemvalue="Application.DataStructures" />
         <item itemvalue="Application.Main" />
-        <item itemvalue="Application.CommonStockProblem" />
       </list>
     </recent_temporary>
   </component>
@@ -342,11 +340,11 @@
       <window_info anchor="bottom" id="Event Log" order="7" side_tool="true" />
       <window_info anchor="right" id="Maven Projects" order="3" />
       <window_info anchor="bottom" id="Version Control" order="7" show_stripe_button="false" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.32993197" />
+      <window_info anchor="bottom" id="Run" order="2" visible="true" weight="0.32993197" />
       <window_info anchor="bottom" id="Terminal" order="7" />
       <window_info id="Capture Tool" order="2" />
       <window_info id="Designer" order="2" />
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.3676815" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.3676815" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info id="UI Designer" order="2" />
@@ -378,30 +376,6 @@
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/src/com/datastructures/Node.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2006">
-          <caret line="120" column="17" selection-start-line="120" selection-start-column="17" selection-end-line="120" selection-end-column="17" />
-          <folding>
-            <element signature="imports" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/com/string/StringProbs.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1700">
-          <caret line="100" column="24" selection-start-line="100" selection-start-column="24" selection-end-line="100" selection-end-column="24" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/com/company/CommonStockProblem.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="204">
-          <caret line="12" column="28" selection-start-line="12" selection-start-column="28" selection-end-line="12" selection-end-column="28" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/com/string/StringProbs.java">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1054">
@@ -728,7 +702,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/com/datastructures/ArrayTransformation.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="258">
+        <state relative-caret-position="969">
           <caret line="59" column="34" selection-start-line="59" selection-start-column="34" selection-end-line="59" selection-end-column="34" />
           <folding>
             <element signature="imports" expanded="true" />
@@ -738,22 +712,39 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/com/datastructures/Stack.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="316">
-          <caret line="37" column="14" lean-forward="true" selection-start-line="37" selection-start-column="14" selection-end-line="37" selection-end-column="14" />
-          <folding>
-            <element signature="e#210#211#0" expanded="true" />
-            <element signature="e#230#231#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="595">
+          <caret line="37" column="14" selection-start-line="37" selection-start-column="14" selection-end-line="37" selection-end-column="14" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/com/datastructures/StackProblems.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="309">
-          <caret line="37" column="1" lean-forward="true" selection-start-line="37" selection-start-column="1" selection-end-line="37" selection-end-column="1" />
+        <state relative-caret-position="316">
+          <caret line="30" selection-start-line="30" selection-end-line="30" />
           <folding>
-            <element signature="e#185#196#0" expanded="true" />
+            <element signature="e#226#237#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/com/datastructures/StackMinOperationUsingMinStack.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="71">
+          <caret line="9" column="29" selection-start-line="9" selection-start-column="29" selection-end-line="9" selection-end-column="29" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://C:/Program Files/Java/jdk1.7.0_79/src.zip!/java/util/Stack.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="104">
+          <caret line="79" column="29" selection-start-line="79" selection-start-column="26" selection-end-line="79" selection-end-column="29" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/com/datastructures/StackMinOperationUsingMinNode.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="85">
+          <caret line="12" column="4" selection-start-line="12" selection-start-column="4" selection-end-line="12" selection-end-column="4" />
         </state>
       </provider>
     </entry>
