@@ -434,25 +434,24 @@ public class Node {
            return result;
          }
        //concise
-         /*public boolean isPalindrome(ListNode head) {
-        if(head==null) return true;
-        ListNode middleNode=findMiddleNode(head);
-        ListNode secondHead=middleNode.next;
-        middleNode.next=null;
-        ListNode secondList=reverseLinkedList(secondHead);
-        ListNode p1=head ,p2=secondList;
-        boolean result=true;
-        while(p2!=null){
-            if(p1.val!=p2.val)
-                result=false;
-            p1=p1.next;
-            p2=p2.next;
-        }
-        ListNode secondHalf=reverseLinkedList(secondList);
-        middleNode.next=secondHalf;
-        return result;
+     /*  public boolean isPalindrome(ListNode head) {
+           if(head==null) return true;
+           ListNode middleNode=findMiddleNode(head);
+           ListNode secondHead=reverseLinkedList(middleNode.next);
+           middleNode.next=null;
+           ListNode p1=head ,p2=secondHead;
+           boolean result=true;
+           while(p2!=null){
+               if(p1.val!=p2.val)
+                   result=false;
+               p1=p1.next;
+               p2=p2.next;
+           }
+           ListNode secondHalf=reverseLinkedList(secondHead);
+           middleNode.next=secondHalf;
+           return result;
 
-    }
+       }
 
     public ListNode findMiddleNode(ListNode head){
         if(head==null || head.next==null) return head;
