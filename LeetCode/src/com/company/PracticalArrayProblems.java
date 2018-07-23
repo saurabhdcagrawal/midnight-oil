@@ -1,6 +1,20 @@
 package com.company;
 
-public class CommonStockProblem {
+public class PracticalArrayProblems {
+    public int maxArea(int[] height) {
+        int l=0 , r= height.length-1;
+        int max_area=0 ,length=0,area=0;
+        while(l<r){
+            area= (r-l)*Math.min(height[r],height[l]);
+            if(area >=max_area)
+                max_area=area;
+            if(height[l]<=height[r])
+                l=l+1;
+            else
+                r=r-1;
+        }
+        return max_area;
+    }
 
     public int getMaxProfit(int[] prices) {
         //you need to find the valley and associated next peek ,traverse first to find the minimum,
@@ -20,8 +34,10 @@ public class CommonStockProblem {
 
     public static void main(String[] args) {
 	int [] prices ={7,6,9,1,10};
-	CommonStockProblem instance = new CommonStockProblem();
+	PracticalArrayProblems instance = new PracticalArrayProblems();
      System.out.print(instance.getMaxProfit(prices));
-
+     int [] height={1,8,6,2,5,4,8,3,7};
+     System.out.print("Max Area");
+     System.out.println(instance.maxArea(height));
     }
 }
