@@ -20,8 +20,8 @@
       <file leaf-file-name="Node.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/com/datastructures/Node.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="68">
-              <caret line="460" column="35" selection-start-line="460" selection-start-column="35" selection-end-line="460" selection-end-column="35" />
+            <state relative-caret-position="51">
+              <caret line="435" column="16" selection-start-line="435" selection-start-column="16" selection-end-line="435" selection-end-column="16" />
               <folding>
                 <element signature="imports" expanded="true" />
               </folding>
@@ -741,8 +741,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/com/datastructures/Node.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="68">
-          <caret line="460" column="35" selection-start-line="460" selection-start-column="35" selection-end-line="460" selection-end-column="35" />
+        <state relative-caret-position="51">
+          <caret line="435" column="16" selection-start-line="435" selection-start-column="16" selection-end-line="435" selection-end-column="16" />
           <folding>
             <element signature="imports" expanded="true" />
           </folding>

@@ -433,7 +433,49 @@ public class Node {
            printNode(head);
            return result;
          }
+       //concise
+         /*public boolean isPalindrome(ListNode head) {
+        if(head==null) return true;
+        ListNode middleNode=findMiddleNode(head);
+        ListNode secondHead=middleNode.next;
+        middleNode.next=null;
+        ListNode secondList=reverseLinkedList(secondHead);
+        ListNode p1=head ,p2=secondList;
+        boolean result=true;
+        while(p2!=null){
+            if(p1.val!=p2.val)
+                result=false;
+            p1=p1.next;
+            p2=p2.next;
+        }
+        ListNode secondHalf=reverseLinkedList(secondList);
+        middleNode.next=secondHalf;
+        return result;
 
+    }
+
+    public ListNode findMiddleNode(ListNode head){
+        if(head==null || head.next==null) return head;
+        ListNode p1=head,p2=head;
+        while(p2!=null &&p2.next!=null && p2.next.next!=null){
+            p1=p1.next;
+            p2=p2.next.next;
+        }
+        return p1;
+    }
+
+    public ListNode reverseLinkedList(ListNode head){
+        ListNode current=head ,nextNode=null,previous=null;
+        while(current!=null){
+            nextNode=current.next;
+            current.next=previous;
+            previous=current;
+            current=nextNode;
+        }
+
+        head=previous;
+        return head;
+    }*/
        public boolean isLinkedListIdentical(Node n1 ,Node n2){
        if(n1==null && n2 ==null) return true;
            while (n1 != null && n2 != null) {
