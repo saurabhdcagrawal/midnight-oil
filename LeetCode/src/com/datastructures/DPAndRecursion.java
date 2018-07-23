@@ -1,14 +1,34 @@
 package com.datastructures;
 
 public class DPAndRecursion {
+/*
+//fibonacci=0
+*/
+/*
+ public int fibRec(int n){
+     if(n<0)
+     return 0;
 
- public int fibonacciRecursive(int n){
+     else if(n0)
+     return 1;
+     else if (n==1)
+     return 1;
+     else
+       return fibRec(n-1)+
+
+ }
+
+
+
+    public int fibonacciRecursive(int n){
      if(n<=0)
          return 0;
      if(n==1)
          return 1;
      else
          return (fibonacciRecursive(n-1)+fibonacciRecursive(n-2));
+*//*
+
 
  }
 
@@ -31,4 +51,6 @@ public class DPAndRecursion {
  public int noOfWays(int n){
      return 0;
   }
+}
+*/
 }

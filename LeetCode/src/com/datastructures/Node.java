@@ -342,13 +342,13 @@ public class Node {
           if(head==null || n==1) return null;
           Node p1=head ,p2=head;
           //p2 advances by n-1
-          for(int i=1;i<n;i++){
+          for(int i=1;i<=n;i++){
               //length of list is less than n
               if(p2==null)
                   return null;
               p2=p2.next;
           }
-          while(p2.next!=null){
+          while(p2!=null){
           p1=p1.next;
           p2=p2.next;
           }
@@ -367,6 +367,19 @@ public class Node {
          int length=count;
          return nodeMap.get(length+1-n);
     }
+
+     public static Node findMiddleNode(Node head){
+         if (head==null ||head.next==null) return head;
+          Node p1 =head,p2=head;
+         //1->2->3->4->5->6
+         //1->2->3
+         while (p2!=null&& p2.next!=null&&p2.next.next!=null) {
+             p1 = p1.next;
+             p2 = p2.next.next;
+         }
+          return p1;
+         }
+
           //5->4->3->2->1
           public static Node reverseLinkedList(Node head){
           //3 pointers
@@ -382,6 +395,85 @@ public class Node {
           }
 
         // 5->7->9->22->33
+        // 5->7->9->sh7->5
+        // 5->7->9->
+    //     5->7
+
+  /*      1) Get the middle of the linked list.
+          2) Reverse the second half of the linked list.
+          3) Check if the first half and second half are identical.
+          4) Construct the original linked list by reversing the second half again
+          and attaching it back to the first half
+*/       public static boolean isPalindromeLinkedList(Node head){
+          if(head==null) return true;
+          System.out.println("Printing original Node");
+          printNode(head);
+          Node middleNode=findMiddleNode(head);
+          System.out.println("Printing middle node " +middleNode.data);
+          Node secondHead=reverseLinkedList(middleNode.next);
+          middleNode.next=null;
+          System.out.println("Second half");
+          printNode(secondHead);
+          System.out.println("First half");
+          printNode(head);
+          Node p1=head,p2=secondHead;
+          Boolean result=true;
+          while(p2!=null){
+          if (p1.data!=p2.data)
+              result= false;
+          p1=p1.next;
+          p2=p2.next;
+          }
+           //boolean result=isLinkedListIdentical(head,secondHead);
+           Node secondHalf=reverseLinkedList(secondHead);
+           System.out.println("Getting back Original Second Half");
+           printNode(secondHalf);
+           middleNode.next=secondHalf;
+           System.out.println("Printing linked list again");
+           printNode(head);
+           return result;
+         }
+
+       public boolean isLinkedListIdentical(Node n1 ,Node n2){
+       if(n1==null && n2 ==null) return true;
+           while (n1 != null && n2 != null) {
+            if(n1.data!=n2.data)
+               return false;
+            n1=n1.next;n2=n2.next;
+            }
+            //Are both null at this point?
+            if(n1==null&& n2==null)
+             return true;
+
+         return false;
+       }
+       public static void main (String args[]){
+         Node n = new Node (1);
+         n.appendNode(2);
+         n.appendNode(3);
+         //n.appendNode(4);
+         //n.appendNode(5);
+          // n.appendNode(6);
+         n.printNode(n);
+         Node middle=n.findMiddleNode(n);
+         System.out.println("Middle Node "+middle.data);
+        System.out.println("Starting Palindrome");
+           System.out.println("Even Length Linked List");
+        Node palin= new Node(5);
+        palin.appendNode(7);
+        palin.appendNode(9);
+        palin.appendNode(9);
+        palin.appendNode(7);
+        palin.appendNode(5);
+        System.out.println(isPalindromeLinkedList(palin)==true?"True":"False");
+           System.out.println("Odd Length Linked List");
+           Node palin_odd= new Node(5);
+           palin_odd.appendNode(7);
+           palin_odd.appendNode(9);
+           palin_odd.appendNode(7);
+           palin_odd.appendNode(5);
+           System.out.println(isPalindromeLinkedList(palin_odd)==true?"True":"False");
+  }
 
 
 }
