@@ -20,6 +20,20 @@ public class ArrayTransformation {
        }
     }
 
+    //Given an array nums and a value val,
+    // remove all instances of that value in-place and return the new length.
+    public int removeElement(int[] nums, int val) {
+
+        int nonValIndex=0;
+        for(int i=0;i<nums.length;i++){
+            if(nums[i]!=val){
+                nums[nonValIndex++]=nums[i];
+            }
+        }
+        return nonValIndex;
+
+    }
+
 //Moore's voting algorithm
 //Basic idea of the algorithm is that if we cancel out each occurrence of an element
 // e with all the other elements that are different from e then e will exist till end if it is a majority element.

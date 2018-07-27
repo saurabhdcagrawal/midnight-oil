@@ -29,6 +29,40 @@ public class StackProblems {
         return true;
     }
 
+    //find longest parentheses
+   // ((()
+   //())))
+    public int findLongestParentheses(String s){
+    int left=0,right=0,max_length=0;
+    //left to right scan
+    for(int i=0 ;i<s.length();i++){
+      if(s.charAt(i)=='(')
+        left++;
+      else
+          right++;
+      if(left==right)
+      max_length=Math.max(max_length,2*left);
+      //())) //reset all counters
+      else if(right>left)
+      left=right=0;
+    }
+     left=right=0;
+    //right to left scan
+   for(int i=s.length()-1;i>=0;i--){
+       if(s.charAt(i)=='(')
+           left++;
+       else
+           right++;
+       if(left==right)
+           max_length=Math.max(max_length,2*left);
+       //()((((
+       else if (left>right)
+        left=right=0;
+   }
+        return max_length;
+    }
+
+
 
     public static void main(String args[]) {
     StackProblems sp = new StackProblems();

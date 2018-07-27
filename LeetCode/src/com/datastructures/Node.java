@@ -488,7 +488,30 @@ public class Node {
 
          return false;
        }
-       public static void main (String args[]){
+
+
+    public static Node mergeTwoLists(Node l1, Node l2) {
+        Node dummy=new Node(0);
+        Node result=dummy;
+        while(l1!=null && l2!=null){
+            if(l1.data<=l2.data){
+                result.next=l1;
+                l1=l1.next;
+            }
+            else{
+                result.next=l2;
+                l2=l2.next;
+            }
+            result=result.next;
+        }
+        if(l1!=null)
+            result.next=l1;
+        else if (l2!=null)
+           result.next=l2;
+         return dummy.next;
+    }
+
+    public static void main (String args[]){
          Node n = new Node (1);
          n.appendNode(2);
          n.appendNode(3);
@@ -514,7 +537,24 @@ public class Node {
            palin_odd.appendNode(7);
            palin_odd.appendNode(5);
            System.out.println(isPalindromeLinkedList(palin_odd)==true?"True":"False");
-  }
+
+        System.out.println("Merge node starts");
+           Node l1=new Node(1);
+       l1.appendNode(2);
+       l1.appendNode(4);
+       l1.appendNode(9);
+       System.out.println("Printing first node");
+       printNode(l1);
+       Node l2= new Node(1);
+       l2.appendNode(3);
+       l2.appendNode(4);
+       System.out.println("Printing second node");
+       printNode(l2);
+       Node result =mergeTwoLists(l1,l2);
+        System.out.println("Printing result");
+        printNode(result);
+
+       }
 
 
 }
