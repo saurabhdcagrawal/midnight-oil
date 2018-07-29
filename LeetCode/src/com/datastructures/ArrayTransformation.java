@@ -75,6 +75,17 @@ public class ArrayTransformation {
      }
       return disappeared_elems;
     }
+
+//Duplicate number self algorithm ,transforming array
+    public int findDuplicate(int[] nums) {
+        for(int i=0;i<nums.length;i++){
+            if(nums[Math.abs(nums[i])-1]>=0)
+                nums[Math.abs(nums[i])-1]= -nums[Math.abs(nums[i])-1];
+            else
+                return Math.abs(nums[i]);
+        }
+        return -1;
+    }
 //Pass  by reference
     public static void main(String args[]){
       int[] arr=new int[]{0,1,1,1,0,2};

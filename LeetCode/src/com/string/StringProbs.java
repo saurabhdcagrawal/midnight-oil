@@ -1,8 +1,5 @@
 package com.string;
-
-import com.sun.deploy.util.ArrayUtil;
-
-import java.util.HashMap;
+import java.util.List;
 //Brute Force
 //Sort and compare
 public class StringProbs {
@@ -115,8 +112,26 @@ public class StringProbs {
 
               return new String(urlChar);
       }
+     //Expt
+      public void printAllSubstrings(String str){
+      for(int i=0;i<str.length();i++){
+          for(int j=i+1;j<=str.length();j++){
+           printString(str,i,j);
+          }
+        }
+      }
+        void printString(String str,int start ,int end){
+          for(int i=start;i<end;i++){
+            System.out.print(str.charAt(i));
+          }
+            System.out.println("");
+        }
 
-      //spublic String
+        public static void main(String args[]){
+
+        StringProbs sp = new StringProbs();
+        sp.printAllSubstrings("Isha");
+        }
 
 
 }

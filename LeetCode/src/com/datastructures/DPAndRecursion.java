@@ -1,6 +1,8 @@
 package com.datastructures;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 //top down dynamic programming memoization
 //bottom up as dp only
@@ -70,7 +72,141 @@ public class DPAndRecursion {
     }
 
     //LCS ,maximu product subarray ,levenstein distance ,lru cache
+//LCS[i][j]  is common subsequence between str1[i-1] to str[j-1] i.e both i character of str1 and
+ // j characters of str2
+    public static int LCS(String str1,String str2) {
+        int m = str1.length();
+        int n = str2.length();
+        int[][] LCS = new int[m + 1][n + 1];
+        for (int i = 0; i <= m; i++) {
+            for (int j = 0; j <= n; j++) {
+                if (i == 0 || j == 0)
+                    LCS[i][j] = 0;
+                else if (str1.charAt(i - 1) == str2.charAt(j - 1))
+                    LCS[i][j] = LCS[i - 1][j - 1] + 1;
+                else
+                    LCS[i][j] = Math.max(LCS[i - 1][j], LCS[i][j - 1]);
 
+            }
+
+        }
+        return LCS[m][n];
+    }
+    //max sub array int
+    //since it is contiguos ,you always have to include the array element ,either in sum
+    //or start afresh ,cant just forget it ,so the total sum in end may not be the max
+    public static int maxSubArray(int[] nums) {
+        int[] max_subarray= new int[nums.length];
+        int max_sum=0;
+        max_subarray[0]=nums[0];
+        for (int i=1;i<nums.length;i++){
+            max_subarray[i]=Math.max(max_subarray[i-1]+nums[i],nums[i]);
+            max_sum=Math.max(max_subarray[i],max_sum);
+        }
+        System.out.println(Arrays.toString(max_subarray));
+        return max_sum;
+    }
+    //No need to store O(1) solution
+    public static int maxSubArrayO1(int[] nums) {
+        int max_sum=nums[0];
+        int result=nums[0];
+        for (int i=1;i<nums.length;i++){
+            result=Math.max(result+nums[i],nums[i]);
+            max_sum=Math.max(result,max_sum);
+        }
+        return max_sum;
+    }
+
+    //[-2,3,-4]
+    /*We need to track a minimum value,
+    so that when a negative number is given, it can also find the maximum value.
+ */   public static int maxProductSubarray(int[] nums){
+       int[] max= new int[nums.length];
+       int[] min= new int[nums.length];
+       int result=nums[0];
+       max[0]=nums[0];min[0]=nums[0];
+       for(int i=1;i<nums.length;i++) {
+           if (nums[i] >= 0) {
+               max[i] = Math.max(max[i - 1] * nums[i], nums[i]);
+               min[i] = Math.min(min[i - 1] * nums[i], nums[i]);
+           }
+           //when the current number is negative ,the max number will be given
+           //by multiplying current value with the min value so far
+           //and the min will be obtained by applying with the most maximum value obtained
+           //so far
+           else {
+               max[i] = Math.max(min[i - 1] * nums[i], nums[i]);
+               min[i] = Math.min(max[i - 1] * nums[i], nums[i]);
+           }
+           result=Math.max(result,max[i]);
+       }
+       return result;
+       }
+
+
+
+
+
+    public static int longestNonRepeatingSubstring(String str){
+    int max=0,i=0,j=0,index=0;
+    Map<Character,Integer> charMap = new HashMap<Character,Integer>();
+    for(;j<str.length();j++){
+      if(charMap.containsKey(str.charAt(j))){
+          index=charMap.get(str.charAt(j));
+          if(index>=i)
+              i=index+1;
+          else {
+              charMap.put(str.charAt(j), j);
+              max=Math.max(max,j-i+1);
+
+          }
+      }
+     else{
+      charMap.put(str.charAt(j),j);
+      max=Math.max(max,j-i+1);
+      }
+    }
+     return max;
+
+    }
+
+    //sliding window     used to remove combination of n2 substrings to o(n)
+    public static int lengthOfLongestSubstring(String s) {
+        int n = s.length(), ans = 0;
+        Map<Character, Integer> map = new HashMap<>(); // current index of character
+        // try to extend the range [i, j]
+        for (int j = 0, i = 0; j < n; j++) {
+            if (map.containsKey(s.charAt(j))) {
+                i = Math.max(map.get(s.charAt(j)), i);
+            }
+            ans = Math.max(ans, j - i + 1);
+            map.put(s.charAt(j), j + 1);
+        }
+        return ans;
+    }
+
+    //edit distance problem
+    //any 3 operations ,insertion ,deletion
+    // https://www.youtube.com/watch?v=We3YDTzNXEk
+    //LCS[1][1] is actually string[0][0]
+    public static int editDistance(String s1,String s2) {
+    int m=s1.length();
+    int n=s2.length(); int store=0;
+    int [][] L = new int[m+1][n+1];
+    for(int i=0;i<=m;i++){
+        for(int j=0;j<=n;j++){
+            if(i==0||j==0)
+                L[i][j]=i+j;
+            else if (s1.charAt(i-1)==s2.charAt(j-1))
+                L[i][j]=L[i-1][j-1];
+            else {
+                store=Math.min(L[i - 1][j], L[i][j - 1]);
+                L[i][j]=Math.min(store,L[i-1][j-1])+1;
+            }
+        }
+    }
+    return L[m][n];
+    }
 
     public static void main(String args[]){
        System.out.println("Fibonacci recursion " +fibonacciRecursion(5));
@@ -79,6 +215,18 @@ public class DPAndRecursion {
         System.out.println("Fibonacci DPI " +fibonacciDPIter(5));
         int[] nums={1,2,3,1};
         System.out.println("Rob " +rob(nums));
+        System.out.println("Longest common subsequence");
+        System.out.println(LCS("ABAZDC","BACBAD"));
+        System.out.println("Maximum subarray subsequence");
+        int[] nums_cs={-2,1,-3,4,-1,2,1,-5,4};
+        System.out.println("Dp with storage  "+maxSubArray(nums_cs));
+        System.out.println("O(1) solution "+maxSubArrayO1(nums_cs));
+        System.out.println("Longest non repeating subsequence");
+        System.out.println(longestNonRepeatingSubstring("bbbb"));
+        System.out.println(lengthOfLongestSubstring("abcbda"));
+        System.out.println("Edit distance"+editDistance("ISHA","SAURABH"));
+
+
     }
 
 
