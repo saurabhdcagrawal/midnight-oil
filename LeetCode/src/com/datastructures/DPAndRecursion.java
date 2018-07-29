@@ -1,5 +1,7 @@
 package com.datastructures;
 
+import com.util.GeneralUtility;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -189,6 +191,10 @@ public class DPAndRecursion {
     //any 3 operations ,insertion ,deletion
     // https://www.youtube.com/watch?v=We3YDTzNXEk
     //LCS[1][1] is actually string[0][0]
+    //matrix will include o so m+1,n+1 last ,which corresponds to
+    //m and n in for loop
+    //which corresponds to str i-1 and str j-1 in string ,hence compare
+    //str[i-1] str[j-1]
     public static int editDistance(String s1,String s2) {
     int m=s1.length();
     int n=s2.length(); int store=0;
@@ -205,6 +211,7 @@ public class DPAndRecursion {
             }
         }
     }
+        GeneralUtility.printMatrix(L);
     return L[m][n];
     }
 
@@ -224,7 +231,7 @@ public class DPAndRecursion {
         System.out.println("Longest non repeating subsequence");
         System.out.println(longestNonRepeatingSubstring("bbbb"));
         System.out.println(lengthOfLongestSubstring("abcbda"));
-        System.out.println("Edit distance"+editDistance("ISHA","SAURABH"));
+        System.out.println("Edit distance "+editDistance("ISHA","SAURABH"));
 
 
     }
