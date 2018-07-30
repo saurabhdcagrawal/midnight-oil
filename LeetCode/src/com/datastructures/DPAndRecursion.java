@@ -2,9 +2,7 @@ package com.datastructures;
 
 import com.util.GeneralUtility;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 //top down dynamic programming memoization
 //bottom up as dp only
@@ -215,6 +213,72 @@ public class DPAndRecursion {
     return L[m][n];
     }
 
+    //abc
+    //first call main a ,bc
+    //second b then c
+    //Wat is concurrent modification exception
+    //O(n)
+    public static ArrayList<String> getPermutations(String str){
+     ArrayList<String> permutations = new ArrayList<String>();
+     if(str.length()==0){
+      ArrayList<String> strList= new ArrayList<String>();
+      strList.add("");
+      return strList;
+     }
+     char c=str.charAt(0);
+     //differentListOnlyPerm
+     ArrayList<String> allWords= getPermutations(str.substring(1));
+
+     for(String word:allWords){
+         for(int i=0;i<=word.length();i++){
+          String newWord= getNewWord(i,word,c);
+          permutations.add(newWord);
+          }
+         }
+
+       return permutations;
+ }
+
+ //List is an ordered collection
+    public static ArrayList<ArrayList<Integer>> permute(int[] nums , int index) {
+        ArrayList<ArrayList<Integer>> permutations = new ArrayList<ArrayList<Integer>>();
+        if(index==nums.length){
+            ArrayList<Integer> emptySet = new ArrayList<Integer>();
+            permutations.add(emptySet);
+            return permutations;
+        }
+
+        int number= nums[index];
+        ArrayList<ArrayList<Integer>> sets= permute(nums,index+1);
+         //permutations= permute(nums,index+1);
+        ArrayList<ArrayList<Integer>> currentListSet= new ArrayList<ArrayList<Integer>>();
+        for(ArrayList<Integer> set:sets){
+                  for(int i=0;i<=set.size();i++){
+                      ArrayList<Integer> newSet= new ArrayList<Integer>();
+                      newSet.addAll(set);
+                      newSet.add(i,number);
+                      System.out.println("Permutations"+permutations);
+                      currentListSet.add(newSet);
+                  }
+                 }
+        permutations.addAll(currentListSet);
+      return permutations;
+    }
+
+
+    
+
+     public static String getNewWord(int position ,String word ,char c) {
+         String head = null, tail = null;
+         //endIndex included
+             head = word.substring(0, position);
+             tail = word.substring(position);
+             System.out.println(head+c+tail);
+             return head+c+tail;
+ }
+
+
+
     public static void main(String args[]){
        System.out.println("Fibonacci recursion " +fibonacciRecursion(5));
        System.out.println("Fibonacci memoization " +fibonacciMemoization(5));
@@ -232,8 +296,11 @@ public class DPAndRecursion {
         System.out.println(longestNonRepeatingSubstring("bbbb"));
         System.out.println(lengthOfLongestSubstring("abcbda"));
         System.out.println("Edit distance "+editDistance("ISHA","SAURABH"));
-
-
+        System.out.println("Permutations");
+        System.out.println(getPermutations("abc"));
+        System.out.println("Integer Permutations");
+        int[] perm_arr={1,2,3};
+        System.out.println(permute(perm_arr,0));
     }
 
 
