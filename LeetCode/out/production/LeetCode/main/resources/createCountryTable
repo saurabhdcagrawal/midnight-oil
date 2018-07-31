@@ -1,0 +1,8 @@
+//source C://Users//Saurabh Agrawal//IdeaProjects//LeetCode//resources//createCountryTable
+CREATE  TABLE COUNTRY (
+  ID INT NOT NULL AUTO_INCREMENT,
+  COUNTRY_NAME VARCHAR(35) NOT NULL DEFAULT '',
+  POPULATION LONG,
+  MILITARY_EXPENDITURE DOUBLE,
+  PRIMARY KEY (ID)
+ );

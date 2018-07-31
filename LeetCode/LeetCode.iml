@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="JAVA_MODULE" version="4">
+  <component name="FacetManager">
+    <facet type="IvyIDEA" name="IvyIDEA">
+      <configuration ivyFile="$MODULE_DIR$/build/ivy.xml" useProjectSettings="false" useCustomIvySettings="false" ivySettingsFile="" onlyResolveSelectedConfigs="false">
+        <propertiesSettings>
+          <propertiesFiles includeProjectLevelPropertiesFiles="true" />
+        </propertiesSettings>
+      </configuration>
+    </facet>
+  </component>
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
@@ -7,6 +16,24 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module-library">
+      <library name="IvyIDEA">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.ivy2/cache/commons-lang/commons-lang/jars/commons-lang-2.0.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/commons-cli/commons-cli/jars/commons-cli-1.0.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/commons-logging/commons-logging/jars/commons-logging-1.0.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/mysql/mysql-connector-java/jars/mysql-connector-java-5.1.6.jar!/" />
+        </CLASSES>
+        <JAVADOC>
+          <root url="jar://$USER_HOME$/.ivy2/cache/commons-lang/commons-lang/javadocs/commons-lang-2.0-javadoc.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/commons-cli/commons-cli/javadocs/commons-cli-1.0-javadoc.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/commons-logging/commons-logging/javadocs/commons-logging-1.0-javadoc.jar!/" />
+        </JAVADOC>
+        <SOURCES>
+          <root url="jar://$USER_HOME$/.ivy2/cache/commons-lang/commons-lang/sources/commons-lang-2.0-sources.jar!/" />
+          <root url="jar://$USER_HOME$/.ivy2/cache/commons-cli/commons-cli/sources/commons-cli-1.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
   </component>
 </module>
-
