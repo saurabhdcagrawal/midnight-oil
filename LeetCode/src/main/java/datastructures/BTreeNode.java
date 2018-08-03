@@ -98,19 +98,21 @@ public class BTreeNode{
      }
 
      public static int findMinimumElement(BTreeNode root) {
+     if (root==null) return -1;
          while (root.left != null) {
              root = root.left;
          }
          return root.data;
      }
     public static int findMaximumElement(BTreeNode root) {
+        if (root==null) return -1;
         while (root.right != null) {
             root = root.right;
         }
         return root.data;
     }
 
-    public boolean validateIsBST(BTreeNode root){
+    public static boolean validateIsBST(BTreeNode root){
      if (root==null)
          return true;
 
@@ -123,6 +125,31 @@ public class BTreeNode{
 
     }
 
+
+
+    public static boolean isStructurallyIdentical(BTreeNode root1 ,BTreeNode root2){
+        if (root1==null&& root2==null)
+            return true;
+        else if(root1==null ||root2==null)
+            return false;
+        else if(root1.data!=root2.data)
+            return false;
+        return (isStructurallyIdentical(root1.left,root2.left) &&
+                isStructurallyIdentical(root1.right,root2.right));
+
+        }
+
+    public static boolean isMirrorOfEachOther(BTreeNode root1 ,BTreeNode root2){
+        if (root1==null&& root2==null)
+            return true;
+        else if(root1==null ||root2==null)
+            return false;
+        else if(root1.data!=root2.data)
+            return false;
+        return (isStructurallyIdentical(root1.left,root2.right) &&
+                isStructurallyIdentical(root1.right,root2.left));
+
+    }
 
        //     8
        //   5    11
@@ -141,6 +168,11 @@ public class BTreeNode{
       levelOrderTraversal(root);
       System.out.println("Minimum element "+findMinimumElement(root));
       System.out.println("Maximum element "+findMaximumElement(root));
+      System.out.println("Validate BST "+ validateIsBST(root));
+      BTreeNode temp =new BTreeNode(10);
+      temp.left=new BTreeNode(15);
+      temp.right=new BTreeNode(12);
+      System.out.println("Validate BST "+ validateIsBST(temp));
       System.out.println("Deleting B tree");
       deleteBtree(root);
      }
