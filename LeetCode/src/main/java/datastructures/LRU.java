@@ -9,23 +9,11 @@ import java.util.HashMap;
 //
 //queue using doubly linked list the size of which depends on frames
 // ,hashmap with key value as page number ,address of the node)
-//Every node corresponds t
+//to check if node is present in the cache
+//Linked list will store the address of node node exists or not already
+//just as when we create LLL, we create the list in the main
 public class LRU {
-    class DLLNode {
-        int key;
-        int value;
-        DLLNode prev;
-        DLLNode next;
 
-        public DLLNode(int key, int value) {
-            this.key = key;
-            this.value = value;
-            prev=null;
-            next=null;
-
-        }
-
-    }
 
     HashMap<Integer, DLLNode> lrumap;
     int capacity;
