@@ -9,9 +9,18 @@ read excel
 my profile
 Generics
 Whats new in Java 8
+Monday design patterns
 
 for a large database joins are expensive,therefore denormalize your data(duplicate it
 in multiple tables)
+
+
+Tree
+Graph
+BFS DFS Graph search
+Heap
+String array problems
+
 
 number of employees in each department
 
@@ -64,3 +73,31 @@ of what the access modifier is used for debugging and testing
 
 //function overloading ,calls to function are resolved during compile time
 //functions with same name ,same return type ,different input argument list
+//function overriding
+//function with same name and signature in sub class
+//calls resolved during run time
+//reference to the base class ,and add object of subclass,compile time it is matched with the base class
+//but during run time it runs the sublcass method
+
+Hashmap Array of linked list ,search in O(1)
+Linked Hashmap implemented through doubly linked lists ,O(1) lookup and insertion
+TreeMap -offers O(logn) lookup and insertion  ,keys are ordered
+ therefore key has to implement the comparable interface
+
+
+
+//Hashmap - Array of linked list
+infinite keys ,finite int /long values ,use hashcode function that will convert
+key to hashcode.2 keys can have same hashcode
+
+using a function such as modulo ,map hashcode to an index in the array ,
+at this linked list ,there is a linked list of key and value
+hash(key)modulo array.length .
+
+2 keys can link to same index location either they map to same location or they have same hashcode
+hence we have to use linked list .This is called collision
+
+If collisions is high runtime is O(n) ,where N is number of keys
+
+To find do the same ,get hashcode ,see the value it is mapped to go to the location
+traverse the link list and try to find a match

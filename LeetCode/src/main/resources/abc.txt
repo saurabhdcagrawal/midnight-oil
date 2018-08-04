@@ -9,9 +9,18 @@ read excel
 my profile
 Generics
 Whats new in Java 8
+Monday design patterns
 
 for a large database joins are expensive,therefore denormalize your data(duplicate it
 in multiple tables)
+
+
+Tree
+Graph
+BFS DFS Graph search
+Heap
+String array problems
+
 
 number of employees in each department
 
@@ -89,7 +98,6 @@ hash(key)modulo array.length .
 hence we have to use linked list .This is called collision
 
 If collisions is high runtime is O(n) ,where N is number of keys
-
 
 To find do the same ,get hashcode ,see the value it is mapped to go to the location
 traverse the link list and try to find a match
