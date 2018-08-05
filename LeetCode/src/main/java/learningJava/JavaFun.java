@@ -43,6 +43,10 @@ public class JavaFun {
         JavaFun j2=new JavaFun();
         System.out.println(JavaFun.count);
         j1.collectionExamples();
+        String str="Isha";
+        System.out.println("Printing hashcode"+str.hashCode());
+        System.out.println("Isha".hashCode());
+
 
         try {
             Class c= Class.forName("main.java.learningJava.JavaFun");

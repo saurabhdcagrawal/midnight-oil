@@ -14,6 +14,11 @@ Monday design patterns
 for a large database joins are expensive,therefore denormalize your data(duplicate it
 in multiple tables)
 
+Protected :Variable ,methods,constructors
+Class in same package or subclasses in a different package
+Protected access gives the subclass a chance to use the helper method or variable, while preventing a nonrelated class from trying to use it.
+
+
 
 Tree
 Graph

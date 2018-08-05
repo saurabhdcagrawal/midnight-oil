@@ -1,5 +1,7 @@
 package main.java.datastructures;
 
+import java.util.HashMap;
+
 public class DataStructures {
 
     public static void main (String args[]){
@@ -25,7 +27,7 @@ public class DataStructures {
         Node.printNode(number2);
         Node sum=Node.addLL(number1,number2);
         Node.printNode(sum);
-
+        HashMap h= new HashMap();
         System.out.println("Duplicates removed code");
        Node n= new Node(5);
        n.appendNode(6);
