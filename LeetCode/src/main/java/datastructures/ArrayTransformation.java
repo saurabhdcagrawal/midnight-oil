@@ -86,6 +86,36 @@ public class ArrayTransformation {
         }
         return -1;
     }
+
+
+    //best time to buy and sell stock ,max profit ..//if you plot the values,
+    //you want to get peak followed by the valley
+
+    public int buySellStock(int arr[]){
+     int min_index=-1,min_value=Integer.MAX_VALUE,max_index=0,max_value=0,max_profit=0,
+             curr_profit=-1;
+     for(int i=0;i<arr.length;i++){
+      if(arr[i]<min_value){
+          min_value=arr[i];
+          min_index=i;
+      } else{
+        //max_profit=Math.max(arr[i]-min_value,max_profit);
+          curr_profit=arr[i]-min_value;
+             if(curr_profit>max_profit){
+              max_profit=curr_profit;
+              max_index=i;
+              max_value=arr[i];
+             }
+      }
+
+     }
+        System.out.println("Min index ="+min_index+ ";Min Value"+min_value+ ";Max Index"+max_index +":Max Value="+max_value+
+                ";Max profit "+max_profit);
+        return  max_profit;
+
+    }
+
+
 //Pass  by reference
     public static void main(String args[]){
       int[] arr=new int[]{0,1,1,1,0,2};
@@ -96,6 +126,9 @@ public class ArrayTransformation {
       System.out.println(Arrays.toString(arr));
         System.out.println("Array  majority element");
       System.out.println("Major elelement "+at.getMajorityElement(maj_elem));
+        int[] stock_arr={7,1,5,3,6,4};
+        System.out.println("Buy sell stock "+at.buySellStock(stock_arr));
+
 
     }
 
