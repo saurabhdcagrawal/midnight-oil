@@ -84,12 +84,12 @@ public class Heap {
     //  27
     public void heapifyUp(int i){
      if (i<=0) return;
-      int temp=i;
+      int temp=arr[i];
      while(i>0 && arr[getParent(i)]<arr[i]){
      arr[i]=arr[(getParent(i))];
          i=(i-1)/2;
      }
-     arr[i]=arr[temp];
+     arr[i]=temp;
      System.out.println("Percolated" +arr[i] +"at position "+i);
     }
 
