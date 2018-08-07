@@ -5,12 +5,13 @@ package main.java.learningJava;
 //we need to make use of comparison strategy.That is made available
 //by using comparable or comparator interface
 //The Comparable interface is a good choice when used for defining the default ordering or
+// Comparable is an interface defining a strategy of comparing an object with other objects of the same type.
+// This is called the class’s “natural ordering”.
+
 //Sometimes, we can’t modify the source code of the class whose objects we want to sort, thus making the use of Comparable impossible
 //Using Comparators allows us to avoid adding additional code to our domain classes
 // //We can define multiple different comparison strategies which isn’t
 //  possible when using Comparable
-// Comparable is an interface defining a strategy of comparing an object with other objects of the same type.
-// This is called the class’s “natural ordering”.
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
