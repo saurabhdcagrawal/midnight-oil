@@ -8,7 +8,8 @@ package main.java.learningJava;
 // Comparable is an interface defining a strategy of comparing an object with other objects of the same type.
 // This is called the class’s “natural ordering”.
 
-//Sometimes, we can’t modify the source code of the class whose objects we want to sort, thus making the use of Comparable impossible
+//Sometimes, we can’t modify the source code of the class whose objects we want to sort,
+// thus making the use of Comparable impossible
 //Using Comparators allows us to avoid adding additional code to our domain classes
 // //We can define multiple different comparison strategies which isn’t
 //  possible when using Comparable

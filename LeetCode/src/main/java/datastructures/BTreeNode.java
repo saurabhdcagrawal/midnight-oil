@@ -66,6 +66,7 @@ public class BTreeNode{
     }
  //no linkages
  public static void insertNode(BTreeNode root, int data) {
+
       if (data<root.data){
        if(root.left!=null)
         insertNode(root.left,data);
@@ -116,9 +117,9 @@ public class BTreeNode{
      if (root==null)
          return true;
 
-     if(root.left!=null && findMaximumElement(root.left)> root.data)
+     if(root.left!=null && findMaximumElement(root.left)< root.data)
          return false;
-     if(root.right!=null && findMinimumElement(root.right)<root.data)
+     if(root.right!=null && findMinimumElement(root.right)>root.data)
          return false;
 
      return (validateIsBST(root.left) && validateIsBST(root.right));
@@ -150,6 +151,31 @@ public class BTreeNode{
                 isStructurallyIdentical(root1.right,root2.left));
 
     }
+    public boolean printAllAncestors(BTreeNode root ,BTreeNode node){
+
+     if (root==null)
+         return false;
+
+     if (root.left==node || root.right==node||
+             printAllAncestors(root.left,node)|| printAllAncestors(root.right,node)){
+         System.out.println(root.data);
+          return true;
+     }
+      return false;
+    }
+
+   /* public boolean findLCA(BTreeNode root1 ,BTreeNode root2){
+
+        if (root==null)
+            return false;
+
+        if (root.left==node || root.right==node||
+                printAllAncestors(root.left,node)|| printAllAncestors(root.right,node)){
+            System.out.println(root.data);
+            return true;
+        }
+        return false;
+    }*/
 
        //     8
        //   5    11

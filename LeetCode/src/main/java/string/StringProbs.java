@@ -1,5 +1,8 @@
 package main.java.string;
 
+import java.util.Arrays;
+import java.util.Comparator;
+
 //Brute Force
 //Sort and compare
 public class StringProbs {
@@ -126,12 +129,103 @@ public class StringProbs {
           }
             System.out.println("");
         }
+//547
+    public int myAtoi(String str) {
+        if(str==null)
+            return 0;
+        str=str.trim();
+        if (str.length()<1)
+            return 0;
+        int i=0; double number=0;
+        boolean negative_flag=false;
+        if(str.charAt(i)=='-'){
+            negative_flag=true;
+            i++;
+        }
+        else if (str.charAt(i)=='+')
+            i++;
+        //numeric  value of 4 is not equal to ascii value of 4
+        //int val=str.charAt('4') gives 52 ,so substract it from
+        //str.charAt('4')- str.charAt('0')
+        //so  many concepts
+            while(i<str.length() && str.charAt(i)>='0' && str.charAt(i)<='9'){
+            /* int val =(str.charAt(i));
+             System.out.println(val);*/
+             number=number*10+(str.charAt(i)-'0') ;
+             i++;
+              }
+
+        if (negative_flag)
+           number=number*-1;
+
+         if(number>Integer.MAX_VALUE)
+             return Integer.MAX_VALUE;
+         else if(number <Integer.MIN_VALUE)
+             return Integer.MIN_VALUE;
+         System.out.println(number);
+       return (int)number;
+    }
+
+    //When dealing with overflow problems ,take result as double and convert to Int later
+    public int reverse(int x) {
+        double reverse=0;
+        int digit=0;
+        while(x!=0){
+            digit=x%10;
+            reverse=reverse*10+digit;
+            x=x/10;
+        }
+        if(reverse>Integer.MAX_VALUE || reverse<Integer.MIN_VALUE)
+            return 0;
+        return (int) reverse;
+    }
+
+    public int firstUniqChar(String s) {
+
+        int[] charset = new int[256];
+        for (int i=0;i<s.length();i++){
+            int index=s.charAt(i);
+            charset[index]++;
+        }
+
+        for (int i=0;i<s.length();i++){
+            int index=s.charAt(i);
+            if(charset[index]==1)
+                return index;
+        }
+      return -1;
+    }
 
         public static void main(String args[]){
-
         StringProbs sp = new StringProbs();
         sp.printAllSubstrings("Isha");
-        }
+        sp.myAtoi("42");
+        String [] stringList ={"icecream","abc","creamice","cba","duck","eamicecr"};
+        Arrays.sort(stringList);
+            System.out.println("Natural sort");
+            System.out.println(Arrays.toString(stringList));
+        Arrays.sort(stringList,new AnagramComparator());
+        System.out.println("Comparison Strategy sort");
+        System.out.println(Arrays.toString(stringList));
+    }
+
+
+}
+
+//Sorting always think of Comparator
+class AnagramComparator implements Comparator<String>{
+
+    public String sortContents(String s){
+        char[]c =s.toCharArray();
+        Arrays.sort(c);
+        return new String(c);
+    }
+
+    public int compare(String s1,String s2){
+        //comparing anagrams
+        //cant use compare2 directly ,it will return wrong comparison ,so sort string first
+        return sortContents(s1).compareTo(sortContents(s2));
+    }
 
 
 }
