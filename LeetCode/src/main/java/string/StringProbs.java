@@ -1,9 +1,8 @@
-package main.java.string;
+    package main.java.string;
 
-import java.util.Arrays;
-import java.util.Comparator;
+import java.util.*;
 
-//Brute Force
+    //Brute Force
 //Sort and compare
 public class StringProbs {
 
@@ -196,6 +195,67 @@ public class StringProbs {
       return -1;
     }
 
+    //NKLogK ,Map O(N)
+    public List<List<String>> groupAnagramsSortApproach(String[] strs){
+        Map<String,List<String>> hmap = new HashMap<>();
+        //  //  System.out.println(String.valueOf(key));
+          //Gives the String representation of argument passed
+        for (String str:strs){
+           char[] arr=str.toCharArray();
+           Arrays.sort(arr);
+           String key= new String(arr);
+           if (!hmap.containsKey(key)){
+               ArrayList<String> al = new ArrayList<>();
+               al.add(str);
+               hmap.put(key,al);
+           } else{
+               hmap.get(key).add(str);
+           }
+
+        }
+          return new ArrayList(hmap.values());
+
+        }
+
+        // O (NK)
+        public String getCountChar(String str) {
+            StringBuilder sb = new StringBuilder();
+            int[] countChar = new int[26];
+            for (int i = 0; i < str.length(); i++) {
+                int index = str.charAt(i) - 'a';
+                countChar[index]++;
+            }
+            for (int i = 0; i < countChar.length; i++) {
+                if (countChar[i] > 0) {
+                    sb.append('a' + i);
+                    sb.append(countChar[i]);
+                }
+            }
+            return sb.toString();
+        }
+
+        public List<List<String>> groupAnagramsCountApproach(String[] strs){
+            Map<String,List<String>> hmap = new HashMap<>();
+            //  //  System.out.println(String.valueOf(key));
+            //Gives the String representation of argument passed
+            for (String str:strs){
+                String key= getCountChar(str);
+                if (!hmap.containsKey(key)){
+                    ArrayList<String> al = new ArrayList<>();
+                    al.add(str);
+                    hmap.put(key,al);
+                } else{
+                    hmap.get(key).add(str);
+                }
+
+            }
+            return new ArrayList(hmap.values());
+
+        }
+
+
+
+
         public static void main(String args[]){
         StringProbs sp = new StringProbs();
         sp.printAllSubstrings("Isha");
@@ -207,12 +267,13 @@ public class StringProbs {
         Arrays.sort(stringList,new AnagramComparator());
         System.out.println("Comparison Strategy sort");
         System.out.println(Arrays.toString(stringList));
+
     }
 
 
 }
 
-//Sorting always think of Comparator
+//Sor   ting always think of Comparator
 class AnagramComparator implements Comparator<String>{
 
     public String sortContents(String s){
