@@ -73,6 +73,21 @@ Essentially any hash table can have collisions. There are a number of ways of ha
 // how does hashing get O(1) complexity ,every bucket or linked list stores total elements less than the load factor
 //load factor=no of elements stored/size of hash table ,if it increases ,dynamically increase the size and rehash
 
+/*
+
+HashMap  works on principle of hashing, we have put() and get() method for storing and
+        retrieving object from HashMap .When we pass an both key and value to put() method to
+        store on HashMap , it uses key object hashcode() method to calculate hashcode
+        and they by applying hashing on that hashcode it identifies bucket location for
+        storing value object. While retrieving it uses key object equals method to find out
+        correct key value pair and return value object associated with that key. HashMap
+        uses linked list in case of collision and object will be stored in next node of
+        linked list.
+        Also HashMap  stores both key+value tuple in every node of linked list.
+*/
+
+
+
 import java.util.ArrayList;
 
 //Java you can create a class within another class

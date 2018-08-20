@@ -16,9 +16,11 @@ in multiple tables)
 
 Protected :Variable ,methods,constructors
 Class in same package or subclasses in a different package
-Protected access gives the subclass a chance to use the helper method or variable, while preventing a nonrelated class from trying to use it.
+Protected access gives the subclass a chance to use the helper method or variable,
+ while preventing a nonrelated class from trying to use it.
 
-
+A class can extend only one class but implement any number of interfaces
+Unlike classes, an interface can be extended from more than one interface
 
 Tree
 Graph
@@ -315,3 +317,17 @@ The heap is divided into three sections:
  Classes that are no longer in use may be garbage collected from the Permanent Generation.
  During a full garbage collection event, unused objects in all generations are garbage collected.
 
+
+
+While one thread is Iterating the HashMap object, if other thread try to add/modify
+ the contents of Object then we will get Run-time exception saying ConcurrentModificationException.
+ Whereas In ConcurrentHashMap we wont get any exception while performing any modification at the
+  time of Iteration.
+
+MapReduce provides a means to distribute
+computation without burdening the programmer with the details of distributed computing
+(but at a different level of granularity).
+
+Can private methods be overriden?
+Private methods are not inherited by subclasses and hence there is no point of overriding.
+Since the private members cannot be inherited, there is no place for discussion on java runtime overloading or java overriding (polymorphism) features.

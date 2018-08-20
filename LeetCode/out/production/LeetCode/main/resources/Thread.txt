@@ -1,0 +1,281 @@
+
+A thread is a single sequential flow of control within a program
+Facility to allow multiple activities within a single process
+Referred as lightweight process
+Each thread has its own program counter, stack and local variables
+Threads share memory, heap area, file
+
+
+The threads may not make the program faster,but it gives an illusion of faster performance for the user.
+threads have less context to save than a process (due to this task switching is faster)//Context switching
+
+Multiple threads(one for each job) can be created to cater multiple jobs within a process
+To perform asynchronous or background processing
+  To increase the responsiveness of GUI applications
+  For better utilization of system resources
+
+2)An example for usage of thread in background and asynchronous processing is Garbage Collector in Java.
+3)Another example of a multithreaded application is a game software wherein the GUI display, updating of scores, 
+sound effects and timer display(asynchronous task) are happening simultaneously.
+/*
+ * Date: 03-Apr-2007
+ * @author E&R Dept, Infosys Technologies
+   Limited
+ * @version 1.0
+ * Description: This file is a demo
+   Java program depicting the use of multiple threads by
+ * extending the Thread class
+ */
+We need to override run(), if we do not override 
+run(), then the execution is sequential.Run is Entry point for the thread. In other words, the code in the run() 
+defines an independent path of execution and thereby, the entry and the exit for the thread.*/
+In my opinion implementing Runnable is better because in Java we can only extend one class so if we extend Thread class we can not extend any other class while by implementing Runnable interface we still have that option open with us. 
+Second reason which make sense to me is more on OOPS concept according to OOPS if we extend a class we provide some new feature or functionality , So if the purpose is just to use the run() method to define code its better to use Runnable interface.
+When we call start () method Java Virtual machine execute run () method of that Thread class into separate Thread other than calling thread. Anybody guess what will happen if we call the run() method directly instead of calling start() method ? 
+
+That another popular multi-threading interview question and answer is simple there would be no Error or Exception run() method will simply be executed in the same Thread and new Thread will not be created. Another follow up question would be what will happen if you call start() method twice in same Thread object e.g.
+
+
+
+public class StartVsRunCall{
+
+    public static void main(String args[]) {
+        
+        //creating two threads for start and run method call
+        Thread startThread = new Thread(new Task("start"));
+        Thread runThread = new Thread(new Task("run"));
+        
+        startThread.start(); //calling start method of Thread - will execute in new Thread
+        runThread.run();  //calling run method of Thread - will execute in current Thread
+
+    }
+
+    /*
+     * Simple Runnable implementation
+     */
+    private static class Task implements Runnable{
+        private String caller;
+        
+        public Task(String caller){
+            this.caller = caller;
+        }
+        
+        @Override
+        public void run() {
+            System.out.println("Caller: "+ caller + " and code on this Thread is executed by : " + Thread.currentThread().getName());
+            
+        }         
+    } 
+}
+
+Output:
+Caller: start and code on this Thread is executed by : Thread-0
+Caller: run and code on this Thread is executed by : main 
+
+n
+
+
+Another difference between start vs run in Java thread is that you can not call start() method twice on thread object. once started, second call of start() will throw IllegalStateException in Java while you can call run() method twice
+/**
+ * class Animal
+ * Description: class extends Thread
+   class
+ * overrides run() method
+ */
+
+/*how to create a thread extending from
+ * thread class, here start is being
+ * called from main method where two
+ * threads are getting created*/
+package learnJava;
+
+//implementing Thread by extending Thread class
+class MyThread extends Thread {
+
+	public void run() {
+		while (true) {
+			try {
+				Thread.sleep(2000);
+				System.out.println(Thread.currentThread().getName());
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+}
+
+// implementing Thread by implementing Runnable interface
+
+class MyRunnable implements Runnable {
+	public void run() {
+		while (true) {
+			try {
+				Thread.sleep(2000);
+				System.out.println(Thread.currentThread().getName());
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+	}
+}
+
+public class ThreadRun {
+	public static void main(String args[]) {
+		// starting Thread in Java
+		Thread mythread = new MyThread(); // Thread created not started
+		mythread.setName("T1");
+		Thread myrunnable = new Thread(new MyRunnable(), "T2"); // Thread
+															
+
+		mythread.start(); // Thread started now but not running
+		myrunnable.start();
+	}
+}
+
+
+
+The thread scheduler which is the part of JVM decides which thread should run at a given moment, and also takes a thread 
+out of the run state.
+The order in which runnable threads (the threads which are ready to run) are chosen is not guaranteed.
+Join serializes processing of two threads
+MAIN THREAD STARTS FIRST AND ENDS LAST
+Transactionthread thr=new Transactionthread();
+Threads can exist in different states:
+7)Newborn state:
+- When an object is created (using new), then that thread is said to be Newborn thread.
+-A new thread of execution must be explicitly started by calling the start().--goes to runnable state
+ Just because a thread’s start() has been called, it does not mean that the thread has access to the CPU and 
+can start executing straightaway.(runnable)
+
+1)Running state:
+This means that the CPU is currently executing the thread. 
+The thread scheduler decides which thread is to be executed from runnable threads.
+****It can go to runnable state if you call yield or end of time slice -- blocked state or call wait or call sleep(non runnable states)
+2)RUNNABLE STATE
+This state indicates that a thread is Ready to run. A thread does not go directly to the Running state 
+from any of the Non–Runnable states. 
+It first goes to the Runnable state, which means that it is now ready for execution
+
+
+2)Non Runnable states: 
+A thread can move from the Running state into one of the Non-Runnable states, depending on the state transition.
+
+3)Waiting state: 
+– A thread can call the wait() defined in Object class to put itself into the 
+ Waiting state until it gets some resource held by some other thread.  
+ It must be notified by another thread (which had held the resource)(using either notifyAll() or notify()) in order to move to Runnable state.
+/*aSK WHAT IS NOTIFY*/
+4)Sleeping state:
+– A thread calls sleep() and moves to Sleeping state for a specific time. 
+It wakes up after the specified amount of time has elapsed and transits to the Runnable state.
+Sleep is used to introduce pause on execution. 
+
+)Blocked state:
+A thread goes to wait state once it calls wait() on an Object. This is called Waiting State. Once a thread reaches waiting state, it will need to wait till some other thread notify() or notifyAll() on the object.
+
+nce this thread is notified, it will not be runnable. It might be that other threads are also notified(using notifyAll) or the first thread has not finished his work, so it is still blocked till it gets its chance. This is called Blocked State.
+
+Once other threads have left and its this thread chance, it moves to Runnable state after that it is eligible pick up work based on JVM threading mechanism and moves to run state.
+
+6)Dead state:
+– The thread can be Dead because it has completed its execution or it has been terminated. Once the thread is in this state, 
+it cannot be made active.
+
+MAIN THREAD STARTS FIRST AND ENDS LAST
+
+What is use of wait(), notify() and notify() ?
+/*These three methods are of Object class. In multithreading environment these methods provides efficient transfer of lock from one thread to other. When some thread wants lock on some object that is locked by some other thread, that thread will invoke wait() which will suspend that thread.
+So another thread holding lock on that object will invoke notify() method then some arbitrarily thread from wait set is chosen which will grab lock on that object.
+If notifyAll() method is invoked then all threads from wait set are removed and re-enabled for thread scheduling.
+
+
+Join the completion of one thread with the start of another thread
+ 
+
+
+public class ThreadJoin implements Runnable {        
+@Override        
+public void run() {                
+for (int x = 1; x <= 3; x++) {                        
+System.out.println("this is thread "+ Thread.currentThread().getName());   }        
+}        public static void main(String[] args) throws Exception {                
+ThreadJoin j1 = new ThreadJoin();                
+Thread t1 = new Thread(j1);                
+Thread t2 = new Thread(j1);                
+Thread t3 = new Thread(j1);                
+t1.start();   
+t1.join();
+t2.start();               
+t3.start();        
+
+
+
+
+THREAD SYNCHRONIZATION
+In a multithreaded environment two or more threads may access a shared resource
+synchronization : Way to ensure that the shared resource is accessed by only one thread at a time
+Every object has a built-in mutually exclusive lock called monitor
+Only one thread can acquire the monitor of an object at a time
+
+Synchronization can be ensured by using the keyword synchronized
+A method or a block of code can be made synchronized
+***Synchronized method or block of code is said to be threadsafe****
+
+
+A method can be made synchronized by adding synchronized keyword to its declaration
+
+
+Data members must be well encapsulated (i.e. access made private) in order to avoid direct access by threads.
+Both static and non-static methods can be synchronized.(static cannot be serialized though)
+Threads executing a synchronized non-static method should acquire the object’s
+(the object in which the method is present) monitor before executing it.
+
+
+
+
+
+Creating a synchronized method is easy and effective way of achieving synchronization. 
+But this may not be possible in all the scenarios.
+
+ For example, 
+--Suppose that we want to synchronize access to objects of a class that was not designed for multithreaded access. 
+--That is, the class does not use synchronized methods.
+--Further, this class was not created by you, but by a third party and you do not have access to the source code. 
+Thus, you can’t add synchronized to the appropriate methods within the class.
+ 
+
+How can access to an object of this class be synchronized? 
+- Place all method invocations of this class within a synchronized block of your code.
+
+Daemon threads are non-user threads. They are typically used to carry out low-priority tasks that should not take priority over the main task of the program.
+ They can be used to do useful work when all other user threads are blocked. The garbage collector is one example of a daemon thread.
+
+Daemon thread in Java are those thread which runs in background and mostly created by JVM for performing background task like Garbage collection and other house keeping tasks
+In one line main difference between daemon thread and user thread is that as soon as all user thread finish execution java program or JVM terminates itself, JVM doesn't wait for daemon thread to finish there execution
+
+Any thread created by main thread, which runs main method in Java is by default non daemon because Thread inherits its daemon nature from the Thread which creates it i.e. parent Thread and since main thread is a non daemon thread, any other thread created from it will remain non-daemon until explicitly made daemon by calling setDaemon(true).
+
+Thread.setDaemon(true) makes a Thread daemon but it can only be called before starting Thread in Java. It will throw IllegalThreadStateException if corresponding Thread is already started and running
+
+
+
+Many a times we confused ourselves with java.lang.ClassNotFoundException and java.lang.NoClassDefFoundError, though both of them related to Java Classpath they are completely different to each other. ClassNotFoundException comes when JVM tries to load a class at runtime dynamically Class.forName() or ClassLoader.loadClass() means you give the name of class at runtime and then JVM tries to load it and if that class is not found in classpath it throws java.lang.ClassNotFoundException. While in case of NoClassDefFoundError the problematic class was present during Compile time and that's why program was successfully compile but not available during runtime by any reason. NoClassDefFoundError is easier to solve than ClassNotFoundException in my opinion because here we know that Class was present during build time but it totally depends upon environment, if you are working in J2EE environment than you can get NoClassDefFoundError even if class is present because it may not be visible to corresponding ClassLoader. See my post NoClassDefFoundError vs ClassNotFoundException in Java for more details.
+
+ClassNotFoundException is a checked Exception derived directly from java.lang.Exception class and you need to provide explicit handling for it while NoClassDefFoundError is an Error derived from LinkageError.
+3) If you are using ClassLoader in Java and have two classloaders then if a ClassLoader tries to access a class which is loaded by another classloader will result in ClassNoFoundException.
+) Both NoClassDefFoundError and ClassNotFoundException are related to unavailability of a class at run-time.
+2) Both ClassNotFoundException and NoClassDefFoundError are related to java classpath.
+
+System.getproperty("java.classpath")Typo on XML Configuration can also cause NoClassDefFoundError in Java. As most of Java frameworks like Spring, Struts they all use xml configuration for specifying beans. By any chance if you put the bean name wrong, it may surface as java.lang.NoClassDefFoundError while loading other class which has dependency on wrongly named bean. This is quite common on Spring MVC framework and Apache Struts where you get tons of Exception in thread "main" java.lang.NoClassDefFoundError , while deploying your WAR or EAR file.
+
+
+when two or more threads waiting for each other to release lock and get stuck for infinite time , situation is called deadlock
+
+Read more: http://javarevisited.blogspot.com/2010/10/what-is-deadlock-in-java-how-to-fix-it.html#ixzz2tS5r0Zj6
+
+The producer-consumer problem illustrates the need for synchronization in systems where many processes share a resource. In the problem, two processes share a fixed-size buffer. One process produces information and puts it in the buffer, while the other process consumes information from the buffer. These processes do not take turns accessing the buffer, they both work concurrently. Herein lies the problem. What happens if the producer tries to put an item into a full buffer? What happens if the consumer tries to take an item from an empty buffer?
+http://cs.gmu.edu/cne/modules/ipc/aqua/producer.html
+In order to synchronize these processes, we will block the producer when the buffer is full, and we will block the consumer when the buffer is empty. So the two processes, Producer and Consumer, should 

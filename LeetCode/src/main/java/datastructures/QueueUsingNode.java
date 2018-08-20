@@ -1,6 +1,7 @@
 package main.java.datastructures;
 //In a queue both first and last
 //enqueue at last ,dequeue a
+//queue   b<-o<-f
 
 //front
   /*|

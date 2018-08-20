@@ -1,3 +1,8 @@
+//push pop peek isEmpty
+//| downwards
+//|
+
+//queue   b<-o<-f
 package main.java.datastructures;
 
 //Stack using integer array

@@ -1,0 +1,793 @@
+Comparators and comparable in Java are two interfaces which is used to implement sorting in Java. It’s often required to sort objects stored in any collection classes like ArrayList, HashSet or in Array and that time we need to use either  compare() or  compareTo() method defined in java.util.Comparator and java.lang.Comparable.
+
+Read more: http://javarevisited.blogspot.com/2011/06/comparator-and-comparable-in-java.html#ixzz2toaTmt9Z
+
+
+
+The Collections API is a set of classes and interfaces that support operations on collections of objects
+Standardizes the way in which groups of objects are handled
+
+A collection is an object  that groups multiple data items as a single unit
+Its size can be increased according to requirement
+
+Collection classes can be created either by implementing Collection interfaces or 
+extending the existing Collection classes
+Collection is the root interface in the collection hierarchy
+No direct implementations of this interface is provided in JDK; rather implementations of more specific sub-interfaces like Set and List is provided. 
+
+Iterator : is an interface, used to traverse through the elements of a Collection,Enables you to cycle through a collection in the forward direction only, for obtaining or removing elements 
+ListIterator : It extends Iterator, 
+return a list iterator of the elements in the list 
+allow bidirectional traversal of list and the modification of elements
+
+INTERFACE COLLECTION                              MAP
+|       |         |                               | \
+|       |         |                               |  \ 
+List    Queue     Set                      SortedMap ConcurrentMap  
+                   |                               
+                   |
+                 SortedSet
+                    |
+                    |
+                 Navigable Set
+
+
+Iterator and ListIterator interfaces are members of the Collections Framework
+The Collection interface method - iterator() returns an iterator over the elements in its collection
+Does not guarantee the order of elements returned (unless the collection itself is ordered)
+
+Iterator interface has the below methods:
+hasNext() - Returns true if the iteration has more elements
+next() - Returns the next element in the iteration
+remove() : Removes (from the underlying collection) the last element returned by the iterator.  For each call to next(), this method can be called only once. If the underlying collection is modified during an iteration in 
+any way other than by calling this method, then behavior of the iterator cannot be determined.
+
+ListIterator interface has the below methods:
+hasNext() - Deals with traversing the list in the forward direction and returns true if this list iterator has more elements 
+hasPrevious() - Deals with traversing the list in the reverse direction and returns true if this list iterator has more elements 
+next() and previous() - Return the next element and previous element in the list respectively 
+nextIndex() - Returns the index of the element that would be returned by a subsequent call to next() method
+previousIndex() - Returns the index of the element that would be returned by a subsequent call to previous() method
+Methods remove and set are used respectively to remove an element and replace an element (with the specified element) from the list. The element chosen for removal or replacement is the last element returned by next() or previous()
+Method add inserts the specified element into the list. The element is inserted just before the next element that would be returned by next() or after the next element that would be returned by previous()
+
+
+How can we access elements of a collection? 
+
+We can access the elements of a collection using the following ways:
+1.Every collection object has get(index) method to get the element of the object. This method will return Object.
+2.Collection provide Enumeration or Iterator object so that we can get the objects of a collection one by one.
+
+Stack is a data structure that is based on last-in-first-out rule (LIFO), while queues are based on First-in-first-out (FIFO) rule.
+Enumeration acts as Read-only interface, because it has the methods only to traverse and fetch the objects, where as using Iterator we can manipulate the objects also like adding and removing the objects
+
+List is an ordered collection (also known as a sequence). 
+List interface : Extends Collection interface 
+where the objects can be stored and retrieved based on position.,Allows 
+duplicate values and elements can be accessed by their position in the list
+List interface provides a precise control over where in the list each element is inserted
+Also the user can access elements by their position in the list and search for elements in the list
+Important methods:
+	+get(int index) : E for retrieving element at the specified position
++listIterator() : ListIterator<E> for retrieving list iterator of the elements
+list.add(index,element)
++indexOf(Object o): int  and +lastIndexOf(Object o) : int for returning the index of the first and last occurrence of the specified element respectively, or -1 if list does not contain specified element
+
+
+list.add(element)
+list.remove(position i)
+list.contains(element)
+list.isEmpty()
+list.iterator()---returns an iterator
+list.clear()--clears a list
+list.size();
+list.toArray()--Returns an object array
+list.indexOf(Element)---returns integer
+
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Iterator;
+
+public class CompleteList{
+	public static void main(String args[])	{
+		/* First List */
+		List<String> list=new ArrayList<String>();
+		//list.add("One"); // Line-1
+		
+		//list.add("Two"); // Line-2
+		//Comment Line-1 and Line-2 and observe the output
+
+		/*Check whether the list is empty or not if yes then print the message
+			otherwise get a iterator to print elements in the given list*/
+		if(list.isEmpty()){
+			System.out.println("Given list is empty");
+		}
+		else {
+			System.out.println("List is not empty list and elements are :");
+			Iterator<String> iterator=list.iterator();
+			while(iterator.hasNext()) {
+				System.out.println("\t"+iterator.next()+"   ");
+			}
+		}
+
+		//Method contains() will check whether the given element is present in the list or not
+		if(list.contains("Two")) {
+			System.out.println("Two is present in list");
+		}
+		else {
+			System.out.println("two is not present in list");
+		}
+		/* Second List */
+		List<String> newList=new ArrayList<String>();
+		newList.add("One");
+		newList.add("Two");
+		//newList.add("Three");  //Line-20
+		//Uncomment this Line-20 and observe the output
+
+		//Two lists are equal if they contain the same elements in the same order
+		if(list.equals(newList)){
+			System.out.println("Both the list and newList are equal");
+		}
+		else{
+			System.out.println("list and newList are not equal");
+		}
+        //Printing the hashCode values for the lists
+		System.out.println("Hash code for list :"+list.hashCode());
+		System.out.println("Hash code for newList :"+newList.hashCode());
+
+		/*We see that hashCode value for both the lists are same because
+			if two different lists are equal then there hashCode() value will be same*/
+
+		//To get the size of the list
+
+		System.out.println("Size of list is :"+list.size());
+
+		//Remove "One" from list and then check the size
+
+		list.remove("One");
+
+		System.out.println("Size of list after removing one	element :"+list.size());
+
+		//Clear the list means to empty the list
+
+		list.clear();
+
+		System.out.println("size of the list after clear is"+ list.size());
+
+		//Convert list into array of objects
+		Object[] newListArray=newList.toArray();
+		//Print the second element of the array "Two"
+		System.out.println("Second element of the array "+newListArray[1]);
+	}
+}
+
+
+Queue interface:
+Holds elements prior to processing
+Provides methods for insertion, extraction and inspection operations
+Eg., Priority Queue.
+Typically elements are ordered in a FIFO (first-in-first-out) fashion; but not always.
+
+
+A Set stores elements in an unordered way and does not contain duplicate elements, whereas a list stores elements in an ordered way but may contain duplicate elements
+
+
+DIFFERENCE BETWEEN ARRAYLIST AND LINKEDLIST
+Array implementation of the List interface and the array is resizable
+Allows random access
+
+LinkedList
+Doubly-linked list implementation of the List interface
+Allows sequential scan from the front or back of the list
+
+
+1)Since Array is an index based data-structure searching or getting element from Array with index is pretty fast. Array provides O(1) performance for get(index) method . On the Other hand LinkedList doesn't provide Random or index based access and you need to iterate over linked list to retrieve any element which is of order O(n).
+
+2) Insertions  are easy and fast in LinkedList as compared to ArrayList because there is no risk of resizing array
+and copying content to new array if array gets full which makes adding into ArrayList of O(n) in worst case, while adding is O(1) operation in LinkedList in Java. 
+but remove is costly in ArrayList as you need to rearrange all elements
+Morever When an element is inserted into the middle of the list the elements that follow the insertion point must be shifted to make room for the new element. The LinkedList is implemented using a doubly linked list; an insertion requires only the updating of the links at the point of insertin
+
+At. A doubly linked list has a pointer to the next and the previous element. This makes walking the list backward easier.
+ Therefore, the LinkedList allows for fast insertions and deletions in the middle
+So an , and a LinkedList works better if
+
+Undo functionality in Photoshop or Word (a linked list of state)
+To make stack,queue
+ Dynamic memory allocation
+
+our application is more insertion and deletion driver and you insert or remove more than retrieval or  you're doing a lot of editing in the middle of the list. 
+. Since insertion or
+removal doesn't involve resizing its much faster than ArrayList.
+ArrayList works best for cases where you're doing random access on the list
+
+DIFFERENCE BETWEEN ARRAY LIST AND VECTOR
+
+1)Thread safe Vector synchronizes each individual method(time consuming)
+Vector is synchronized(or threadsafe) whereas ArrayList is not. when you want programs to run in multithreading environment then use concept of vector because it is synchronized. But ArrayList is not synchronized so, avoid use of it in a multithreading environment.
+2)default size:ArrayList has no default size while vector has a default size of 10.
+3)Data Growth
+When an element is inserted into an ArrayList or a Vector, the object will need to expand its internal array if it runs out of room. A Vector defaults to doubling the size of its array, while the ArrayList increases its array size by 50 percent
+
+
+SET INTERFACE
+Defines a collection that does not allow duplicate elements 
+Replica of a mathematical set
+The add method returns false if program attempts to add a duplicate element
+
+
+
+
+SortedSet  interface
+Elements of set are sorted in the ascending order
+Other important methods
++first() : E  used for getting the first (lowest) element
++last() : E  used for getting last (highest) element
+SortedSet is a set with elements sorted in ascending order and its iterator will traverse the set in the same order.
+
+
+CLASSES IMPLEMENTING SET
+HashSet (hash table implementation of set interface,no guarantee on the order of elements)
+No duplicate elements and no guarantee on the order of elements
+HashSet  is supported by a hash table thatMaps keys to values
+Overrides hashCode method and equals method, to store and retrieve objects from a hash table
+As the position of element is based on hashCode() value for each object, the order of objects in the HashSet is random
+
+hashset.add() return false if value is duplicate
+***************************************************************
+
+LinkedHashSet
+Hash table and linked list implementation of Set interface
+Elements are arranged by their insertion order
+Maintains a doubly-linked list running through its elements
+
+
+****************************************************************************************************
+Treeset******
+
+Tree based implementation of *SortedSet* interface
+Elements are sorted in ascending element order
+***********************************************************************************
+
+******MAP****************************
+Map is an object that maps keys to values. 
+A map cannot contain duplicate keys, 
+and each key maps to at most one value. 
+But values can be duplicated mapped onto different keys. 
+
+Map interface: Do not extend Collection Interface
+Map and its sub-interfaces say SortedMap represent mappings rather than exact collections.
+
+SortedMap interface: Is a Map that provides an ordering on its keys
+
+concuurentmap
+
+
+What is ConcurrentHashMap? 
+
+Ans) A concurrentHashMap is thread-safe implementation of Map interface. In this class put and remove method are synchronized but not get method. This class is different from Hashtable in terms of locking; it means that hashtable use object level lock but this class uses bucket level lock thus having better performance. 
+
+HashMap:
+Objects used as keys must implement the hashCode, equals method
+
+
+HashMap
+Implementation is based on hash table
+No ordering of Key-Value pairs
+
+LinkedHashMap
+Hash table and linked list implementation of Map interface
+Key-Value pairs are arranged by their insertion order
+
+TreeMap
+Implementation is based on binary search tree
+Key-Value pairs are sorted based on ascending key order 
+
+get(Object key) : V
++remove(Object key) : V
++containsKey(key : Object) : boolean
++containsValue(value : Object) : boolean
++isEmpty () : boolean
++clear() : void
++size() : int
++keySet() : Set<K
++values() : Collection<V>
+
+*Map does not extends Collection interface so we can not iterate
+over map.To iterate over map one has to convert map to a set using
+keySet() method,which will give the set of all the key values of map*/
+
+DIFFERENCE BETWEEN HASHMAP AND HASHTABLE
+
+1)Thread safe
+HASHTABLE is synchronized whereas HASHMAP  is not.
+Synchronized means only one thread can modify a hash table at one point of time. Basically, it means that any thread before performing an update on a hashtable will have to acquire a lock on the object while others will wait for lock to be released
+Map m = Collections.synchronizeMap(hashMap);
+
+
+HashMap is fastest, ConcurrentHashMap,Collections.synchronizedMap,HashTable. 
+
+2)permits nulls:-HashMap allows null values as key and value whereas Hashtable doesn’t allow nulls. Permit only one null,hashing to null gives bucket location as 0
+DIFFERENCE BETWEEN ARRAYS AND ARRAYLIST
+
+Ans) Arrays are created of fix size whereas ArrayList is of not fix size. It means that once array is declared as : 
+
+1.int [] intArray= new int[6];
+2.intArray[7]   // will give ArraysOutOfBoundException. 
+Also the size of array cannot be incremented or decremented. But with arrayList the size is variable.
+2.Once the array is created elements cannot be added or deleted from it. But with ArrayList the elements can be added and deleted at runtime.
+List list = new ArrayList();
+list.add(1);
+list.add(3);
+list.remove(0) // will remove the element from the 1st location.
+
+3.ArrayList is one dimensional but array can be multidimensional.
+            int[][][] intArray= new int[3][2][1];   // 3 dimensional array     
+4)extends the collection interface,can hold objects,array is a collection of similar data items
+
+
+An array can hold primitive data type and object references--Primitive data types : 
+There are eight primitive data types namely
+	byte, short, int, long, float, double, char, boolean
+
+Disadvantages of Arrays:
+The size of the arrays are fixed
+No built-in algorithms to Sort, Search etc.
+To overcome these disadvantages Collections Framework is used
+
+
+
+What if the main method is declared as private?
+
+The program compiles properly but at runtime it will give "Main method not public." message.
+
+The valueOf() function of Integer class is is used to convert string to Number. Here is the code example:
+String numString = "1000"; 
+int id=Integer.valueOf(numString).intValue(); 
+
+What is the functionality of instanceOf() ?
+instanceOf opertaor is used to check whether an object can be cast to a specific type without throwing ClassCastException.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+When 
+
+
+
+
+//Two lists are equal if they contain the same elements in the same order
+		if(list.equals(newList)){
+
+
+remove(element|object)
+System.out.println("Hash code for list :"+list.hashCode());
+		System.out.println("Hash code for newList :"+newList.hashCode());
+
+
+
+/*For object:iterable collection,automaatically iterate*/
+printing the object will print iterable collection
+inside typecast and print
+
+
+
+For loop can be used to iterate over any iterable collection  like Lists, Arrays ,Sets etc.
+Syntax
+for (Object object : any iterable collection) { 
+}
+
+Values are always reflected in map--note
+
+
+
+
+
+
+
+
+
+list.clear is used to empty the list
+Object[] newListArray=newList.toArray();
+.toArray returns a list of object type
+< > Brackets in the declarations will make the collection type safe
+The type in the < > will refer to the type of the objects collection can hold
+Type in angular brackets does not follow inheritance as in the base type
+List<Object> myObjectList=new ArrayList<Object>(); - Correct
+  List<Object> myObjectList=new ArrayList<Integer>(); - Incorrect 
+Return type of a function can also be made type safe :
+
+
+<parentclass>=<childclass>
+
+import java.util.Set;
+import java.util.HashSet;
+
+
+
+public class ReturnTypeSafe
+{
+	public Set<Car> getCars() // in this function return type is also type safe----Set main Cars add hote hain
+	{
+		Set<Car> cars=new HashSet<Car>();
+		return cars;
+	}
+}
+
+class Car
+{
+}
+
+
+
+Generics provides a way to communicate the type of a collection to the compiler, so that it can be checked. 
+Once the compiler knows the element type of the collection, it can
+check that collection is used consistently
+insert the correct casts on values being taken out of the collection
+The effect of using Generics is improved readability and robustness of the program.
+
+Declaration a string
+List<String> list=new ArrayList<String>();
+
+Adding an element to a List
+
+list.add("One"); --returns a Boolean  Type
+ist.add("Two")
+
+list.isEmpty()--returns true if the list is empty
+
+Iterator<String> iterator=list.iterator();/*why use generic*/ also we use List Iterator at times
+while(iterator.hasNext()) 
+{
+				
+   System.out.println("\t"+iterator.next()+"   
+}
+
+
+
+
+list.contains if element exists or not and returns a true or false
+
+list.size
+
+list.remove
+
+
+will check whether it contains a particular element or not
+
+System.out.println("Hash code for list :"+list.hashCode());
+System.out.println("Hash code for newList :"+newList.hashCode());
+
+list.equals(newList) check if the two lists are equal
+
+IF value of two lists are same then their hashcode will be the same
+
+
+	list.clear(); clears the list
+
+
+
+
+Object[] newListArray=newList.toArray();
+
+newListArray[2]
+
+Converting list to array ofObjects
+
+
+
+
+gives array out of Bounds exception
+
+
+
+
+
+
+
+
+
+
+
+
+
+gh its elements
+
+*****************
+TreeSet
+Tree based implementation of SortedSet interface
+Elements are sorted in ascending element order
+TreeSet is supported by a TreeMap and that will be in ascending key order
+
+
+Example
+import java.util.*;
+public class HashsetTreeset{
+	public static void main(String[] args){
+		Set<String> s = new HashSet<String>();
+		Set<String> t = new TreeSet<String>();
+		s.add("Peeyush"); 
+		s.add("Dineesh");
+		boolean i=s.add("Rakshith");
+		System.out.println(i);
+		i=s.add("Rakshith");
+		System.out.println(i);
+		t.add("Peeyush"); 
+		t.add("Dineesh"); 
+		t.add("Rakshith");
+		System.out.println("HashSet :");
+		for (Iterator<String> it = s.iterator(); it.hasNext();)
+			System.out.println("\t"+it.next());
+		System.out.println("TreeSet :");
+		for (Iterator<String> it = t.iterator(); it.hasNext();)
+			System.out.println("\t"+it.next());
+	}	
+}
+
+Output
+
+true
+false
+HashSet :
+	Rakshith
+	Dineesh
+	Peeyush
+TreeSet :
+	Dineesh
+	Peeyush
+	Rakshith
+
+
+
+2)
+
+
+import java.util.*;
+public class LinkedSetHashSet{
+	public static void main(String[] args){
+		Set<String> s = new HashSet<String>();      //    will print in square brackets all the values
+		Set<String> t = new LinkedHashSet<String>();//To retrieve individually use iterator
+		s.add("Peeyush"); 
+		s.add("Rakshith"); 
+		s.add("Dineesh");
+		t.add("Peeyush"); 
+		t.add("Rakshith"); 
+		t.add("Dineesh");
+		System.out.println("HashSet :");
+		System.out.println(s);
+		for (Iterator<String> it = s.iterator(); it.hasNext();)
+			System.out.println("\t"+it.next());
+		System.out.println("LinkeHashSet :");
+		System.out.println(t);
+		for (Iterator<String> it = t.iterator(); it.hasNext();)
+			System.out.println("\t"+it.next());
+	}
+
+
+
+
+O/p
+HashSet :
+[Rakshith, Dineesh, Peeyush]
+	Rakshith
+	Dineesh
+	Peeyush
+LinkeHashSet :
+[Peeyush, Rakshith, Dineesh]
+	Peeyush
+	Rakshith
+	Dineesh
+
+
+
+
+mport java.util.*;
+public class MapDemo{
+	public static void main(String[] args){
+		Map<String,String> hashMap = new HashMap<String,String>();
+		Map<String,String> linkedHashMap = new LinkedHashMap<String,String>();
+		Map<Integer,String> treeMap = new TreeMap<Integer,String>();
+
+		hashMap.put("1 ", "krishna");
+		hashMap.put("2 ", "suman");
+		hashMap.put("3 ","leezu");
+		hashMap.put("4 ","sudha");
+		System.out.println("HashMap(Inserted as 1, 2, 3, 4):");
+		System.out.println(hashMap+"\n");
+
+		linkedHashMap.put("1 ", "krishna");
+		linkedHashMap.put("4 ", "suman");
+		linkedHashMap.put("2 ","leezu");
+		linkedHashMap.put("3 ","sudha");
+		System.out.println("Linked HashMap(Inserted as 1, 4, 2, 3):");
+		System.out.println(linkedHashMap+"\n");
+
+		treeMap.put(1, "krishna");
+		treeMap.put(4, "suman");
+		treeMap.put(2,"leezu");
+		treeMap.put(3,"sudha");
+		System.out.println("TreeMap(Inserted as 1, 4, 2, 3):");
+		System.out.println(treeMap);
+	}
+}
+
+
+
+HashMap(Inserted as 1, 2, 3, 4):---------------------values in any order
+{2 =suman, 1 =krishna, 3 =leezu, 4 =sudha}
+
+Linked HashMap(Inserted as 1, 4, 2, 3):-------------------values in order of insertion
+{1 =krishna, 4 =suman, 2 =leezu, 3 =sudha}
+
+TreeMap(Inserted as 1, 4, 2, 3):
+{1=krishna, 2=leezu, 3=sudha, 4=suman}
+
+
+
+
+
+
+
+
+
+
+
+
+/*Same if you add will not give an error,simply will not get added and returned boolean value will be false
+
+
+import java.util.Map;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.LinkedHashMap;
+
+public class CompleteMap {
+	public static void main(String args[])	{
+		Map<String, String> map=new LinkedHashMap<String, String>();
+
+		//key,value pair stored in map
+		map.put("one","Java");
+		map.put("two","Oracle");
+		map.put("three","JPA");
+		
+		//get() will return the value corresponding to key
+		Object valueOne=map.get("one");
+/*Like primary key is to be given,returns of type object*/
+		System.out.println("Value for key one is :   "+valueOne);
+
+		/*remove()- will return the object value corresponding
+		to the key which we want to remove and also remove the
+		key,pair from map*/
+		System.out.println("Elements before removing  : "+map);
+		System.out.println("Removed value corresponding to key three is : " +map.remove("three"));
+		System.out.println("Elements after removing  : "+map);
+
+		/*containsKey() will check that particular key is present in map or not and it returns a boolean result */
+		if(map.containsKey("one")) {
+			System.out.println("One is present in map as key");
+		}
+		else {
+			System.out.println("One is not present in the map as key");
+		}
+
+		/*containsValue() will check that particular value
+		is present in map or not and it returns a boolean result*/
+		if(map.containsValue("Java")) {
+			System.out.println("Java is present in map as value");
+		}
+		else {
+			System.out.println("Java is not present in map as value");
+		}
+
+		//isEmpty() will check whether the map is empty or not
+		if(map.isEmpty()) {
+			System.out.println("Given map is an empty map");
+		}
+		else {
+			System.out.println("Given map is not an empty map");
+		}
+
+		//size() will give the no of key,value pairs in the given map
+		System.out.println("No of key,value pairs in map : "+map.size());
+
+		/*Map does not extends Collection interface so we can not iterate
+		over map.To iterate over map one has to convert map to a set using
+		keySet() method,which will give the set of all the key values of map*/
+
+		Set<String> set=map.keySet();
+		Iterator<String> it=set.iterator();
+		System.out.println("All the key values using keySet()of map are :");
+		while(it.hasNext()) {
+			System.out.println("\t"+it.next());
+		}
+		//Removes from the underlying map the last element returned by the iterator
+		it.remove();
+		System.out.println("Map after calling iterator remove() method : "+map);
+		//Like the above values() will return collection of values
+		
+               Collection<String> valueCollection=map.values();
+		it=valueCollection.iterator();
+		System.out.println("All the  values using values()of map are :");
+		while(it.hasNext()) {
+			System.out.println("\t"+it.next());
+		}
+
+		//clear() method will empty out the map
+		map.clear();
+		//Check the size of the map
+		int size=map.size();
+		System.out.println("After clearing the map..");
+		if(size==0) {
+			System.out.println("\tmap is empty now");
+		}
+		else {
+			System.out.println("\tmap is not empty");
+		}
+	}
+
+
+Output is
+Value for key one is :   Java
+Elements before removing  : {one=Java, two=Oracle, three=JPA, ones=Java}
+Removed value corresponding to key three is : JPA
+Elements after removing  : {one=Java, two=Oracle, ones=Java}
+One is present in map as key
+Java is present in map as value
+Given map is not an empty map
+No of key,value pairs in map : 3
+All the key values using keySet()of map are :
+	one
+	two
+	ones
+Map after calling iterator remove() method : {one=Java, two=Oracle}
+All the  values using values()of map are :
+	Java
+	Oracle
+After clearing the map..
+	map is empty now
+
+map.containsKey("one")--If map contains the value of key one
+map.containsValue--map contains the value which is given
+
+
+map.isEmpty()---Check if the map is empty
+map.size()---No of key value pairs
+
+*Map does not extends Collection interface so we can not iterate
+over map.To iterate over map one has to convert map to a set using
+keySet() method,which will give the set of all the key values of map*/
+
+Set<String> set=map.keySet();
+Iterator<String> it=set.iterator();*********************
+
+
+		
+returns the value and not only the key
+Just print and get the value of map
+it.remove();By default it will remove the element from the last
+it.remove();
+System.out.println("Map after calling iterator remove() method : "+map);
+o/p
+
+
+
+
+
+
+Collection<String> valueCollection=map.values(); /*TWe use Collection Classes out here*/
+
+
+

@@ -1,10 +1,8 @@
 package main.java.datastructures;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
+
 public class ArrayProblems {
 
     // array contains elements in range
@@ -109,6 +107,41 @@ public class ArrayProblems {
         }
         return -1;
     }
+
+    //One line program
+    public int findDuplicateElementHashSet(int[] arr){
+        HashSet<Integer> h = new HashSet<Integer>();
+        for(int i=0;i<arr.length;i++) {
+            if (!h.add(arr[i]))
+                return arr[i];
+        }
+
+      return -1;
+    }
+
+//find first element which is not repeated
+    //store number and counts
+    //iterate through the array again and find the occurence
+    //find first not repeated number
+    public int findFirstRepeatedNumber(int[] arr){
+        //value and index
+        Hashtable<Integer,Integer> t = new Hashtable<Integer, Integer>();
+        for (int i=0;i<arr.length;i++) {
+            if (t.containsKey(arr[i]))
+                t.put(arr[i], t.get(arr[i]) + 1);
+            else
+                t.put(arr[i], 1);
+        }
+          for(int i=0;i<arr.length;i++){
+            if (t.get(arr[i])==1)
+           //for repeating check t.get(arr[i])>1
+                return arr[i];
+          }
+          return -1;
+    }
+
+
+
 
     //find missing number xor all elements from 1 to n-1 -X ,then xor the given array -Y
     //product of XOR will give result

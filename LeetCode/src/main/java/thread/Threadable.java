@@ -133,6 +133,8 @@ public class Threadable {
                 Instead the run() method is executed by the thread that created the thread
      */
         t1.start();t2.start();
+        // Cannot call start method twice //Illegal State Exception
+        //t1.start();
 
     }
 }

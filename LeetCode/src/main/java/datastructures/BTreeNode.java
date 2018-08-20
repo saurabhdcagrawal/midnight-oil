@@ -81,7 +81,8 @@ public class BTreeNode{
         }
 
    }
-
+//in reality q.add and q.remove
+    //temp will be the last node ,it gives the deepest node
    public static void levelOrderTraversal(BTreeNode root){
      if (root==null) return;
      BTreeNode temp;
@@ -151,6 +152,75 @@ public class BTreeNode{
                 isStructurallyIdentical(root1.right,root2.left));
 
     }
+
+    public static int heightBTree(BTreeNode root){
+     if(root==null)return 0;
+     else
+         return(1+Math.max(heightBTree(root.left),heightBTree(root.right)));
+
+    }
+      public static int getDiameter(BTreeNode root){
+          int diameter=new DiameterBTree().getDiameter(root);
+          return diameter;
+      }
+
+    //diameter of a tree
+    //while finding the depth of the tree,left node and the right node for every node
+    //you come to a point where you do L+R+1 for every node
+    //save this and find the point where you can get max
+    public static class DiameterBTree {
+        int diameter;
+
+        public  int getDiameter(BTreeNode root) {
+            diameter = 0;
+            getHeightForDiameter(root);
+          return diameter;
+        }
+
+        public  int getHeightForDiameter(BTreeNode root) {
+            if (root == null)
+                return 0;
+            else {
+                int left = getHeightForDiameter(root.left);
+                int right = getHeightForDiameter(root.right);
+                diameter = Math.max(diameter, (left + right));
+                return (1 + Math.max(left, right));
+            }
+        }
+    }
+
+
+//height or depth without recursion
+
+
+
+    public static int depthNonRecursive(BTreeNode root){
+     if (root==null) return 0;
+     int level=0;
+     BTreeNode temp=null;
+     Queue q =new LinkedList();
+     q.add(root);
+     q.add(null);
+     while (!q.isEmpty()){
+     temp=(BTreeNode)q.remove();
+     ///when level l is complete ,we have already enqueued all nodes of l+1;
+     //so time to mark end of next level
+     if (temp==null) {
+         if (!q.isEmpty())
+             q.add(null);
+             level = level + 1;
+
+     } else{
+             if(temp.left!=null)
+                 q.add(temp.left);
+             if(temp.right!=null)
+                 q.add(temp.right);
+           }
+      }
+      q=null;
+      return  level;
+     }
+
     public boolean printAllAncestors(BTreeNode root ,BTreeNode node){
 
      if (root==null)
@@ -176,7 +246,7 @@ public class BTreeNode{
         }
         return false;
     }*/
-
+//8 null 5 11 null 1 6 null
        //     8
        //   5    11
        // 1   6
@@ -199,12 +269,36 @@ public class BTreeNode{
       temp.left=new BTreeNode(15);
       temp.right=new BTreeNode(12);
       System.out.println("Validate BST "+ validateIsBST(temp));
+      System.out.println("Height of tree " + heightBTree(root));
+         System.out.println("Non recursive Height of tree " + depthNonRecursive(root));
+       System.out.println("Diameter is "+getDiameter(root));
+
+
       System.out.println("Deleting B tree");
       deleteBtree(root);
      }
 
 
+}
+//seperate class solution
+class Solution {
+    int diameter;
+    public int diameterOfBinaryTree(BTreeNode root) {
+        diameter=0;
+        getHeight(root);
+        return diameter;
+    }
 
+    public int getHeight(BTreeNode root){
+        if (root==null)
+            return 0;
 
+        else{
+            int left= getHeight(root.left);
+            int right=getHeight(root.right);
+            diameter= Math.max(diameter,left+right);
+            return (1+Math.max(left,right));
+        }
+    }
 
 }

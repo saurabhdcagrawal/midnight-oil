@@ -56,10 +56,23 @@ public class StringProbs {
      return true;
  }
 
+//remove duplicates
 
-      public boolean matchRegex(String s ,String p){
-       return false;
-      }
+//sliding window
+
+        public  void removeDuplicates(String str){
+          char[] arr=str.toCharArray();
+          int prev=0;int current=0;
+          while(current<str.length()-1) {
+              if (str.charAt(current) != str.charAt(current + 1))
+                arr[prev++]=arr[current];
+
+              current++;
+          }
+
+
+          }
+
 
 //String concatenation works in O(n2) time
       public String compression(String str){
@@ -267,6 +280,7 @@ public class StringProbs {
         Arrays.sort(stringList,new AnagramComparator());
         System.out.println("Comparison Strategy sort");
         System.out.println(Arrays.toString(stringList));
+        sp.removeDuplicates("aaabbb");
 
     }
 
