@@ -140,8 +140,60 @@ public class ArrayProblems {
           return -1;
     }
 
+    //Search in rotated sorted array
+    public int searchRotatedArray(int[] nums, int target) {
 
+        int low=0;int high=nums.length-1;
+        int mid;
+        while(low<=high){
+            mid=(low+high)/2;
+            if(nums[mid]== target)
+                return mid;
+            else if(nums[low]<=nums[mid]){
 
+                if(nums[low]<=target && target<nums[mid])
+                    high=mid-1;
+                else
+                    low=mid+1;
+            }
+            else {
+                if(nums[mid]<target && target<=nums[high])
+                    low=mid+1;
+                else
+                    high=mid-1;
+
+            }
+        }
+        return -1;
+    }
+ //https://leetcode.com/problems/search-in-rotated-sorted-array-ii/description/
+    public boolean searchRotatedArrayWithDuplicates(int[] nums, int target) {
+
+        int low=0;int high=nums.length-1;
+        int mid;
+        while(low<=high){
+            mid=(low+high)/2;
+            if(nums[mid]== target)
+                return true;
+            else if(nums[low]<nums[mid]){
+
+                if(nums[low]<=target && target<nums[mid])
+                    high=mid-1;
+                else
+                    low=mid+1;
+            }
+            else if(nums[low]>nums[mid]){
+                if(nums[mid]<target && target<=nums[high])
+                    low=mid+1;
+                else
+                    high=mid-1;
+
+            }
+            else
+                low++;
+        }
+        return false;
+    }
 
     //find missing number xor all elements from 1 to n-1 -X ,then xor the given array -Y
     //product of XOR will give result
@@ -159,10 +211,11 @@ public class ArrayProblems {
         return nonValIndex;
 
     }
-
+//1 2 2 3 4 4 4 4 4
 //Moore's voting algorithm
 //Basic idea of the algorithm is that if we cancel out each occurrence of an element
-// e with all the other elements that are different from e then e will exist till end if it is a majority element.
+// e with all the other elements that are different from e then e will exist till
+// end if it is a majority element.
     public int getMajorityElement(int arr[]){
     int major_index=0,count=1;
     for(int i=1;i<arr.length;i++){

@@ -7,6 +7,8 @@ import java.util.*;
 //top down dynamic programming memoization
 //bottom up as dp only
 //every recursive problem has an iterative way
+//LCA
+
 public class DPAndRecursion {
 
    public static int fibonacciRecursion(int n){
@@ -18,10 +20,16 @@ public class DPAndRecursion {
     }
 
 
+
+
     public static int fibonacciMemoization(int n){
        int [] memo = new int [n+1];
       return  fibonacciMemoization(n,memo);
     }
+
+
+
+
 
     public static int fibonacciMemoization(int n ,int[] memo){
      if (n==0 || n==1)  return n;
@@ -265,8 +273,23 @@ public class DPAndRecursion {
       return permutations;
     }
 
+//
+    public int uniquePaths(int m, int n) {
+        if(m==1 ||n==1) return 1;
+        int [][] total = new int[m][n];
+        for(int i=0;i<m;i++){
+            for(int j=0;j<n;j++){
+                if(i==0 || j==0)
+                    total[i][j]=1;
+                else
+                    total[i][j]=total[i-1][j]+total[i][j-1];
 
-    
+            }
+
+        }
+
+        return total[m-1][n-1];
+    }
 
      public static String getNewWord(int position ,String word ,char c) {
          String head = null, tail = null;

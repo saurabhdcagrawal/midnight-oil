@@ -1,5 +1,5 @@
 package main.java.datastructures;
-
+//programcreek
 import java.util.HashMap;
 
 //We are given  total pages and cache with finite size of page frame
@@ -12,6 +12,8 @@ import java.util.HashMap;
 //to check if node is present in the cache
 //Linked list will store the address of node node exists or not already
 //just as when we create LLL, we create the list in the main
+//page is a DLL node
+//LRU cache is a hashtable of keys and DLL nodes
 public class LRU {
 
 
@@ -28,6 +30,8 @@ public class LRU {
 
 
     public void removeNode(DLLNode entry) {
+        //check if already front
+        //2 steps
         if (entry.prev != null)
             entry.prev.next = entry.next;
         else
@@ -41,12 +45,16 @@ public class LRU {
     }
 
     public void addToFront(DLLNode entry) {
+        //own pointers 1
         entry.next=front;
         entry.prev=null;
+        //front pointers 2
         if (front!=null)
             front.prev = entry;
+  //update front 3
         front = entry;
         //why does end become empty and null check
+        //end check 4
         if(end==null)
             end=front;
         }
@@ -72,6 +80,7 @@ public class LRU {
         DLLNode newEntry = new DLLNode(key,value);
         System.out.print("Size is" +lrumap.size());
         if(lrumap.size()>=capacity){
+            //2 aspects ,add in map and add to DLL
              lrumap.remove(end.key);
              //since node is removed ,remove from HashMap
                removeNode(end);

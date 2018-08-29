@@ -2,6 +2,23 @@ package main.java.datastructures;
 
 public class MatrixProblems {
 
+    public int islandPerimeter(int[][] grid) {
+        int perimeter=0;
+        int m=grid.length; int n=grid[0].length;
+        for (int i=0;i<m;i++){
+            for(int j=0;j<n;j++){
+                if (grid[i][j]==1){
+                    if (i==0||grid[i-1][j]==0) perimeter++;
+                    if (i==m-1||grid[i+1][j]==0) perimeter++;
+                    if (j==n-1||grid[i][j+1]==0) perimeter++;
+                    if (j==0||grid[i][j-1]==0) perimeter++;
+                }
+            }
+
+        }
+        return perimeter;
+    }
+
     public int numIslands(char[][] grid) {
          int m= grid.length;
          int n=grid[0].length; int count=0;
@@ -158,4 +175,80 @@ public class MatrixProblems {
 
 
 
+}
+
+class Solution {
+    int perimeter=0;
+    public int islandPerimeter(int[][] grid) {
+
+        //int perimeter=0;
+        int m=grid.length; int n=grid[0].length;
+        for (int i=0;i<m;i++){
+            for(int j=0;j<n;j++){
+                if (grid[i][j]==1)
+                    getPerimeter(grid,i,j,m,n);
+            }
+        }
+        return perimeter;
+    }
+    public void getPerimeter(int[][]grid ,int i,int j,int m,int n){
+
+        if(i<0||j<0||i>=m||j>=n||grid[i][j]==0){
+            perimeter++;
+            System.out.println(" i "+i +" j "+j +" perimeter "+perimeter);
+            return ;
+        }
+        if (grid[i][j]==1){
+            grid[i][j]='X';
+            getPerimeter(grid,i-1,j,m,n);
+            getPerimeter(grid,i,j-1,m,n);
+            getPerimeter(grid,i+1,j,m,n);
+            getPerimeter(grid,i,j+1,m,n);
+            return;
+        }
+    }
+
+}
+
+
+class SolutionMaxArea {
+    int area = 0;
+    int max_area = 0;
+
+    public int maxAreaOfIsland(int[][] grid) {
+        int m = grid.length;
+        int n = grid[0].length;
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                if (grid[i][j] == 1) {
+                    area = 0;
+                    mergeGrid(grid, m, n, i, j);
+                    if (area > max_area)
+                        max_area = area;
+                }
+            }
+
+
+        }
+
+        return max_area;
+    }
+
+    public boolean mergeGrid(int[][] grid, int m, int n, int i, int j) {
+
+        if (i < 0 || j < 0 || i >= m || j >= n || grid[i][j] != 1)
+            return false;
+
+        if (grid[i][j] == 1) {
+            grid[i][j] = 'X';
+            area++;
+            mergeGrid(grid, m, n, i - 1, j);
+            mergeGrid(grid, m, n, i + 1, j);
+            mergeGrid(grid, m, n, i, j - 1);
+            mergeGrid(grid, m, n, i, j + 1);
+        }
+
+
+        return true;
+    }
 }

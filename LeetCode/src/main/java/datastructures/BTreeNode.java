@@ -1,7 +1,7 @@
 package main.java.datastructures;
-import java.util.LinkedList;
-import  java.util.Stack;
-import java.util.Queue;
+import java.util.*;
+import java.util.Stack;
+
 public class BTreeNode{
  int data;
  BTreeNode left;
@@ -64,6 +64,20 @@ public class BTreeNode{
         root=null;
 
     }
+
+// Creating Mirror of tree will also use post Order Traversal
+
+    public static void getMirrorOfBinaryTree(BTreeNode root){
+     if(root==null)
+         return;
+     getMirrorOfBinaryTree(root.left);
+     getMirrorOfBinaryTree(root.right);
+     BTreeNode temp=root;
+     root.left=root.right;
+     root.right=temp;
+     }
+
+
  //no linkages
  public static void insertNode(BTreeNode root, int data) {
 
@@ -98,6 +112,36 @@ public class BTreeNode{
      }
       q=null;
      }
+
+  //leetcode version
+    public List<List<Integer>> levelOrder(BTreeNode root) {
+        List<List<Integer>> levelOrderList = new ArrayList();
+        if (root==null) return levelOrderList ;
+        Queue<BTreeNode> q = new LinkedList<BTreeNode>();
+
+        List<Integer> levelList= new ArrayList<Integer>();
+        q.add(root);
+        q.add(null);
+        BTreeNode temp=null;
+        while(!q.isEmpty()){
+            temp=q.poll();
+            if(temp!=null)
+                levelList.add(temp.data);
+            if (temp==null){
+                levelOrderList.add(levelList);
+                levelList= new ArrayList<Integer>();
+                if(!q.isEmpty())
+                    q.add(null);
+            }
+            if (temp!=null && temp.left!=null)
+                q.add(temp.left);
+            if(temp!=null && temp.right!=null)
+                q.add(temp.right);
+
+        }
+        q=null;
+        return levelOrderList;
+    }
 
      public static int findMinimumElement(BTreeNode root) {
      if (root==null) return -1;
@@ -140,6 +184,20 @@ public class BTreeNode{
                 isStructurallyIdentical(root1.right,root2.right));
 
         }
+
+   //add of paths leads to a given sum?
+   //when you reach the leaf node ,addition of the path should be null
+  public static boolean hasSum(BTreeNode root ,int sum){
+     if(root==null)
+         return(sum==0);
+     else{
+          int subsum=sum-root.data;
+          return (hasSum(root.left,subsum)||hasSum(root.right,subsum));
+
+     }
+
+ }
+
 
     public static boolean isMirrorOfEachOther(BTreeNode root1 ,BTreeNode root2){
         if (root1==null&& root2==null)
@@ -234,6 +292,53 @@ public class BTreeNode{
       return false;
     }
 
+    //give prev=Integer.MIN_VALUE
+    public boolean inOrderTraversalBST(BTreeNode root,int prev){
+     if (root==null)
+         return true;
+     if(!inOrderTraversalBST(root.left,prev))
+         return false;
+      if (root.data<prev)
+          return false;
+      prev=root.data;
+      return inOrderTraversalBST(root.right,prev);
+
+    }
+
+    //
+
+    public BTreeNode kthSmallestElementBST(BTreeNode root,int k ,int count){
+     if (root==null)
+         return null;
+     BTreeNode left=kthSmallestElementBST(root.left,k,count);
+     if (left!=null) return left;
+     if (++k==count)
+         return root;
+     return kthSmallestElementBST(root.right,k,count);
+
+    }
+
+    public boolean isSymmetric(BTreeNode root) {
+        if(root==null) return true;
+        return isMirror(root.left,root.right);
+
+    }
+
+
+    public boolean isMirror(BTreeNode root1 ,BTreeNode root2){
+
+        if(root1==null && root2==null)
+            return true;
+        if (root1 ==null || root2==null )
+            return false;
+        if(root1.data!=root2.data)
+            return false;
+
+        return (isMirror(root1.left,root2.right) && isMirror(root1.right,root2.left));
+
+
+    }
+
    /* public boolean findLCA(BTreeNode root1 ,BTreeNode root2){
 
         if (root==null)
@@ -270,10 +375,14 @@ public class BTreeNode{
       temp.right=new BTreeNode(12);
       System.out.println("Validate BST "+ validateIsBST(temp));
       System.out.println("Height of tree " + heightBTree(root));
-         System.out.println("Non recursive Height of tree " + depthNonRecursive(root));
+       System.out.println("Non recursive Height of tree " + depthNonRecursive(root));
        System.out.println("Diameter is "+getDiameter(root));
+       //getMirrorOfBinaryTree(root);
+       //System.out.println("Mirrored B tree") ;
+       //inOrderTraversal(root);
 
-
+         System.out.println("Sum is 19?"+hasSum(root,19));
+         System.out.println("Sum is 18?"+hasSum(root,18));
       System.out.println("Deleting B tree");
       deleteBtree(root);
      }
@@ -281,7 +390,7 @@ public class BTreeNode{
 
 }
 //seperate class solution
-class Solution {
+class SolutionDiameter {
     int diameter;
     public int diameterOfBinaryTree(BTreeNode root) {
         diameter=0;
@@ -301,4 +410,32 @@ class Solution {
         }
     }
 
+    class SolutionisBST {
+        BTreeNode prev;
+
+
+        public boolean isValidBST(BTreeNode root) {
+            if (root != null)
+            {
+                if (!isValidBST(root.left))
+                    return false;
+
+                // allows only distinct values node
+                if (prev != null && root.data <= prev.data)
+                    return false;
+                prev = root;
+                return isValidBST(root.right);
+            }
+            return true;
+
+        }
+
+
+
+    }
+
 }
+
+//remaining problems ,print root to leaf paths
+//construct b tree
+//
