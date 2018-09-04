@@ -1,5 +1,7 @@
 package main.java.company;
 
+import java.util.*;
+
 public class PracticalArrayProblems {
     public int maxArea(int[] height) {
         int l=0 , r= height.length-1;
@@ -134,6 +136,109 @@ public class PracticalArrayProblems {
                 left=right=0;
         }
         return max_length;
+    }
+
+//https://leetcode.com/problems/merge-intervals/description/
+    class Interval {
+    int start;
+    int end;
+    Interval() {
+        start = 0;
+        end = 0;
+    }
+
+    Interval(int s, int e) {
+        start = s;
+        end = e;
+    }
+    }
+    class IntervalComparator implements Comparator<Interval> {
+        public int compare(Interval i1, Interval i2){
+                return i1.start - i2.start;
+            }
+
+    }
+
+        public List<Interval> merge(List<Interval> intervals) {
+            LinkedList<Interval> merged = new LinkedList<Interval>();
+            Collections.sort(intervals, new IntervalComparator());
+            for(Interval i:intervals){
+            if (merged.isEmpty()|| i.start>merged.getLast().end)
+                merged.add(i);
+            else
+             merged.getLast().end=Math.max(i.end,merged.getLast().end);
+            }
+           return merged;
+     }
+
+    public boolean canAttendMeetings(Interval[] intervals) {
+        if (intervals ==null || intervals.length==0 ) return true;
+        Arrays.sort(intervals ,new IntervalComparator());
+        Interval prev =intervals[0]; Interval current=null;
+        for(int i=1;i<intervals.length;i++){
+            current=intervals[i];
+            if (current.start<prev.end)
+                return false;
+            prev=current;
+
+        }
+        return true;
+    }
+//[,[4,9],[4,17]][9,10][9,12]
+    public int  minimumMeetingRooms(Interval[] intervals) {
+        if (intervals ==null || intervals.length==0 ) return 0;
+        Arrays.sort(intervals ,new IntervalComparator());
+        PriorityQueue<Integer> q = new PriorityQueue<Integer>();
+        int count=1;
+        q.offer(intervals[0].end);
+        for (int i=1;i<intervals.length;i++){
+         //koi problem nahi //merge or nothing to be done
+            if(intervals[i].start>=q.peek()){
+                q.poll();
+            }
+            else
+             count++;
+
+         q.offer(intervals[i].end);
+        }
+     return count;
+    }
+
+//List comparator.manipulate list to get top k
+    //O(N log N) //O(N) time
+    //O(N log K) //make a tree of K elements O(K) adding each element takes k log(K) ,adding N element takes
+    //Nlog(K)
+    public List<String> topKFrequent(String[] words, int k) {
+
+        final HashMap<String,Integer> wordCount = new HashMap<String,Integer>();
+        for(String word:words) {
+            //wordCount.put(word ,(wordCount.getOrDefault(word,0)+1));
+        if(wordCount.containsKey(word))
+            wordCount.put(word,wordCount.get(word)+1);
+        else
+            wordCount.put(word,1);
+        }
+        //elements of Priority queue
+        PriorityQueue pq = new PriorityQueue(Collections.singleton(new Comparator<String>() {
+            public int compare(String word1, String word2) {
+                if (wordCount.get(word1) == wordCount.get(word2))
+                    return word2.compareTo(word1);
+                return (wordCount.get(word1) - wordCount.get(word2));
+            }
+        }));
+
+        for (String word: wordCount.keySet()){
+            pq.offer(word) ;
+            if(pq.size()>k)
+                pq.poll();
+        }
+
+        List<String> topK = new ArrayList<String>();
+        while(!pq.isEmpty()){
+            topK.add((String)pq.poll());}
+        Collections.reverse(topK);
+
+        return topK;
     }
 
     public static void main(String[] args) {
