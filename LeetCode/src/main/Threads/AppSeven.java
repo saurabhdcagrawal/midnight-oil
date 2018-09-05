@@ -1,10 +1,11 @@
 //One thread producing things ,common data share
 //Other thread consuming thingss
+//producer produces fast
+//consumer takes items slowly
 package main.Threads;
 
 import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
 
 public class AppSeven {
@@ -28,7 +29,7 @@ public class AppSeven {
              }
          }
      }
-    public static void main(String args[]){
+    public static void main(String args[]) throws InterruptedException {
       Thread t1 = new Thread(new Runnable() {
       @Override
       public void run() {
@@ -52,6 +53,8 @@ public class AppSeven {
         });
        t1.start();
        t2.start();
+       t1.join();
+       t2.join();
 
     }
 
