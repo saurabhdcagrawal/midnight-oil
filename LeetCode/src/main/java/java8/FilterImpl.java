@@ -3,6 +3,8 @@ package main.java.java8;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class FilterImpl {
@@ -68,7 +70,24 @@ public class FilterImpl {
         boolean isHealthyRev = menu.stream()
                 .noneMatch(d -> d.getCalories() >= 1000);
 
+/*
+        The Optional<T> class (java.util.Optional) is a container class to represent the existence or
+        absence of a value. In the previous code, it’s possible that findAny doesn’t find any element.
+        Instead of returning null, which is well known for being error prone, the Java 8 library designers
+        introduced Optional<T>.*/
+        //The findAny method returns an arbitrary element of the current stream.
 
+        //ifPresent(Consumer<T>)
+
+        System.out.println("Usage of findAny");
+        Optional<Dish> dish= menu.stream().filter(Dish::isVegetarian).findAny();
+        menu.stream().filter(Dish::isVegetarian).findAny().ifPresent(d->System.out.println(d.getName()));
+
+
+        System.out.println("Usage of findFirst");
+        List<Integer> someNumbers = Arrays.asList(1, 2, 3, 4, 5);
+        Optional<Integer> firstSquareDivisibleByThree = someNumbers.stream().map(i->i*i).filter(i->i%3==0).findFirst();
+        System.out.println(firstSquareDivisibleByThree.orElse(0));
     }
 
 
