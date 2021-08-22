@@ -20,8 +20,9 @@ public class FilterImpl {
                 new Dish("pizza", true, 550, Dish.Type.OTHER),
                 new Dish("prawns", false, 300, Dish.Type.FISH),
                 new Dish("salmon", false, 450, Dish.Type.FISH) );
-
-// intermediate operations //terminal operations count
+//A stream is a sequence of elements from a source that supports data processing operations
+// intermediate operations filter,map,sorted,limit,distinct
+// terminal operations count,collect,forEach
         List<String> filteredList = menu.stream().filter(d -> {
             System.out.println("Filtered :" + d.getName());
             return d.getCalories() > 500;
