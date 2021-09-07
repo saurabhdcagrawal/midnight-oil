@@ -1,0 +1,78 @@
+/*
+1) Working with threads is difficult and error prone. Java 5,7 addressed some bits of it
+2) More concise code and simpler use of multicore processors is the whole reason for java 8
+3) Streams for complex pipeline operations..like unix..
+   an abstraction rather than working with one independent item at a time.
+   Java 8 can run your pipeline of stream operations on several CPU cores on disjoint parts of the input
+   (Parallelism for free)
+4) Behavior parameterization--passing code to methods
+5) Passing codes and predicates
+6) Anonymous functions
+7) Filter and predicate are available and generic methods in Java 8
+Using streams API do not think of looping..Think as a stream of data
+-----Chapter 2
+behaviour parameterization
+Adopt to changing requirements.Strategy Design patternD
+Define a family of algorithms, encapsulate each algorithm(strategy) and select an algorithm at run-time
+Lambda input ->output
+List<Apple> filteredApples = filterApple(inventory, (Apple apple->"green".equals(apple.getColor()))
+inventory.sort((Apple a1, Apple a2)->a.getWeight().compareTo(a2.getWeight());
+Behavior parameterization is the ability for a method to take multiple different behaviors as parameters
+and use them internally to accomplish different behaviors.
+Behavior parameterization lets you make your code more adaptive to changing requirements and saves on
+engineering efforts in the future.Piece of code which is a behaviour and you are passing it around as a parameter
+-----Chapter 3
+Lambda expression A lambda function is an anonymous method .Lambdas let you pass code in a concise way
+Parameters, arrow, body of the function. No need to use return statement
+When lambda expression has multiple statements use curly braces
+(int x, int y)->{S.o.p(x=y);Sop("Result above");}
+(input parameters)->statement; or (input parameters)-{ return expression}Return creates an expression
+(String s) -> "Iron Man". Or if you prefer, you can use an explicit return statement as follows:
+(String s) -> {return "Iron Man";}.
+Lambda --->  function of the object implementing an interface ---directly Lambda is used in the context of functional interface (Like a predicate)
+A functional interface is an interface which implements only one abstract method.
+Lambda expressions let you provide the implementation of the abstract method of a functional interface directly inline and treat the whole expression as an instance of a functional interface (more technically speaking, an instance of a concrete implementation of the functional interface). You can achieve the same
+thing with an anonymous inner class, although it’s clumsier: you provide an implementation and instantiate it directly inline.
+
+public class MyRunnable implements Runnable {
+
+    public void run(){
+       System.out.println("MyRunnable running");
+    }
+  }
+
+
+    Runnable runnable = new MyRunnable();Thread thread = new Thread(Runnable)thread.start();
+        Create a new thread, that executes the run method
+
+
+        Using Anonymous
+        Runnable runnable = new Runnable(){  public void run(){
+           System.out.println("Hello");   }}
+
+        Runnable runnable = ()-> System.out.println("Hello");
+        Streams
+
+        Streams are an update to the Java API that lets you manipulate collections of data in a declarative way (you express a query rather than code an ad hoc implementation for it). In addition, streams can be processed in parallel transparently, without you having to write any multithreaded code!
+        You chain together several building-block operations to express a complicated data processing pipeline (you chain the filter by linking sorted, map, and collect operations, as illustrated in figure 4.1) while keeping your code readable and its intent clear. The result of the filter is passed to the sorted method, which is then passed to the map method and then to the collect method.
+
+        Collections in Java 8 support a new stream method that returns a stream. You’ll later see that you can also get streams in various other ways (for example, generating stream elements from a numeric range or from I/O resources).
+        So first, what exactly is a stream? A short definition is “a sequence of elements from a source that supports data processing operations.” 
+        Next, you apply a series of data processing operations on the stream: filter, map, limit, and collect. All these operations except collect return another stream so they can be connected to form a pipeline, which can be viewed as a query on the source. Finally, the collect operation starts processing the pipeline to return a result (it’s different because it returns something other than a stream—here, a List).
+
+        Figure 4.2 shows the sequence of stream operations: filter, map, limit, and collect, each of which is briefly described here:
+
+        Stream vs Collection
+        Stream is traversable only once.. can be consumed only once similar to iterator
+        Stream operations return stream and can be pipelined
+        filter—Takes a lambda to exclude certain elements from the stream. In this case, you select dishes that have more than 300 calories by passing the lambda d -> d.getCalories() > 300.
+        map—Takes a lambda to transform an element into another one or to extract information. In this case, you extract the name for each dish by passing the method reference Dish::getName, which is equivalent to the lambda d -> d.getName().
+
+        limit—Truncates a stream to contain no more than a given number of elements.
+
+        collect—Converts a stream into another form. In this case you convert the stream into a list. It looks like a bit of magic; we describe how collect works in more detail in chapter 6. At the moment, you can see collect as an operation that takes as an argument various recipes for accumulating the elements of a stream into a summary result. Here, toList() describes a recipe for converting a stream into a list.
+
+        Difference between collection and stream ... More on this Streams ... iteration is taken care for you..
+
+
+*/
