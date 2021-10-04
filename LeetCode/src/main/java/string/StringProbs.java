@@ -49,7 +49,7 @@ public class StringProbs {
         }
 
        for (int i=0;i<arr_count.length;i++){
-        if(arr_count[i]<0)
+        if(arr_count[i]!=0)
         return false;
       }
 
@@ -81,7 +81,7 @@ public class StringProbs {
         int countChar=0;
         for (int i=0;i<str.length();i++){
            countChar++;
-          if(i+1>=str.length()||(str.charAt(i)!=str.charAt(i+1))){
+          if(i>=str.length()-1||(str.charAt(i)!=str.charAt(i+1))){
               cmpressed.append(str.charAt(i));
               cmpressed.append(countChar);
               countChar=0;
@@ -178,19 +178,7 @@ public class StringProbs {
        return (int)number;
     }
 
-    //When dealing with overflow problems ,take result as double and convert to Int later
-    public int reverse(int x) {
-        double reverse=0;
-        int digit=0;
-        while(x!=0){
-            digit=x%10;
-            reverse=reverse*10+digit;
-            x=x/10;
-        }
-        if(reverse>Integer.MAX_VALUE || reverse<Integer.MIN_VALUE)
-            return 0;
-        return (int) reverse;
-    }
+
 
     public int firstUniqChar(String s) {
 
