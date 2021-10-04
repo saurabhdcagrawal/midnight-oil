@@ -1,0 +1,119 @@
+//OOPS
+1)Define encapsulation in OOP?
+2)How do we get achieve encapsulation in Java
+3)Different access specifiers and how they restrict the scope
+  https://www.geeksforgeeks.org/access-modifiers-java/
+4)What is polymorphism?
+5)Benefit of using inheritance
+6)Can we override the private method in Java?
+7)Difference between this and super in Java?
+
+
+//Collections
+1)Difference between **List**and **Set**in Java?
+2)Difference between **Hashtable** and **HashMap** in Java?
+3)Difference between **ArrayList** and **LinkedList** in Java?
+
+//Hashing and hashmap
+1)What’s the difference between comparison done by equals method and == operator?
+String s1 = new String("This is a string");
+String s2 = new String("This is a string");
+System.out.println(s1 == s2);
+System.out.println(s1.equals(s2));
+Ans: In Java, equals() method is used to compare the contents of two string objects and returns true
+if the two have same value while == operator compares the references of two string objects.
+
+2) How does a hashmap work? (How would you implement a hashmap)
+How does the put() method of HashMap works in Java? (answer)
+
+3)What is a collision? How does hashmap handle collisions in Java
+
+4) What is the requirement for an object to be used as a key or value in HashMap? (answer)
+The key or value object must implement the equals() and hashcode() method.
+The hash code is used when you insert the key object into the map while equals are used
+when you try to retrieve a value from the map.
+
+//Comparator and comparable interface
+1)Can you tell when do we use a comparable interface?
+2)Difference between comparable and comparator interface
+
+
+//Multithreading
+1)Describe synchronization with respect to multithreading?
+Ans:Synchronization is the method to control the access of multiple threads to shared resources,
+with respect to multithreading. One thread can modify a shared variable when not in synchronization
+even when another thread is in the process of using or updating the same shared variable.
+This can lead to significant errors.
+
+//Garbage Collection
+1)The main purpose of garbage collection is to analyze a program, identify and discard the objects that
+are no longer needed. It is helpful as the resources can be reclaimed and reused.
+A Java object is subjected to garbage collection when the object is not reachable to the program in which it is used.
+2)Can we explicitly call garbage collector in Java?
+
+//Exception
+1)Difference between checked and unchecked exceptions?
+2)Example of unchecked exceptions?
+3)How to handle checked exceptions?
+4)What is use of finally block?
+
+//JAVA 8
+1)What is an anonymous function?
+2)What is lambda?
+Java 8 filter and map questions
+3) What is option?
+
+//PL SQL question
+
+1)Difference types of joins.. with an example
+2)What is normalization? Advantages of normalization and de-normalization
+Ans:Normalization and denormalization are useful according to the situation.
+Normalization is used when the faster insertion, deletion and update anomalies,
+and data consistency are necessarily required. (OLTP)
+On the other hand, Denormalization is used when the faster search is more important and to optimize the read performance.
+It also lessens the overheads created by over-normalized data or complicated table joins. (OLAP)
+3)What is the difference between DELETE and TRUNCATE statements?
+
+4) SQL queries
+Table structure for global co
+Employee
+EmpId  EmpName DeptId Salary
+Dept
+DeptId DeptName DeptLocation
+
+1) Count of employees in each dept
+SELECT DeptName, DeptId, count(*) as num_employees from Dept d left outer join Employee e
+on d.deptId=e.deptId group by d.DeptName,D.deptId
+
+2) Select department names with > 50 employees in US region
+SELECT DeptName, Deptid from Dept d left outer join Employee e on d.DepId=e.Dept_id WHERE
+DeptLocation='USA'
+group by deptName, Deptid
+having count(*)> 50
+
+3) Employee second highest salary
+
+SELECT EmpName from Employee where salary= (select max(salary) from Employee where salary < (SELECT max(salary) from employee))
+
+
+
+
+//Object oriented programming question
+
+
+
+//Spring question
+
+//One coding question with arrays or maps
+
+
+//Random graph
+1)BFS and DFS question
+
+//System design question
+
+Design something
+
+//Angular question
+
+

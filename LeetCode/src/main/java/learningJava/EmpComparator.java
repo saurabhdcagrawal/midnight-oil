@@ -7,6 +7,9 @@ package main.java.learningJava;
 //The Comparable interface is a good choice when used for defining the default ordering or
 // Comparable is an interface defining a strategy of comparing an object with other objects of the same type.
 // This is called the class’s “natural ordering”.
+//If any class implements Comparable interface in Java then collection of that object either List or Array can
+// be sorted automatically by using  Collections.sort() or Arrays.sort()method and object will be sorted based
+// on there natural order defined by CompareTo method.
 
 //Sometimes, we can’t modify the source code of the class whose objects we want to sort,
 // thus making the use of Comparable impossible
@@ -48,11 +51,11 @@ public class EmpComparator{
      List<Employee> empList = new ArrayList<Employee>();
      empList.add(e1);empList.add(e2);empList.add(e3);
      Collections.sort(empList);
-        System.out.println(empList);
+     System.out.println(empList);
      Collections.sort(empList,new EmpAgeComparator());
      System.out.println(empList);
-        Collections.sort(empList,new EmpSalaryComparator());
-        System.out.println(empList);
+     Collections.sort(empList,new EmpSalaryComparator());
+     System.out.println(empList);
     }
 
 }
