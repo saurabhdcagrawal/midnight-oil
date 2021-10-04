@@ -11,8 +11,7 @@
 
 //Collections
 1)Difference between **List**and **Set**in Java?
-2)Difference between **Hashtable** and **HashMap** in Java?
-3)Difference between **ArrayList** and **LinkedList** in Java?
+2)Difference between **Array and **LinkedList** in Java?
 
 //Hashing and hashmap
 1)What’s the difference between comparison done by equals method and == operator?
@@ -39,11 +38,14 @@ when you try to retrieve a value from the map.
 
 
 //Multithreading
-1)Describe synchronization with respect to multithreading?
+1)Describe synchronization with respect to multithreading?How can we achieve synchronization in Java
 Ans:Synchronization is the method to control the access of multiple threads to shared resources,
 with respect to multithreading. One thread can modify a shared variable when not in synchronization
 even when another thread is in the process of using or updating the same shared variable.
 This can lead to significant errors.
+by the synchronized method
+by synchronized block
+by static synchronization
 
 //Garbage Collection
 1)The main purpose of garbage collection is to analyze a program, identify and discard the objects that
@@ -52,15 +54,45 @@ A Java object is subjected to garbage collection when the object is not reachabl
 2)Can we explicitly call garbage collector in Java?
 
 //Exception
+An event that occurs during the execution of a program that disrupts the normal flow of instructions
 1)Difference between checked and unchecked exceptions?
 2)Example of unchecked exceptions?
 3)How to handle checked exceptions?
 4)What is use of finally block?
-
+The finally block in java is used to put important codes such as clean up code e.g.
+closing the file or closing the connection.
+The finally block executes whether exception rise or not and whether exception handled or not.
 //JAVA 8
 1)What is an anonymous function?
 2)What is lambda?
 Java 8 filter and map questions
+
+Trader{name,city}
+Transaction{trader, year, value}
+
+ Trader raoul = new Trader("Raoul", "Cambridge");
+        Trader mario = new Trader("Mario", "Milan");
+        Trader alan = new Trader("Alan", "Cambridge");
+        Trader brian = new Trader("Brian", "Cambridge");
+
+        List<Transaction> transactions = Arrays.asList(
+                new Transaction(brian, 2011, 300),
+                new Transaction(raoul, 2012, 1000),
+                new Transaction(raoul, 2011, 400),
+                new Transaction(mario, 2012, 710),
+                new Transaction(mario, 2012, 700),
+                new Transaction(alan, 2012, 950)
+        );
+
+  1. Find all transactions in the year 2011
+    //and sort them by value (small to high).
+    transactions.stream().filter(d->d.getYear()==2011).sorted(Comparator.comparing(Transaction::getValue)).collect(Collectors.toList())
+
+  2. Unique cities where
+   transactions.stream().map(d->d.getTrader().getCity()).collect(CollectorsToSet());
+   transactions.stream().map(d->d.getTrader().getCity()).distinct().collect(CollectorsToList());
+
+
 3) What is option?
 
 //PL SQL question
@@ -93,18 +125,19 @@ having count(*)> 50
 
 3) Employee second highest salary
 
-SELECT EmpName from Employee where salary= (select max(salary) from Employee where salary < (SELECT max(salary) from employee))
+SELECT EmpName from Employee where salary= (select max(salary) from Employee
+where salary < (SELECT max(salary) from employee))
 
-
+//One coding question with arrays or maps
+1)How to check if 2 strings are anagrams of each other
+//triangle integral
+2)Determine if a string has all unique characters
 
 
 //Object oriented programming question
 
-
-
 //Spring question
 
-//One coding question with arrays or maps
 
 
 //Random graph
