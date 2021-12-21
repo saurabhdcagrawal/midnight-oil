@@ -1,7 +1,6 @@
 package main.java.datastructures;
 
 import main.java.datastructures.assist.Result;
-import com.sun.org.apache.xalan.internal.xsltc.runtime.Hashtable;
 
 import java.util.HashMap;
 
@@ -59,7 +58,7 @@ public class Node {
             return head.next;
 
         Node n = head;
-        while (n!=null || n.next != null) {
+        while (n!=null && n.next != null) {
             if (n.next.data == data) {
                 n.next = n.next.next;
                 return head;
@@ -71,7 +70,7 @@ public class Node {
 
     public static Node removeDuplicates(Node head){
     if(head==null) return null;
-    Hashtable t = new Hashtable();
+    HashMap t = new HashMap();
     Node n=head;
     Node prev=null;
     while(n!=null){
@@ -97,7 +96,14 @@ public class Node {
     }
    //5->7->9->11
     public Node insertInSortedList(Node head ,int val){
+
         Node newNode = new Node(val);
+        //always think of edge case for start of the node
+        if (val<head.data) {
+            newNode.next=head;
+            head= newNode;
+            return head;
+        }
         Node current=head;Node temp=head;
         if(head==null) return newNode;
         while(current!=null && current.data<=val){
@@ -553,7 +559,12 @@ public class Node {
        Node result =mergeTwoLists(l1,l2);
         System.out.println("Printing result");
         printNode(result);
-
+     Node revisited = new Node(7);
+     revisited.appendNode(10);
+     revisited.appendNode(11);
+     revisited.printNode();
+    Node newOrder= revisited.insertInSortedList(revisited,5);
+        newOrder.printNode();
        }
 
 
