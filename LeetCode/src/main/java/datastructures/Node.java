@@ -99,18 +99,19 @@ public class Node {
 
         Node newNode = new Node(val);
         //always think of edge case for start of the node
+        if(head==null) return newNode;
+
         if (val<head.data) {
             newNode.next=head;
             head= newNode;
             return head;
         }
-        Node current=head;Node temp=head;
-        if(head==null) return newNode;
+        Node current=head;Node prev=null;
         while(current!=null && current.data<=val){
-        temp=current;
+        prev=current;
         current=current.next;
         }
-        temp.next=newNode;
+        prev.next=newNode;
         newNode.next=current;
         return head;
         }
