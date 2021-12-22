@@ -251,7 +251,7 @@ that node.*/
         return head;
     }
 
-    public Node getIntersectionNode(Node headA, Node headB) {
+    public static Node getIntersectionNode(Node headA, Node headB) {
         int aLength = 0, bLength = 0;
         Node p1 = headA;
         Node p2 = headB;
@@ -266,7 +266,8 @@ that node.*/
             p2 = p2.next;
         }
         bLength++;
-        //Why?
+
+     // if both LL are intersecting then the last node should be the same, if different then it means they are non-intersecting
         if (p1 != p2)
             return null;
 
@@ -283,58 +284,6 @@ that node.*/
         }
         return shorterNode;
     }
-
-    /**
-     * Definition for singly-linked list.
-     * public class ListNode {
-     *     int val;
-     *     ListNode next;
-     *     ListNode(int x) {
-     *         val = x;
-     *         next = null;
-     *     }
-     * }
-     */
-
-        public Node getIntersectionNodeRefined(Node headA, Node headB) {
-
-            if (headA==null || headB==null)
-                return null;
-
-            int count1=0,count2=0;
-            Node n1=headA; Node n2=headB;
-
-            while(n1!=null) {
-                count1++ ;
-                n1=n1.next;
-            }
-
-            while(n2!=null) {
-                count2++ ;
-                n2=n2.next;
-            }
-
-            Node longerNode= count1 >= count2 ? headA: headB;
-            Node shorterNode= longerNode==headA? headB: headA;
-
-            int delta= Math.abs(count2-count1);
-            System.out.println(" Delta is "+delta);
-
-            for(int i=0; i <delta;i++)
-                longerNode=longerNode.next;
-
-            while(longerNode!=null || shorterNode!=null){
-                if (longerNode==shorterNode)
-                    return longerNode;
-                shorterNode=shorterNode.next;
-                longerNode=longerNode.next;
-            }
-
-            if(longerNode==null||shorterNode==null)
-                return null;
-
-            return null;
-        }
 
     //reverse linked list
 
@@ -569,7 +518,15 @@ that node.*/
         revisited.appendNode(11);
         revisited.printNode();
         Node newOrder = revisited.insertInSortedList(revisited, 5);
+        //5->7->10->11
         newOrder.printNode();
+        System.out.println("Intersection Problem -------");
+        l2.printNode();
+        revisited.printNode();
+        Node intersectionNode= getIntersectionNode(l2,revisited);
+
+        System.out.println(intersectionNode);
+
     }
 
 
