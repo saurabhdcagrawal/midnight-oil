@@ -4,6 +4,10 @@ import main.java.datastructures.assist.Result;
 
 import java.util.HashMap;
 
+/* Base condition , head condition
+2 ways prev pointer and n.next
+condition n.null && n.next ! =null
+ */
 public class Node {
 
     int data;
@@ -117,40 +121,34 @@ public class Node {
         return head;
     }
 
+    //Linked list recursion
     //5->7->9->11->12
     public void displayLinkedListFromEnd(Node head) {
         if (head == null)
             return;
-        else {
-            displayLinkedListFromEnd(head.next);
-            System.out.print(head.data);
-        }
+
+        displayLinkedListFromEnd(head.next);
+        System.out.print(head.data);
+
     }
 
 
-    /* public static Node removeDuplicatesLinkedList(Node head){
-
-         Hashtable t = new Hashtable();
-         Node n =head;
-         llMap.put(n.data,n.data);
-         while(n!=null|| n.next!=null){
-         if (llMap.containsKey(n.next.data))
-             n.next=n.next.next;
-         else
-             llMap.put(n.next.data,n.next.data);
-         n=n.next;
-         }
-
-         return head;
-     }*/
+    /* Delete Middle Node: Implement an algorithm to delete a node in the middle (i.e., any node but
+the first and last node, not necessarily the exact middle) of a singly linked list, given only access to
+that node.*/
     public static boolean removeMiddleNode(Node c) {
         //edge cases
-
-        if (c.next == null || c.next == null)
+        if (c == null)
             return false;
+        //if penultimate node, mark it as null;
+        if (c.next == null) {
+            c = null;
+            return true;
+        }
         Node d = c.next;
         c.data = d.data;
         c.next = d.next;
+        d = null;
         return true;
     }
 
@@ -268,7 +266,7 @@ public class Node {
             p2 = p2.next;
         }
         bLength++;
-
+        //Why?
         if (p1 != p2)
             return null;
 
@@ -286,59 +284,61 @@ public class Node {
         return shorterNode;
     }
 
+    /**
+     * Definition for singly-linked list.
+     * public class ListNode {
+     *     int val;
+     *     ListNode next;
+     *     ListNode(int x) {
+     *         val = x;
+     *         next = null;
+     *     }
+     * }
+     */
+
+        public Node getIntersectionNodeRefined(Node headA, Node headB) {
+
+            if (headA==null || headB==null)
+                return null;
+
+            int count1=0,count2=0;
+            Node n1=headA; Node n2=headB;
+
+            while(n1!=null) {
+                count1++ ;
+                n1=n1.next;
+            }
+
+            while(n2!=null) {
+                count2++ ;
+                n2=n2.next;
+            }
+
+            Node longerNode= count1 >= count2 ? headA: headB;
+            Node shorterNode= longerNode==headA? headB: headA;
+
+            int delta= Math.abs(count2-count1);
+            System.out.println(" Delta is "+delta);
+
+            for(int i=0; i <delta;i++)
+                longerNode=longerNode.next;
+
+            while(longerNode!=null || shorterNode!=null){
+                if (longerNode==shorterNode)
+                    return longerNode;
+                shorterNode=shorterNode.next;
+                longerNode=longerNode.next;
+            }
+
+            if(longerNode==null||shorterNode==null)
+                return null;
+
+            return null;
+        }
 
     //reverse linked list
 
 
-    //Or put in a hashtable
-    public static Node findIntersectingNode(Node n1, Node n2) {
-        if (n1 == null || n2 == null)
-            return null;
-        Result res1 = getTailAndLength(n1);
-        Result res2 = getTailAndLength(n2);
-        Node n1_last_node = res1.getTail();
-        int length1 = res1.getLength();
-        Node n2_last_node = res2.getTail();
-        int length2 = res2.getLength();
-        if (n1_last_node != n2_last_node)
-            return null;
-        int delta = 0;
-        Node longer = null, shorter = null;
-        delta = Math.abs(length1 - length2);
-        if (length1 > length2) {
-            longer = n1;
-            shorter = n2;
-        } else {
-            longer = n2;
-            shorter = n1;
-        }
-
-
-        for (int i = 0; i < delta; i++) {
-            longer = longer.next;
-        }
-
-        while (shorter != longer) {
-            longer = longer.next;
-            shorter = shorter.next;
-        }
-        return longer;
-    }
-
-    public static Result getTailAndLength(Node head) {
-        if (head == null) return null;
-        Node n = head;
-        int length = 0;
-        while (n.next != null) {
-            n = n.next;
-            length++;
-        }
-        length++;
-        Result result = new Result();
-        result.setLength(length);
-        result.setTail(n);
-        return result;
-    }
 
     //          | |
     //1->4->5->7->9
