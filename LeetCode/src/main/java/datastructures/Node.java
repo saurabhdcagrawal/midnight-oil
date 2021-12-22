@@ -524,7 +524,6 @@ that node.*/
         l2.printNode();
         revisited.printNode();
         Node intersectionNode= getIntersectionNode(l2,revisited);
-
         System.out.println(intersectionNode);
 
     }
