@@ -5,6 +5,24 @@ import java.util.*;
 
 public class ArrayProblems {
 
+    //gas station problem
+   // https://leetcode.com/problems/gas-station/
+        public int canCompleteCircuit(int[] gas, int[] cost) {
+
+            int total_tank=0, cur_tank=0, start_station=0;
+            for (int i=0; i < gas.length; i++){
+                total_tank+=gas[i]-cost[i];
+                cur_tank+=gas[i]-cost[i];
+                if (cur_tank<0){
+                    cur_tank=0;
+                    start_station=i+1;
+                }
+
+            }
+            return total_tank<0?-1:start_station;
+        }
+
+
     // array contains elements in range
     public int[] twoSum(int[] num_array ,int sum){
 
@@ -411,12 +429,87 @@ public class ArrayProblems {
 
         System.out.println(Arrays.toString(a));
     }
-
-
     //a^3+b^3=c^3
+    //binary search variations
+    //https://leetcode.com/problems/first-bad-version/submissions/
+
+    /* The isBadVersion API is defined in the parent class VersionControl.
+      boolean isBadVersion(int version); */
+// 1 2 3 4 5 6 7 8 9
+// G G G G G G B B B
+    //stub
+    public boolean isBadVersion(int n){
+        return true;
+    }
+     //algorithm will converge with left=right=firstBadVersion
+    //if you land on bad set then, include that bad set in interval [low,mid]
+    //if you land on good set, then definitely check the right side [mid+1,high]
+        public int firstBadVersion(int n) {
+
+            int low=1,mid=0, high=n;
+            while(low < high) {
+                mid = low+(high-low)/2;
+                if(isBadVersion(mid))
+                    high=mid;
+                else
+                    low=mid+1;
+            }
+            return high;
+        }
+
+    // find third Maximum
+        public int thirdMax(int[] nums) {
+            int firstMax=Integer.MIN_VALUE;
+            int secondMax=Integer.MIN_VALUE;
+            int thirdMax=Integer.MIN_VALUE;
+            Set<Integer> integerSet= new HashSet<Integer>();
+            for (int i=0; i<nums.length;i++){
+                if(!integerSet.contains(nums[i])){
+                    if(nums[i]>firstMax){
+                        thirdMax=secondMax;
+                        secondMax=firstMax;
+                        firstMax=nums[i];
+                    }
+                    else if(nums[i]>secondMax){
+                        thirdMax=secondMax;
+                        secondMax=nums[i];
+                    }
+                    else if(nums[i]>thirdMax){
+                        thirdMax=nums[i];
+                    }
+                    integerSet.add(nums[i]);
+                }
+            }
+            return integerSet.size()>=3?thirdMax:firstMax;
+        }
+
+    public int thirdMaxLeetCodeApproach(int[] nums) {
+        Set<Integer> integerSet= new HashSet<Integer>();
+        for (int i=0; i<nums.length;i++){
+            integerSet.add(nums[i]);
+            if(integerSet.size()>3)
+                integerSet.remove(Collections.min(integerSet));
+        }
+        return integerSet.size()>=3?Collections.min(integerSet):Collections.max(integerSet);
+    }
+    //Plus one problem
+    public int[] plusOne(int[] digits) {
+        int flag=0;
+        for (int i=digits.length-1;i>=0;i--) {
+            if (digits[i]< 9) {
+                digits[i]=digits[i]+1;
+                return digits;
+            }
+            digits[i]=0;
+        }
+        int [] arr = new int[digits.length+1];
+        arr[0]=1;
+        return arr;
+    }
 
 
-//Pass  by reference
+
+    //Pass  by reference
     public static void main(String args[]){
       int[] arr=new int[]{0,1,1,1,0,2};
       int[] maj_elem=new int[]{0,1,1,1,1,2};

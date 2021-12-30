@@ -153,30 +153,34 @@ that node.*/
     }
 
     //O(max(m,n))
-    public static Node addLL(Node number1, Node number2) {
-        Node dummy = new Node(0);
-        Node p = number1;
-        Node q = number2;
-        Node sum = dummy;
-        int carryover = 0, val1 = 0, val2 = 0, sum_result = 0;
+    public static Node addTwoNumbers(Node l1, Node l2) {
 
-        while (p != null || q != null) {
+        Node n1=l1;
+        Node n2=l2;
+        Node dummyHead= new Node(0);
+        Node n3=dummyHead;
+        int sumDigit=0,carryOver=0;
+        //or condition because we have to continue even if one is not empty
+        //last node because we have to add last digit, hence last node is not null
+        //always evaluate with worst cases
+        while (n1!=null || n2!=null){
+            int digitOne=n1==null?0:n1.data;
+            int digitTwo=n2==null?0:n2.data;
+            sumDigit= (carryOver+ digitOne+digitTwo)%10;
+            carryOver=(carryOver+digitOne+digitTwo)/10;
+            n3.next= new Node(sumDigit);
+            if(n1!=null)
+                n1=n1.next;
+            if(n2!=null)
+                n2=n2.next;
+            n3=n3.next;
 
-            val1 = p != null ? p.data : 0;
-            val2 = q != null ? q.data : 0;
-            sum_result = val1 + val2 + carryover;
-            sum.next = new Node(sum_result % 10);
-            carryover = sum_result / 10;
-            p = p.next;
-            q = q.next;
-            sum = sum.next;
         }
-        if (carryover > 0)
-            sum.next = new Node(carryover);
+        if (carryOver!=0)
+            n3.next= new Node(carryOver);
+        return dummyHead.next;
 
-        return dummy.next;
     }
-
 
     //1->2->3->4->5//reduces to remove the L-n+1
     public static void removeNthNodeFromList(Node head, int n) {
