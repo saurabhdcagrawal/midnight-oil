@@ -508,7 +508,6 @@ public class ArrayProblems {
     }
 
 
-
     //Pass  by reference
     public static void main(String args[]){
       int[] arr=new int[]{0,1,1,1,0,2};

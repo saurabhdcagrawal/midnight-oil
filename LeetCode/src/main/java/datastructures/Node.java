@@ -474,6 +474,30 @@ that node.*/
             result.next = l2;
         return dummy.next;
     }
+    // Find the right most Non nine node , increment it and set the folowing nodes to 0
+    //Use sentinel node for cases such as 9->9->9
+    //Given a non-negative integer represented as a linked list of digits, plus one to the integer.
+    public Node plusOneLL(Node head) {
+        Node sentinelNode= new Node(0);
+        sentinelNode.next=head;
+        Node rightMostNonNineNode=sentinelNode;
+        Node n =head;
+        while(n!=null){
+            if(n.data!=9)
+                rightMostNonNineNode=n;
+            n=n.next;
+        }
+
+        rightMostNonNineNode.data+=1;
+
+        n = rightMostNonNineNode.next;
+
+        while(n!=null) {
+            n.data=0;
+            n=n.next;
+        }
+        return sentinelNode.data==0?head:sentinelNode;
+    }
 
     public static void main(String args[]) {
         Node n = new Node(1);
