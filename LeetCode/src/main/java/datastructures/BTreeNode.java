@@ -114,36 +114,69 @@ public class BTreeNode{
      }
 
   //leetcode version
-    public List<List<Integer>> levelOrder(BTreeNode root) {
-        List<List<Integer>> levelOrderList = new ArrayList();
-        if (root==null) return levelOrderList ;
-        Queue<BTreeNode> q = new LinkedList<BTreeNode>();
 
-        List<Integer> levelList= new ArrayList<Integer>();
+        public List<List<Integer>> levelOrder(BTreeNode root) {
+            List<List<Integer>> levelNodes = new ArrayList<>();
+            if(root==null)
+                return levelNodes;
+            Queue<BTreeNode> q = new LinkedList<BTreeNode>();
+            q.add(root);
+            q.add(null);
+            List<Integer> level = new ArrayList<Integer>();
+
+            while(!q.isEmpty()) {
+                root= (BTreeNode) q.remove();
+                if(root==null){
+                    levelNodes.add(level);
+                    level= new ArrayList<Integer>();
+                    if(!q.isEmpty())
+                        q.add(null);
+
+                } else {
+                    level.add(root.data);
+                    if (root.left!=null)
+                        q.add(root.left);
+                    if(root.right!=null)
+                        q.add(root.right);
+                }
+
+            }
+            q=null;
+            return levelNodes;
+        }
+
+    //Level with maximum sum
+    public int maxLevelSum(BTreeNode root) {
+        int sub_sum=0, max_sum=Integer.MIN_VALUE, level=1 ,max_level=0;
+        Queue q= new LinkedList<BTreeNode>();
         q.add(root);
         q.add(null);
-        BTreeNode temp=null;
+
         while(!q.isEmpty()){
-            temp=q.poll();
-            if(temp!=null)
-                levelList.add(temp.data);
-            if (temp==null){
-                levelOrderList.add(levelList);
-                levelList= new ArrayList<Integer>();
+            root=(BTreeNode)q.remove();
+            if (root==null){
                 if(!q.isEmpty())
                     q.add(null);
+                if(sub_sum>max_sum){
+                    max_sum=sub_sum;
+                    max_level=level;
+                }
+                sub_sum=0;
+                level++;
+            }else {
+                sub_sum+=root.data;
+                if (root.left!=null)
+                    q.add(root.left);
+                if (root.right!=null)
+                    q.add(root.right);
             }
-            if (temp!=null && temp.left!=null)
-                q.add(temp.left);
-            if(temp!=null && temp.right!=null)
-                q.add(temp.right);
-
         }
         q=null;
-        return levelOrderList;
+        return max_level;
     }
 
-     public static int findMinimumElement(BTreeNode root) {
+
+    public static int findMinimumElement(BTreeNode root) {
      if (root==null) return -1;
          while (root.left != null) {
              root = root.left;
@@ -355,6 +388,44 @@ public class BTreeNode{
        //     8
        //   5    11
        // 1   6
+
+  /************************************************Revamp***************/
+ /* Binary Tree Inorder Traversal */
+  public List<Integer> inorderTraversalRec(BTreeNode root) {
+             List<Integer> nodes= new ArrayList<Integer>();
+             inorderTraversalRec(root, nodes);
+             return nodes;
+         }
+        public void inorderTraversalRec(BTreeNode root, List<Integer> nodes) {
+            if (root != null) {
+                inorderTraversalRec(root.left, nodes);
+                nodes.add(root.data);
+                inorderTraversalRec(root.right, nodes);
+            }
+        }
+        public List<Integer> inorderTraversalIter(BTreeNode root){
+            List<Integer> nodes = new ArrayList<Integer> ();
+            Stack<BTreeNode> s = new Stack<BTreeNode>();
+
+            while(true) {
+                while (root!=null){
+                    s.push(root);
+                    root=root.left;
+                }
+
+                if(s.isEmpty())
+                    break;
+
+                BTreeNode node= (BTreeNode)s.pop();
+                nodes.add(node.data);
+
+                root=node.right;
+
+            }
+            return nodes;
+        }
+
+
      public  static void main(String args[]){
       BTreeNode root= new BTreeNode(8);
       BTreeNode.insertNode(root,11);

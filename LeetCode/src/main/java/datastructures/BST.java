@@ -13,6 +13,8 @@ import java.util.Queue;
 //set of nodes at a given level is called depth of a tree
 //set of all nodes at given depth is called level of a tree
 //root node is level 0
+//full binary tree--> Each node
+//complete binary tree --> every node except node at last level has 2 child nodes
 //size of node is the number of descendants a node has including itself
 //If every node has only one child we call it as a skew tree
 //if every node left child call left skew tree
