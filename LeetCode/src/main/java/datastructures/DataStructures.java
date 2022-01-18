@@ -25,8 +25,8 @@ public class DataStructures {
         number2.appendNode(6);
         number2.appendNode(4);
         Node.printNode(number2);
-        Node sum=Node.addLL(number1,number2);
-        Node.printNode(sum);
+        /*Node sum=Node.addLL(number1,number2);
+        Node.printNode(sum); */
         HashMap h= new HashMap();
         System.out.println("Duplicates removed code");
        Node n= new Node(5);

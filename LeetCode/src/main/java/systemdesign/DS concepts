@@ -1,0 +1,182 @@
+1) Scalability is the ability for a process/network or system to grow to support increased demand
+Scalability may be needed because of increased data volume or because of more work needed
+It comes at the cost of performance
+A scalable architecture helps to balance the load across different nodes
+Following types of scaling
+
+Horizontal scaling-> Add more servers/machines in your pool of resources to meet growing need.
+
+Vertical Scaling-> Needs downtime, limited by server capacity.. Increase the resources of a machine , Eg CPU, RAM , Storage
+
+2) A system is Reliable if it continues to deliver services even if one or more of its hardware or software components fail.
+It is achieved with the help of redundancy of data and software components
+
+3) Availability is how long a system is available to do its function
+High reliability guarantees high availability but not vice versa
+
+4) Efficiency generally for a DS it is throughput and latency
+
+5) Serviceability or Manageability is the ease with which system can be maintained or repaired.
+
+6)Load Balancing - Loan balancing is used to improve the availability and responsiveness, increase the efficiency of the system,
+remove single point of failure,reduce wait time. A load balancer is a hardware/software component that
+sits between client and server, distributes traffic across multiple backend servers as per an algorithm. It
+prevents an application server from being a single point of failure.
+Advantages->Less wait time, the new request does not need to wait for the previous request to be fully serviced
+Load balancing algorithms->Round Robin, Weighted Round Robin, Less Recently Used, Least connection method,IP hash.
+LB has to continuously health check back end nodes and see if they are up and running
+
+Load balancer itself can be a point of failure, to overcome this a second load balancer can be added to the top
+of current one. Active LB and passive LB
+
+7)Caching--> Uses the locality of reference principle.
+Something which is requested recently is more likely to be requested again.
+Cache is a short term memory that stores the results of a recent fetch or request.
+Cache exists in all level of application, hardware,OS, Browser, Applications.
+It makes sense for the cache to be closest to front end
+to avoid taxing the downstream systems.
+It helps in better utilization of existing resources
+In a distributed environment with multiple nodes you need global caches
+CDN cache(more frequently used for static data), distributed cache
+Cache invalidation... keep the cache consistent with the data (in case of data updation)
+Write through cache, Write back cache, write around cache
+Cache eviction policies-- LRU,MRU,LFU,MFU,FIFO,LIFO, Random removal
+
+8)Data Partitioning-- Breaking a large database into smaller parts (multiple smaller DB's) to improve reliability,
+performance and serviceability and load balancing. After one point vertical scaling is not possible and it is cheaper
+and more feasible to add a node.
+
+Sharding/Horizontal partition.. Data is distributed using keys. Every DB has same schema
+Vertical Partition: Data is stored differently(featured based) in different DB's. Schema will be different
+Directory based Partition: Have a lookup service to abstract away the partition logic. Loosely coupled
+
+Key or hash based partitioning, List based partitioning, Round Robin, Composite Partitioning
+Common issues
+How does de-normalization solve the issue related to data partitioning?
+Difficult to impose foreign key constraints lead to data inconsistency
+If partitioning changes, we have to rebalance the system leading to significant downtime as we may have to move the partition
+to the new location
+
+9)Indexes Speed up data retrieval, slows down writing data i.e writing performance (insert,updates, deletes)
+Remove unused indexes
+
+10) A proxy is software or hardware component that sit between the client and server.
+Forward proxy anonymize the client from the server, hide the identity of the client.
+Reverse proxy is used to anonymize the server from the client..
+Proxies can be used for cache data, filter/transform requests
+
+11)Redundancy and replication is duplicating the hardware/software components of a system used to perform key functions
+with an attempt to remove single point of failure
+Replication is usually for data. For eg in case of DBMS systems there is a primary replica and a secondary replica
+Updates first go to primary replica and then are slowly transitioned to secondary replica
+
+
+CAP theorem
+In presence of network partition, choose consistency or availability. In a DS system only 2 of 3 are guaranteed.
+Consistency->All clients/nodes see the same data at the same time..
+Availability-> In presence of network partition, non-failing nodes on either sides, respond to every request
+Partition tolerance->System should continue to operate and function even if there is a network partition
+leading to a comm breakdown between the nodes
+We cannot build a general data store that is continually available, sequentially consistent, and tolerant to any partition
+failures. We can only build a system that has any two of these three properties. Because, to be consistent, all nodes should
+see the same set of updates in the same order. But if the network loses a partition, updates in one partition might not make
+it to the other partitions before a client reads from the out-of-date partition after having read from the up-to-date one.
+The only thing that can be done to cope with this possibility is to stop serving requests from the out-of-date partition,
+but then the service is no longer 100% available.
+
+PACELC theorem (extension of CAP theorem)
+In case of network partition, there is trade off between consistency and availability
+However when the system is running normally in absence of partition, there is a trade off between consistency and latency
+RDBMS always choose consistency
+HBASE,Big table (big data) choose consistency over latency and availability
+Cassandra, Dynamo choose availability over consistency but otherwise choose lower latency over consistency
+MongoDB choose availability over consistency but otherwise choose consistency over latency
+
+
+
+Bloom filters??
+Quorum--> In a distributed system with data replicated across different nodes,
+quorum is the minimum number of nodes on which distributed operation(read/write) is performed to ensure that operation can be committed
+and called successful
+
+What value should we choose for a quorum? More than half of the number of nodes in the cluster:
+(N/2+1) where N is the total number of nodes in the cluster
+Quorum is achieved when nodes follow the below protocol: R + W > N where:
+N = nodes in the quorum group
+W = minimum write nodes
+R = minimum read nodes
+This will guarantee that every read will see at least one copy of latest value written
+
+Read more--
+Reading
+(N=3, W=1, R=3): fast write, slow read, not very durable
+(N=3, W=3, R=1): slow write, fast read, durable
+
+Leader&follower:Quorum (slow) Leader and follower is an alternate to quorum based DS approach
+
+Heartbeating is one of the mechanisms for detecting failures in a distributed system.
+If there is a central server, all servers periodically send a heartbeat message to it.
+If there is no central server, all servers randomly choose a set of servers and send them a
+heartbeat message every few seconds. This way, if no heartbeat message is received from a server
+for a while, the system can suspect that the server might have crashed. If there is no heartbeat
+within a configured timeout period, the system can conclude that the server is not alive anymore
+and stop sending requests to it and start working on its replacement.
+
+Polling is a technique where we check for fresh data over a given interval by periodically making API requests to a server.
+For example, we can use polling if there is data that changes frequently or we need to wait for the server to transition
+a given state.
+--Ajax polling (client request for  new data..sent requests every 0.5 second and receives response)
+The server has to respond even if there is no new data leading to empty HTTP responses and overhead
+--Long polling (client sends request and server sends response irregularly only when new data is available)
+--A real-world use case for polling would be if we used a third-party authentication provider (such as Firebase or Auth0 ) and
+need to wait on the result before we proceed. When a user registers, we send the user’s data to the authentication provider
+from the client. Then on the server, we wait for the response from the authentication provider and then create a user in our database.
+During this whole process, the client must wait through the authentication and the user creation on our server. Since we know
+this process will either succeed or fail reasonably quickly, we can be comfortable implementing a poll that will make API
+requests to our server every 1 second until we complete the process of registering and creating a new user.
+Once the response is available, server sends a new request
+Web sockets
+Server side events
+
+
+Checksum--> In a distributed system, data moves between nodes and it may be possible that data is lost/damaged/incomplete/corrupted
+when it arrives at one node from the other due to faults in storage,network or other software issues.
+For checksum Create a hash string on i/p using SHA/MD5 and send it as a part of the data. On receiving, recompute hash and see if matches
+with the stored checksum
+
+
+Tips
+1)In any kind of platform where we need to create a timeline, creation time should be part of primary key and used in data sharding
+(epoch time + auto incrementing sequence)
+The advantages of this.. we dont need to create extra index on creation time, write latency will reduce
+And also we do not need to filter to get latest tweets as our primary key has epoch time..
+2) Load balancer before cache servers, Key can be the owner id and value can be tweet objects in a doubly linked list fashion
+Insert new tweets at the head of the linked list and old can be removed from tail
+
+3) Cache structure you can discuss.. Key will be feed id, Value feed objects in a doubly linked list ot tree map fashion
+(sorted as per creation time?)..
+ Whenever users want to fetch more feed items, they can send the last FeedItemID they currently see in their newsfeed,
+ we can then jump to that FeedItemID in our hash-map and return next batch/page of feed items from there.
+
+Memcache
+It is often used to speed up dynamic database-driven websites by caching data and objects in RAM to reduce the number of times an
+external data source (such as a database or API) must be read. Memcached is free and open-source software, licensed
+under the Revised BSD license. It is a distributed hashtable.
+
+Information retrieval/search Index
+Boolean Retrieval Model: Term Document incidence matrix
+Inverted Index--> For each term t in documents/corpus we store a list of doc's(doc ids') that contains t
+The index is stored in form of dictionary and list for each entry(term) is called postings list that contain postings (list of docids
+containing the term)
+And operator intersect the postings list for both terms
+Brutus AND Caesar
+Merge the 2 postings list... If both are pointing to same doc id, add it to the list
+for OR... If either is pointing to a doc id, add it to the list
+Collection of documents is called corpus
+Tokenization-- Parse each document, split into tokens, stemming, stop word removal ,normalized tokens
+(friend, 1) , (token, 1) , (countryman,1)
+This goes to indexer that builds an inverted index
+First sort the tuples as per term, remove duplicate tuples
+(term,doc freq)->postingslist
+Storing doc freq is for optimization... process a query based on order of increasing doc freq
+https://www.youtube.com/watch?v=Hy78R3yuutg&list=PL0ZVw5-GryEkGAQT7lX7oIHqyDPeUyOMQ&index=4&ab_channel=OresoftLWC

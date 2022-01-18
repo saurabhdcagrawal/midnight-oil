@@ -271,8 +271,7 @@ public class StringProbs {
 
         }
         return new ArrayList(hmap.values());
-
-        class Solution {
+    }
 
             public String longestCommonPrefixHscan(String[] strs) {
                 if (strs == null || strs.length == 0) return "";
@@ -310,9 +309,7 @@ public class StringProbs {
                 }
                 return strs[0];
             }
-        }
 
-    }
 
 
     public static void main(String args[]) {
