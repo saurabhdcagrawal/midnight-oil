@@ -62,22 +62,61 @@ public class SearchSort {
 
         return arr;
     }
-    //Sort like we sort deck of cards..from arr[1] to arr[n-1], adjust arr[0]
-    //{25,//2,34,56,8}
+    //{45,//2,34,56,8}
+    //Right shift the cards from 0 to i-1 and place the key on left
+    // 1: Iterate from arr[1] to arr[n] over the array.
+    //2: Compare the current element (key i) to its predecessor(list of cards from 0 to i-1).
+    //3: If the key element is smaller than its predecessor
+    // Move the greater elements one position to right to make space for the key...
+    //place the key on its position to left in the end
     public static int[] insertionSort(int[] arr){
+        System.out.println("Original array");
+        System.out.println(Arrays.toString(arr));
         int n= arr.length;
-        for(int i=0; i<n; i++) {
+        for(int i=1; i<n; i++) {
             int key=arr[i];
-            //while()
-        }
-
+            int j=i-1;
+            System.out.println("Key is " +key);
+            System.out.println("Predecessor is " +arr[j]);
+            while(j>=0 && key<arr[j]){
+                arr[j+1]=arr[j];
+                j=j-1;
+                System.out.println("Shifting for pass "+i+" "+Arrays.toString(arr));
+            }
+            arr[j+1]=key;
+            System.out.println("Pass "+i+" "+Arrays.toString(arr));        }
         return arr;
+    }
+    //Counting sort
+    public static void countingSort(int[] arr){
+        System.out.println("Original Array"+Arrays.toString(arr));
+        int largest=arr[0];
+        for(int i=0;i<arr.length;i++){
+            if(arr[i]>largest)
+                largest=arr[i];
+        }
+        int[] count_arr= new int[largest+1];
+        for(int i=0;i<arr.length;i++)
+            count_arr[arr[i]]++;
+        System.out.println("Count array"+Arrays.toString(count_arr));
+        for(int i=1;i<count_arr.length;i++)
+            count_arr[i]+=count_arr[i-1];
+        System.out.println("Count array after cumulative sum"+Arrays.toString(count_arr));
+        int[] sorted_arr=new int[arr.length];
+        for(int i=0;i<arr.length;i++){
+            sorted_arr[count_arr[arr[i]]-1]=arr[i];
+            System.out.println(Arrays.toString(sorted_arr));
+            count_arr[arr[i]]--;
+        }
+        for(int i=0;i<arr.length;i++)
+            arr[i]=sorted_arr[i];
     }
     public static int[] mergeSort(int[] arr){
         int n= arr.length;
         for(int i=0; i<n; i++) {
             int key=arr[i];
-
+            int index=i+1;
+           // while()
         }
 
         return arr;
@@ -97,12 +136,25 @@ public class SearchSort {
         System.out.println("Final sorted array");
         System.out.println(Arrays.toString(arr2));
         System.out.println("***************************************");
-        System.out.println("Insertion Sort");
+        System.out.println("Selection Sort");
         int[] arr3= {25,2,34,56,8};
         SearchSort.selectionSort(arr3);
         System.out.println("Final sorted array");
         System.out.println(Arrays.toString(arr3));
+        System.out.println("***************************************");
 
+        System.out.println("Insertion Sort");
+        int[] arr4= {45,2,34,56,8};
+        SearchSort.insertionSort(arr4);
+        System.out.println("Final sorted array");
+        System.out.println(Arrays.toString(arr4));
+        System.out.println("***************************************");
+
+        System.out.println("Counting Sort");
+        int[] arr5= {45,2,34,56,8};
+        SearchSort.countingSort(arr5);
+        System.out.println("Final sorted array");
+        System.out.println(Arrays.toString(arr5));
     }
 
 
