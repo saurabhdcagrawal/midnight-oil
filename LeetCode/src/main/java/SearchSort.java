@@ -1,6 +1,9 @@
 package main.java;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public class SearchSort {
  //Compare consecutive pairs
@@ -111,6 +114,39 @@ public class SearchSort {
         for(int i=0;i<arr.length;i++)
             arr[i]=sorted_arr[i];
     }
+    public static void bucketSort(float[] arr, int bucketSize){
+        System.out.println("Original Array"+Arrays.toString(arr));
+
+        //Create buckets of arraylist
+        @SuppressWarnings("unchecked")
+        ArrayList<Float>[] buckets= new ArrayList[bucketSize];
+
+        // Find bucket for array, multiply by bucket size, take floor value,
+        //once you go to index go to the bucket and add the element
+         for(int i=0; i<arr.length;i++){
+            int bucketIndex= (int)(arr[i]* bucketSize);
+            if(buckets[bucketIndex]==null){
+                ArrayList<Float> bucketList= new ArrayList<>();
+                buckets[bucketIndex]=bucketList;
+         }
+            buckets[bucketIndex].add(arr[i]);
+        }
+         //Sort individual buckets using stable sort.. Quicksort
+        for(int i=0; i<bucketSize;i++) {
+            if(buckets[i]!=null)
+                Collections.sort(buckets[i]);
+        }
+         //Now navigate through each bucket and element one by one to original array
+        int index=0;
+        for(int i=0; i<bucketSize;i++)
+            if(buckets[i]!=null){
+                for(int j=0;j<buckets[i].size();j++){
+                 arr[index]=buckets[i].get(j);
+                 index++;
+                }
+        }
+    }
+
     public static int[] mergeSort(int[] arr){
         int n= arr.length;
         for(int i=0; i<n; i++) {
@@ -155,6 +191,14 @@ public class SearchSort {
         SearchSort.countingSort(arr5);
         System.out.println("Final sorted array");
         System.out.println(Arrays.toString(arr5));
+
+        System.out.println("***************************************");
+
+        System.out.println("Bucket Sort");
+        float[] arr6= {0.42f,0.32f,0.23f,0.52f,0.25f,0.47f,0.51f};
+        SearchSort.bucketSort(arr6,10);
+        System.out.println("Final sorted array");
+        System.out.println(Arrays.toString(arr6));
     }
 
 
