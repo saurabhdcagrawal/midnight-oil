@@ -205,7 +205,7 @@ public class SearchSort {
     public static void sortedMerge(int[] arrA, int[] arrB, int lengthA) {
         int i = lengthA - 1;
         int j = arrB.length - 1;
-        int k = lengthA+arrB.length-1;
+        int k = lengthA + arrB.length - 1;
         while (i >= 0 && j >= 0) {
             if (arrA[i] > arrB[j]) {
                 arrA[k] = arrA[i];
@@ -224,23 +224,109 @@ public class SearchSort {
 
 
     }
+
     //(lips,cat,slip,mate,hello,tame)
-    public static void AnagramSort(String[] a){
-        Arrays.sort(a,new AnagramCustomComparator());
+    public static void AnagramSort(String[] a) {
+        Arrays.sort(a, new AnagramCustomComparator());
 
     }
+
     //to convert from char arr to string use new str
-    private static class AnagramCustomComparator implements Comparator<String>{
+    private static class AnagramCustomComparator implements Comparator<String> {
         @Override
         public int compare(String s1, String s2) {
-        char[] charS1=s1.toCharArray();
-        char[] charS2=s2.toCharArray();
-        Arrays.sort(charS1);
-        Arrays.sort(charS2);
-        return (new String(charS1).compareTo(new String(charS2)));
+            char[] charS1 = s1.toCharArray();
+            char[] charS2 = s2.toCharArray();
+            Arrays.sort(charS1);
+            Arrays.sort(charS2);
+            return (new String(charS1).compareTo(new String(charS2)));
         }
     }
 
+    //        String[] str_arr = {"at", "", "", "", "", "ball", "", "", "car", "", "", "dad", ""};
+    //empty strings changes lexicographic order
+    //within an interval, we are searching for nearest non empty string ,
+    // only if you find in that interval then its valid , else the algorithm won't converge
+    //return vs no return to think
+    public static int sparseSearch(String[] arr, String str, int low, int high){
+        int mid = (low + high) / 2;
+        System.out.println("Low " + low + " High " + high + " Mid " + mid );
+        if (arr[mid].isEmpty()) {
+            int left = mid - 1;
+            int right = mid + 1;
+            while (true) {
+                System.out.println( "Left " + left + " Right " + right);
+                if (left < low && right > high)
+                    return -1;
+                else if (!arr[left].isEmpty()&&left>=low) {
+                    mid = left;
+                    System.out.println("Mid set to " +mid);
+                    break;
+                } else if (!arr[right].isEmpty()&&right<=high) {
+                    mid = right;
+                    System.out.println("Mid set to " +mid);
+                    break;
+                }
+                left--;
+                right++;
+            }
+        }
+        if (arr[mid].equals(str))
+            return mid;
+        else if (arr[mid].compareTo(str) < 0)
+            return sparseSearch(arr,str,mid+1,high);
+        else
+            return sparseSearch(arr,str,low,mid-1);
+    }
+
+    public static int sparseSearch(String[] arr, String str){
+        if(str.isEmpty()||arr==null||arr.length==0)
+            return -1;
+        return  sparseSearch(arr,str,0,arr.length-1);
+    }
+
+    //Technique1 O(n)
+    // swap center element with adjacent largest element.
+    //continue doing this for peak and valleys
+    //12,13,15,7, 9,10,14
+    //12,15,13,7,9,10,14
+    //lets say if we swap 13 and 7(swap middle with left) for next sequence
+    //, since middle is less than left, swapping middle to left will lead to an even lesser element ..unaffaecting the previous sequence
+    //12,15,7,13,9,14,10 //12,15,7,13,9,14,10
+    //Technique 2 sort and swap technique o (nlogn)
+    //7,9,10,12,13,14,15
+    //9,7,12,10,14,13,15
+    //This approach ensures peaks are at position 1,3,5.. and valleys are at 0,2,4,6
+
+    public static void sortValleysAndPeaks(int arr[]){
+        for(int i=1; i <arr.length;i=i+2){
+            int maxPosn=getMaxPosition(arr,i-1,i,i+1);
+            if((arr[i]!=maxPosn))
+                swap(arr,i,maxPosn);
+        }
+
+    }
+    public static int getMaxPosition(int[] arr,int a,int b,int c) {
+     int valueA= a<arr.length?arr[a]:Integer.MIN_VALUE;
+     int valueB=b<arr.length?arr[b]:Integer.MIN_VALUE;
+     int valueC=c<arr.length?arr[c]:Integer.MIN_VALUE;
+     int getMax=Math.max(Math.max(valueA,valueB),valueC);
+     if(getMax==valueA)
+         return a;
+     else if(getMax==valueB)
+         return b;
+     else
+         return c;
+
+    }
+
+    public static void swap(int[] arr,int a,int b) {
+        if(a<arr.length&& b<arr.length) {
+            int temp = arr[a];
+            arr[a] = arr[b];
+            arr[b] = temp;
+        }
+    }
     /*External sort 900 MB 0f data on disk..
     100 MB of memory available
     Divide into 9 chunks of 100 MB, bring chunk in memory everytime, sort the chunk and write back to disk;
@@ -252,7 +338,7 @@ public class SearchSort {
     and when its empty mark as exhausted and do not use it for merge
 */
 
-        public static void main(String args[]) {
+    public static void main(String args[]) {
         System.out.println("***************************************");
         System.out.println("Bubble sort");
         int[] arr1 = {25, 2, 34, 56, 8};
@@ -314,11 +400,19 @@ public class SearchSort {
 
         System.out.println("***************************************");
         System.out.println("Anagram sort problem");
-        String[] a={"lips","cat","slip","mate","hello","tame"};
-        System.out.println("Original array"+Arrays.toString(a));
+        String[] a = {"lips", "cat", "slip", "mate", "hello", "tame"};
+        System.out.println("Original array" + Arrays.toString(a));
         SearchSort.AnagramSort(a);
-        System.out.println("Sorted with custom"+Arrays.toString(a));
+        System.out.println("Sorted with custom" + Arrays.toString(a));
 
+        System.out.println("***************************************");
+        String[] str_arr = {"at", "", "", "", "", "ball", "", "", "car", "", "", "dad", ""};
+        System.out.println("Position is at" + SearchSort.sparseSearch(str_arr, "chi"));
+
+        System.out.println("***************************************Valley and Peaks ");
+        int[] arr_int = {5, 3, 1, 2, 3};
+        SearchSort.sortValleysAndPeaks(arr_int);
+        System.out.println(Arrays.toString(arr_int));
 
     }
 
