@@ -1,4 +1,5 @@
-package main.java;
+package main.java.company;
+
 
 import java.util.*;
 //Dont forget base condition of binary search in recursion
