@@ -1,7 +1,7 @@
 package main.java;
 
 import java.util.*;
-
+//Dont forget base condition of binary search in recursion
 public class SearchSort {
     //Compare consecutive pairs
     //starting from first element, compare with the next element, swap the pairs if the element at higher index
@@ -248,23 +248,26 @@ public class SearchSort {
     //within an interval, we are searching for nearest non empty string ,
     // only if you find in that interval then its valid , else the algorithm won't converge
     //return vs no return to think
-    public static int sparseSearch(String[] arr, String str, int low, int high){
+    public static int sparseSearch(String[] arr, String str, int low, int high) {
+        //Base condition
+        if(low>high)
+            return -1;
         int mid = (low + high) / 2;
-        System.out.println("Low " + low + " High " + high + " Mid " + mid );
+        System.out.println("Low " + low + " High " + high + " Mid " + mid);
         if (arr[mid].isEmpty()) {
             int left = mid - 1;
             int right = mid + 1;
             while (true) {
-                System.out.println( "Left " + left + " Right " + right);
+                System.out.println("Left " + left + " Right " + right);
                 if (left < low && right > high)
                     return -1;
-                else if (!arr[left].isEmpty()&&left>=low) {
+                else if (!arr[left].isEmpty() && left >= low) {
                     mid = left;
-                    System.out.println("Mid set to " +mid);
+                    System.out.println("Mid set to " + mid);
                     break;
-                } else if (!arr[right].isEmpty()&&right<=high) {
+                } else if (!arr[right].isEmpty() && right <= high) {
                     mid = right;
-                    System.out.println("Mid set to " +mid);
+                    System.out.println("Mid set to " + mid);
                     break;
                 }
                 left--;
@@ -274,15 +277,15 @@ public class SearchSort {
         if (arr[mid].equals(str))
             return mid;
         else if (arr[mid].compareTo(str) < 0)
-            return sparseSearch(arr,str,mid+1,high);
+            return sparseSearch(arr, str, mid + 1, high);
         else
-            return sparseSearch(arr,str,low,mid-1);
+            return sparseSearch(arr, str, low, mid - 1);
     }
 
-    public static int sparseSearch(String[] arr, String str){
-        if(str.isEmpty()||arr==null||arr.length==0)
+    public static int sparseSearch(String[] arr, String str) {
+        if (str.isEmpty() || arr == null || arr.length == 0)
             return -1;
-        return  sparseSearch(arr,str,0,arr.length-1);
+        return sparseSearch(arr, str, 0, arr.length - 1);
     }
 
     //Technique1 O(n)
@@ -298,35 +301,85 @@ public class SearchSort {
     //9,7,12,10,14,13,15
     //This approach ensures peaks are at position 1,3,5.. and valleys are at 0,2,4,6
 
-    public static void sortValleysAndPeaks(int arr[]){
-        for(int i=1; i <arr.length;i=i+2){
-            int maxPosn=getMaxPosition(arr,i-1,i,i+1);
-            if((arr[i]!=maxPosn))
-                swap(arr,i,maxPosn);
+    public static void sortValleysAndPeaks(int arr[]) {
+        for (int i = 1; i < arr.length; i = i + 2) {
+            int maxPosn = getMaxPosition(arr, i - 1, i, i + 1);
+            if ((arr[i] != maxPosn))
+                swap(arr, i, maxPosn);
         }
 
     }
-    public static int getMaxPosition(int[] arr,int a,int b,int c) {
-     int valueA= a<arr.length?arr[a]:Integer.MIN_VALUE;
-     int valueB=b<arr.length?arr[b]:Integer.MIN_VALUE;
-     int valueC=c<arr.length?arr[c]:Integer.MIN_VALUE;
-     int getMax=Math.max(Math.max(valueA,valueB),valueC);
-     if(getMax==valueA)
-         return a;
-     else if(getMax==valueB)
-         return b;
-     else
-         return c;
+
+    public static int getMaxPosition(int[] arr, int a, int b, int c) {
+        int valueA = a < arr.length ? arr[a] : Integer.MIN_VALUE;
+        int valueB = b < arr.length ? arr[b] : Integer.MIN_VALUE;
+        int valueC = c < arr.length ? arr[c] : Integer.MIN_VALUE;
+        int getMax = Math.max(Math.max(valueA, valueB), valueC);
+        if (getMax == valueA)
+            return a;
+        else if (getMax == valueB)
+            return b;
+        else
+            return c;
 
     }
 
-    public static void swap(int[] arr,int a,int b) {
-        if(a<arr.length&& b<arr.length) {
+    public static void swap(int[] arr, int a, int b) {
+        if (a < arr.length && b < arr.length) {
             int temp = arr[a];
             arr[a] = arr[b];
             arr[b] = temp;
         }
+    }/*
+    Sorted Search, No Size: You are given an array-like data structure Listy which lacks a size
+    method. It does, however, have an elementAt ( i) method that returns the element at index i in
+    0( 1) time. If i is beyond the bounds of the data structure, it returns -1. (For this reason, the data
+    structure only supports positive integers.) Given a Listy which contains sorted, positive integers,
+    find the index at which an element x occurs. If x occurs multiple times, you may return any index*/
+
+    //Creating listy data structure
+    public static class Listy {
+        private int[] arr;
+
+        public Listy() {
+            arr = new int[950];
+            for (int i = 1; i < arr.length; i++)
+                arr[i] = arr[i - 1] + 2;
+        }
+
+        public int elementAt(int i) {
+            if (i >= 950)
+                return -1;
+            else
+                return arr[i];
+        }
     }
+
+    // try to find size in o(logn)..while searching for size if we find the upper end within which the element is present, we can ignore the size beyond it
+    public static int sortedSearchNoSize(Listy list, int elem) {
+        int i = 1;
+        //tweak for performance...
+        while (list.elementAt(i) != -1 && list.elementAt(i) <= elem) {
+            i = i * 2;
+        }
+        System.out.println("Size of listy " + i + " " + list.elementAt(i));
+        return sortedSearchNoSize(list, 0, i, elem);
+    }
+
+    public static int sortedSearchNoSize(Listy list, int low, int high, int elem) {
+        //base condition
+        if (low > high)
+            return -1;
+        int mid = (low + high) / 2;
+        System.out.println("Mid is " + mid);
+        if (list.elementAt(mid) == -1 || list.elementAt(mid) > elem)
+            return sortedSearchNoSize(list, low, mid - 1, elem);
+        else if (list.elementAt(mid) == elem)
+            return mid;
+        else
+            return sortedSearchNoSize(list, mid + 1, high, elem);
+    }
+
     /*External sort 900 MB 0f data on disk..
     100 MB of memory available
     Divide into 9 chunks of 100 MB, bring chunk in memory everytime, sort the chunk and write back to disk;
@@ -413,6 +466,11 @@ public class SearchSort {
         int[] arr_int = {5, 3, 1, 2, 3};
         SearchSort.sortValleysAndPeaks(arr_int);
         System.out.println(Arrays.toString(arr_int));
+
+        System.out.println("***************************************Listy ");
+        System.out.println(SearchSort.sortedSearchNoSize(new Listy(), 102));
+        System.out.println(SearchSort.sortedSearchNoSize(new Listy(), 20001));
+
 
     }
 
