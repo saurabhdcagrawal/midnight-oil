@@ -380,6 +380,57 @@ public class SearchSort {
         else
             return sortedSearchNoSize(list, mid + 1, high, elem);
     }
+      /*Given an M x N matrix in which each row and each column is sorted in
+    ascending order, write a method to find an element
+        {35,45,55,65},
+        {40,50,60,70},
+        {52,54,62,73},
+        {57,58,64,75}
+       */
+    // if first number in col > x then go left
+    //if last number in col <x then go right
+    //if first number in row>x then go up
+    //if first number in row<x then go down
+    //Start with last column first element
+    public static boolean findElementInOrderedMatrix(int[][] matrix, int elem){
+        int rowSize=matrix.length;
+        int colSize=matrix[0].length;
+        int row=0,col=rowSize-1;
+        while (row<rowSize && col>=0){
+                if (matrix[row][col]==elem)
+                    return true;
+                else if (matrix[row][col]>elem)
+                    col--;
+                else
+                    row++;
+        }
+        return false;
+    }
+//Once you convert the matrix to a m*n array, To find position of the element you have to divide by col size for x
+//and for y you have to take modulo with col size
+    public static boolean findElementInSortedMatrix(int[][] matrix, int target) {
+            if(matrix.length==0||matrix==null)
+                return false;
+            int rowSize=matrix.length;
+            int colSize=matrix[0].length;
+            int high=rowSize*colSize-1;
+            int low=0;
+            while(low<=high){
+                int mid=low+(high-low)/2;
+                int rowPosn=mid/colSize;
+                int colPosn=mid%colSize;
+                int element=matrix[rowPosn][colPosn];
+                if(element==target)
+                    return true;
+                else if(element>target)
+                    high=mid-1;
+                else
+                    low=mid+1;
+
+            }
+            return false;
+    }
+
 
     /*External sort 900 MB 0f data on disk..
     100 MB of memory available
@@ -471,6 +522,18 @@ public class SearchSort {
         System.out.println("***************************************Listy ");
         System.out.println(SearchSort.sortedSearchNoSize(new Listy(), 102));
         System.out.println(SearchSort.sortedSearchNoSize(new Listy(), 20001));
+
+        System.out.println("*Find an element in matrix where rows are columns are sorted");
+        int[][] matrix= { {35,45,55,65},{40,50,60,70},{52,54,62,73},{57,58,64,75} };
+        System.out.println(SearchSort.findElementInOrderedMatrix(matrix,73));
+
+        System.out.println("****Find an element in sorted matrix");
+        int[][] matrix1= { {1,3,5,7},{10,11,16,20},{23,30,34,60}};
+
+        System.out.println(SearchSort.findElementInSortedMatrix(matrix1,3));
+        System.out.println(SearchSort.findElementInSortedMatrix(matrix1,82));
+
+
 
 
     }
