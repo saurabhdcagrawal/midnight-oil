@@ -392,6 +392,9 @@ public class SearchSort {
     //if first number in row>x then go up
     //if first number in row<x then go down
     //Start with last column first element
+    //Search space reduction or pruning
+    //In every iteration we either increment a column or decrement a column, so since there are m rows and n columns
+    //maximum step is O(m+n)
     public static boolean findElementInOrderedMatrix(int[][] matrix, int elem){
         int rowSize=matrix.length;
         int colSize=matrix[0].length;
@@ -416,6 +419,7 @@ public class SearchSort {
             int high=rowSize*colSize-1;
             int low=0;
             while(low<=high){
+                //To avoid overflow
                 int mid=low+(high-low)/2;
                 int rowPosn=mid/colSize;
                 int colPosn=mid%colSize;
@@ -431,6 +435,82 @@ public class SearchSort {
             return false;
     }
 
+    //Rotate matrix
+     /*{35,45,55,65},
+       {40,50,60,70},
+       {52,54,62,73},
+       {57,58,64,75 }
+       */
+    //in a matrix there are N/2 cycles, we rotate every cycle
+    public static void rotateMatrix(int[][] matrix) {
+        if(matrix.length==0||matrix==null)
+            return;
+        int n= matrix.length;
+         //we rotate in layers, total layers to rotate will be N/2
+        //our row goes from 0 to N/2
+        for(int i=0; i<n/2; i++){
+            // we rotate diagonally, so our column will always be equal to row number
+            //column is bound by n-i-1..as from both ends the layer gets constricted
+                for (int j=i;j<n-i-1;j++){
+                    //see the movement to find the indices whats fixed vs whats moving
+                  /*   top = matrix[i][j];
+                       left=matrix[n-j-1][i];
+                       bottom=matrix[n-i-1][n-j-1];
+                       Upar se niche
+                       right=matrix[j][n-i-1];*/
+                      int top = matrix[i][j];
+                      matrix[i][j]=matrix[n-j-1][i];
+                      matrix[n-j-1][i]=matrix[n-i-1][n-j-1];
+                      matrix[n-i-1][n-j-1]=matrix[j][n-i-1];
+                      matrix[j][n-i-1]=top;
+            }
+        }
+       }
+
+    public static void printMatrix(int[][]matrix){
+        for (int i=0;i<matrix.length;i++){
+            //System.out.println();
+            for (int j=0; j <matrix[0].length;j++)
+             System.out.print(matrix[i][j]+ " ");
+            System.out.println("");
+        }
+    }
+
+        public static List<Integer> spiralOrder(int[][] matrix) {
+         int m=matrix.length;
+         int n=matrix[0].length;
+         int top=0;
+         int left=0;
+         int right=n-1;
+         int bottom=m-1;
+         List<Integer> integerList= new ArrayList<Integer>();
+         //total size should be m*n
+         while(integerList.size()<m*n){
+             for(int j=left;j<=right;j++)
+                 integerList.add(matrix[top][j]);
+             for(int i=top+1;i<=bottom;i++)
+                 integerList.add(matrix[i][right]);
+             // [[1,2,3,4],
+             // [5,6,7,8],
+             // [9,10,11,12]]
+             if(top!=bottom) {
+                 for (int j = right - 1; j >= left; j--)
+                     integerList.add(matrix[bottom][j]);
+             }
+              /*[7
+              9
+              6]
+*/           if(left!=right) {
+                 for (int i = bottom - 1; i > top; i--)
+                     integerList.add(matrix[i][left]);
+             }
+             top++;
+             left++;
+             bottom--;
+             right--;
+         }
+         return integerList;
+    }
 
     /*External sort 900 MB 0f data on disk..
     100 MB of memory available
@@ -533,9 +613,16 @@ public class SearchSort {
         System.out.println(SearchSort.findElementInSortedMatrix(matrix1,3));
         System.out.println(SearchSort.findElementInSortedMatrix(matrix1,82));
 
+        System.out.println("Rotate matrix or Spiral matrix");
+        int[][] matrix2= { {35,45,55,65},{40,50,60,70},{52,54,62,73},{57,58,64,75} };
+        printMatrix(matrix2);
+        SearchSort.rotateMatrix(matrix2);
+        System.out.println("Rotated matrix ****");
+        printMatrix(matrix2);
 
-
-
+        System.out.println("Print matrix in spiral form");
+        int[][] matrix3= { {1,2,3,4},{5,6,7,8},{9,10,11,12}};
+        System.out.println(SearchSort.spiralOrder(matrix3));
     }
 
 
