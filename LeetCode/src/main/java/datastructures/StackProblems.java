@@ -1,24 +1,26 @@
 package main.java.datastructures;
+import java.util.HashMap;
 import java.util.Stack;
 public class StackProblems {
     //{{{{}}}
-    public boolean isBalancedParenthesis(String str) {
-        if (str == null) return true;
-        Stack<Character> s = new Stack<Character>();
-        for (int i = 0; i < str.length(); i++) {
-            if (str.charAt(i) == '{' || str.charAt(i) == '[' || str.charAt(i) == '(') {
-                s.push(str.charAt(i));
-            } else if (str.charAt(i) == '}' || str.charAt(i) == ']' || str.charAt(i) == ')') {
-                if (s.isEmpty() || !isMatchingChar(s.pop(), str.charAt(i)))
+    public boolean isValidParentheses(String s) {
+        Stack<Character> st = new Stack<Character>();
+        HashMap<Character,Character> mapping= new HashMap<Character,Character>();
+        mapping.put('}','{');
+        mapping.put(']','[');
+        mapping.put(')','(');
+        for(int i=0;i<s.length();i++){
+            if(mapping.containsKey(s.charAt(i))){
+                if(st.isEmpty()||mapping.get(s.charAt(i))!=st.pop())
                     return false;
             }
-        }
-        if (s.isEmpty())
-            return true;
-        else return false;
-    }
 
-    public boolean isMatchingChar(char c1, char c2) {
+            else
+                st.push(s.charAt(i));
+        }
+        return st.isEmpty();
+    }
+    /*public boolean isMatchingChar(char c1, char c2) {
         if (c1 == '{' && c2 != '}')
             return false;
         else if (c1 == '[' && c2 != ']')
@@ -27,8 +29,7 @@ public class StackProblems {
             return false;
 
         return true;
-    }
-
+    }*/
     //find longest parentheses
    // ((()
    //())))
@@ -78,10 +79,11 @@ public class StackProblems {
            return s2;
          }
 
+
     public static void main(String args[]) {
     StackProblems sp = new StackProblems();
-    System.out.println(sp.isBalancedParenthesis("{([])}")==true?"Balanced":"Unbalanced");
-    System.out.println(sp.isBalancedParenthesis("{([{])}")==true?"Balanced":"Unbalanced");
+    System.out.println(sp.isValidParentheses("{([])}")==true?"Balanced":"Unbalanced");
+    System.out.println(sp.isValidParentheses("{([{])}")==true?"Balanced":"Unbalanced");
 
     }
 }
