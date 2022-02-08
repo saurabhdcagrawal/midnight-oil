@@ -194,7 +194,10 @@ public class DPAndRecursion {
 
     public static int coinProblemDP(int n, int[] denoms){
         int[][] map= new int[n+1][denoms.length+1];
-        return coinProblemDP(n,denoms,map,0);
+        int value=coinProblemDP(n,denoms,map,0);
+        printMatrix(map);
+        return value;
+        //return coinProblemDP(n,denoms,map,0);
     }
 
     public static int coinProblemDP(int amount, int[] denoms,int[][]map,int index){
@@ -209,7 +212,6 @@ public class DPAndRecursion {
             ways += coinProblemDP(remainingAmount, denoms,map, index+1);
         }
         map[amount][index]=ways;
-        //printMatrix(map);
         return map[amount][index];
     }
 
@@ -496,10 +498,10 @@ public class DPAndRecursion {
         System.out.println(uniquePathsWithObstaclesMemoization(obstaclePath));
 
         System.out.println("Coin problem");
-        int [] denoms={25,10,5,1};
-        System.out.println(coinProblemRecurse(50,denoms));
+        int [] denoms={5,2,1};
+        System.out.println(coinProblemRecurse(8,denoms));
         System.out.println("Coin problem DP");
-        System.out.println(coinProblemDP(50,denoms));
+        System.out.println(coinProblemDP(8,denoms));
     }
 
 

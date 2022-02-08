@@ -309,8 +309,26 @@ public class StringProbs {
                 }
                 return strs[0];
             }
+// Check if a string's permutation can be palindrome
+    //for even length words eg noon, deed , count of all chars should be even
+    //for odd length words e.g madam, at the most one letter can have odd numbered counts
+    //chars in word with odd numbered count <=1 in any palindrome
+    public boolean canPermutePalindrome(String s) {
 
+        int countOdd=0;
+        int [] countChar = new int [26];
+        for (int i=0; i<s.length();i++){
+            int index=s.charAt(i)-'a';
+            countChar[index]++;
+        }
+        for (int i=0; i<countChar.length;i++){
+            if(countChar[i]%2!=0)
+                countOdd++;
 
+        }
+        return countOdd<=1?true:false;
+
+    }
 
     public static void main(String args[]) {
         StringProbs sp = new StringProbs();
