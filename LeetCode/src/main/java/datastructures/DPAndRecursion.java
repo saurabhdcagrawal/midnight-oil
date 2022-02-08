@@ -461,6 +461,37 @@ public class DPAndRecursion {
              System.out.println(head+c+tail);
              return head+c+tail;
  }
+//abcde
+
+    public static ArrayList<String> getAllPermsOfString(String str) {
+        if(str==null)
+            return null;
+        ArrayList<String> perms = new ArrayList<String>();
+        if (str.length() == 0) {
+            perms.add(str);
+            return perms;
+        }
+        int index=0;
+        char c = str.charAt(0);
+        ArrayList<String> words = getAllPermsOfString(str.substring(1));
+        for (String word : words)
+            perms.addAll(getAllPermsWithNewChar(c, word));
+
+        return perms;
+    }
+  //less than equal to word length, substring of stringlength is "", substring(1) remaining string, substring(0) entire string
+     public static ArrayList<String> getAllPermsWithNewChar(char c, String word){
+         ArrayList<String> words = new ArrayList<String>();
+         int length=word.length();
+         for(int i=0;i<=word.length();i++){
+             String begin=word.substring(0,i);
+             String end=word.substring(i);
+             String newWord=begin+c+end;
+             words.add(newWord);
+         }
+         return words;
+        }
+
 
 
 
@@ -502,6 +533,9 @@ public class DPAndRecursion {
         System.out.println(coinProblemRecurse(8,denoms));
         System.out.println("Coin problem DP");
         System.out.println(coinProblemDP(8,denoms));
+        System.out.println("Get all perms of a word");
+        System.out.println(getPermutations("abcd"));
+        System.out.println(getAllPermsOfString("abcd"));
     }
 
 

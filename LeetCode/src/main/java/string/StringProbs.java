@@ -329,6 +329,31 @@ public class StringProbs {
         return countOdd<=1?true:false;
 
     }
+//Utility method to remove non alpha numeric chars
+// String builder has reverse method
+//Use character class to lower case, to is letter or digit for utility methods
+//inner loop should also run until i<j
+public boolean isPalindrome(String s) {
+
+    for(int i=0,j=s.length()-1;i<j;i++,j--){
+        //Character.isLetterOrDigit(s.charAt(i))
+        while(i<j && isNonAlphaNumericChar(s.charAt(i)))
+            i++;
+        while(j>i && isNonAlphaNumericChar(s.charAt(j)))
+            j--;
+        if(Character.toLowerCase(s.charAt(i))!=Character.toLowerCase(s.charAt(j)))
+            return false;
+    }
+    return true;
+}
+
+    public boolean isNonAlphaNumericChar(char c){
+        if((c>='a'&& c<='z')||(c>='A'&& c<='Z')||(c>='0'&& c<='9'))
+            return false;
+        else
+            return true;
+    }
+
 
     public static void main(String args[]) {
         StringProbs sp = new StringProbs();
