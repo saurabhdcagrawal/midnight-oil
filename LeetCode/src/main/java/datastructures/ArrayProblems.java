@@ -2,6 +2,7 @@ package main.java.datastructures;
 
 import java.lang.reflect.Array;
 import java.util.*;
+import java.math.*;
 
 public class ArrayProblems {
 
@@ -382,37 +383,148 @@ public class ArrayProblems {
     //best time to buy and sell stock ,max profit ..//if you plot the values,
     //you want to get peak followed by the valley
 
-    public int buySellStock(int arr[]){
-     int min_index=-1,min_value=Integer.MAX_VALUE,max_index=0,max_value=0,max_profit=0,
-             curr_profit=-1;
-     for(int i=0;i<arr.length;i++){
-      if(arr[i]<min_value){
-          min_value=arr[i];
-          min_index=i;
-      } else{
-        //max_profit=Math.max(arr[i]-min_value,max_profit);
-          curr_profit=arr[i]-min_value;
-             if(curr_profit>max_profit){
-              max_profit=curr_profit;
-              max_index=i;
-              max_value=arr[i];
-             }
-      }
+    public int maxProfit(int[] prices) {
+        int smallest=Integer.MAX_VALUE,smallest_index=-1,max_difference=0;
 
-     }
-        System.out.println("Min index ="+min_index+ ";Min Value"+min_value+ ";Max Index"+max_index +":Max Value="+max_value+
-                ";Max profit "+max_profit);
-        return  max_profit;
-
+        for(int i=0;i<prices.length;i++){
+            if(prices[i]<smallest){
+                smallest=prices[i];
+                smallest_index=i;
+            }
+            //i>smallest index not needed because of if else
+            else if(prices[i]-smallest >=max_difference && i>smallest_index)
+                max_difference= prices[i]-smallest;
+        }
+        return max_difference;
     }
-       //15 20 35   //1 25
+   /* Input: prices = [7,1,5,3,6,4]
+    Output: 7
+    Explanation: Buy on day 2 (price = 1) and sell on day 3 (price = 5), profit = 5-1 = 4.
+    Then buy on day 4 (price = 3) and sell on day 5 (price = 6), profit = 6-3 = 3.
+    Total profit is 4 + 3 = 7.*/
+    /*public int maxProfitII(int[] prices) {
+        int max_profit=0,i=0,j=1;;
+        while(j<prices.length){
+            if(prices[j]>prices[i]){
+                while(j<prices.length-1 && prices[j+1]>prices[j])
+                    j++;
+                max_profit+=prices[j]-prices[i];
+                i=j+1;
+                j=i+1;
+            }
+            else{
+                i++;j++;
+            }
+        }
+        return max_profit;
+    }*/
+   public int maxProfitII(int[] prices) {
+       int max_profit=0,i=0;
+       while(i<prices.length-1){
+           while(i<prices.length-1 && prices[i+1]<=prices[i])
+               i++;
+           int valley=prices[i];
+           while(i<prices.length-1 && prices[i+1]>=prices[i])
+               i++;
+           int peak=prices[i];
+           max_profit+=peak-valley;
+       }
+       return max_profit;
+   }
+        //can attend meetings
+    /*Input: intervals = [[0,30],[5,10],[15,20]]
+    Output: false*/
+        public boolean canAttendMeetings(int[][] intervals) {
+            Arrays.sort(intervals,(a,b)->Integer.compare(a[0],b[0]));
+            for(int i=0;i<intervals.length-1;i++){
+                if(intervals[i+1][0]<intervals[i][1])
+                    return false;
+            }
+            return true;
+        }
+   //Interval problems
+  /* Given an array of intervals where intervals[i] = [starti, endi],
+    merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals
+    in the input.*/
+
+   // Input: intervals = [[1,3],[2,6],[8,10],[15,18]]
+  // Sort intervals by start time
+    public int[][] merge(int[][] intervals) {
+        Arrays.sort(intervals,(a,b)->Integer.compare(a[0],b[0]));
+            LinkedList<int[]> newList= new LinkedList<int[]>();
+             //add first interval
+            newList.add(intervals[0]);
+            //Start from 1 and compare with the last element in new list not the merged list
+            for(int i=1; i<intervals.length;i++) {
+                if (intervals[i][0] > newList.peekLast()[1])
+                    newList.add(intervals[i]);
+                else
+                    newList.getLast()[1]=Math.max(newList.getLast()[1],intervals[i][1]);
+
+            }
+            int[][] finalIntervals= new int[newList.size()][2];
+            return newList.toArray(finalIntervals);
+        }
+    //insert interval into sorted intervals
+    //Input: intervals = [[1,2],[3,5],[6,7],[8,10],[12,16]], newInterval = [4,8]
+    //Input: intervals = [[1,2],[3,5],[4,8],[6,7],[8,10],[12,16]], newInterval = [4,8]
+
+    public int[][] insert(int[][] intervals, int[] newInterval) {
+        LinkedList<int[]> mergedInterval= new LinkedList<int[]>();
+        int i=0;
+        while(i<intervals.length && newInterval[0]>intervals[i][0]) {
+            mergedInterval.add(intervals[i]);
+            i++;
+        }
+        if(mergedInterval.isEmpty()||newInterval[0]>mergedInterval.getLast()[1])
+            mergedInterval.add(newInterval);
+        else
+            mergedInterval.getLast()[1]=Math.max(newInterval[1],mergedInterval.getLast()[1]);
+
+        while(i<intervals.length) {
+            if(intervals[i][0]>mergedInterval.getLast()[1])
+                mergedInterval.add(intervals[i]);
+            else
+                mergedInterval.getLast()[1]=Math.max(intervals[i][1],mergedInterval.getLast()[1]);
+            i++;
+        }
+
+        int[][] finalIntervals= new int[mergedInterval.size()][2];
+        return mergedInterval.toArray(finalIntervals);
+    }
+      //Input: intervals = [[1,2],[2,3],[3,4],[1,3]]
+      public int eraseOverlapIntervals(int[][] intervals) {
+          Arrays.sort(intervals, (a, b) -> (Integer.compare(a[0], b[0])));
+          int overlapIntervalCount = 0;
+          int[] prev = intervals[0];
+          for (int i = 1; i < intervals.length; i++) {
+              //if starting of next interval,is greater than or equal to prev end
+              //non overlapping interval is not required
+              //make next interval as prev interval
+              if (intervals[i][0] >= prev[1])
+                  prev = intervals[i];
+              else {
+                  //if intervals are overlapping first increase the overlap count
+                  overlapIntervalCount++;
+                  //case(a) if the first interval end time is greater than next interval end time
+                  //ie. first swallows next then drop first and consider 2nd
+                  //make 2nd as previous
+                  if (intervals[i][1] < prev[1])
+                      prev = intervals[i];
+                  //else continue to keep first as prev and drop second
+
+              }
+          }
+          return overlapIntervalCount;
+      }
+        //15 20 35   //1 25
     //you are given 2 arrays ,merge a into b in sorted order
     //start merging from right
     //case when i finishes because all elements have been scanned
     //15 20i 35 k  35  // 1 25j
        //  15 20i 35k 25 35  // 1j 25
        //  15i 20k 20 25 35  //
-       //  i==0 k  15 20 25 35   //1j
+       //  i==0 k  15 20    25 35   //1j
        //       1 15 20 25 35 j=-1 k=-1 ,i==0
     public void mergeArrays(int[]a ,int b[],int n,int m) {
         int i = n - 1;
@@ -519,7 +631,7 @@ public class ArrayProblems {
         System.out.println("Array  majority element");
       System.out.println("Major elelement "+at.getMajorityElement(maj_elem));
         int[] stock_arr={7,1,5,3,6,4};
-        System.out.println("Buy sell stock "+at.buySellStock(stock_arr));
+        System.out.println("Buy sell stock "+at.maxProfit(stock_arr));
         System.out.println("Merge sorted arrays");
         int[] a= new int[5];int b[]= {1,25};
         a[0]=15;a[1]=20;a[2]=35;

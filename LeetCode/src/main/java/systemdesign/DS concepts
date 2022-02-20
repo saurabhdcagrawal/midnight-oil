@@ -180,3 +180,73 @@ First sort the tuples as per term, remove duplicate tuples
 (term,doc freq)->postingslist
 Storing doc freq is for optimization... process a query based on order of increasing doc freq
 https://www.youtube.com/watch?v=Hy78R3yuutg&list=PL0ZVw5-GryEkGAQT7lX7oIHqyDPeUyOMQ&index=4&ab_channel=OresoftLWC
+
+---techniques to approach
+
+Use the whiteboard: Using a whiteboard helps your interviewer follow your proposed design. Get up to
+the whiteboard in the very beginning and use it to draw a picture of what you're proposing.
+Acknowledge interviewer concerns: Your interviewer will likely jump in with concerns. Don't brush
+them off; validate them. Acknowledge the issues your interviewer points out and make changes accordingly.
+• Be careful about assumptions: An incorrect assumption can dramatically change the problem. For
+example, if your system produces analytics / statistics for a dataset, it matters whether those analytics
+must be totally up to date.
+• State your assumptions explicitly: When you do make assumptions, state them. This allows your interviewer to correct you if you're mistaken, and shows that you at least know what assumptions you're
+making.
+Estimate when necessary: In many cases, you might not have the data you need. For example, if you're
+designing a web crawler, you might need to estimate how much space it will take to store all the URLs.
+You can estimate this with other data you know.
+
+1) Scope the problem (Will people be able to specify their own short URLs? Or will it all be auto-generated? Will you
+ need to keep track of any stats on the clicks? Should the URLs stay alive forever, or do they have a timeout?
+2) Make reasonable assumptions
+(For example, is it okay for
+the data to be stale by a max of ten minutes? That all depends. If it takes 1 O minutes for a just-entered URL
+to work, that's a deal-breaking issue. People usually want these URLs to be active immediately. However, if
+the statistics are ten minutes out of date, that might be okay)
+3)Walk through your system from end-to-end to provide a flow. A user enters a new URL. Then what?
+  It may help here to ignore major scalability challenges and just pretend that the simple, obvious approaches
+  will be okay. You'll handle the big issues in Step 4.
+4): Identify the Key Issues
+  Once you have a basic design in mind, focus on the key issues. What will be the bottlenecks or major challenges in the system?
+  For example, if you were designing TinyURL, one situation you might consider is that while some URLs will
+  be infrequently accessed, others can suddenly peak. This might happen if a URL is posted on Reddit or
+  another popular forum. You don't necessarily want to constantly hit the database.
+  Your interviewer might provide some guidance here. If so, take this guidance and use it.
+Step 5: Redesign for the Key Issues
+  Once you have identified the key issues, it's time to adjust your design for it. You might find that it involves
+  a major redesign or just some minor tweaking (like using a cache).
+  Stay up at the whiteboard here and update your diagram as your design changes.
+  Be open about any limitations in your design. Your interviewer will likely be aware of them, so it's important
+  to communicate that you're aware of them, too.
+
+  \
+
+Amazon leadership principle
+Use STAR technique
+1)Customer obsession principle (Gone above and beyond) Describe a time when you went above and beyond
+2)Earn trust and treat people with respect
+3)Hiring and developing the best
+4)Think Big(huge ambitions and go out of the way)
+5)Bias for action (get things done, take action continuosly)
+6)Are right a lot (As a leader, have strong judgement skills)
+7)Insist on the highest standards(Never cut corners, insist on highest standards)
+8)
+9)Take ownership of situations & be responsible
+10)Learn and be curious (improve,develop and ask questions)
+11)Frugality (Achieve more with less)
+12)Have backbone disagree and commit (Lets try things in a different way)
+13)Invent and simplify (Lead teams that innovate and invent)
+14)Deliver results(Get things done in a timely manner)
+https://passmyinterview.com/amazon-leadership-principles-interview/
+
+Assume, ask questions, define public private endpoints, data schema design, high level architecture
+Talk through the system
+
+Public endpoints
+Private endpoints
+I am not super confident
+Read replica/Write replica ? Load balancer
+Ask pointed questions
+Password SHA256(encrypted and stored)
+Third party payment such as Stripe/Square
+https://www.youtube.com/watch?v=NtMvNh0WFVM&ab_channel=Exponent

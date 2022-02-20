@@ -247,9 +247,12 @@ public class DPAndRecursion {
         System.out.println(Arrays.toString(amt));
         return amt[nums.length];
     }
-
-    //LCS ,maximu product subarray ,levenstein distance ,lru cache
-//LCS[i][j]  is common subsequence between str1[i-1] to str[j-1] i.e both i character of str1 and
+//baseball
+//apple
+//if char[i]='\0' &&  char[j]='\0' , return 0; reduction
+//if first char is common , apple, ass , 1+ LCS("pple","ss")
+//else find max lcs of (baseball,pple) and (aseball,apple)
+    //LCS[i][j]  is common subsequence between str1[i-1] to str[j-1] i.e both i character of str1 and
  // j characters of str2
     public static int LCS(String str1,String str2) {
         int m = str1.length();
