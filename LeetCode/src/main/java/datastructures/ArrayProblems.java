@@ -442,6 +442,47 @@ public class ArrayProblems {
             }
             return true;
         }
+
+    public int minMeetingRooms(int[][] intervals) {
+        Arrays.sort(intervals, (a, b) -> (Integer.compare(a[0], b[0])));
+        PriorityQueue<Integer> pQueue = new PriorityQueue<Integer>();
+        int meetingRoom=0;
+        for(int i=0; i<intervals.length;i++){
+            if(pQueue.isEmpty()||intervals[i][0]<pQueue.peek())
+                meetingRoom++;
+            else
+                pQueue.poll();
+            pQueue.add(intervals[i][1]);
+
+        }
+        return meetingRoom;
+    }
+    public int minMeetingRoomsWithoutPQ(int[][] intervals) {
+        int[] startTimes= new int[intervals.length];
+        int[] endTimes= new int[intervals.length];
+        for(int i=0;i<intervals.length;i++){
+            startTimes[i]=intervals[i][0];
+            endTimes[i]=intervals[i][1];
+        }
+
+        Arrays.sort(startTimes);
+        Arrays.sort(endTimes);
+        int meetingRoom=0;
+        int j=0,i=0;
+        while(i<intervals.length && j<intervals.length){
+            if(startTimes[i]>=endTimes[j]){
+                meetingRoom--;
+                j++;
+            }
+            //increment meeting room, anyhow
+            //if room got freed up above, it would be used below by increasing the count
+            meetingRoom++;
+            i++;
+
+        }
+        return meetingRoom;
+    }
+
    //Interval problems
   /* Given an array of intervals where intervals[i] = [starti, endi],
     merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals
