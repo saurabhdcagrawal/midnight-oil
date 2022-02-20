@@ -476,6 +476,7 @@ public class ArrayProblems {
             }
             //increment meeting room, anyhow
             //if room got freed up above, it would be used below by increasing the count
+            //total rooms remain constant
             meetingRoom++;
             i++;
 
