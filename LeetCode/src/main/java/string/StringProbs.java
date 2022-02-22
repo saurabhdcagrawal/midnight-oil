@@ -57,6 +57,29 @@ public class StringProbs {
         return true;
     }
 
+    //longest-substring-without-repeating-characters
+    public int lengthOfLongestSubstring(String s) {
+        //"pwwkew"
+            int maxLength=0; int i=0,j=0;
+            int[] charArr= new int[128];
+            while(j<s.length()){
+                char c=s.charAt(j);
+                charArr[c]++;
+                //a matching character in right is found, so decrement the count
+                //slide the window to right
+                //until we no longer have dups
+                //set corresponds to the window
+                while(charArr[c]>1){
+                    char l=s.charAt(i);
+                    charArr[l]--;
+                    i++;
+                }
+                maxLength=Math.max(maxLength,j-i+1);
+                j++;
+            }
+            return maxLength;
+        }
+
 //remove duplicates
 
 //sliding window
