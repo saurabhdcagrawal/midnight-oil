@@ -79,6 +79,44 @@ public class StringProbs {
             }
             return maxLength;
         }
+//longest Palindrome
+
+        public String longestPalindrome(String s) {
+            //badad
+            if (s == null || s.length() < 1) return "";
+            int start=0, end=0, maxLength=0;
+            for(int i=0;i<s.length();i++){
+                //to find odd length palindromes expand around a single word
+                int[] arr1 = expandAroundCenter(s,i,i);
+                //to find odd length palindromes expand around a single word
+                int[] arr2 = expandAroundCenter(s,i,i+1);
+                if(arr1[0]>arr2[0]){
+                    if(arr1[0]>maxLength){
+                        maxLength=arr1[0];
+                        start=arr1[1];
+                        end=arr1[2];
+                    }
+                }
+                else{
+                    if(arr2[0]>maxLength){
+                        maxLength=arr2[0];
+                        start=arr2[1];
+                        end=arr2[2];
+                    }
+                }
+            }
+            return s.substring(start,end+1);
+        }
+
+        public int[] expandAroundCenter(String s, int left, int right) {
+            while (left >= 0 && right < s.length() && s.charAt(left) == s.charAt(right)) {
+                left--;
+                right++;
+            }
+            left += 1;
+            right -= 1;
+            return new int[]{right - left + 1, left, right};
+        }
 
 //remove duplicates
 

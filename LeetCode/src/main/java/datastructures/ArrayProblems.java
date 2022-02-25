@@ -434,6 +434,10 @@ public class ArrayProblems {
         //can attend meetings
     /*Input: intervals = [[0,30],[5,10],[15,20]]
     Output: false*/
+    //overlap current interval start should be greater than or equal to previous interval start and less than prev interval end
+    //
+   /* return (interval1[0] >= interval2[0] && interval1[0] < interval2[1])
+            || (interval2[0] >= interval1[0] && interval2[0] < interval1[1]);*/
         public boolean canAttendMeetings(int[][] intervals) {
             Arrays.sort(intervals,(a,b)->Integer.compare(a[0],b[0]));
             for(int i=0;i<intervals.length-1;i++){
