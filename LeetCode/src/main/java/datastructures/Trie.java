@@ -1,51 +1,5 @@
 package main.java.datastructures;
 
-public class Trie {
-
-    private TrieNode root;
-
-    public Trie() {
-        root= new TrieNode();
-
-    }
-
-    public void insert(String word) {
-        TrieNode node = root;
-        for(int i=0;i<word.length();i++){
-            if(!node.contains(word.charAt(i))){
-                node.put(word.charAt(i), new TrieNode());
-            }
-            else
-                node=root.getNode(word.charAt(i));
-        }
-        node.setEnd();
-
-
-    }
-
-    public TrieNode searchPrefix(String word) {
-
-        for(int i=0;i<word.length();i++){
-            if(root.contains(word.charAt(i)))
-                root=root.getNode(word.charAt(i));
-            else
-                return null;
-        }
-        return root;
-    }
-
-    public boolean search(String word) {
-        TrieNode node=searchPrefix(word);
-        return (node!=null && node.isEnd());
-
-    }
-    //cod..cannot be coc
-    public boolean startsWith(String prefix) {
-        TrieNode node=searchPrefix(prefix);
-        return (node!=null);
-
-    }
-}
 
 class TrieNode{
     private TrieNode[] links;
@@ -57,7 +11,7 @@ class TrieNode{
         links = new TrieNode[26];
     }
 
-    public boolean contains (char ch){
+    public boolean containsKey (char ch){
         return links[ch-'a']!=null;
     }
 
@@ -76,6 +30,65 @@ class TrieNode{
     public boolean isEnd(){
         return isEnd;
     }
+}
+
+public class Trie {
+
+    private TrieNode root;
+
+    public Trie() {
+        root= new TrieNode();
+
+    }
+
+    public void insert(String word) {
+        TrieNode node = root;
+        for(int i=0;i<word.length();i++){
+            if(!node.containsKey(word.charAt(i))){
+                node.put(word.charAt(i), new TrieNode());
+            }
+            else
+                node=root.getNode(word.charAt(i));
+        }
+        node.setEnd();
+
+
+    }
+
+    public TrieNode searchPrefix(String word) {
+
+        for(int i=0;i<word.length();i++){
+            if(root.containsKey(word.charAt(i)))
+                root=root.getNode(word.charAt(i));
+            else
+                return null;
+        }
+        return root;
+    }
+
+    public boolean search(String word) {
+        TrieNode node=searchPrefix(word);
+        return (node!=null && node.isEnd());
+
+    }
+    //cod..cannot be coc
+    public boolean startsWith(String prefix) {
+        TrieNode node=searchPrefix(prefix);
+        return (node!=null);
+
+    }
+    public static void main(String args[]){
+        Trie obj = new Trie();
+        obj.insert("apple");
+        System.out.println(obj.search("apple"));
+        System.out.println(obj.search("app"));
+        System.out.println(obj.startsWith("app"));
+        obj.insert("app");
+        System.out.println(obj.search("app"));
+
+
+    }
+
 }
 
 /**
