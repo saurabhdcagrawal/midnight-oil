@@ -223,7 +223,8 @@ public class PracticalArrayProblems {
     public int findKthLargest(int[] nums, int k) {
         //nums = [3,2,1,5,6,4], k = 2
         //sort [1,2,3,4,5,6]
-        //and find kth element from the end
+        //and find kth element from the end (assume no repeats)
+        //N-k th smallest element from the start
         //Min heap...k elements...for (n-k) elements O(k)
         //O(nlogk)
         PriorityQueue<Integer> pq = new PriorityQueue<Integer>();
