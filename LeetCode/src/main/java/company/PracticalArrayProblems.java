@@ -146,7 +146,41 @@ public class PracticalArrayProblems {
         }
      return count;
     }
+    public int[] topKFrequent(int[] nums, int k) {
+        //O(nlogk) is better than o(nlogn)
+        HashMap<Integer,Integer> hcount=new HashMap<Integer,Integer>();
 
+        for(int i=0;i<nums.length;i++)
+            hcount.put(nums[i],hcount.getOrDefault(nums[i],0)+1);
+
+        //Create a min heap..of size k.. containing k most frequent elements
+        //top of heap contains element with minimum frequency
+        //adding k elements takes O(k) in average case...
+        //O(log1+log2+)=o(logk!)=O(klogk) in worst case
+        //any new element arrives, it is added, heap will balance itself
+        //the new element or element with least frequency will come to the top
+        //remove it to maintain size k
+        // (n-k) will be popped, every popping takes o(logk)
+        //O((n-k)logk)+O(logk)~ O(nlogk)
+
+        PriorityQueue<Integer> pq = new PriorityQueue<Integer>((n1,n2)->Integer.compare(hcount.get(n1),hcount.get(n2)));
+
+        for (int i:hcount.keySet()){
+            pq.add(i);
+            if(pq.size()>k)
+                pq.poll();
+        }
+
+        int[] output_array= new int[k];
+        //display output in reverse manner
+        //k operations..every operation takes log(k)
+        //O(klogk)
+        for(int i=k-1;i>=0;i--)
+            output_array[i]=pq.poll();
+
+        return output_array;
+
+    }
 //List comparator.manipulate list to get top k
     //O(N log N) //O(N) time
     //O(N log K) //make a tree of K elements O(K) adding each element takes k log(K) ,adding N element takes
@@ -182,6 +216,24 @@ public class PracticalArrayProblems {
         Collections.reverse(topK);
 
         return topK;
+    }
+
+    //kth largest element, will have the same
+    //minHeap
+    public int findKthLargest(int[] nums, int k) {
+        //nums = [3,2,1,5,6,4], k = 2
+        //sort [1,2,3,4,5,6]
+        //and find kth element from the end
+        //Min heap...k elements...for (n-k) elements O(k)
+        //O(nlogk)
+        PriorityQueue<Integer> pq = new PriorityQueue<Integer>();
+        for(int i=0;i<nums.length;i++){
+            pq.add(nums[i]);
+            if(pq.size()>k){
+                pq.poll();
+            }
+        }
+        return pq.poll();
     }
 
     public static void main(String[] args) {

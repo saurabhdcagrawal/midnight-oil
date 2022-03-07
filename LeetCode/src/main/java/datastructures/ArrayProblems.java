@@ -267,7 +267,7 @@ public class ArrayProblems {
         public double findMedianStream(int num) {
             //contain maxHeap of lower half
             //can contain one element more than minHeap(n+1)
-            PriorityQueue<Integer>  maxHeap= new PriorityQueue<Integer>(1,(a,b)->Integer.compare(b,a));
+            PriorityQueue<Integer>  maxHeap= new PriorityQueue<Integer>((a,b)->Integer.compare(b,a));
             //Contain minHeap of upper half
             PriorityQueue<Integer> minHeap=new PriorityQueue<Integer>();
 
