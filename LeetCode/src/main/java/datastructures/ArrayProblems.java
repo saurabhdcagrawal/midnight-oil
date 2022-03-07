@@ -43,6 +43,24 @@ public class ArrayProblems {
         return indices;
     }
 
+//When array is sorted, similar to maxArea
+    public int[] twoSumSorted(int[] numbers, int target) {
+
+        int low=0,high=numbers.length-1;
+
+        while(low<high){
+
+            if(numbers[low]+numbers[high]==target)
+                return new int[]{low+1,high+1};
+            else if(numbers[low]+numbers[high]>target)
+                high--;
+            else
+                low++;
+
+        }
+        return new int[]{};
+    }
+
     //(rev == Integer.MAX_VALUE / 10 && pop > 7)) return 0;
     //    if (rev < Integer.MIN_VALUE/10 || (rev == Integer.MIN_VALUE / 10 && pop < -8)) return 0;
     //seems like >INTEGER.MAX_VALUE+7 and INTEGER.MIN_VALUE<-8 causes error
@@ -160,23 +178,27 @@ public class ArrayProblems {
     }
 
     //Search in rotated sorted array
-    public int searchRotatedArray(int[] nums, int target) {
-
+    //some observations
+    //if begin<end, array is not rotated..return first element
+    public int searchRotatedArray(int[] nums, int target){
         int low=0;int high=nums.length-1;
-        int mid;
+        int mid=0;
         while(low<=high){
             mid=(low+high)/2;
             if(nums[mid]== target)
                 return mid;
+            //456 7 8 123
+            //if left half is sorted, rotation index is in right half
             else if(nums[low]<=nums[mid]){
-
-                if(nums[low]<=target && target<nums[mid])
+                if(target<nums[mid] && target>=nums[low])
                     high=mid-1;
                 else
                     low=mid+1;
             }
+            //right half is sorted, rotation index is in left half
+            //781 2 3 456
             else {
-                if(nums[mid]<target && target<=nums[high])
+                if(target>nums[mid] && target<=nums[high])
                     low=mid+1;
                 else
                     high=mid-1;
@@ -184,6 +206,33 @@ public class ArrayProblems {
             }
         }
         return -1;
+    }
+    public int findMin(int[] nums) {
+        //4,5,6,7,0,1,2
+        //2,4,5,6,7,0,1
+        int low=0;int high=nums.length-1;
+        if (nums.length==0)
+            return -1;
+        else if (nums.length==1)
+            return nums[0];
+        else if(nums[low]<nums[high])
+            return nums[low];
+
+        int mid=0;
+        while(low<=high){
+            mid=low+(high-low)/2;
+            if(nums[mid]>nums[mid+1])
+                return nums[mid+1];
+            else if (nums[mid-1]>nums[mid])
+                return nums[mid];
+            else if(nums[mid]>=nums[low])
+                low=mid+1;
+            else
+                high=mid-1;
+
+        }
+        return -1;
+
     }
  //https://leetcode.com/problems/search-in-rotated-sorted-array-ii/description/
     public boolean searchRotatedArrayWithDuplicates(int[] nums, int target) {
@@ -213,6 +262,62 @@ public class ArrayProblems {
         }
         return false;
     }
+
+
+        public double findMedianStream(int num) {
+            //contain maxHeap of lower half
+            //can contain one element more than minHeap(n+1)
+            PriorityQueue<Integer>  maxHeap= new PriorityQueue<Integer>(1,(a,b)->Integer.compare(b,a));
+            //Contain minHeap of upper half
+            PriorityQueue<Integer> minHeap=new PriorityQueue<Integer>();
+
+            //balancing
+            //add element to maxHeap.. poll take max element go to minHeap
+            //minHeap is > maxHeap size then poll from minHeap and add to maxHeap
+            //max 3 heap operations
+            maxHeap.add(num);
+            minHeap.add(maxHeap.poll());
+            if(minHeap.size()>maxHeap.size())
+                maxHeap.add(minHeap.poll());
+
+            //find median
+            return (maxHeap.size()> minHeap.size()? ((double)maxHeap.peek()):(double)(maxHeap.peek()+minHeap.peek())/2);
+
+            //At the max there are 5 heap operations... poll and add
+            //every operation takes log(n) time
+            //find the top of heap takes constant O(1) team
+            //O(5logn)+O(1) = O(logn)
+            //Space complexity O(n) to hold the 2 heaps
+
+            //Other approaches o(nlogn)
+             /*  Collections.sort(store);
+                 int n= store.size();
+                 if(n%2==0)
+                    return (double)(store.get(n/2)+store.get(n/2-1))/2;
+                 else
+                    return store.get(n/2)
+        ; */
+        // Insertion sort
+            //Maintain a sorted list of numbers, when any number arrives
+            //find the position of the element through binary search o(logn) time
+            //Shift the array elements to make room for inserted element O(n) time
+            //Total time taken to find median O(1)
+            //This method would work well when the amount of insertion queries
+            // is lesser or about the same as the amount of median finding queries.
+
+            //Self balancing BST
+             /*
+            Self-balancing Binary Search Trees (like an AVL Tree) have some very interesting properties.
+                    They maintain the tree's height to a logarithmic bound.
+            Thus inserting a new element has reasonably good time performance.
+                    The median always winds up in the root of the tree and/or one of its children.
+            We maintain two pointers: one for the lower median element and the
+            other for the higher median element. When the total number of elements is odd, both
+            the pointers point to the same median element (since there is only one median in this case).
+            When the number of elements is even, the pointers point to two consecutive elements,
+            whose mean is the representative median of the input.*/
+
+        }
 
     //find missing number xor all elements from 1 to n-1 -X ,then xor the given array -Y
     //product of XOR will give result
@@ -324,6 +429,33 @@ public class ArrayProblems {
         System .out.println ("No such triplet  found");
     }
 
+
+    public List<List<Integer>> threeSumTriplet(int[] nums) {
+        Arrays.sort(nums);
+        List<List<Integer>> result = new ArrayList<List<Integer>>();
+        for(int i=0;i<nums.length && nums[i]<=0 && (i==0||nums[i-1]!=nums[i]);i++){
+            int low=i+1;  int high=nums.length-1;
+            int desired_sum=-1*nums[i];
+            while(low<high){
+                if(nums[low]+nums[high]==desired_sum){
+                    List<Integer> triplet= new ArrayList<Integer>();
+                    triplet.add(nums[i]);
+                    triplet.add(nums[low++]);
+                    triplet.add(nums[high--]);
+                    result.add(triplet);
+                    while(low<high && nums[low]==nums[low-1])
+                        ++low;
+                }
+                else if(nums[low]+nums[high]>desired_sum)
+                    high--;
+                else
+                    low++;
+            }
+
+        }
+        return result;
+    }
+
     //3 sum problem?
     public List<List<Integer>> threeSum(int[] nums) {
         List<List<Integer>> result_set = new ArrayList<>();
@@ -378,7 +510,19 @@ public class ArrayProblems {
         return -1;
     }
 
-
+    public static   int maxArea(int[] height) {
+        int max_area=0, l=0, r=height.length-1;
+        //always move the smaller area because if you move larger area it is restricted by smallest area
+        //smaller area if you move there is a possibility of finding , larger length that compensates              width
+        while(l<r){
+            max_area=Math.max((Math.min(height[l],height[r])*(r-l)),max_area);
+            if(height[l]<height[r])
+                l++;
+            else
+                r--;
+        }
+        return max_area;
+    }
 
     //best time to buy and sell stock ,max profit ..//if you plot the values,
     //you want to get peak followed by the valley
@@ -488,7 +632,47 @@ public class ArrayProblems {
         return meetingRoom;
     }
 
-   //Interval problems
+
+    //left[0]=1 left[1]=1*1,left[2]=1*2 ,left[3]=2*6
+
+    public int[] productExceptSelf(int[] nums) {
+        //[1,2,3,4]
+        int[] left= new int[nums.length];
+        int[] right= new int[nums.length];
+        int[] product=new int[nums.length];
+        left[0]=1; right[nums.length-1]=1;
+
+        for(int i=1; i<nums.length;i++)
+            left [i]=left[i-1]*nums[i-1];
+
+        for(int i=nums.length-2;i>=0;i--)
+            right [i]=right[i+1]*nums[i+1];
+
+        for(int i=0; i<nums.length;i++)
+            product[i]=left[i]*right[i];
+
+        return product;
+
+    }
+// They call it O(1) space
+//[1,2,3,4]
+    public int[] productExceptSelfSingleArr(int[] nums) {
+        int[] product=  new int[nums.length];
+        product[0]=1;
+        for (int i=1;i<nums.length;i++){
+            product[i]=product[i-1]*nums[i-1];
+        }
+ // product=[1,1,2,6]
+        int right=1;
+        for (int i=nums.length-1;i>=0;i--){
+            product[i]=product[i]*right;
+            right=right*nums[i];
+        }
+        return product;
+    }
+
+
+    //Interval problems
   /* Given an array of intervals where intervals[i] = [starti, endi],
     merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals
     in the input.*/
@@ -688,6 +872,9 @@ public class ArrayProblems {
         System.out.println("Find median");
         int arr_median[] = {1,4,5,7,9,12};
         System.out.println("Median is "+at.findMedian(arr_median));
+        int [] height={1,8,6,2,5,4,8,3,7};
+        System.out.print("Max Area");
+        System.out.println(maxArea(height));
 
     }
 

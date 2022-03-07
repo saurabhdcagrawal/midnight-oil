@@ -287,6 +287,7 @@ public class DPAndRecursion {
         return max_sum;
     }
     //No need to store O(1) solution
+    //Kadane's algorithm
     public static int maxSubArrayO1(int[] nums) {
         int max_sum=nums[0];
         int result=nums[0];

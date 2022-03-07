@@ -3,21 +3,6 @@ package main.java.company;
 import java.util.*;
 
 public class PracticalArrayProblems {
-    public int maxArea(int[] height) {
-        int l=0 , r= height.length-1;
-        int max_area=0 ,length=0,area=0;
-        while(l<r){
-            area= (r-l)*Math.min(height[r],height[l]);
-            if(area >=max_area)
-                max_area=area;
-            if(height[l]<=height[r])
-                l=l+1;
-            else
-                r=r-1;
-        }
-        return max_area;
-    }
-
     public int getMaxProfit(int[] prices) {
         //you need to find the valley and associated next peek ,traverse first to find the minimum,
         // if you found a valley ,compare if you see any other valley ,else find next peak
@@ -62,49 +47,7 @@ public class PracticalArrayProblems {
         return count;
     }
 
-    class Solution {
-        //left[0]=1 left[1]=1*1,left[2]=1*2 ,left[3]=2*6
 
-        public int[] productExceptSelf(int[] nums) {
-            int[] left=  new int[nums.length];
-            int[] right= new int[nums.length];
-            int[] result= new int[nums.length];
-            left[0]=1;
-            for (int i=0;i<nums.length-1;i++){
-                left[i+1]=left[i]*nums[i];
-            }
-            right[nums.length-1]=1;
-            //right[3]=1 right[2]=1*4,right[1]=12 ,right[0]=24
-            for (int j=nums.length-1;j>0;j--){
-                right[j-1]=right[j]*nums[j];
-            }
-            for (int i=0;i<nums.length;i++){
-                result[i]=left[i]*right[i];
-            }
-
-            return result;
-        }
-    }
-
-    public int[] productExceptSelf(int[] nums) {
-        int[] left=  new int[nums.length];
-        int[] right= new int[nums.length];
-        int[] result= new int[nums.length];
-        left[0]=1;
-        for (int i=0;i<nums.length-1;i++){
-            left[i+1]=left[i]*nums[i];
-        }
-        right[nums.length-1]=1;
-        //right[3]=1 right[2]=1*4,right[1]=12 ,right[0]=24
-        for (int j=nums.length-1;j>0;j--){
-            right[j-1]=right[j]*nums[j];
-        }
-        for (int i=0;i<nums.length;i++){
-            result[i]=left[i]*right[i];
-        }
-
-        return result;
-    }
     //find longest parentheses
     // ((()
     //())))
@@ -245,9 +188,6 @@ public class PracticalArrayProblems {
 	int [] prices ={7,6,9,1,10};
 	PracticalArrayProblems instance = new PracticalArrayProblems();
      System.out.print(instance.getMaxProfit(prices));
-     int [] height={1,8,6,2,5,4,8,3,7};
-     System.out.print("Max Area");
-     System.out.println(instance.maxArea(height));
      System.out.println("Robbing");
      int[] house={2,7,9,3,1};
      System.out.println("Robbing house results");

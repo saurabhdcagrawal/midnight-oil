@@ -3,25 +3,6 @@ package main.java.company;
 import java.util.HashMap;
 
 public class SimpleProblems {
-//you can return an integer []
-    public int[] twoSum(int[] num_array ,int sum){
-
-        HashMap<Integer,Integer> newMap= new HashMap<Integer,Integer>();
-        int [] indices =new int[2];
-        for(int i=0;i<num_array.length;i++){
-           if (newMap.containsKey(sum -num_array[i])){
-             indices[0]= newMap.get(sum -num_array[i]);
-             indices[i]=i+1;
-           }
-           else
-            newMap.put(num_array[i],i+1);
-
-
-        }
-
-        return indices;
-    }
-
     //(rev == Integer.MAX_VALUE / 10 && pop > 7)) return 0;
     //    if (rev < Integer.MIN_VALUE/10 || (rev == Integer.MIN_VALUE / 10 && pop < -8)) return 0;
  //seems like >INTEGER.MAX_VALUE+7 and INTEGER.MIN_VALUE<-8 causes error
