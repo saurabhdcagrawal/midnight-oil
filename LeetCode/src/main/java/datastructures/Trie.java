@@ -1,5 +1,21 @@
 package main.java.datastructures;
+//All time complexities O(M) and space complexities O(M) where M is the length of the word
 
+/*
+  Root
+  |
+ / \
+A
+|
+P
+|
+P (end)
+| links[] one of 26
+L
+|
+E (end)
+all links null
+*/
 
 class TrieNode{
     private TrieNode[] links;
