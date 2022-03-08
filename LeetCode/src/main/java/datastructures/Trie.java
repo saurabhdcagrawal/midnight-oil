@@ -47,8 +47,8 @@ public class Trie {
             if(!node.containsKey(word.charAt(i))){
                 node.put(word.charAt(i), new TrieNode());
             }
-            else
-                node=root.getNode(word.charAt(i));
+            //continue on the same node for next char
+                node=node.getNode(word.charAt(i));
         }
         node.setEnd();
 
@@ -56,14 +56,14 @@ public class Trie {
     }
 
     public TrieNode searchPrefix(String word) {
-
+        TrieNode node=root;
         for(int i=0;i<word.length();i++){
-            if(root.containsKey(word.charAt(i)))
-                root=root.getNode(word.charAt(i));
+            if(node.containsKey(word.charAt(i)))
+                node=node.getNode(word.charAt(i));
             else
                 return null;
         }
-        return root;
+        return node;
     }
 
     public boolean search(String word) {
