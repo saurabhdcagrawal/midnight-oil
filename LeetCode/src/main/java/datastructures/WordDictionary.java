@@ -20,7 +20,9 @@ public class WordDictionary {
     public WordDictionary(){
         root= new TrieNodeII();
     }
-    //b*d
+    //bad
+    //b..
+    //O(26^M)
     public boolean searchInNode(String word, TrieNodeII node){
         for (int i=0;i<word.length();i++){
             char ch=word.charAt(i);
