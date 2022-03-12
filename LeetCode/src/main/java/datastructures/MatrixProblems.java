@@ -124,7 +124,7 @@ public class MatrixProblems {
                      return true;
                 }
             }
-            return false;
+                return false;
         }
 
 
@@ -152,6 +152,34 @@ public class MatrixProblems {
 
          return false;
     }
+    public int numIslandsRevised(char[][] grid) {
+        int count_islands=0;
+        for(int i=0; i< grid.length;i++){
+            for(int j=0;j<grid[0].length;j++){
+                if(grid[i][j]=='1'){
+                    count_islands++;
+                    backtrack(i,j,grid);
+                }
+            }
+        }
+
+        return count_islands;
+    }
+
+    public void backtrack(int i ,int j, char[][] grid){
+
+        grid[i][j]='0';
+        int[] x_offset={-1,0,1,0};
+        int[] y_offset={0,1,0,-1};
+        for(int k=0; k<4;k++){
+            int new_i=i+x_offset[k];
+            int new_j=j+y_offset[k];
+            if(new_i>=0 && new_j>=0 && new_i<grid.length && new_j < grid[0].length && grid[new_i][new_j]=='1')
+                backtrack(new_i,new_j,grid);
+
+        }
+
+    }
 
     /*11110
             11010
@@ -162,14 +190,19 @@ public class MatrixProblems {
          char[][] grid = {{'1','1','1','1','0'},{'1','1','0','1','0'},
                  {'1','1','0','0','0'},{'0','0','0','0','0'}};
          System.out.println("num of Islands"+mp.numIslands(grid));
+         System.out.println("num of Islands"+mp.numIslandsRevised(grid));
 
-            int [][] search_matrix={{1,3,5}};
+
+         int [][] search_matrix={{1,3,5}};
             mp.searchMatrixI(search_matrix,0);
 
             char [][] board = {{'A','B','C','E'},{'S','F','C','S'},{'A','D','E','E'}};
             char [][] board2={{'a','b'}};
             char [][] board3={{'c','a','a'},{'a','a','a'},{'b','c','d'}};
             System.out.println(mp.exist(board3,"aab"));
+
+
+
 
      }
 
@@ -251,4 +284,5 @@ class SolutionMaxArea {
 
         return true;
     }
+
 }

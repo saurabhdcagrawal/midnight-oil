@@ -54,6 +54,9 @@ public class WordDictionary {
         }
         node.word=true;
     }
+
+
+
     public static void main(String args[]) {
         WordDictionary dict = new WordDictionary();
         dict.addWord("bad");
