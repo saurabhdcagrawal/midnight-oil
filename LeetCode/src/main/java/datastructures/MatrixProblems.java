@@ -165,7 +165,7 @@ public class MatrixProblems {
 
         return count_islands;
     }
-
+    //Depth first search
     public void backtrack(int i ,int j, char[][] grid){
 
         grid[i][j]='0';

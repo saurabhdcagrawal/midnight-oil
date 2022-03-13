@@ -849,6 +849,44 @@ public class ArrayProblems {
         return arr;
     }
 
+    //Time complexity
+    //exponential
+    public static int minSquares(int n){
+        //recursion
+        //f(n)=1+min(
+        if(n<4)
+            return n;
+        int a = (int) Math.sqrt(n);
+        if(n==a*a)
+            return 1;
+        int min_squares=n;
+        for(int i= 1;i<=a;i++){
+           int num=1+minSquares(n-i*i);
+            min_squares=Math.min(num,min_squares);
+        }
+        return min_squares;
+  }
+
+
+    //Time complexity
+    //outer loop runs n times
+    //inner loop runs root n times
+    //O(nrootn)
+    public static int minSquaresDP(int n){
+        int[] dp= new int[n+1];
+        Arrays.fill(dp,n);
+        dp[0]=0;
+        int a = (int)Math.sqrt(n);
+        for(int i=1;i<=n;i++){
+            for (int s=1;s<=a;s++){
+                if(i<s*s)
+                    break;
+                dp[i]=Math.min(dp[i],dp[i-s*s]+1);
+            }
+        }
+        return dp[n];
+    }
+
 
     //Pass  by reference
     public static void main(String args[]){
@@ -875,6 +913,8 @@ public class ArrayProblems {
         int [] height={1,8,6,2,5,4,8,3,7};
         System.out.print("Max Area");
         System.out.println(maxArea(height));
+        System.out.println(minSquares(12));
+        System.out.println(minSquaresDP(12));
 
     }
 
