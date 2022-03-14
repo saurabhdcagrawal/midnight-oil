@@ -872,6 +872,7 @@ public class ArrayProblems {
     //outer loop runs n times
     //inner loop runs root n times
     //O(nrootn)
+    //Space complexity O(N) for holding the array
     public static int minSquaresDP(int n){
         int[] dp= new int[n+1];
         Arrays.fill(dp,n);
