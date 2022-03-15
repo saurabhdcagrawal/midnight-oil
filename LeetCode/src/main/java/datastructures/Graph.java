@@ -104,7 +104,10 @@ public class Graph {
         }
        return connectedComponents;
     }
-
+//For building adjacency matrix will take O(E) runtime and space
+    //Visiting every node once and then for every vertex we run through adjacency list
+    //Time O(E+V) //stack dfs takes O(V) space and also to build the visited array
+    //Space complexity O(E+V)
     public static void dfs( List<Integer>[] adjList,int[] visited,int node){
         visited[node]=1;
         for(int i=0;i<adjList[node].size();i++){

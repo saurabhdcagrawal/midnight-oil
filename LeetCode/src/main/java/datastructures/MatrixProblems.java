@@ -19,46 +19,6 @@ public class MatrixProblems {
         return perimeter;
     }
 
-    public int numIslands(char[][] grid) {
-         int m= grid.length;
-         int n=grid[0].length; int count=0;
-         for (int i=0;i<m;i++){
-             for (int j=0;j<n;j++){
-                 if (grid[i][j]=='1'){
-                     count++;
-                     mergeGridValues(grid ,i ,j,m,n);
-                 }
-             }
-         }
-         printNumIslands(grid);
-         return count;
-    }
-
-
-    public boolean mergeGridValues(char[][] grid,int i ,int j ,int m ,int n ){
-        if (i>=m || j>=n ||i <0 ||j <0 || grid[i][j]!='1')
-            return false;
-
-        grid[i][j]='X';
-        mergeGridValues(grid,i-1,j,m,n);
-        mergeGridValues(grid,i+1,j,m,n);
-        mergeGridValues(grid,i,j-1,m,n);
-        mergeGridValues(grid,i,j+1,m,n);
-        return true;
-
-    }
-
-    
-       public void printNumIslands(char[][] grid){
-
-        for (int i=0;i<grid.length;i++){
-            for (int j=0;j<grid[0].length;j++){
-              System.out.print(grid[i][j]);
-            }
-            System.out.println();
-        }
-
-       }
 
 
     //Search a 2d matrix
@@ -113,46 +73,7 @@ public class MatrixProblems {
         return false;
     }
 
-    public boolean exist(char[][] board, String word) {
-        int m=board.length;
-        int n =board[0].length;
-        int k=0;
-        for (int i=0;i<m;i++){
-            for (int j=0;j<n;j++){
-                   System.out.println("Starting position "+i+";"+j);
-                    if(dfs(board,m,n,i ,j,word,k))
-                     return true;
-                }
-            }
-                return false;
-        }
-
-
-
-    public boolean dfs(char[][]board ,int m,int n ,int i,int j,String word,int k){
-       //search exhausted ,didnt find anything
-        System.out.println("Locating position"+i +";"+j);
-        if (i<0||j<0||i>=m||j>=n)
-            return false;
-        System.out.println("Trying to match "+word.charAt(k));
-        char temp=board[i][j];
-        if(board[i][j]==word.charAt(k)){
-            System.out.println("Found "+board[i][j]+" at "+i+";"+j);
-            //you do not want to use the same character in the current iteration
-        board[i][j]='#';
-        if(k==word.length()-1)
-            return true;
-          else {
-          boolean   result= ((dfs(board, m, n, i - 1, j, word, k + 1)) || (dfs(board, m, n, i + 1, j, word, k + 1)) ||
-                    dfs(board, m, n, i, j - 1, word, k + 1) || dfs(board, m, n, i, j + 1, word, k + 1));
-            board[i][j]=temp;
-            return result;
-          }
-        }
-
-         return false;
-    }
-    public int numIslandsRevised(char[][] grid) {
+    public int numIslands(char[][] grid) {
         int count_islands=0;
         for(int i=0; i< grid.length;i++){
             for(int j=0;j<grid[0].length;j++){
@@ -176,11 +97,55 @@ public class MatrixProblems {
             int new_j=j+y_offset[k];
             if(new_i>=0 && new_j>=0 && new_i<grid.length && new_j < grid[0].length && grid[new_i][new_j]=='1')
                 backtrack(new_i,new_j,grid);
-
         }
+    }
+    public boolean exist(char[][] board, String word) {
+        int numRows=board.length;
+        int numCols=board[0].length;
+        for(int i=0; i<numRows;i++){
+            for(int j=0;j<numCols;j++){
+                //propogate all rows for recursion
+                if (backtrack(i,j,board,word,0))
+                    return true;
+            }
+        }
+        return false;
 
     }
 
+    public boolean backtrack(int i, int j, char[][] board, String word,int wordPosition){
+        if(wordPosition>=word.length())
+            return true;
+
+        if(i<0||j<0||i>=board.length||j>=board[0].length||board[i][j]!=word.charAt(wordPosition))
+            return false;
+
+        //must have matched char , now mark that character so that in backtracking we do not use it
+        //again
+        //store character first
+        char ch=board[i][j];
+
+        board[i][j]='#';
+
+        int[] x_offset={-1,0,1,0};
+        int[] y_offset={0,1,0,-1};
+        boolean res=false;
+        //propogate for next chars
+        for(int k=0;k<4;k++){
+            int new_x=i+x_offset[k];
+            int new_y=j+y_offset[k];
+            res=backtrack(new_x,new_y,board,word,wordPosition+1);
+
+            //if any recursion path returns true;
+            if(res)
+                return true;
+        }
+        //will come here if the start position we used did not lead to results, so we can replace character
+        //back to original for next iteration
+        board[i][j]=ch;
+
+        return res;
+    }
     /*11110
             11010
             11000
@@ -190,7 +155,6 @@ public class MatrixProblems {
          char[][] grid = {{'1','1','1','1','0'},{'1','1','0','1','0'},
                  {'1','1','0','0','0'},{'0','0','0','0','0'}};
          System.out.println("num of Islands"+mp.numIslands(grid));
-         System.out.println("num of Islands"+mp.numIslandsRevised(grid));
 
 
          int [][] search_matrix={{1,3,5}};
