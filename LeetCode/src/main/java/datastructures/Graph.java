@@ -116,7 +116,63 @@ public class Graph {
             }
         }
    }
-   public static void main(String args[]){
+    //A graph is a tree if no cycles
+    //no disconnected vertex
+    // [[0,1],[1,2],[2,3],[1,3],[1,4]]
+
+    /* 0 ----1\------4
+            /  \
+           3----2
+        */
+    //Adj list*/
+    //0 visited (0,-1)--->(1,0)
+    //1 visited (2,1)
+    //2 visited (2,3)
+    //3 visited (1,3)
+    //return false
+    //[{1},{0,2,3,4},{1,3},{1,2},{1}]
+    public boolean validTree(int n, int[][] edges) {
+
+        List<Integer>[] adjList= new ArrayList[n];
+
+        for(int i=0;i<n;i++)
+            adjList[i]= new ArrayList<Integer>();
+
+        for(int i=0;i<edges.length;i++){
+            adjList[edges[i][0]].add(edges[i][1]);
+            adjList[edges[i][1]].add(edges[i][0]);
+        }
+        //[{1},{0,2,3,4},{1,3},{1,2},{1}]
+        boolean[] visited= new boolean[n];
+
+        return (checkNoCyclesDFS(adjList,visited,0,-1) && checkFullyConnected(visited));
+    }
+
+    public boolean checkNoCyclesDFS(List<Integer>[] adjList, boolean[]visited, int node, int parentNode){
+        if(visited[node])
+            return false;
+        visited[node]=true;
+        for(int i=0;i<adjList[node].size();i++){
+            int neighbor=adjList[node].get(i);
+            if(neighbor!=parentNode){
+                //understand this pattern of recursion
+                boolean result=checkNoCyclesDFS(adjList,visited,neighbor,node);
+                if(!result)
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean checkFullyConnected(boolean[]visited){
+        for(int i=0;i<visited.length;i++){
+            if(!visited[i])
+                return false;
+        }
+        return true;
+    }
+
+    public static void main(String args[]){
        int n = 5;
        int[][] edges = {{0,1},{1,2},{3,4}};
        System.out.println(countComponents(n,edges));

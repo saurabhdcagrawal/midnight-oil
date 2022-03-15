@@ -72,7 +72,7 @@ public class MatrixProblems {
         }
         return false;
     }
-
+//countIslands
     public int numIslands(char[][] grid) {
         int count_islands=0;
         for(int i=0; i< grid.length;i++){
@@ -99,6 +99,7 @@ public class MatrixProblems {
                 backtrack(new_i,new_j,grid);
         }
     }
+    //Word search
     public boolean exist(char[][] board, String word) {
         int numRows=board.length;
         int numCols=board[0].length;
