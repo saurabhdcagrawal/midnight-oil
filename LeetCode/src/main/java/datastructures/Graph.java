@@ -131,6 +131,7 @@ public class Graph {
     //3 visited (1,3)
     //return false
     //[{1},{0,2,3,4},{1,3},{1,2},{1}]
+    //Time complexity O(E+V) Space complexity O(E+V)
     public boolean validTree(int n, int[][] edges) {
 
         List<Integer>[] adjList= new ArrayList[n];
