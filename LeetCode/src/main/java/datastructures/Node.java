@@ -240,6 +240,22 @@ that node.*/
         return dummy.next;
     }
 
+
+    public Node determineLoop(Node head){
+        if(head==null)
+            return null;
+        HashMap<Node, Node> t = new HashMap<>();
+        Node l=head;
+        while(l!=null){
+            if(t.containsKey(l))
+                return l;
+            else
+                t.put(l,l);
+            l=l.next;
+        }
+        return null;
+    }
+
     //Determine loop linked list
     //at the point of meet ,they are k nodes away from the mstart of the loop
     public Node getBeginning(Node head) {
@@ -250,6 +266,7 @@ that node.*/
         Node fastPointer = head;
         Node slowPointer = head;
 //add condn
+        //since we incrementing fastPointer2 times, thats why the 2nd condition in while
         while (fastPointer != null && fastPointer.next != null) {
             slowPointer = slowPointer.next;
             fastPointer = fastPointer.next.next;
@@ -291,15 +308,17 @@ that node.*/
     //3
     //5->7->8->9->1
     public Node insertNodePositionGiven(Node head, int position, int newVal) {
-        Node n = head;
-        for (int i = 0; i < position - 1; i++) {
-            n = n.next;
+        Node dummy= new Node(0);
+        dummy.next=head;
+        Node n=dummy;
+        Node newNode= new Node(newVal);
+        int positionToReach=position-1;
+        while(positionToReach>0){
+            positionToReach--;
+            n=n.next;
         }
-        Node newNode = new Node(newVal);
-        Node temp = n.next;
-        n.next = newNode;
-        newNode.next = temp;
-        return head;
+        n.next=n.next.next;
+        return dummy.next;
     }
 
     public static Node getIntersectionNode(Node headA, Node headB) {
@@ -339,43 +358,6 @@ that node.*/
     //reverse linked list
 
 
-
-    //          | |
-    //1->4->5->7->9
-    //n=4
-    //p2.next ,comes to the last node but does not go in while loop
-    //p2==null goes to all node ,so print last data ,when coming out refremce
-    //points to null
-    public Node getNthNodeFromEnd(Node head, int n) {
-        if (head == null || n == 1) return null;
-        Node p1 = head, p2 = head;
-        //p2 advances by n-1
-        for (int i = 1; i <= n; i++) {
-            //length of list is less than n
-            if (p2 == null)
-                return null;
-            p2 = p2.next;
-        }
-        while (p2 != null) {
-            p1 = p1.next;
-            p2 = p2.next;
-        }
-        return p1;
-    }
-    //L+N-1;
-
-    public Node getNthNodeFromEndHashTable(Node head, int n) {
-        HashMap<Integer, Node> nodeMap = new HashMap<Integer, Node>();
-        Node p = head;
-        int count = 1;
-        while (p != null) {
-            nodeMap.put(count, p);
-            count++;
-            p = p.next;
-        }
-        int length = count;
-        return nodeMap.get(length + 1 - n);
-    }
 
     public static Node findMiddleNode(Node head) {
         if (head == null || head.next == null) return head;
