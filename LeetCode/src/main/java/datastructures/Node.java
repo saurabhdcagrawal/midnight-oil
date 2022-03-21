@@ -3,7 +3,7 @@ package main.java.datastructures;
 import main.java.datastructures.assist.Result;
 
 import java.util.HashMap;
-
+//inside same LLnode then reference head using this
 /* Base condition , head condition
 2 ways prev pointer and n.next
 condition n.null && n.next ! =null
@@ -56,7 +56,7 @@ public class Node {
         Node end = new Node(data);
         n.next = end;
     }
-
+//Note that it returns head
     public static Node deleteNode(Node head, int data) {
         if (head.data == data)
             return head.next;
@@ -70,8 +70,17 @@ public class Node {
             n = n.next;
         }
         return head;
-    }
+        /*alternate way?
+        while(n!=null && n.next.data==data)
+            n = n.next;
+        if(n!=null)
+            n.next=n.next.next;
+        return head;*/
 
+
+    }
+//Note that it returns head
+   // 1->2->3->2->2 reason why prev to be incremented only in the put section
     public static Node removeDuplicates(Node head) {
         if (head == null) return null;
         HashMap t = new HashMap();
@@ -140,7 +149,7 @@ that node.*/
         //edge cases
         if (c == null)
             return false;
-        //if penultimate node, mark it as null;
+        //if last node, mark it as null;
         if (c.next == null) {
             c = null;
             return true;
@@ -153,6 +162,9 @@ that node.*/
     }
 
     //O(max(m,n))
+ /*   You are given two non-empty linked lists representing two non-negative integers.
+    The digits are stored in reverse order, and each of their nodes contains a single digit.
+    Add the two numbers and return the sum as a linked list.*/
     public static Node addTwoNumbers(Node l1, Node l2) {
 
         Node n1=l1;
@@ -183,14 +195,49 @@ that node.*/
     }
 
     //1->2->3->4->5//reduces to remove the L-n+1
-    public static void removeNthNodeFromList(Node head, int n) {
-
-        Node p1 = head, p2 = head;
-        int count = 0;
-        while (count < n + 1) {
-            p1 = p1.next;
-            count++;
+    //Testcases [1,2] 2
+    //[1]1
+    public Node removeNthFromEnd(Node head, int n) {
+        Node l =head;
+        int size=0;
+        while(l!=null){
+            size++;
+            l=l.next;
         }
+        // dummy->1->2->3->4->5
+        //3
+        int nodeNumberToReach= size-n;//to remove Node at position L-n+1;
+        Node dummy = new Node(0);
+        dummy.next=head;
+        l =dummy;
+        while(nodeNumberToReach>0){
+            nodeNumberToReach--;
+            l=l.next;
+        }
+        l.next=l.next.next;
+        return dummy.next;
+    }
+
+    public Node removeNthFromEndSinglePass(Node head, int n) {
+
+        Node dummy = new Node(0);
+        dummy.next=head;
+        Node p1 =dummy;
+        Node p2 =dummy;
+        //if n=2, diff is 3
+        int diff=n+1;
+        while(diff>0){
+            diff--;
+            p2=p2.next;
+        }
+
+        while(p2!=null){
+            p1=p1.next;
+            p2=p2.next;
+        }
+        p1.next=p1.next.next;
+
+        return dummy.next;
     }
 
     //Determine loop linked list

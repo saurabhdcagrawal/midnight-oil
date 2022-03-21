@@ -408,6 +408,31 @@ public boolean isPalindrome(String s) {
     return true;
 }
 
+    public boolean wordBreak(String s, List<String> wordDict) {
+        Map<String,String> hmap= new HashMap<String,String>();
+        for(String str:wordDict)
+            hmap.put(str,str);
+        return wordBreak(s,hmap);
+    }
+//word break brute force
+    public boolean wordBreak(String s,Map<String,String> hmap) {
+        if(s.length()==0)
+            return true;
+        boolean flag=false;
+        for (int i=1;i<=s.length();i++){
+            String pref= s.substring(0,i);
+            if(hmap.containsKey(pref)){
+                flag= wordBreak(s.substring(i,s.length()),hmap);
+                //if its not working for later part, maybe try a different combo
+                if(flag)
+                    break;
+            }
+        }
+
+        return flag;
+
+    }
+
     public boolean isNonAlphaNumericChar(char c){
         if((c>='a'&& c<='z')||(c>='A'&& c<='Z')||(c>='0'&& c<='9'))
             return false;

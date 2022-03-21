@@ -239,14 +239,6 @@ public class DPAndRecursion {
     }
 
 
-    public static int rob(int[] nums) {
-        int[] amt = new int[nums.length+1] ;
-        amt[0]=0; amt[1]=nums[0];
-        for(int i=2;i<nums.length;i++)
-            amt[i] =Math.max((amt[i-2]+nums[i]),nums[i-1]);
-        System.out.println(Arrays.toString(amt));
-        return amt[nums.length];
-    }
 //baseball
 //apple
 //if char[i]='\0' &&  char[j]='\0' , return 0; reduction
@@ -495,17 +487,205 @@ public class DPAndRecursion {
          }
          return words;
         }
+//cost [10,15,20]  = 15
+    public static int minCostClimbingStairs(int[] cost) {
+        int n=cost.length;
+        int[] dp =new int[n+1];
+        dp[0]=0;
+        dp[1]=0;
+        for(int i=2;i<=n;i++)
+            dp[i]=Math.min(dp[i-2]+cost[i-2],dp[i-1]+cost[i-1]);
 
+        return dp[n];
 
+    }
+    public int minCostClimbingStairsConstantSpace(int[] cost) {
+        int n=cost.length;
+        int[] dp =new int[n+1];
+        int costFromOneStepAway=0;
+        int costFromTwoStepsAway=0;
+        //we are incrementing by one step, so one step away cost is our recurrence relation
+        for(int i=2;i<=n;i++){
+            int temp= costFromOneStepAway;
+            costFromOneStepAway=Math.min(costFromOneStepAway+cost[i-1],costFromTwoStepsAway+cost[i-2]);
+            costFromTwoStepsAway=temp;
+        }
 
+        return costFromOneStepAway;
 
+    }
+
+    //example how dp runs till n; n includes and not n+1
+    //can skip more than 1 houses e.g //[2,1,1,2]
+    public static int rob(int[] nums) {
+        int n=nums.length;
+        int[] dp = new int[n];
+        if(nums.length==1)
+            return nums[0];
+        dp[0]=nums[0];
+        dp[1]=Math.max(nums[0],nums[1]);
+        for(int i=2;i<n;i++)
+            dp[i]=Math.max(dp[i-1],dp[i-2]+nums[i]);
+        System.out.println(Arrays.toString(dp));
+        return dp[n-1];
+    }
+    public int robConstantMemory(int[] nums) {
+        int n=nums.length;
+        int[] dp = new int[n];
+        if(nums.length==1)
+            return nums[0];
+        int maxMoneyFromTwoHousesAway=nums[0];
+        int maxMoneyFromOneHouseAway=Math.max(nums[0],nums[1]);
+        //we are incrementing by one step, so one step away cost is our recurrence relation
+        for(int i=2;i<n;i++){
+            int temp =maxMoneyFromOneHouseAway;
+            maxMoneyFromOneHouseAway=Math.max(maxMoneyFromOneHouseAway,maxMoneyFromTwoHousesAway+nums[i]);
+            maxMoneyFromTwoHousesAway=temp;
+        }
+        System.out.println(maxMoneyFromOneHouseAway);
+        return maxMoneyFromOneHouseAway;
+    }
+
+    public int robCircularHouses(int[] nums) {
+        //Edge case
+        if(nums.length==1)
+            return nums[0];
+        //Create 2 set based on 2 routes
+        int[] set1= new int[nums.length-1];
+        int[] set2= new int[nums.length-1];
+        System.arraycopy(nums, 0, set1, 0,nums.length-1);
+        System.arraycopy(nums, 1, set2, 0,nums.length-1);
+        int maxSet1=rob(set1);
+        int maxSet2=rob(set2);
+        return Math.max(maxSet1,maxSet2);
+    }
+    //no solution can start with 0
+    //for end with 0, 10, 20 only values
+    //for 0 in middle
+    //10x, 20x.. are only possible
+    //2125 2
+    //recursion strategy,one digit followed by string or 2 digit followed by string
+    //memo array contains at what digit position you can have combinations building from right to left
+    //for eg for 2125
+    //at position 3 . i.e index 2 2->2 since 5 is one way and 24 is another way
+    //{0=5, 1=3, 2=2}
+    public int numDecodings(String s) {
+
+        Map<Integer,Integer> memo = new HashMap<Integer,Integer>();
+
+        // return numDecodings(0,memo,s);
+        int ans=numDecodings(0,memo,s);
+        System.out.println(memo);
+        return ans;
+    }
+    //2125
+    public int numDecodings(int index,Map<Integer,Integer> memo,String s){
+
+        if(memo.containsKey(index))
+            return memo.get(index);
+
+        if(index==s.length())
+            return 1;
+
+        if(s.charAt(index)=='0')
+            return 0;
+
+        if(index==s.length()-1)
+            return 1;
+        //build from right to left
+        int ans=numDecodings(index+1,memo,s);
+        String twoDigit=s.substring(index,index+2);
+            if(Integer.parseInt(twoDigit)>=10 && Integer.parseInt(twoDigit) <=26)
+            ans+= numDecodings(index+2,memo,s);
+
+        memo.put(index,ans);
+
+        return ans;
+    }
+
+    //For dp
+//dp[n] is "how many ways are there to decode the given string, up to and including the nth character"
+//dp[0] then is "how many ways are there to decode a string of 0 length"
+//There is only one: you must interpret it as an empty string.
+//It is a base case.
+//125
+//0,1,2,3
+    public int numDecodingsDP(String s) {
+        int n=s.length();
+        int[] dp = new int[n+1];
+
+        dp[0]=1;
+        //since we have guaranteed first char will never be
+        dp[1]=s.charAt(0)=='0'? 0:1;
+        //start with 2 and go 2 characters behind
+        for(int i=2;i<=n;i++){
+            //if single digit decode is possible
+            //i'th character of dp is i-1th of string
+
+            if(s.charAt(i-1)!='0')
+                dp[i]=dp[i-1];
+
+            String twoDigit=s.substring(i-2,i);
+            if(Integer.parseInt(twoDigit)>=10 && Integer.parseInt(twoDigit) <=26)
+                dp[i]+=dp[i-2];
+
+        }
+
+        return dp[n];
+    }
+    //Longest increasing subsequence
+    public int lengthOfLIS(int[] nums) {
+        int n=nums.length;
+        int[] dp=new int[n];
+        Arrays.fill(dp,1);
+        int maxLength=1;
+        for(int i=1;i<n;i++){
+            for(int j=0;j<i;j++){
+                if(nums[i]>nums[j]){
+                    //captured previously
+                    dp[i]=Math.max(dp[i],dp[j]+1);
+                    if(dp[i]>maxLength)
+                        maxLength=dp[i];
+                }
+            }
+        }
+        System.out.println(Arrays.toString(dp));
+        return maxLength;
+
+    }
+    public int lengthOfLISNew(int[] nums) {
+        // [8, 1, 6, 2, 3, 10]
+        //create a sub keep adding elements
+        //if element inside sub is bigger, drop all
+        //pick the new one
+        //[8],[1],[1,6],[1,2],[1,2,3],[1,2,3,10]
+        List<Integer> sub = new ArrayList<Integer>();
+        sub.add(nums[0]);
+
+        for(int i=1;i<nums.length;i++){
+            if(nums[i]>sub.get(sub.size()-1))
+                sub.add(nums[i]);
+            else{
+                int j=0;
+                //can be replaced by binary search
+                //int j=binary search(sub,nums)
+                //revisit binary search
+                while(sub.get(j)<nums[i]){
+                    j++;
+                }
+                sub.set(j,nums[i]);
+            }
+        }
+
+        return sub.size();
+    }
     public static void main(String args[]){
        System.out.println("Fibonacci recursion " +fibonacciRecursion(5));
        System.out.println("Fibonacci memoization " +fibonacciMemoization(5));
         System.out.println("Fibonacci DP " +fibonacciDP(5));
         System.out.println("Fibonacci DPI " +fibonacciDPIter(5));
         int[] nums={1,2,3,1};
-        System.out.println("Rob " +rob(nums));
+        System.out.println(" " +rob(nums));
         System.out.println("Longest common subsequence");
         System.out.println(LCS("ABAZDC","BACBAD"));
         System.out.println("Maximum subarray subsequence");
@@ -540,6 +720,8 @@ public class DPAndRecursion {
         System.out.println("Get all perms of a word");
         System.out.println(getPermutations("abcd"));
         System.out.println(getAllPermsOfString("abcd"));
+
+        System.out.println(minCostClimbingStairs(new int[]{}));
     }
 
 
