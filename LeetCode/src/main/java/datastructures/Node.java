@@ -306,7 +306,7 @@ that node.*/
 
 
     //3
-    //5->7->8->9->1
+    //dummy->5->7->8->9->1
     public Node insertNodePositionGiven(Node head, int position, int newVal) {
         Node dummy= new Node(0);
         dummy.next=head;
@@ -325,16 +325,17 @@ that node.*/
         int aLength = 0, bLength = 0;
         Node p1 = headA;
         Node p2 = headB;
-        while (p1 != null && p1.next != null) {
+        while (p1 != null) {
             aLength++;
             p1 = p1.next;
         }
         aLength++;
 
-        while (p2 != null && p2.next != null) {
+        while (p2 != null) {
             bLength++;
             p2 = p2.next;
         }
+        aLength++;
         bLength++;
 
      // if both LL are intersecting then the last node should be the same, if different then it means they are non-intersecting
@@ -347,6 +348,11 @@ that node.*/
 
         for (int i = 0; i < lengthDiff; i++)
             longerNode = longerNode.next;
+       /* while(lengthDiff>0){
+            lengthDiff--;
+            longerNode=longerNode.next;
+        }
+        */
 
         while (longerNode != shorterNode) {
             longerNode = longerNode.next;
@@ -364,7 +370,7 @@ that node.*/
         Node p1 = head, p2 = head;
         //1->2->3->4->5->6
         //1->2->3
-        while (p2 != null && p2.next != null && p2.next.next != null) {
+        while (p2 != null && p2.next != null && p2.next!= null) {
             p1 = p1.next;
             p2 = p2.next.next;
         }
@@ -383,6 +389,19 @@ that node.*/
         }
         head = previous;
         return head;
+    }
+   //    1->2<-3<-4<-5
+   //               |
+   //   head|reverseLL
+    public Node reverseListRecursive(Node head) {
+
+        if(head==null||head.next==null)
+            return head;
+
+        Node reversedLL=reverseListRecursive(head.next);
+        head.next.next=head;
+        head.next=null;
+        return reversedLL;
     }
 
     // 5->7->9->22->33
