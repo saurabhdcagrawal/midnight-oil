@@ -370,7 +370,7 @@ that node.*/
         Node p1 = head, p2 = head;
         //1->2->3->4->5->6
         //1->2->3
-        while (p2 != null && p2.next != null && p2.next!= null) {
+        while (p2 != null && p2.next != null) {
             p1 = p1.next;
             p2 = p2.next.next;
         }
@@ -464,31 +464,10 @@ that node.*/
            return result;
 
        }
-
-    public ListNode findMiddleNode(ListNode head){
-        if(head==null || head.next==null) return head;
-        ListNode p1=head,p2=head;
-        while(p2!=null &&p2.next!=null && p2.next.next!=null){
-            p1=p1.next;
-            p2=p2.next.next;
-        }
-        return p1;
-    }
-
-    public ListNode reverseLinkedList(ListNode head){
-        ListNode current=head ,nextNode=null,previous=null;
-        while(current!=null){
-            nextNode=current.next;
-            current.next=previous;
-            previous=current;
-            current=nextNode;
-        }
-
-        head=previous;
-        return head;
-    }*/
+*/
     public boolean isLinkedListIdentical(Node n1, Node n2) {
         if (n1 == null && n2 == null) return true;
+        if (n1 == null || n2 == null) return false;
         while (n1 != null && n2 != null) {
             if (n1.data != n2.data)
                 return false;
@@ -496,14 +475,15 @@ that node.*/
             n2 = n2.next;
         }
         //Are both null at this point?
-        if (n1 == null && n2 == null)
-            return true;
+        if (n1 != null || n2 != null)
+            return false;
 
-        return false;
+
+        return true;
     }
 
 
-    public static Node mergeTwoLists(Node l1, Node l2) {
+    public static Node mergeTwoSortedLists(Node l1, Node l2) {
         Node dummy = new Node(0);
         Node result = dummy;
         while (l1 != null && l2 != null) {
@@ -586,7 +566,7 @@ that node.*/
         l2.appendNode(4);
         System.out.println("Printing second node");
         printNode(l2);
-        Node result = mergeTwoLists(l1, l2);
+        Node result = mergeTwoSortedLists(l1, l2);
         System.out.println("Printing result");
         printNode(result);
         Node revisited = new Node(7);
