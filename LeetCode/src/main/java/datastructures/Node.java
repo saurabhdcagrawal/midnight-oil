@@ -403,6 +403,33 @@ that node.*/
         head.next=null;
         return reversedLL;
     }
+    //2 nodes con and tail
+    public Node reverseBetween(Node head, int left, int right) {
+        Node prev=null;
+        Node current=head;
+        Node nextNode=null;
+        for(int i=1;i<left;i++){
+            prev=current;
+            current=current.next;
+        }
+        Node con=prev;
+        Node tail=current;
+        while(right>=left && current!=null){
+            right--;
+            nextNode=current.next;
+            current.next=prev;
+            prev=current;
+            current=nextNode;
+        }
+        //after current will point to lastNode, next will point to node after
+        if(con!=null)
+            con.next=prev;
+        else
+            head=prev;
+
+        tail.next=current;
+        return head;
+    }
 
     // 5->7->9->22->33
     // 5->7->9->sh7->5

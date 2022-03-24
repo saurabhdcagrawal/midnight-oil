@@ -1,7 +1,9 @@
 package main.java.datastructures;
 import java.util.*;
 import java.util.Stack;
-
+//most algorithms fit into pre-order traversals
+//delete b tree
+//create mirror --postorder
 public class BTreeNode{
  int data;
  BTreeNode left;
@@ -12,7 +14,7 @@ public class BTreeNode{
  left=null;
  right=null;
  }
-
+//1.Visit the leftsubtree in orderManner 2 Visit the current Node 3. Visit the right sub tree in Inorder Traversal fashion
  public static void inOrderTraversal(BTreeNode root){
    if(root!=null){
     inOrderTraversal(root.left);
@@ -22,6 +24,8 @@ public class BTreeNode{
  }
 
  public static void inorderTraversalIterative(BTreeNode root){
+     //While with true and break later
+     //Stack keep pushing root
  Stack s = new Stack();
      while(true){
          while(root!=null){
@@ -66,15 +70,15 @@ public class BTreeNode{
     }
 
 // Creating Mirror of tree will also use post Order Traversal
-
-    public static void getMirrorOfBinaryTree(BTreeNode root){
+    public static BTreeNode getMirrorOfBinaryTree(BTreeNode root){
      if(root==null)
-         return;
+         return null;
      getMirrorOfBinaryTree(root.left);
      getMirrorOfBinaryTree(root.right);
      BTreeNode temp=root;
      root.left=root.right;
      root.right=temp;
+     return root;
      }
 
 
@@ -114,7 +118,7 @@ public class BTreeNode{
      }
 
   //leetcode version
-
+//when you reach null add null
         public List<List<Integer>> levelOrder(BTreeNode root) {
             List<List<Integer>> levelNodes = new ArrayList<>();
             if(root==null)
@@ -191,6 +195,7 @@ public class BTreeNode{
         return root.data;
     }
 
+    //preorder traversal
     public static boolean validateIsBST(BTreeNode root){
      if (root==null)
          return true;
@@ -205,7 +210,7 @@ public class BTreeNode{
     }
 
 
-
+//preorder traversal
     public static boolean isStructurallyIdentical(BTreeNode root1 ,BTreeNode root2){
         if (root1==null&& root2==null)
             return true;
@@ -217,39 +222,76 @@ public class BTreeNode{
                 isStructurallyIdentical(root1.right,root2.right));
 
         }
-
-   //add of paths leads to a given sum?
-   //when you reach the leaf node ,addition of the path should be null
-  public static boolean hasSum(BTreeNode root ,int sum){
-     if(root==null)
-         return(sum==0);
-     else{
-          int subsum=sum-root.data;
-          return (hasSum(root.left,subsum)||hasSum(root.right,subsum));
-
-     }
-
- }
-
-
-    public static boolean isMirrorOfEachOther(BTreeNode root1 ,BTreeNode root2){
+  //pre order traversal
+        public static boolean isMirrorOfEachOther(BTreeNode root1 ,BTreeNode root2){
         if (root1==null&& root2==null)
             return true;
         else if(root1==null ||root2==null)
             return false;
         else if(root1.data!=root2.data)
             return false;
-        return (isStructurallyIdentical(root1.left,root2.right) &&
-                isStructurallyIdentical(root1.right,root2.left));
+        return (isMirrorOfEachOther(root1.left,root2.right) &&
+                isMirrorOfEachOther(root1.right,root2.left));
+
+    }
+    public boolean isSymmetric(BTreeNode root) {
+        if(root==null) return true;
+        return isMirrorOfEachOther(root.left,root.right);
 
     }
 
+   //add of paths leads to a given sum?
+   //when you reach the leaf node ,addition of the path should be null
+  public static boolean hasSum(BTreeNode root ,int sum){
+     if(root==null)
+         return(sum==0);
+
+     return (hasSum(root.left,sum- root.data)||hasSum(root.right,sum- root.data));
+
+ }
+//leetcode style when you want the empty root with 0 input combo as false
+    /*public boolean hasPathSum(BTreeNode root, int targetSum) {
+        if(root==null)
+            return false;
+        if(root.left==null && root.right==null)
+            return(targetSum-root.data==0);
+        return (hasPathSum(root.left,targetSum-root.data)||hasPathSum(root.right,targetSum-root.data));
+    }*/
+
+//preorder traversal
     public static int heightBTree(BTreeNode root){
      if(root==null)return 0;
      else
          return(1+Math.max(heightBTree(root.left),heightBTree(root.right)));
 
     }
+
+    //for every node of the tree, check if the subtree starting that node is identical to given subtree in a pre-order fashion
+    //Maximium do it for everyNode m and do n comparisons if sub root has n nodes making it total O(mn)
+    public static boolean isSubtree(BTreeNode root, BTreeNode subRoot) {
+        if(root==null)
+            return false;
+        if(isStructurallyIdentical(root,subRoot))
+            return true;
+        return (isSubtree(root.left,subRoot)||isSubtree(root.right,subRoot));
+    }
+
+    public static String serialize(BTreeNode root) {
+        String str="";
+        return serialize(root,str);
+    }
+    public static String serialize(BTreeNode root, String str){
+        if(root == null){
+            str+="null";
+            return str;
+        }
+        str+=root.data;
+        serialize(root.left,str);
+        serialize(root.right,str);
+        return str;
+    }
+
+
       public static int getDiameter(BTreeNode root){
           int diameter=new DiameterBTree().getDiameter(root);
           return diameter;
@@ -351,26 +393,8 @@ public class BTreeNode{
 
     }
 
-    public boolean isSymmetric(BTreeNode root) {
-        if(root==null) return true;
-        return isMirror(root.left,root.right);
-
-    }
 
 
-    public boolean isMirror(BTreeNode root1 ,BTreeNode root2){
-
-        if(root1==null && root2==null)
-            return true;
-        if (root1 ==null || root2==null )
-            return false;
-        if(root1.data!=root2.data)
-            return false;
-
-        return (isMirror(root1.left,root2.right) && isMirror(root1.right,root2.left));
-
-
-    }
 
    /* public boolean findLCA(BTreeNode root1 ,BTreeNode root2){
 
@@ -448,6 +472,8 @@ public class BTreeNode{
       System.out.println("Height of tree " + heightBTree(root));
        System.out.println("Non recursive Height of tree " + depthNonRecursive(root));
        System.out.println("Diameter is "+getDiameter(root));
+       System.out.println("Serializing B tree");
+       System.out.println(serialize(temp));
        //getMirrorOfBinaryTree(root);
        //System.out.println("Mirrored B tree") ;
        //inOrderTraversal(root);
