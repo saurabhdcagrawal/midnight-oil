@@ -276,21 +276,40 @@ public class BTreeNode{
         return (isSubtree(root.left,subRoot)||isSubtree(root.right,subRoot));
     }
 
-    public static String serialize(BTreeNode root) {
-        String str="";
-        return serialize(root,str);
+    public static String serialize(BTreeNode root){
+        return serialize(root,"");
     }
-    public static String serialize(BTreeNode root, String str){
-        if(root == null){
-            str+="null";
+    public static String serialize(BTreeNode root,String str){
+        if(root==null){
+            str+="null,";
             return str;
         }
-        str+=root.data;
-        serialize(root.left,str);
-        serialize(root.right,str);
-        return str;
+        else{
+            str+=String.valueOf(root.data)+",";
+            str=serialize(root.left,str);
+            str=serialize(root.right,str);
+            return str;
+        }
     }
 
+    public static BTreeNode deserialize(String data){
+        String[] dataArr=data.split(",");
+        List<String> dataList= new LinkedList<>(Arrays.asList(dataArr));
+        return deserialize(dataList);
+    }
+    public static BTreeNode deserialize(List<String> data){
+        if(data.get(0).equals("null")){
+            data.remove(0);
+            return null;
+        }
+        else{
+            BTreeNode root=new BTreeNode(Integer.valueOf(data.get(0)));
+            data.remove(0);
+            root.left=deserialize(data);
+            root.right=deserialize(data);
+            return root;
+        }
+    }
 
       public static int getDiameter(BTreeNode root){
           int diameter=new DiameterBTree().getDiameter(root);
@@ -472,8 +491,9 @@ public class BTreeNode{
       System.out.println("Height of tree " + heightBTree(root));
        System.out.println("Non recursive Height of tree " + depthNonRecursive(root));
        System.out.println("Diameter is "+getDiameter(root));
-       System.out.println("Serializing B tree");
+       System.out.println("Serializing and deserializing B tree");
        System.out.println(serialize(temp));
+       BTreeNode node=deserialize(serialize(temp));
        //getMirrorOfBinaryTree(root);
        //System.out.println("Mirrored B tree") ;
        //inOrderTraversal(root);
