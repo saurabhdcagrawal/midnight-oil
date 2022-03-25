@@ -366,7 +366,7 @@ public class BTreeNode{
              if(temp.left!=null)
                  q.add(temp.left);
              if(temp.right!=null)
-                 q.add(temp.right);
+                   q.add(temp.right);
            }
       }
       q=null;
@@ -386,8 +386,8 @@ public class BTreeNode{
       return false;
     }
 
-    //give prev=Integer.MIN_VALUE
-    public boolean inOrderTraversalBST(BTreeNode root,int prev){
+    //give prev=Integer.MIN_VALUE//ARCHIVING
+    /*public boolean inOrderTraversalBST(BTreeNode root,int prev){
      if (root==null)
          return true;
      if(!inOrderTraversalBST(root.left,prev))
@@ -397,9 +397,25 @@ public class BTreeNode{
       prev=root.data;
       return inOrderTraversalBST(root.right,prev);
 
-    }
+    }*/
 
-    //
+    class Solution {
+        Integer prev;
+        public boolean isValidBST(BTreeNode root) {
+            prev=null;
+            return isValidBSTUsingInOrderT(root);
+        }
+        public boolean isValidBSTUsingInOrderT(BTreeNode root){
+            if(root==null)
+                return true;
+            if(!isValidBSTUsingInOrderT(root.left))
+                return false;
+            if(prev!=null && root.data<=prev)
+                return false;
+            prev=root.data;
+            return isValidBSTUsingInOrderT(root.right);
+        }
+    }
 
     public BTreeNode kthSmallestElementBST(BTreeNode root,int k ,int count){
      if (root==null)
