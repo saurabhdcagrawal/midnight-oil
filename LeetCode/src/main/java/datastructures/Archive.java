@@ -82,6 +82,16 @@ public class Archive {
 
     }
 
+    public BTreeNode kthSmallestElementBST(BTreeNode root,int k ,int count){
+        if (root==null)
+            return null;
+        BTreeNode left=kthSmallestElementBST(root.left,k,count);
+        if (left!=null) return left;
+        if (++k==count)
+            return root;
+        return kthSmallestElementBST(root.right,k,count);
+
+    }
     public static void main(String args[]) {
         Archive a = new Archive();
         char[][] grid = {{'1', '1', '1', '1', '0'}, {'1', '1', '0', '1', '0'},
@@ -93,6 +103,20 @@ public class Archive {
         char[][] board2 = {{'a', 'b'}};
         char[][] board3 = {{'c', 'a', 'a'}, {'a', 'a', 'a'}, {'b', 'c', 'd'}};
         System.out.println(a.exist(board3, "aab"));
+    }
+
+
+    //give prev=Integer.MIN_VALUE//ARCHIVING
+    public boolean inOrderTraversalBST(BTreeNode root,int prev){
+     if (root==null)
+         return true;
+     if(!inOrderTraversalBST(root.left,prev))
+         return false;
+      if (root.data<prev)
+          return false;
+      prev=root.data;
+      return inOrderTraversalBST(root.right,prev);
+
     }
 
     }

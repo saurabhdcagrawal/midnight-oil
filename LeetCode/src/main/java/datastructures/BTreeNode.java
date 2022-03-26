@@ -4,6 +4,9 @@ import java.util.Stack;
 //most algorithms fit into pre-order traversals
 //delete b tree
 //create mirror --postorder
+//kths smallest and other things into in-order
+//BFS is queue (level order) if you want level, you put null in a queue
+//DFS techniques are pre-order,in-order and postorder
 public class BTreeNode{
  int data;
  BTreeNode left;
@@ -386,19 +389,6 @@ public class BTreeNode{
       return false;
     }
 
-    //give prev=Integer.MIN_VALUE//ARCHIVING
-    /*public boolean inOrderTraversalBST(BTreeNode root,int prev){
-     if (root==null)
-         return true;
-     if(!inOrderTraversalBST(root.left,prev))
-         return false;
-      if (root.data<prev)
-          return false;
-      prev=root.data;
-      return inOrderTraversalBST(root.right,prev);
-
-    }*/
-
     class Solution {
         Integer prev;
         public boolean isValidBST(BTreeNode root) {
@@ -417,15 +407,64 @@ public class BTreeNode{
         }
     }
 
-    public BTreeNode kthSmallestElementBST(BTreeNode root,int k ,int count){
-     if (root==null)
-         return null;
-     BTreeNode left=kthSmallestElementBST(root.left,k,count);
-     if (left!=null) return left;
-     if (++k==count)
-         return root;
-     return kthSmallestElementBST(root.right,k,count);
 
+    public int kthSmallest(BTreeNode root, int k) {
+        Stack s = new Stack();
+        while(true){
+            while(root!=null){
+                s.push(root);
+                root=root.left;
+            }
+            if(s.isEmpty())
+                break;
+            root=(BTreeNode)s.pop();
+            if(--k==0)
+                return root.data;
+            root=root.right;
+        }
+        return -1;
+    }
+
+    public int kthSmallestRecursive(BTreeNode root, int k) {
+        return findKthSmallestFromInorderTraversal(root,k);
+    }
+
+    public void inOrderTraversal(BTreeNode root,List<Integer> nodes){
+        if(root==null)
+            return ;
+        inOrderTraversal(root.left,nodes);
+        nodes.add(root.data);
+        inOrderTraversal(root.right,nodes);
+    }
+
+    public int findKthSmallestFromInorderTraversal(BTreeNode root,int k){
+        List<Integer> nodes = new ArrayList<Integer>();
+        inOrderTraversal(root,nodes);
+        return nodes.get(k-1);
+    }
+    //LCA BST //T=O(N)  S= O(N) skewed
+    public BTreeNode lowestCommonAncestorBST(BTreeNode root, BTreeNode p, BTreeNode q) {
+        if(root==null)
+            return null;
+
+        if(p.data<root.data && q.data<root.data)
+            return lowestCommonAncestorBST(root.left,p,q);
+        else if(p.data>root.data && q.data>root.data)
+            return lowestCommonAncestorBST(root.right,p,q);
+        else
+            return root;
+    }
+    //LCA BST //T=O(N)  S= O(1)
+    public BTreeNode lowestCommonAncestorBSTIter(BTreeNode root, BTreeNode p, BTreeNode q) {
+        while(root!=null){
+            if(p.data<root.data && q.data<root.data)
+                root=root.left;
+            else if(p.data>root.data && q.data>root.data)
+                root=root.right;
+            else
+                return root;
+        }
+        return null;
     }
 
 
@@ -462,6 +501,8 @@ public class BTreeNode{
                 inorderTraversalRec(root.right, nodes);
             }
         }
+
+
         public List<Integer> inorderTraversalIter(BTreeNode root){
             List<Integer> nodes = new ArrayList<Integer> ();
             Stack<BTreeNode> s = new Stack<BTreeNode>();
