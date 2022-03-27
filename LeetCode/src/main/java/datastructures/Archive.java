@@ -118,5 +118,26 @@ public class Archive {
       return inOrderTraversalBST(root.right,prev);
 
     }
+//my solution
+    public BTreeNode lowestCommonAncestor(BTreeNode root, BTreeNode p, BTreeNode q) {
+        if(root==null)
+            return null;
+        if(contains(root.left,p) &&contains(root.left,q))
+            return lowestCommonAncestor(root.left,p,q);
+        else if(contains(root.right,p) &&contains(root.right,q))
+            return lowestCommonAncestor(root.right,p,q);
+        else
+            return root;
+
+    }
+
+
+    public boolean contains(BTreeNode root, BTreeNode node){
+        if(root==null)
+            return false;
+        if(root==node||root.left==node||root.right==node||contains(root.left,node)||contains(root.right,node))
+            return true;
+        return false;
+    }
 
     }

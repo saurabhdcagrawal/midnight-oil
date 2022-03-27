@@ -7,6 +7,9 @@ import java.util.Stack;
 //kths smallest and other things into in-order
 //BFS is queue (level order) if you want level, you put null in a queue
 //DFS techniques are pre-order,in-order and postorder
+/*Time complexity: O(N), where N is number of nodes, since we visit each node not more than 2 times.
+        Space complexity: O(H), where H is a tree height, to keep the recursion stack.
+        In the average case of balanced tree, the tree height H = log N in the worst case of skewed tree, H = N*/
 public class BTreeNode{
  int data;
  BTreeNode left;
@@ -466,27 +469,22 @@ public class BTreeNode{
         }
         return null;
     }
+    public BTreeNode lowestCommonAncestor(BTreeNode root, BTreeNode p, BTreeNode q) {
+        if(root==null)
+            return null;
+        //base case
+        if(root==p || root==q)
+            return root;
 
+        BTreeNode left=lowestCommonAncestor(root.left,p,q);
+        BTreeNode right=lowestCommonAncestor(root.right,p,q);
 
+        if(left!=null && right!=null)
+            return root;
+        else
+            return left!=null?left:right;
 
-
-   /* public boolean findLCA(BTreeNode root1 ,BTreeNode root2){
-
-        if (root==null)
-            return false;
-
-        if (root.left==node || root.right==node||
-                printAllAncestors(root.left,node)|| printAllAncestors(root.right,node)){
-            System.out.println(root.data);
-            return true;
-        }
-        return false;
-    }*/
-//8 null 5 11 null 1 6 null
-       //     8
-       //   5    11
-       // 1   6
-
+    }
   /************************************************Revamp***************/
  /* Binary Tree Inorder Traversal */
   public List<Integer> inorderTraversalRec(BTreeNode root) {
@@ -524,8 +522,27 @@ public class BTreeNode{
             }
             return nodes;
         }
+     //Binary Tree Maximum Path Sum
+    class SolutionMaxPathSum {
+        //max node is node value + 0 or 1 of its subtrees can add
+        // then path sum can be obtained as node value+ max from left subtree+max from right subtree
+        int max_sum = Integer.MIN_VALUE;
 
+        public int maxGain(BTreeNode root) {
+            if (root == null)
+                return 0;
+            int leftGain = Math.max(maxGain(root.left), 0);
+            int rightGain = Math.max(maxGain(root.right), 0);
+            int updatedSum = root.data + leftGain + rightGain;
+            max_sum = Math.max(updatedSum, max_sum);
+            return root.data + Math.max(leftGain, rightGain);
+        }
 
+        public int maxPathSum(BTreeNode root) {
+            maxGain(root);
+            return max_sum;
+        }
+    }
      public  static void main(String args[]){
       BTreeNode root= new BTreeNode(8);
       BTreeNode.insertNode(root,11);
