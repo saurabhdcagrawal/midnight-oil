@@ -448,8 +448,8 @@ that node.*/
         printNode(head);
         Node middleNode = findMiddleNode(head);
         System.out.println("Printing middle node " + middleNode.data);
-        Node secondHead = reverseLinkedList(middleNode.next);
-        middleNode.next = null;
+        Node secondHead = reverseLinkedList(middleNode);
+       // Wrong approach middleNode.next = null;
         System.out.println("Second half");
         printNode(secondHead);
         System.out.println("First half");
@@ -466,13 +466,47 @@ that node.*/
         Node secondHalf = reverseLinkedList(secondHead);
         System.out.println("Getting back Original Second Half");
         printNode(secondHalf);
-        middleNode.next = secondHalf;
+       // middleNode.next = secondHalf;
         System.out.println("Printing linked list again");
         printNode(head);
         return result;
     }
+    /*You are given the head of a singly linked-list. The list can be represented as:
+    L0 → L1 → … → Ln - 1 → Ln
+    Reorder the list to be on the following form:
+    L0 → Ln → L1 → Ln - 1 → L2 → Ln - 2 → …*/
 
-    //concise
+   /* Find a middle node of the linked list. If there are two middle nodes, return the second middle node.
+    //go to middle node
+    Example: for the list 1->2->3->4->5->6, the middle element is 4.
+
+    Once a middle node has been found, reverse the second part of the list.
+        Example: convert 1->2->3->4->5->6 into 1->2->3->4 and 6->5->4.
+
+    Now merge the two sorted lists. Example: merge 1->2->3->4 and 6->5->4 into 1->6->2->5->3->4.*/
+    public void reorderList(Node head) {
+
+        if(head==null)
+            return ;
+
+        Node middleNode=findMiddleNode(head);
+        Node reversedSecondHalf=reverseLinkedList(middleNode);
+        mergeSortedLinkedListsDiff(head,reversedSecondHalf);
+    }
+    public void mergeSortedLinkedListsDiff(Node head1, Node head2) {
+        Node first = head1;
+        Node second = head2;
+        while (second.next != null) {
+            Node firstNext = first.next;
+            Node secondNext = second.next;
+            first.next = second;
+            second.next = firstNext;
+            first = firstNext;
+            second = secondNext;
+        }
+
+    }
+        //concise
      /*  public boolean isPalindrome(ListNode head) {
            if(head==null) return true;
            ListNode middleNode=findMiddleNode(head);
