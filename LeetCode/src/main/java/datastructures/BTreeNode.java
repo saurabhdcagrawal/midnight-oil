@@ -317,7 +317,52 @@ public class BTreeNode{
         }
     }
 
-      public static int getDiameter(BTreeNode root){
+
+   //W Construct Binary Tree from Preorder and Inorder Traversal
+   // go on with preorder index
+  /* Start from not inorder traversal, usually it's preorder or postorder one, and use the traversal picture above to define
+  the strategy to pick the nodes. For example, for preorder traversal the first value is a root, then its left child,
+  then its right child, etc. For postorder traversal the last value is a root, then its right child, then its left child, etc.
+  The value picked from preorder/postorder traversal splits the inorder traversal into left and right subtrees.
+  The only information one needs from inorder - if the current subtree is empty (= return None) or not (= continue to
+  construct the subtree).
+  For postorder we get the root nodes from right... the last node is the root.. the node after that is the root of right subtree
+  //so we build trees from right to left
+*/   class SolutionBTreefromPreOrderInOrder {
+       int preorderIndex;
+       Map<Integer,Integer> inOrderMap= new HashMap<Integer,Integer>();
+       public BTreeNode buildTree(int[] preorder, int[] inorder) {
+           preorderIndex=0;
+          // postorderIndex=postorder.length-1;
+           for(int i=0;i<inorder.length;i++)
+               inOrderMap.put(inorder[i],i);
+
+           return buildTree(preorder,0,preorder.length-1);
+
+       }
+
+       public BTreeNode buildTree(int[] preorder,int left,int right){
+           if(left>right)
+               return null;
+           int currentRootVal=preorder[preorderIndex];
+           preorderIndex++;
+           BTreeNode root= new BTreeNode(currentRootVal);
+           root.left=buildTree(preorder,left,inOrderMap.get(currentRootVal)-1);
+           root.right=buildTree(preorder,inOrderMap.get(currentRootVal)+1,right);
+/*
+           postorderIndex--;
+           TreeNode root= new TreeNode(currentRootVal);
+           root.right=buildTree(postorder,inOrderMap.get(currentRootVal)+1,right);
+           root.left=buildTree(postorder,left,inOrderMap.get(currentRootVal)-1);
+*/
+
+           return root;
+       }
+   }
+
+
+
+    public static int getDiameter(BTreeNode root){
           int diameter=new DiameterBTree().getDiameter(root);
           return diameter;
       }
