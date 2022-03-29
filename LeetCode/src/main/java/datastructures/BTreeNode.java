@@ -252,6 +252,7 @@ public class BTreeNode{
    }
 //in reality q.add and q.remove
     //temp will be the last node ,it gives the deepest node
+    //for zigzag traversal, add q elements to stack and empty the stack later
    public static void levelOrderTraversal(BTreeNode root){
      if (root==null) return;
      BTreeNode temp;
@@ -359,6 +360,58 @@ public class BTreeNode{
 
         } else
             return (findMinimum(node.left));
+
+    }
+    public boolean findElementInBTree(BTreeNode root, int elem) {
+        if (root == null)
+            return false;
+
+        if (root.data == elem)
+            return true;
+
+        else
+            return (findElementInBTree(root.left, elem) || findElementInBTree(
+                    root.right, elem));
+    }
+
+    public BTreeNode findNode(BTreeNode root, int value) {
+
+        Queue<BTreeNode> queue = new LinkedList<BTreeNode>();
+
+        queue.add(root);
+
+        BTreeNode current = null;
+
+        while (!queue.isEmpty()) {
+            current = queue.poll();
+
+            if (current.data == value)
+                return current;
+
+            // do the processing on a node
+            // process(current);
+            if (current.right != null)
+                queue.add(current.right);
+            if (current.left != null)
+                queue.add(current.left);
+
+        }
+        return null;
+
+    }
+
+    //O(logN)
+    public BTreeNode findBSTNode(BTreeNode root, int data) {
+        if (root == null)
+            return null;
+
+        else if (root.data == data)
+            return root;
+
+        else if (root.data < data)
+            return (findBSTNode(root.right, data));
+        else
+            return (findBSTNode(root.left, data));
 
     }
 
@@ -756,72 +809,6 @@ public class BTreeNode{
 
     }
 
-    public boolean findElementInBTree(BTreeNode root, int elem) {
-        if (root == null)
-            return false;
-
-        if (root.data == elem)
-            return true;
-
-        else
-            return (findElementInBTree(root.left, elem) || findElementInBTree(
-                    root.right, elem));
-    }
-
-    public BTreeNode findNode(BTreeNode root, int value) {
-
-        Queue<BTreeNode> queue = new LinkedList<BTreeNode>();
-
-        queue.add(root);
-
-        BTreeNode current = null;
-
-        while (!queue.isEmpty()) {
-            current = queue.poll();
-
-            if (current.data == value)
-                return current;
-
-            // do the processing on a node
-            // process(current);
-            if (current.right != null)
-                queue.add(current.right);
-            if (current.left != null)
-                queue.add(current.left);
-
-        }
-        return null;
-
-    }
-
-    // General algo find node by recursion
-    public boolean findBTNodeRecursion(BTreeNode root, int value) {
-
-        if (root == null)
-            return false;
-
-        if (root.data == value)
-            return true;
-
-        else
-            return (findBTNodeRecursion(root.left, value) || findBTNodeRecursion(
-                    root.right, value));
-
-    }
-    //O(logN)
-    public BTreeNode findBSTNode(BTreeNode root, int data) {
-        if (root == null)
-            return null;
-
-        else if (root.data == data)
-            return root;
-
-        else if (root.data < data)
-            return (findBSTNode(root.right, data));
-        else
-            return (findBSTNode(root.left, data));
-
-    }
 
 
     //Revisit********************************************************************
