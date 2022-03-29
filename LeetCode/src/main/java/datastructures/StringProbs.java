@@ -1,4 +1,4 @@
-package main.java.string;
+package main.java.datastructures;
 
 import java.util.*;
 

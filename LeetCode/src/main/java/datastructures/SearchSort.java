@@ -1,4 +1,4 @@
-package main.java.company;
+package main.java.datastructures;
 
 
 import java.util.*;
