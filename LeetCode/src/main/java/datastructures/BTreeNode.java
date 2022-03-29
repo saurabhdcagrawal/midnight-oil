@@ -1,6 +1,151 @@
 package main.java.datastructures;
 import java.util.*;
 import java.util.Stack;
+//A binary tree is similar to linked list but instead of simply pointing to next node
+//In a binary tree each node,points to several nodes
+//non linear data structure
+//order of elements is not important
+//if you need order use linked list,stack or queue
+//set of nodes at a given level is called depth of a tree
+//set of all nodes at given depth is called level of a tree
+//root node is level 0
+//full binary tree--> Each node
+//complete binary tree --> every node except node at last level has 2 child nodes
+//size of node is the number of descendants a node has including itself
+//If every node has only one child we call it as a skew tree
+//if every node left child call left skew tree
+//if every node right child,call right skew tree
+//full binary tree all leaf nodes same level,exactly two children
+//no of nodes at any level 2^n for full binary tree
+//if N no nodes at terminal level,height is logN
+//Total no of nodes is 2^n+1 for full binary node
+//what is complete?wsted pointers?,
+//The process of visiting all nodes of a tree is called tree traversal
+//In link libst,stack,queue only one way of traversing list(linear data structures) but tree structures there are many ways
+//trress have several ways
+//pre-order traversal,each node is processed before its subtree
+//even though each node processed first,
+//still requires that root information must be maintained before moving down the tree
+//obvious data type is stack...hence recursion
+//BST insertion,deletion,search takes logn time
+//visit the root
+//traverse left subtree in preorder
+//traverse right subtree in preorder
+//time and space complexity O(n)
+//Inorder traversal root is visited between the subtree
+//traverse left subtree in inorder
+//Visit the root
+//traverse right subtree in inorder
+//time and space O(n)
+//level order traversal,set of all nodes
+//starts at vertex,visit all nodes at one level,visit all nodes at 2nd level
+//BFS--Uses queues
+//DFS works like preorder traversal and hence uses stack
+//BFS
+//visit root
+//while traversing level l,keep all elements at l+1 in queue
+//Go to next level and visit all nodes at that level
+//Repeat until all levels are completed
+//Breadth First Search: BFS involves searching a node and its siblings
+//before going on to any children.
+////Depth First Search: DFS involves searching a node and all its children
+//before proceeding to its siblings.
+/*  25
+ /  \
+ 11      79
+ / \
+ 6     15
+ /      \
+ -16      20
+ /       /    \
+ -23      16   23
+ */
+//25
+//79 11        25
+//79 15 6      11
+//79 15 -16    6
+//79 15 -23    -16
+//79 15        -23
+//79  20        15
+//79 23 16      20
+//              16
+//              23
+//              79
+
+/*Queue
+ * [25]
+ * [79 11]          25
+ * [11]             79
+ * [15,6]           11
+ * [6,20]           15
+ * [20,-16]         6
+ * [-16,23,16]      20
+ * [23,16,-23]     -16
+ * [16,-23]         23
+ * [-23]            16
+ []              -23
+ */
+//GRAPH IMPLEMENTATION
+//Depth First Search: DFS involves searching a node and all its children before proceeding to its siblings.
+//Breadth First Search: BFS involves searching a node and its siblings before going on to any children.
+/*In computer science, a binary tree is a tree data structure in which each node
+ has at most two children (referred to as the left child and the right child).
+ In a binary tree, the degree of each node can be at most two. */
+/*BST is a node-based binary tree data structure which has the following properties:[1]
+ The left subtree of a node contains only nodes with keys less than the node's key.
+ The right subtree of a node contains only nodes with keys greater than the node's key.
+ The left and right subtree each must also be a binary search tree.
+
+ The major advantage of binary search trees over other data structures is that the
+ related sorting algorithms and search algorithms such as in-order traversal can be
+ very efficient.*/
+/*The depth of a node is the length of the unique path from the root to the node.*/
+/*A node of degree zero is called a terminal node or leaf node*/
+/*The height of a node in a tree is the length of a longest path from the node to a leaf.
+ The height of a tree is the height of its root.*/
+/*A balanced tree is a tree which is balanced - it has roughly the same height on each
+ of its sub-nodes. a balanced binary search tree will have equal heights (plus or minus
+ one) on the left and right sub-trees of each node.
+ If the tree is balanced on both sides, only then while searching anything -
+ we can divide tree into halves during every operation. Otherwise, dividing tree
+ into 2 halves for every lookup does not hold valid. This ensures that operations
+ on the tree always are guaranteed to have O(lg n) time, rather than the O(n) time
+ that they might have in an unbalanced tree*/
+//Heap is a nearly complete binary tree,all nodes except last node level has children
+//Max Heap,Node Heap
+/*This problem can be solved by just simple graph traversal, such as depth first search
+ or breadth first search. We start with one of the two nodes and, during traversal,
+ check if the other node is found. We should mark any node found in the course of
+ the algorithm as ‘already visited’ to avoid cycles and repetition of the nodes.
+ public enum State {
+ Unvisited, Visited, Visiting;
+ }
+
+ public static boolean search(Graph g, Node start, Node end) {
+ LinkedList<Node> q = new LinkedList<Node>(); // operates as Stack
+ for (Node u : g.getNodes()) {
+ u.state = State.Unvisited;
+ }
+ start.state = State.Visiting;
+ q.add(start);
+ Node u;
+ while(!q.isEmpty()) {
+ u = q.removeFirst(); // i.e., pop()
+ if (u != null) {
+ for (Node v : u.getAdjacent()) {
+ if (v.state == State.Unvisited) {
+ if (v == end) {
+ return true;
+ } else {
+ v.state = State.Visiting;
+ q.add(v);
+ }
+ }
+ }
+ u.state = State.Visited;
+ }
+ }
+ return false;*/
 //most algorithms fit into pre-order traversals
 //delete b tree
 //create mirror --postorder
@@ -200,6 +345,22 @@ public class BTreeNode{
         }
         return root.data;
     }
+    public BTreeNode findMaximum(BTreeNode node) {
+        if (node.right == null) {
+            return node;
+
+        } else
+            return (findMaximum(node.right));
+
+    }
+    public BTreeNode findMinimum(BTreeNode node) {
+        if (node.left == null) {
+            return node;
+
+        } else
+            return (findMinimum(node.left));
+
+    }
 
     //preorder traversal
     public static boolean validateIsBST(BTreeNode root){
@@ -360,6 +521,48 @@ public class BTreeNode{
        }
    }
 
+    public BTreeNode createBSTMinimalLength(int[] array, int start, int end) {
+
+        if (end < start)
+            return null;
+
+        int mid = (start + end) / 2;
+
+        BTreeNode treeNode = new BTreeNode(array[mid]);
+        treeNode.left = createBSTMinimalLength(array, start, mid - 1);
+        treeNode.right = createBSTMinimalLength(array, mid + 1, end);
+
+        return treeNode;
+
+    }
+
+    public BTreeNode createBSTMinimalLength(int[] array) {
+        return (createBSTMinimalLength(array, 0, array.length - 1));
+    }
+
+
+    public int findLeaf(BTreeNode root) {
+        if (root == null)
+            return 0;
+        else if (root.left == null && root.right == null)
+            return 1;
+
+        else
+            return (findLeaf(root.left) + findLeaf(root.right));
+
+    }
+
+    public int findHalfNode(BTreeNode root) {
+        if (root == null)
+            return 0;
+        else if ((root.left == null && root.right != null)
+                || (root.right == null && root.left != null))
+            return 1;
+
+        else
+            return (findHalfNode(root.left) + findHalfNode(root.right));
+
+    }
 
 
     public static int getDiameter(BTreeNode root){
@@ -395,6 +598,28 @@ public class BTreeNode{
 
 //height or depth without recursion
 
+    public int maxDepth(BTreeNode node) {
+        if (node == null)
+            return 0;
+
+        else
+            return 1 + Math.max(maxDepth(node.left), maxDepth(node.right));
+    }
+
+    public int minDepth(BTreeNode node) {
+        if (node == null)
+            return 0;
+
+        else
+            return 1 + Math.min(minDepth(node.left), minDepth(node.right));
+    }
+    public int size(BTreeNode node) {
+        if (node == null)
+            return 0;
+        else
+            return 1 + size(node.left) + size(node.right);
+
+    }
 
 
     public static int depthNonRecursive(BTreeNode root){
@@ -530,7 +755,359 @@ public class BTreeNode{
             return left!=null?left:right;
 
     }
-  /************************************************Revamp***************/
+
+    public boolean findElementInBTree(BTreeNode root, int elem) {
+        if (root == null)
+            return false;
+
+        if (root.data == elem)
+            return true;
+
+        else
+            return (findElementInBTree(root.left, elem) || findElementInBTree(
+                    root.right, elem));
+    }
+
+    public BTreeNode findNode(BTreeNode root, int value) {
+
+        Queue<BTreeNode> queue = new LinkedList<BTreeNode>();
+
+        queue.add(root);
+
+        BTreeNode current = null;
+
+        while (!queue.isEmpty()) {
+            current = queue.poll();
+
+            if (current.data == value)
+                return current;
+
+            // do the processing on a node
+            // process(current);
+            if (current.right != null)
+                queue.add(current.right);
+            if (current.left != null)
+                queue.add(current.left);
+
+        }
+        return null;
+
+    }
+
+    // General algo find node by recursion
+    public boolean findBTNodeRecursion(BTreeNode root, int value) {
+
+        if (root == null)
+            return false;
+
+        if (root.data == value)
+            return true;
+
+        else
+            return (findBTNodeRecursion(root.left, value) || findBTNodeRecursion(
+                    root.right, value));
+
+    }
+    //O(logN)
+    public BTreeNode findBSTNode(BTreeNode root, int data) {
+        if (root == null)
+            return null;
+
+        else if (root.data == data)
+            return root;
+
+        else if (root.data < data)
+            return (findBSTNode(root.right, data));
+        else
+            return (findBSTNode(root.left, data));
+
+    }
+
+
+    //Revisit********************************************************************
+/*
+ * follow a chain in which p and q are on the same side. That is, if p and q
+ * are both on the left of the node, branch left to look for the common
+ * ancestor. When p and q are no longer on the same side, you must have
+ * found the first common ancestor
+ */
+    public BTreeNode commonAncestor(BTreeNode root, BTreeNode p, BTreeNode q) {
+        if (covers(root.left, p) && covers(root.left, q))
+            return commonAncestor(root.left, p, q);
+
+        if (covers(root.right, p) && covers(root.right, q))
+            return commonAncestor(root.right, p, q);
+        return root;
+
+    }
+
+    // if p lies in any subtree below root
+    public boolean covers(BTreeNode root, BTreeNode p) {
+        if (root == null)
+            return false;
+
+        if (root == p)
+            return true;
+
+        return (covers(root.left, p) || covers(root.right, p));
+    }
+
+    /*
+     * 1) If right subtree of node is not NULL or parent is NULL, then succ lies
+     * in right subtree. Do following. Go to right subtree and return the node
+     * with minimum key value in right subtree. 2) If right sbtree of node is
+     * NULL, then succ is one of the ancestors. Do following. Travel up using
+     * the parent pointer until you see a node which is left child of it’s
+     * parent. The parent of such a node is the succ.
+     */
+
+    /*
+     * A binary tree is either an empty pointer or a node that consists of an
+     * integer value and two sub-trees. A binary tree T is given. A node of that
+     * tree containing value V is described as visible if the path from the root
+     * of the tree to that node does not contain a node with any value exceeding
+     * V. In particular, the root is always visible and nodes with values lower
+     * than that of the root are never visible. Assume that the following
+     * declarations are given:
+     */
+    /*public BTreeNode findInOrderSuccessor(BTreeNode e) {
+
+        BTreeNode p = null;
+        if (e.parent == null || e.right != null)
+            p = findMinimum(e.right);
+
+        else {
+            while (e.parent != null) {
+                p = e.parent;
+                if (p.left == e)// Travel up until we find a node which is left
+                    // child of parent
+                    break;
+                e = p; // To continue the while loop
+            }
+
+        }
+        return p;
+
+    }*/
+
+
+    // count (k-1) left *count(n-k) right nodes from k=1 to n
+    public int numberOfTrees(int n) {
+
+        if (n == 0 || n == 1)
+            return 1;
+
+        else {
+            int sum = 0;
+            for (int k = 1; k <= n; k++) {
+                int left = numberOfTrees(k - 1);
+                int right = numberOfTrees(n - k);
+                sum = sum + left + right;
+            }
+
+            return sum;
+        }
+    }
+        // if node to be deleted has no children,determine if left node or right
+        // node of its parent
+        // update pointers accordingly
+        // deleteNode.parent.left = null;
+        // deleteNode.parent.right = null;
+        // if node to be deleted has a single child,(either left or right
+        // irrespective)
+        // 2 pointer update
+        // parent of child,parent of node to be updated
+        // 2nd pointer
+        //
+        // if node to be deleted is left node of its parent,make the child node
+        // of deleted node left node of parentt
+        // determine if its a left node or right node or root node and update
+        // accordingly
+        // in case of 2 children find in order successor
+        // do the same process,find children x,update paremt amd all,make left
+        // or right child
+        // at end make node's key to be deleted as the inorder succers;r'key
+        /*
+        public BTreeNode deleteBSTNode(BTreeNode root, BTreeNode z) {
+        BTreeNode y = null;
+        BTreeNode x = null;
+        if (z.left == null || z.right == null)
+            y = z;
+        else
+            y = findInOrderSuccessor(z);
+//find tthe single child,x will contain
+        if (y.left != null)
+            x = y.left;
+        else
+            x = y.right;
+//update one side parent pointers
+
+        if (x != null)
+            x.parent = y.parent;
+
+        if (y.parent == null)
+            root = x;
+
+        else {
+
+            if (y.parent.left == y)
+                y.parent.left = x;
+            else
+                y.parent.right = x;
+
+            if (y != z)
+                z.value = y.value;
+        }
+        return root;
+
+    }
+*/
+        public void printPath(BTreeNode root) {
+
+            int[] path = new int[256];
+            printPath(root, path, 0);
+        }
+
+    public void printPath(BTreeNode root, int[] path, int pathlen) {
+        if (root == null)
+            return;
+
+        path[pathlen] = root.data;
+        pathlen++;
+
+        if (root.left == null && root.right == null) {
+
+            printArray(path, pathlen);
+        }
+
+        else
+
+        {
+
+            printPath(root.left, path, pathlen);
+            printPath(root.right, path, pathlen);
+
+        }
+
+    }
+
+    public void printArray(int[] path, int pathlen) {
+
+        for (int i = 0; i < pathlen; i++)
+
+        {
+            System.out.print(path[i] + ",");
+        }
+        System.out.println();
+    }
+    void findSum(BTreeNode head, int sum) {
+
+        ArrayList<Integer> buffer = new ArrayList<Integer>();
+        findSum(head, sum, buffer, 0);
+
+    }
+
+    void findSum(BTreeNode head, int sum, ArrayList<Integer> buffer, int level) {
+        if (head == null)
+            return;
+        int tmp = sum;
+        buffer.add(head.data);
+        for (int i = level; i > -1; i--) {
+            tmp -= buffer.get(i);
+            if (tmp == 0) {
+                System.out.println("Buffer" + buffer.toString());
+                System.out.println(i);
+                System.out.println(level);
+                print(buffer, i, level);
+            }
+        }
+
+        ArrayList<Integer> c1 = (ArrayList<Integer>) buffer.clone();
+        System.out.println(c1.toString());
+        ArrayList<Integer> c2 = (ArrayList<Integer>) buffer.clone();
+        System.out.println(c2.toString());
+        findSum(head.left, sum, c1, level + 1);
+        findSum(head.right, sum, c2, level + 1);
+    }
+
+    void print(ArrayList<Integer> buffer, int level, int i2) {
+        for (int i = level; i <= i2; i++) {
+            System.out.print(buffer.get(i) + "");
+        }
+        System.out.println();
+    }
+
+    public void DFSWithOutRecursion(BTreeNode root) {
+            Stack<BTreeNode> stack = new Stack<BTreeNode>();
+            stack.push(root);
+            BTreeNode current = null;
+
+        while (!stack.isEmpty()) {
+            current = stack.pop();
+            System.out.println("Popping node :" + current.data);
+
+            // do the processing on a node
+            // process(current);
+            if (current.right != null)
+                stack.push(current.right);
+            if (current.left != null)
+                stack.push(current.left);
+
+        }
+
+    }
+
+    public void DFSWithRecursion(BTreeNode node) {
+        Stack<BTreeNode> stack = new Stack<BTreeNode>();
+        stack.push(node);
+        DFSWithRecursion(stack);
+    }
+
+    public void DFSWithRecursion(Stack stack) {
+        if (stack.isEmpty())
+            return;
+        BTreeNode current = (BTreeNode) stack.pop();
+        System.out.println("Popping node :" + current.data);
+
+        // do the processing on a node
+        // process(current);
+        if (current.right != null)
+            stack.push(current.right);
+        if (current.left != null)
+            stack.push(current.left);
+        System.out.println("Stack at this point"
+                + Arrays.toString(stack.toArray()));
+        DFSWithRecursion(stack);
+    }
+    public ArrayList<LinkedList<BTreeNode>> returnLevelLinkedList(BTreeNode node) {
+        ArrayList<LinkedList<BTreeNode>> result = new ArrayList<LinkedList<BTreeNode>>();
+        LinkedList<BTreeNode> list = new LinkedList<BTreeNode>();
+        int level = 0;
+        list.add(node);
+        result.add(level, list);
+        while (true) {
+            list = new LinkedList<BTreeNode>();
+            for (int i = 0; i < result.get(level).size(); i++) {
+                BTreeNode nodeIn = result.get(level).get(i);
+                if (nodeIn.left != null)
+                    list.add(nodeIn.left);
+                if (nodeIn.right != null)
+                    list.add(nodeIn.right);
+            }
+
+            if (list.size() == 0)
+                break;
+            else {
+                level = level + 1;
+                result.add(level, list);
+            }
+        }
+        return result;
+
+    }
+
+
+    /************************************************Revamp***************/
  /* Binary Tree Inorder Traversal */
   public List<Integer> inorderTraversalRec(BTreeNode root) {
              List<Integer> nodes= new ArrayList<Integer>();
