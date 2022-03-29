@@ -444,16 +444,17 @@ that node.*/
   */
     public static boolean isPalindromeLinkedList(Node head) {
         if (head == null) return true;
-        System.out.println("Printing original Node");
-        printNode(head);
+        /*System.out.println("Printing original Node");
+        printNode(head);*/
         Node middleNode = findMiddleNode(head);
-        System.out.println("Printing middle node " + middleNode.data);
+       // System.out.println("Printing middle node " + middleNode.data);
         Node secondHead = reverseLinkedList(middleNode);
        // Wrong approach middleNode.next = null;
-        System.out.println("Second half");
+       /* System.out.println("Second half");
         printNode(secondHead);
         System.out.println("First half");
         printNode(head);
+       */
         Node p1 = head, p2 = secondHead;
         Boolean result = true;
         while (p2 != null) {
@@ -462,15 +463,14 @@ that node.*/
             p1 = p1.next;
             p2 = p2.next;
         }
-        //boolean result=isLinkedListIdentical(head,secondHead);
         Node secondHalf = reverseLinkedList(secondHead);
-        System.out.println("Getting back Original Second Half");
-        printNode(secondHalf);
-       // middleNode.next = secondHalf;
-        System.out.println("Printing linked list again");
-        printNode(head);
         return result;
-    }
+        //System.out.println("Getting back Original Second Half");
+        //printNode(secondHalf);
+       // Wrong technique middleNode.next = secondHalf;
+       // System.out.println("Printing linked list again");
+       // printNode(head);
+        }
     /*You are given the head of a singly linked-list. The list can be represented as:
     L0 → L1 → … → Ln - 1 → Ln
     Reorder the list to be on the following form:
