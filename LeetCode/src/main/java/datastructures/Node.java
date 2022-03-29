@@ -506,26 +506,6 @@ that node.*/
         }
 
     }
-        //concise
-     /*  public boolean isPalindrome(ListNode head) {
-           if(head==null) return true;
-           ListNode middleNode=findMiddleNode(head);
-           ListNode secondHead=reverseLinkedList(middleNode.next);
-           middleNode.next=null;
-           ListNode p1=head ,p2=secondHead;
-           boolean result=true;
-           while(p2!=null){
-               if(p1.val!=p2.val)
-                   result=false;
-               p1=p1.next;
-               p2=p2.next;
-           }
-           ListNode secondHalf=reverseLinkedList(secondHead);
-           middleNode.next=secondHalf;
-           return result;
-
-       }
-*/
     public boolean isLinkedListIdentical(Node n1, Node n2) {
         if (n1 == null && n2 == null) return true;
         if (n1 == null || n2 == null) return false;
