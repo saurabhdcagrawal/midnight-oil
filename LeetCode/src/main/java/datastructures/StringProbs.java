@@ -470,14 +470,17 @@ public class StringProbs {
 //inner loop should also run until i<j
 public boolean isPalindrome(String s) {
 
-    for(int i=0,j=s.length()-1;i<j;i++,j--){
-        //Character.isLetterOrDigit(s.charAt(i))
-        while(i<j && isNonAlphaNumericChar(s.charAt(i)))
+    int i=0,j=s.length()-1;
+    while(i<j){
+        //isNonAlphaNumericChar(s.charAt(i));
+        while(!Character.isLetterOrDigit(s.charAt(i)) && i<j)
             i++;
-        while(j>i && isNonAlphaNumericChar(s.charAt(j)))
+        while(!Character.isLetterOrDigit(s.charAt(j)) && j>i)
             j--;
         if(Character.toLowerCase(s.charAt(i))!=Character.toLowerCase(s.charAt(j)))
             return false;
+        i++;
+        j--;
     }
     return true;
 }
