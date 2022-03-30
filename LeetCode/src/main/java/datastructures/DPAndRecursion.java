@@ -351,20 +351,7 @@ public class DPAndRecursion {
 
     }
 
-    //sliding window     used to remove combination of n2 substrings to o(n)
-    public static int lengthOfLongestSubstring(String s) {
-        int n = s.length(), ans = 0;
-        Map<Character, Integer> map = new HashMap<>(); // current index of character
-        // try to extend the range [i, j]
-        for (int j = 0, i = 0; j < n; j++) {
-            if (map.containsKey(s.charAt(j))) {
-                i = Math.max(map.get(s.charAt(j)), i);
-            }
-            ans = Math.max(ans, j - i + 1);
-            map.put(s.charAt(j), j + 1);
-        }
-        return ans;
-    }
+
 
     //edit distance problem
     //any 3 operations ,insertion ,deletion
@@ -694,7 +681,6 @@ public class DPAndRecursion {
         System.out.println("O(1) solution "+maxSubArrayO1(nums_cs));
         System.out.println("Longest non repeating subsequence");
         System.out.println(longestNonRepeatingSubstring("bbbb"));
-        System.out.println(lengthOfLongestSubstring("abcbda"));
         System.out.println("Edit distance "+editDistance("TASH","SAURABH"));
         System.out.println("Permutations");
         System.out.println(getPermutations("abc"));

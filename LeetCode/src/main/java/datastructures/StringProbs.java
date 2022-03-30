@@ -79,6 +79,83 @@ public class StringProbs {
             }
             return maxLength;
         }
+    /*You are given a string s and an integer k.
+    You can choose any character of the string and change it to any other uppercase English character.
+    You can perform this operation at most k times.
+    Return the length of the longest substring containing the same letter you can get after performing the above operations.
+    */
+    /*The problem says that we can make at most k changes to the string (any character can be replaced with any other character).
+    So, let's say there were no constraints like the k. Given a string convert it to a string with all same characters with minimal changes.
+    The answer to this is
+    length of the entire string - number of times of the maximum occurring character in the string
+    Given this, we can apply the at most k changes constraint and maintain a sliding window such that
+            (length of substring - number of times of the maximum occurring character in the substring) <= k*/
+    public int characterReplacement(String s, int k) {
+        int[] charset = new int[128];
+        int maxCount = 0, i = 0, j=0, maxLength = 0;
+        while(j<s.length()){
+            char c = s.charAt(j);
+            charset[c]++;
+            maxCount = Math.max(maxCount, charset[c]);
+
+            // if max character frequency + distance between start and end is greater than k
+            // this means we have considered changing more than k charactres. So time to shrink window
+            //maxcount in repeated substring
+            if(j - i + 1 - maxCount > k){
+                char l = s.charAt(i);
+                charset[l]--;
+                i ++;
+            }
+           //in this max length you can replace the non repeating characters i.e j-i+1-maxcount within allowable limits to k and get amx length
+            maxLength = Math.max(maxLength, j - i + 1);
+            j++;
+        }
+
+        return maxLength;
+    }
+   /* Given two strings s and t of lengths m and n respectively, return the minimum window substring of s such that every character in
+    t (including duplicates) is included in the window. If there is no such substring, return the empty string "".*/
+    public String minWindow(String s, String t) {
+
+        if (s.length() == 0 || t.length() == 0) {
+            return "";
+        }
+        int[] charSetT = new int[128];
+        int[] charSetS = new int[128];
+        int[] ans = {-1, 0, 0};
+
+        for(int i=0;i<t.length();i++){
+            char c= t.charAt(i);
+            charSetT[c]++;
+        }
+        int i=0,j=0,formed=0;
+
+        int required=t.length();
+
+        while(j<s.length()){
+            char c=s.charAt(j);
+            charSetS[c]++;
+            if(charSetT[c]!=0 && charSetS[c]<=charSetT[c])
+                formed++;
+            while(i<=j && formed==required){
+                if(ans[0]==-1||j-i+1<ans[0]){
+                    ans[0]=j-i+1;
+                    ans[1]=i;
+                    ans[2]=j;
+                }
+                char l =s.charAt(i);
+                //no longer window
+                charSetS[l]--;
+                //if part of our window subtract
+                if(charSetT[l]!=0 && charSetS[l]<charSetT[l])
+                    formed--;
+                i++;
+
+            }
+            j++;
+        }
+        return ans[0] == -1 ? "" : s.substring(ans[1], ans[2] + 1);
+    }
 //longest Palindrome
 
         public String longestPalindrome(String s) {

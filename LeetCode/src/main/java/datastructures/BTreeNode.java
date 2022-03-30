@@ -1,6 +1,7 @@
 package main.java.datastructures;
 import java.util.*;
 import java.util.Stack;
+//diameter,rootToLeaf,deleteSuccesorBST,VerticalSum,zigzag,minimalBST
 //A binary tree is similar to linked list but instead of simply pointing to next node
 //In a binary tree each node,points to several nodes
 //non linear data structure
@@ -531,7 +532,7 @@ public class BTreeNode{
         }
     }
 
-
+//if one traversal is inorder then the binary tree can be created
    //W Construct Binary Tree from Preorder and Inorder Traversal
    // go on with preorder index
   /* Start from not inorder traversal, usually it's preorder or postorder one, and use the traversal picture above to define
@@ -768,6 +769,7 @@ public class BTreeNode{
         inOrderTraversal(root,nodes);
         return nodes.get(k-1);
     }
+    //LCA is also the shortest path between 2 nodes
     //LCA BST //T=O(N)  S= O(N) skewed
     public BTreeNode lowestCommonAncestorBST(BTreeNode root, BTreeNode p, BTreeNode q) {
         if(root==null)
