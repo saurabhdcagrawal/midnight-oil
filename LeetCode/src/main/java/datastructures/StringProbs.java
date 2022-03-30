@@ -115,47 +115,43 @@ public class StringProbs {
     }
    /* Given two strings s and t of lengths m and n respectively, return the minimum window substring of s such that every character in
     t (including duplicates) is included in the window. If there is no such substring, return the empty string "".*/
-    public String minWindow(String s, String t) {
-
-        if (s.length() == 0 || t.length() == 0) {
-            return "";
-        }
-        int[] charSetT = new int[128];
-        int[] charSetS = new int[128];
-        int[] ans = {-1, 0, 0};
-
-        for(int i=0;i<t.length();i++){
-            char c= t.charAt(i);
-            charSetT[c]++;
-        }
-        int i=0,j=0,formed=0;
-
-        int required=t.length();
-
-        while(j<s.length()){
-            char c=s.charAt(j);
-            charSetS[c]++;
-            if(charSetT[c]!=0 && charSetS[c]<=charSetT[c])
-                formed++;
-            while(i<=j && formed==required){
-                if(ans[0]==-1||j-i+1<ans[0]){
-                    ans[0]=j-i+1;
-                    ans[1]=i;
-                    ans[2]=j;
-                }
-                char l =s.charAt(i);
-                //no longer window
-                charSetS[l]--;
-                //if part of our window subtract
-                if(charSetT[l]!=0 && charSetS[l]<charSetT[l])
-                    formed--;
-                i++;
-
+        public String minWindow(String s, String t) {
+            if (s.length() == 0 || t.length() == 0) {
+                return "";
             }
-            j++;
+            int[] charSetS = new int[128];
+            int[] charSetT = new int[128];
+            int[] soln={-1,0,0};
+            for(int i=0;i<t.length();i++){
+                char c = t.charAt(i);
+                charSetT[c]++;
+            }
+            int i=0,j=0,formed=0;
+            int required= t.length();
+
+            while(j<s.length()){
+                char c= s.charAt(j);
+                charSetS[c]++;
+                if(charSetT[c]!=0 && charSetS[c]<=charSetT[c])
+                    formed++;
+                //shrink when all characters are formed
+                while(i<=j && formed==required){
+                    if(soln[0]==-1 || j-i+1<soln[0]){
+                        soln[0]=j-i+1;
+                        soln[1]=i;
+                        soln[2]=j;
+                    }
+                    char l = s.charAt(i);
+                    charSetS[l]--;
+                    if(charSetT[l]!=0 && charSetS[l]<charSetT[l])
+                        formed--;
+                    i++;
+                }
+                j++;
+            }
+            return soln[0]==-1?"":s.substring(soln[1],soln[2]+1);
         }
-        return ans[0] == -1 ? "" : s.substring(ans[1], ans[2] + 1);
-    }
+
 //longest Palindrome
 
         public String longestPalindrome(String s) {
