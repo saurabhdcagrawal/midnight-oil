@@ -143,6 +143,7 @@ public class StringProbs {
                     }
                     char l = s.charAt(i);
                     charSetS[l]--;
+                    //Note is less
                     if(charSetT[l]!=0 && charSetS[l]<charSetT[l])
                         formed--;
                     i++;
@@ -516,7 +517,7 @@ public boolean isPalindrome(String s) {
 
     public static void main(String args[]) {
         StringProbs sp = new StringProbs();
-        sp.printAllSubstrings("Isha");
+        sp.printAllSubstrings("Deepa");
         sp.myAtoi("42");
         String[] stringList = {"icecream", "abc", "creamice", "cba", "duck", "eamicecr"};
         Arrays.sort(stringList);
@@ -527,6 +528,45 @@ public boolean isPalindrome(String s) {
         System.out.println(Arrays.toString(stringList));
         sp.removeDuplicates("aaabbb");
 
+    }
+    //points to note
+    //If string max length is K, sorting takes O(KlogK) for N strings
+    //Total complexity is O(NKlogK)
+    //Space complexity is O(NK)
+    //can use count array in that case time complexity will be O(NK)
+    public List<List<String>> groupAnagrams(String[] strs) {
+        Map<String,List<String>> hmap= new HashMap<>();
+        for(String str:strs){
+            String key= sortedString(str);
+            //optimization to store the list
+            if(!hmap.containsKey(key))
+                hmap.put(key,new ArrayList<String>());
+            hmap.get(key).add(str);
+        }
+        //hmap.values gives collection<String>.. It can be converted to arrayList
+        return new ArrayList(hmap.values());
+    }
+
+    public String sortedString(String str){
+        char[] charArray= str.toCharArray();
+        Arrays.sort(charArray);
+        return new String(charArray);
+    }
+    public String countArray(String s){
+        int[] charset = new int[26];
+        for(int i=0;i<s.length();i++){
+            int index = s.charAt(i)-'a';
+            charset[index]++;
+        }
+        StringBuilder sb= new StringBuilder("");
+        //String str="";
+        for(int i=0;i<charset.length;i++){
+            if(charset[i]!=0){
+                sb.append(Character.toString(i+'a'));
+                sb.append(charset[i]);
+            }
+        }
+        return sb.toString();
     }
 
 
