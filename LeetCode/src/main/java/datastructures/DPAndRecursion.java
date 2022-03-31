@@ -281,13 +281,14 @@ public class DPAndRecursion {
     //No need to store O(1) solution
     //Kadane's algorithm
     public static int maxSubArrayO1(int[] nums) {
-        int max_sum=nums[0];
-        int result=nums[0];
-        for (int i=1;i<nums.length;i++){
-            result=Math.max(result+nums[i],nums[i]);
-            max_sum=Math.max(result,max_sum);
+        int maxSum=nums[0];
+        int sum=nums[0];
+        for(int i=1;i<nums.length;i++){
+            sum=sum+nums[i];
+            sum=Math.max(sum,nums[i]);
+            maxSum= Math.max(sum,maxSum);
         }
-        return max_sum;
+        return maxSum;
     }
 
     //[-2,3,-4]

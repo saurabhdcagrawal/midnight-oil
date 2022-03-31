@@ -154,8 +154,11 @@ public class StringProbs {
         }
 
 //longest Palindrome
-
-        public String longestPalindrome(String s) {
+//Usually to find this if you have a string, reverse it and then find the LCS... but this may not work if there is reversed non palindromic substring in other
+    //part of main string
+    //abac caba
+    // O(n2)
+        public String longestPalindromeSubstring(String s) {
             //badad
             if (s == null || s.length() < 1) return "";
             int start=0, end=0, maxLength=0;
@@ -192,6 +195,24 @@ public class StringProbs {
             return new int[]{right - left + 1, left, right};
         }
 
+    public int countPalindromicSubstrings(String s) {
+        int count=0;
+        for(int i=0;i<s.length();i++){
+            count+=expandAroundCenterPalindromicSubstring(s,i,i);
+            count+=expandAroundCenterPalindromicSubstring(s,i,i+1);
+        }
+        return count;
+
+    }
+    public int expandAroundCenterPalindromicSubstring(String s, int left, int right) {
+        int count=0;
+        while (left >= 0 && right < s.length() && s.charAt(left) == s.charAt(right)) {
+            left--;
+            right++;
+            count++;
+        }
+        return count;
+    }
 //remove duplicates
 
 //sliding window
