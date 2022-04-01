@@ -156,4 +156,33 @@ public class Archive {
         }
         return ans;
     }
+    public int maxProfitII(int[] prices) {
+        int max_profit=0,i=0;
+        while(i<prices.length-1){
+            while(i<prices.length-1 && prices[i+1]<=prices[i])
+                i++;
+            int valley=prices[i];
+            while(i<prices.length-1 && prices[i+1]>=prices[i])
+                i++;
+            int peak=prices[i];
+            max_profit+=peak-valley;
+        }
+        return max_profit;
     }
+    public int maxProfit(int[] prices) {
+        int smallest=Integer.MAX_VALUE,smallest_index=-1,max_difference=0;
+
+        for(int i=0;i<prices.length;i++){
+            if(prices[i]<smallest){
+                smallest=prices[i];
+                smallest_index=i;
+            }
+            //i>smallest index not needed because of if else
+            else if(prices[i]-smallest >=max_difference && i>smallest_index)
+                max_difference= prices[i]-smallest;
+        }
+        return max_difference;
+    }
+
+
+}

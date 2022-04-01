@@ -526,20 +526,28 @@ public class ArrayProblems {
 
     //best time to buy and sell stock ,max profit ..//if you plot the values,
     //you want to get peak followed by the valley
-
     public int maxProfit(int[] prices) {
-        int smallest=Integer.MAX_VALUE,smallest_index=-1,max_difference=0;
-
+        //if there is a minimum encountered first then it will definitely create largest profit even in the end
+        int min_buy_value= Integer.MAX_VALUE;
+        int max_profit=0;
         for(int i=0;i<prices.length;i++){
-            if(prices[i]<smallest){
-                smallest=prices[i];
-                smallest_index=i;
+            if(prices[i]<min_buy_value){
+                min_buy_value=prices[i];
             }
-            //i>smallest index not needed because of if else
-            else if(prices[i]-smallest >=max_difference && i>smallest_index)
-                max_difference= prices[i]-smallest;
+            else{
+                int profit=prices[i]-min_buy_value;
+                max_profit=Math.max(profit,max_profit);
+            }
         }
-        return max_difference;
+        return  max_profit;
+    }
+    public int maxProfitII(int[] prices) {
+        int profit=0;
+        for(int i=0;i<prices.length-1;i++){
+            if(prices[i+1]>prices[i])
+                profit+=prices[i+1]-prices[i];
+        }
+        return profit;
     }
    /* Input: prices = [7,1,5,3,6,4]
     Output: 7
@@ -562,19 +570,7 @@ public class ArrayProblems {
         }
         return max_profit;
     }*/
-   public int maxProfitII(int[] prices) {
-       int max_profit=0,i=0;
-       while(i<prices.length-1){
-           while(i<prices.length-1 && prices[i+1]<=prices[i])
-               i++;
-           int valley=prices[i];
-           while(i<prices.length-1 && prices[i+1]>=prices[i])
-               i++;
-           int peak=prices[i];
-           max_profit+=peak-valley;
-       }
-       return max_profit;
-   }
+
         //can attend meetings
     /*Input: intervals = [[0,30],[5,10],[15,20]]
     Output: false*/
