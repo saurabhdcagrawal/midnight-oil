@@ -180,29 +180,37 @@ public class ArrayProblems {
     //Search in rotated sorted array
     //some observations
     //if begin<end, array is not rotated..return first element
-    public int searchRotatedArray(int[] nums, int target){
-        int low=0;int high=nums.length-1;
-        int mid=0;
-        while(low<=high){
-            mid=(low+high)/2;
-            if(nums[mid]== target)
-                return mid;
-            //456 7 8 123
-            //if left half is sorted, rotation index is in right half
-            else if(nums[low]<=nums[mid]){
-                if(target<nums[mid] && target>=nums[low])
-                    high=mid-1;
-                else
-                    low=mid+1;
-            }
-            //right half is sorted, rotation index is in left half
-            //781 2 3 456
-            else {
-                if(target>nums[mid] && target<=nums[high])
-                    low=mid+1;
-                else
-                    high=mid-1;
 
+    public int searchInRotatedSortedArray(int[] nums, int target) {
+        //target 5
+        //4 5 6 7 0 1 2 3
+        //1 2 3 4 5 6 7 0
+        //0 1 2 3 4 5 6 7
+        //7 0 1 2 3 4 5 6
+
+        int left=0;
+        int right=nums.length-1;
+        //always <=
+        while(left<=right){
+            int mid=(left+right)/2;
+            System.out.println(left+ " "+ mid+ " "+right);
+            if(nums[mid]==target)
+                return mid;
+                //rotation index is on the right half //so decreasing sequence on right
+                //left half is increasing and sorted
+            else if(nums[mid]>nums[right]){
+                //around nums mid
+                if (target>=nums[left]&& target<nums[mid])
+                    right=mid-1;
+                else
+                    left=mid+1;
+            }
+            //right half is increasing and sorted
+            else {
+                if (target>nums[mid] && target<=nums[right])
+                    left=mid+1;
+                else
+                    right=mid-1;
             }
         }
         return -1;
@@ -210,29 +218,27 @@ public class ArrayProblems {
     public int findMin(int[] nums) {
         //4,5,6,7,0,1,2
         //2,4,5,6,7,0,1
-        int low=0;int high=nums.length-1;
-        if (nums.length==0)
-            return -1;
-        else if (nums.length==1)
-            return nums[0];
-        else if(nums[low]<nums[high])
+
+        int low=0;
+        int high=nums.length-1;
+
+        if(nums.length==1||nums[low]<nums[high])
             return nums[low];
 
-        int mid=0;
+        //magic index cannot be at position 0 if array is rotated
         while(low<=high){
-            mid=low+(high-low)/2;
-            if(nums[mid]>nums[mid+1])
-                return nums[mid+1];
-            else if (nums[mid-1]>nums[mid])
+            int mid =(low+high)/2;
+            if(mid>0 && nums[mid]<nums[mid-1])
                 return nums[mid];
-            else if(nums[mid]>=nums[low])
+            if(mid<nums.length-1 && nums[mid]>nums[mid+1])
+                return nums[mid+1];
+            //standard so its in right position
+            if(nums[mid]>nums[high])
                 low=mid+1;
             else
                 high=mid-1;
-
         }
         return -1;
-
     }
  //https://leetcode.com/problems/search-in-rotated-sorted-array-ii/description/
     public boolean searchRotatedArrayWithDuplicates(int[] nums, int target) {
@@ -588,18 +594,15 @@ public class ArrayProblems {
         }
 
     public int minMeetingRooms(int[][] intervals) {
-        Arrays.sort(intervals, (a, b) -> (Integer.compare(a[0], b[0])));
-        PriorityQueue<Integer> pQueue = new PriorityQueue<Integer>();
-        int meetingRoom=0;
-        for(int i=0; i<intervals.length;i++){
-            if(pQueue.isEmpty()||intervals[i][0]<pQueue.peek())
-                meetingRoom++;
-            else
-                pQueue.poll();
-            pQueue.add(intervals[i][1]);
-
+        Arrays.sort(intervals,(a,b)->Integer.compare(a[0],b[0]));
+        PriorityQueue<Integer> pq = new PriorityQueue<Integer>();
+        for(int i=0;i<intervals.length;i++){
+            if( !pq.isEmpty() && pq.peek()<=intervals[i][0]){
+                pq.poll();
+            }
+            pq.add(intervals[i][1]);
         }
-        return meetingRoom;
+        return pq.size();
     }
     public int minMeetingRoomsWithoutPQ(int[][] intervals) {
         int[] startTimes= new int[intervals.length];
@@ -732,12 +735,13 @@ public class ArrayProblems {
               else {
                   //if intervals are overlapping first increase the overlap count
                   overlapIntervalCount++;
+                  //if previous swallows current then drop previous
                   //case(a) if the first interval end time is greater than next interval end time
-                  //ie. first swallows next then drop first and consider 2nd
+                  //ie. first swallows (previous) next then drop first and consider 2nd
                   //make 2nd as previous
                   if (intervals[i][1] < prev[1])
                       prev = intervals[i];
-                  //else continue to keep first as prev and drop second
+                  //else continue to keep first as prev and drop current
 
               }
           }

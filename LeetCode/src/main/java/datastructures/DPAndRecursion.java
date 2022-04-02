@@ -279,7 +279,8 @@ public class DPAndRecursion {
         return max_sum;
     }
     //No need to store O(1) solution
-    //Kadane's algorithm
+    //Kadane's algorithm/
+    //maxContiguousSubArray
     public static int maxSubArrayO1(int[] nums) {
         int maxSum=nums[0];
         int sum=nums[0];
@@ -289,6 +290,26 @@ public class DPAndRecursion {
             maxSum= Math.max(sum,maxSum);
         }
         return maxSum;
+    }
+
+    public int maxProduct(int[] nums) {
+        //you got to keep track of min so far because that can become max if you encounter a negative number
+        // for 0 , you have to compare product so far with element
+        int max_so_far=1;
+        int min_so_far=1;
+        int prev_max_so_far=1;
+        int maxProd=Integer.MIN_VALUE;
+
+        for(int i=0;i<nums.length;i++){
+            max_so_far=Math.max(nums[i],Math.max(max_so_far*nums[i],min_so_far*nums[i]));
+            System.out.println(max_so_far);
+            min_so_far=Math.min(nums[i],Math.min(prev_max_so_far*nums[i],min_so_far*nums[i]));
+            System.out.println(min_so_far);
+            prev_max_so_far= max_so_far;
+            maxProd=Math.max(maxProd,max_so_far);
+        }
+
+        return maxProd;
     }
 
     //[-2,3,-4]
