@@ -197,7 +197,8 @@ public class PracticalArrayProblems {
          q.offer(intervals[i].end);
         }
      return count;
-    }
+    }//remember its top 2(K) frequent elements, not elements who occur 2 or more times
+
     public int[] topKFrequent(int[] nums, int k) {
         //O(nlogk) is better than o(nlogn)
         HashMap<Integer,Integer> hcount=new HashMap<Integer,Integer>();
@@ -240,21 +241,18 @@ public class PracticalArrayProblems {
     public List<String> topKFrequent(String[] words, int k) {
 
         final HashMap<String,Integer> wordCount = new HashMap<String,Integer>();
-        for(String word:words) {
-            //wordCount.put(word ,(wordCount.getOrDefault(word,0)+1));
-        if(wordCount.containsKey(word))
-            wordCount.put(word,wordCount.get(word)+1);
-        else
-            wordCount.put(word,1);
-        }
+        for(String word:words)
+            wordCount.put(word ,(wordCount.getOrDefault(word,0)+1));
+        PriorityQueue<String> pq = new PriorityQueue<String>((a,b)->wordCount.get(a)!=wordCount.get(b)?
+                Integer.compare(wordCount.get(a),wordCount.get(b)):a.compareTo(b));
         //elements of Priority queue
-        PriorityQueue pq = new PriorityQueue(Collections.singleton(new Comparator<String>() {
+       /* PriorityQueue pq = new PriorityQueue((new Comparator<String>() {
             public int compare(String word1, String word2) {
                 if (wordCount.get(word1) == wordCount.get(word2))
                     return word2.compareTo(word1);
                 return (wordCount.get(word1) - wordCount.get(word2));
             }
-        }));
+        }));*/
 
         for (String word: wordCount.keySet()){
                 pq.offer(word) ;
