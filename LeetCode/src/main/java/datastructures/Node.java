@@ -569,6 +569,12 @@ that node.*/
         }
         return sentinelNode.data==0?head:sentinelNode;
     }
+    //1) Brute force approach collect all lists in Array/ArrayList, sort and then recreate new linkedList with the sorted values
+//Time Complexity O(NlogN)
+//Space Complexity O(N)
+//(2) Merge all sorted lists with K pointers...this will take O(NK) time complexity and O(N) space complexity
+//(3) Using min Heap of size k -> O(NlogK) and O(N+K) space
+//(4) Merge 2 lists at a time takes O(N) space, perform K-1 times...O(NK) ..space complexity O(1)
     //O (NlogK)  size O(N) + O(K)
     public Node mergeKLists(Node[] lists) {
         PriorityQueue<Node> pq = new PriorityQueue<Node>((a, b)->Integer.compare(a.data,b.data));
