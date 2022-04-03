@@ -257,7 +257,7 @@ public class PracticalArrayProblems {
         }));
 
         for (String word: wordCount.keySet()){
-            pq.offer(word) ;
+                pq.offer(word) ;
             if(pq.size()>k)
                 pq.poll();
         }

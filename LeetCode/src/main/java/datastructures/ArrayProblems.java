@@ -276,7 +276,7 @@ public class ArrayProblems {
             PriorityQueue<Integer>  maxHeap= new PriorityQueue<Integer>((a,b)->Integer.compare(b,a));
             //Contain minHeap of upper half
             PriorityQueue<Integer> minHeap=new PriorityQueue<Integer>();
-
+            //always add to maxHeap first , then move extra element to min heap
             //balancing
             //add element to maxHeap.. poll take max element go to minHeap
             //minHeap is > maxHeap size then poll from minHeap and add to maxHeap
