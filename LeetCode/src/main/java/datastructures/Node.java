@@ -3,6 +3,8 @@ package main.java.datastructures;
 import main.java.datastructures.assist.Result;
 
 import java.util.HashMap;
+import java.util.PriorityQueue;
+
 //inside same LLnode then reference head using this
 /* Base condition , head condition
 2 ways prev pointer and n.next
@@ -566,6 +568,28 @@ that node.*/
             n=n.next;
         }
         return sentinelNode.data==0?head:sentinelNode;
+    }
+    //O (NlogK)  size O(N) + O(K)
+    public Node mergeKLists(Node[] lists) {
+        PriorityQueue<Node> pq = new PriorityQueue<Node>((a, b)->Integer.compare(a.data,b.data));
+        //Adding only heads?
+        // Pq has K nodes at a time ..making this would take O(K) time worst case O(KLogK)
+        for(Node listHead: lists){
+            if(listHead!=null)
+                pq.add(listHead);
+        }
+        Node dummy= new Node(0);
+        Node result=dummy;
+        //size of heap is maintained K nodes at a time
+        while(!pq.isEmpty()){
+            result.next=pq.poll();
+            result=result.next;
+            Node remainderLLNode=result.next;
+            if(remainderLLNode!=null)
+                pq.add(remainderLLNode);
+        }
+        return dummy.next;
+
     }
 
     public static void main(String args[]) {
