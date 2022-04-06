@@ -116,6 +116,8 @@ public class Graph {
     //Time O(E+V) //stack dfs takes O(V) space and also to build the visited array
     //Space complexity O(E+V)
     public static void dfs( List<Integer>[] adjList,boolean[] visited,int node){
+        if (visited[node])
+                return ;
         visited[node]=true;
         for(int i=0;i<adjList[node].size();i++){
             int neighbor=adjList[node].get(i);
@@ -156,7 +158,11 @@ public class Graph {
 
         return (checkNoCyclesDFS(adjList,visited,0,-1) && checkFullyConnected(visited));
     }
-
+    //calls (0,-1) 0 seen (1,0)
+    //0 parent 1 seen (0,1) ->wont call--> calls (2,1),(3,1),(4,1)
+    //2 seen (2,1)---wont call-->calls (2,3)
+    //3 seen (3,2)--> wont call -->calls->(3,1)
+    // 1 seen again --loop detected
     public boolean checkNoCyclesDFS(List<Integer>[] adjList, boolean[]visited, int node, int parentNode){
         if(visited[node])
             return false;
