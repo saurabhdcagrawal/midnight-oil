@@ -181,6 +181,8 @@ First sort the tuples as per term, remove duplicate tuples
 Storing doc freq is for optimization... process a query based on order of increasing doc freq
 https://www.youtube.com/watch?v=Hy78R3yuutg&list=PL0ZVw5-GryEkGAQT7lX7oIHqyDPeUyOMQ&index=4&ab_channel=OresoftLWC
 
+CDN and ISP
+
 ---techniques to approach
 
 Use the whiteboard: Using a whiteboard helps your interviewer follow your proposed design. Get up to
@@ -249,4 +251,4 @@ Read replica/Write replica ? Load balancer
 Ask pointed questions
 Password SHA256(encrypted and stored)
 Third party payment such as Stripe/Square
-https://www.youtube.com/watch?v=NtMvNh0WFVM&ab_channel=Exponent
+https://www.youtube.com/watch?v=NtMvNh0WFVM&ab_channel=Exponen

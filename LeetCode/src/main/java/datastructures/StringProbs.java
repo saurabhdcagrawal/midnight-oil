@@ -56,7 +56,7 @@ public class StringProbs {
 
         return true;
     }
-
+// MUST Probs
     //longest-substring-without-repeating-characters
     public int lengthOfLongestSubstring(String s) {
         //"pwwkew"
@@ -216,7 +216,7 @@ public class StringProbs {
 //remove duplicates
 
 //sliding window
-
+//abbccc
     public void removeDuplicates(String str) {
         char[] arr = str.toCharArray();
         int prev = 0;

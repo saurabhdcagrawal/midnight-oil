@@ -9,7 +9,7 @@
 5) Passing codes and predicates
 6) Anonymous functions
 7) Filter and predicate are available and generic methods in Java 8
-Using streams API do not think of looping..Think as a stream of data
+Using streams API do not think of looping..Think as a stream of data
 -----Chapter 2
 behaviour parameterization
 Adopt to changing requirements.Strategy Design patternD
@@ -22,14 +22,14 @@ and use them internally to accomplish different behaviors.
 Behavior parameterization lets you make your code more adaptive to changing requirements and saves on
 engineering efforts in the future.Piece of code which is a behaviour and you are passing it around as a parameter
 -----Chapter 3
-Lambda expression A lambda function is an anonymous method .Lambdas let you pass code in a concise way
+Lambda expression A lambda function is an anonymous method.Lambdas let you pass code in a concise way
 Parameters, arrow, body of the function. No need to use return statement
 When lambda expression has multiple statements use curly braces
 (int x, int y)->{S.o.p(x=y);Sop("Result above");}
 (input parameters)->statement; or (input parameters)-{ return expression}Return creates an expression
 (String s) -> "Iron Man". Or if you prefer, you can use an explicit return statement as follows:
 (String s) -> {return "Iron Man";}.
-Lambda --->  function of the object implementing an interface ---directly Lambda is used in the context of functional interface (Like a predicate)
+Lambda --->function of the object implementing an interface ---directly Lambda is used in the context of functional interface (Like a predicate)
 A functional interface is an interface which implements only one abstract method.
 Lambda expressions let you provide the implementation of the abstract method of a functional interface directly inline and treat the whole expression as an instance of a functional interface (more technically speaking, an instance of a concrete implementation of the functional interface). You can achieve the same
 thing with an anonymous inner class, although it’s clumsier: you provide an implementation and instantiate it directly inline.

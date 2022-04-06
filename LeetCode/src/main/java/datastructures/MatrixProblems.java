@@ -75,34 +75,38 @@ public class MatrixProblems {
         }
         return false;
     }
-//countIslands
     public int numIslands(char[][] grid) {
-        int count_islands=0;
-        for(int i=0; i< grid.length;i++){
-            for(int j=0;j<grid[0].length;j++){
+        if (grid == null || grid.length == 0)
+            return 0;
+        int m =grid.length;
+        int n= grid[0].length;
+        int numOfIslands=0;
+        for(int i=0;i<m;i++){
+            for(int j=0;j<n;j++){
                 if(grid[i][j]=='1'){
-                    count_islands++;
-                    backtrack(i,j,grid);
+                    numOfIslands++;
+                    numOfIslandsbacktrack(i,j,grid,m,n);
                 }
             }
         }
-
-        return count_islands;
+        return numOfIslands;
     }
-    //Depth first search
-    public void backtrack(int i ,int j, char[][] grid){
 
+    public void numOfIslandsbacktrack(int i, int j, char[][]grid, int m, int n){
+
+        if(i<0||i>=m||j<0||j>=n||grid[i][j]=='0')
+            return;
         grid[i][j]='0';
-        int[] x_offset={-1,0,1,0};
-        int[] y_offset={0,1,0,-1};
-        for(int k=0; k<4;k++){
-            int new_i=i+x_offset[k];
-            int new_j=j+y_offset[k];
-            if(new_i>=0 && new_j>=0 && new_i<grid.length && new_j < grid[0].length && grid[new_i][new_j]=='1')
-                backtrack(new_i,new_j,grid);
+        int[] rowOffset={-1,0,1,0};
+        int[] colOffset={0,1,0,-1};
+        for(int k=0;k<rowOffset.length;k++){
+            int newRow=rowOffset[k]+i;
+            int newCol=colOffset[k]+j;
+            numOfIslandsbacktrack(newRow,newCol,grid,m,n);
         }
-    }
-    //Word search
+
+
+    }    //Word search
     //every letter propogates in 4 directions L^4 and every search can lead to n characters
     //O(NL^4)
     //Stack O(L)

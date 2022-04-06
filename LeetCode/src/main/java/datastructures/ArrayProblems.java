@@ -685,7 +685,7 @@ public class ArrayProblems {
             newList.add(intervals[0]);
             //Start from 1 and compare with the last element in new list not the merged list
             for(int i=1; i<intervals.length;i++) {
-                if (intervals[i][0] > newList.peekLast()[1])
+                if (intervals[i][0] > newList.getLast()[1])
                     newList.add(intervals[i]);
                 else
                     newList.getLast()[1]=Math.max(newList.getLast()[1],intervals[i][1]);

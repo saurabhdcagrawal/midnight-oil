@@ -82,6 +82,13 @@ public class Graph {
 //List of vertices
 //create boolean matrix for vertex visited
     //Input: n = 5, edges = [[0,1],[1,2],[3,4]]
+    //Array of adjacency lists
+    //int[] similarly List<Integer>[]
+    /*Time complexity: {O}(E + V)O(E+V).
+    Space complexity: {O}(E + V)O(E+V).
+    Building the adjacency list will take {O}(E)O(E) space.
+    To keep track of visited vertices, an array of size {O}(V)O(V) is required.
+    Also, the run-time stack for DFS will use {O}(V)O(V) space.*/
     public static int countComponents(int n, int[][] edges) {
         List<Integer>[] adjList= new ArrayList[n];
         for(int i=0;i<n;i++)
@@ -93,11 +100,11 @@ public class Graph {
         }
       //  [{1},{0,2},{1},{4},{3}]
 
-        int[] visited = new int[n];
+        boolean[] visited = new boolean[n];
         int connectedComponents=0;
 
         for(int i=0;i<n;i++){
-            if (visited[i]==0)
+            if (!visited[i])
                 connectedComponents++;
             dfs(adjList,visited,i);
 
@@ -108,11 +115,12 @@ public class Graph {
     //Visiting every node once and then for every vertex we run through adjacency list
     //Time O(E+V) //stack dfs takes O(V) space and also to build the visited array
     //Space complexity O(E+V)
-    public static void dfs( List<Integer>[] adjList,int[] visited,int node){
-        visited[node]=1;
+    public static void dfs( List<Integer>[] adjList,boolean[] visited,int node){
+        visited[node]=true;
         for(int i=0;i<adjList[node].size();i++){
-            if(visited[adjList[node].get(i)]==0) {
-                dfs(adjList, visited, adjList[node].get(i));
+            int neighbor=adjList[node].get(i);
+            if(!visited[neighbor]) {
+                dfs(adjList, visited, neighbor);
             }
         }
    }

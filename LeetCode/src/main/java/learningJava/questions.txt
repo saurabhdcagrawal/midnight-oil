@@ -134,7 +134,7 @@ where salary < (SELECT max(salary) from employee))
 //One coding question with arrays or maps
 1)How to check if 2 strings are anagrams of each other
 //triangle integral
-2)Determine if a string has all unique characters
+2)
   //can attend meetings
     /*Input: intervals = [[0,30],[5,10],[15,20]]
     Output: false*/
