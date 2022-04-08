@@ -185,4 +185,114 @@ public class Archive {
     }
 
 
+
+}
+
+//All time complexities O(M) and space complexities O(M) where M is the length of the word
+
+/*
+  Root
+  |
+ / \
+A
+|
+P
+|
+P (end)
+| links[] one of 26
+L
+|
+E (end)
+all links null
+*/
+
+class TrieNodeArr{
+    private TrieNodeArr[] links;
+    private final int R=26;
+    private boolean isEnd;
+    //maximum r roots to children
+
+    public TrieNodeArr(){
+        links = new TrieNodeArr[26];
+    }
+
+    public boolean containsKey (char ch){
+        return links[ch-'a']!=null;
+    }
+
+    public void put (char ch, TrieNodeArr node){
+        links[ch-'a']=node;
+    }
+
+    public TrieNodeArr getNode (char ch){
+        return links[ch-'a'];
+    }
+
+    public void setEnd(){
+        isEnd=true;
+    }
+
+    public boolean isEnd(){
+        return isEnd;
+    }
+}
+
+ class TrieArr {
+
+    private TrieNodeArr root;
+
+    public TrieArr() {
+        root = new TrieNodeArr();
+
+    }
+
+    public void insert(String word) {
+        TrieNodeArr node = root;
+        for (int i = 0; i < word.length(); i++) {
+            if (!node.containsKey(word.charAt(i))) {
+                node.put(word.charAt(i), new TrieNodeArr());
+            }
+            //continue on the same node for next char
+            node = node.getNode(word.charAt(i));
+        }
+        node.setEnd();
+
+
+    }
+
+    public TrieNodeArr searchPrefix(String word) {
+        TrieNodeArr node = root;
+        for (int i = 0; i < word.length(); i++) {
+            if (node.containsKey(word.charAt(i)))
+                node = node.getNode(word.charAt(i));
+            else
+                return null;
+        }
+        return node;
+    }
+
+    public boolean search(String word) {
+        TrieNodeArr node = searchPrefix(word);
+        return (node != null && node.isEnd());
+
+    }
+
+    //cod..cannot be coc
+    public boolean startsWith(String prefix) {
+        TrieNodeArr node = searchPrefix(prefix);
+        return (node != null);
+
+    }
+
+    public static void main(String args[]){
+        TrieArr obj = new TrieArr();
+        obj.insert("apple");
+        System.out.println(obj.search("apple"));
+        System.out.println(obj.search("app"));
+        System.out.println(obj.startsWith("app"));
+        obj.insert("app");
+        System.out.println(obj.search("app"));
+
+
+    }
 }

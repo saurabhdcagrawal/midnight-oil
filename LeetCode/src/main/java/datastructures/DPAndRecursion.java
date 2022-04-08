@@ -238,33 +238,7 @@ public class DPAndRecursion {
         return memo[n];
     }
 
-
-//baseball
-//apple
-//if char[i]='\0' &&  char[j]='\0' , return 0; reduction
-//if first char is common , apple, ass , 1+ LCS("pple","ss")
-//else find max lcs of (baseball,pple) and (aseball,apple)
-    //LCS[i][j]  is common subsequence between str1[i-1] to str[j-1] i.e both i character of str1 and
- // j characters of str2
-    public static int LCS(String str1,String str2) {
-        int m = str1.length();
-        int n = str2.length();
-        int[][] LCS = new int[m + 1][n + 1];
-        for (int i = 0; i <= m; i++) {
-            for (int j = 0; j <= n; j++) {
-                if (i == 0 || j == 0)
-                    LCS[i][j] = 0;
-                else if (str1.charAt(i - 1) == str2.charAt(j - 1))
-                    LCS[i][j] = LCS[i - 1][j - 1] + 1;
-                else
-                    LCS[i][j] = Math.max(LCS[i - 1][j], LCS[i][j - 1]);
-
-            }
-
-        }
-        return LCS[m][n];
-    }
-    //max sub array int
+  //max sub array int
     //since it is contiguos ,you always have to include the array element ,either in sum
     //or start afresh ,cant just forget it ,so the total sum in end may not be the max
     public static int maxSubArray(int[] nums) {
@@ -350,58 +324,8 @@ public class DPAndRecursion {
 
 
 
-    public static int longestNonRepeatingSubstring(String str){
-    int max=0,i=0,j=0,index=0;
-    Map<Character,Integer> charMap = new HashMap<Character,Integer>();
-    for(;j<str.length();j++){
-      if(charMap.containsKey(str.charAt(j))){
-          index=charMap.get(str.charAt(j));
-          if(index>=i)
-              i=index+1;
-          else {
-              charMap.put(str.charAt(j), j);
-              max=Math.max(max,j-i+1);
-
-          }
-      }
-     else{
-      charMap.put(str.charAt(j),j);
-      max=Math.max(max,j-i+1);
-      }
-    }
-     return max;
-
-    }
 
 
-
-    //edit distance problem
-    //any 3 operations ,insertion ,deletion
-    // https://www.youtube.com/watch?v=We3YDTzNXEk
-    //LCS[1][1] is actually string[0][0]
-    //matrix will include o so m+1,n+1 last ,which corresponds to
-    //m and n in for loop
-    //which corresponds to str i-1 and str j-1 in string ,hence compare
-    //str[i-1] str[j-1]
-    public static int editDistance(String s1,String s2) {
-    int m=s1.length();
-    int n=s2.length(); int store=0;
-    int [][] L = new int[m+1][n+1];
-    for(int i=0;i<=m;i++){
-        for(int j=0;j<=n;j++){
-            if(i==0||j==0)
-                L[i][j]=i+j;
-            else if (s1.charAt(i-1)==s2.charAt(j-1))
-                L[i][j]=L[i-1][j-1];
-            else {
-                store=Math.min(L[i - 1][j], L[i][j - 1]);
-                L[i][j]=Math.min(store,L[i-1][j-1])+1;
-            }
-        }
-    }
-        GeneralUtility.printMatrix(L);
-    return L[m][n];
-    }
 
     //abc
     //first call main a ,bc
@@ -695,15 +619,6 @@ public class DPAndRecursion {
         System.out.println("Fibonacci DPI " +fibonacciDPIter(5));
         int[] nums={1,2,3,1};
         System.out.println(" " +rob(nums));
-        System.out.println("Longest common subsequence");
-        System.out.println(LCS("ABAZDC","BACBAD"));
-        System.out.println("Maximum subarray subsequence");
-        int[] nums_cs={-2,1,-3,4,-1,2,1,-5,4};
-        System.out.println("Dp with storage  "+maxSubArray(nums_cs));
-        System.out.println("O(1) solution "+maxSubArrayO1(nums_cs));
-        System.out.println("Longest non repeating subsequence");
-        System.out.println(longestNonRepeatingSubstring("bbbb"));
-        System.out.println("Edit distance "+editDistance("TASH","SAURABH"));
         System.out.println("Permutations");
         System.out.println(getPermutations("abc"));
         System.out.println("Integer Permutations");

@@ -411,6 +411,7 @@ public class SearchSort {
     }
 //Once you convert the matrix to a m*n array, To find position of the element you have to divide by col size for x
 //and for y you have to take modulo with col size
+    //matrix is ordered and sorted
     public static boolean findElementInSortedMatrix(int[][] matrix, int target) {
             if(matrix.length==0||matrix==null)
                 return false;

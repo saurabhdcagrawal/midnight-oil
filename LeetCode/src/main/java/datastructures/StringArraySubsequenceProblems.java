@@ -1,0 +1,332 @@
+package main.java.datastructures;
+
+import main.java.util.GeneralUtility;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
+public class StringArraySubsequenceProblems {
+
+//baseball
+//apple
+//if char[i]='\0' &&  char[j]='\0' , return 0; reduction
+//if first char is common , apple, ass , 1+ LCS("pple","ss")
+//else find max lcs of (baseball,pple) and (aseball,apple)
+    //LCS[i][j]  is common subsequence between str1[i-1] to str[j-1] i.e both i character of str1 and
+    // j characters of str2
+    public static int longestCommonSubsequence(String text1, String text2) {
+        int m= text1.length();
+        int n= text2.length();
+        int[][]dp = new int[m+1][n+1];
+
+        for(int i=1;i<=m;i++){
+            for(int j=1;j<=n;j++){
+                /*if (i == 0 || j == 0)
+                    dp[i][j] = 0;*/
+                dp[i][j]=text1.charAt(i-1)==text2.charAt(j-1)?1+dp[i-1][j-1]:Math.max(dp[i-1][j],dp[i][j-1]);
+            }
+        }
+        return dp[m][n];
+    }
+    //max sub array int
+    //since it is contiguos ,you always have to include the array element ,either in sum
+    //or start afresh ,cant just forget it ,so the total sum in end may not be the max
+    public static int maxSubArray(int[] nums) {
+        int[] max_subarray= new int[nums.length];
+        int max_sum=0;
+        max_subarray[0]=nums[0];
+        for (int i=1;i<nums.length;i++){
+            max_subarray[i]=Math.max(max_subarray[i-1]+nums[i],nums[i]);
+            max_sum=Math.max(max_subarray[i],max_sum);
+        }
+        System.out.println(Arrays.toString(max_subarray));
+        return max_sum;
+    }
+    //No need to store O(1) solution
+    //Kadane's algorithm/
+    //maxContiguousSubArray
+    public static int maxSubArrayO1(int[] nums) {
+        int maxSum=nums[0];
+        int sum=nums[0];
+        for(int i=1;i<nums.length;i++){
+            sum=sum+nums[i];
+            sum=Math.max(sum,nums[i]);
+            maxSum= Math.max(sum,maxSum);
+        }
+        return maxSum;
+    }
+
+    public int maxProduct(int[] nums) {
+        //you got to keep track of min so far because that can become max if you encounter a negative number
+        // for 0 , you have to compare product so far with element
+        int max_so_far=1;
+        int min_so_far=1;
+        int prev_max_so_far=1;
+        int maxProd=Integer.MIN_VALUE;
+
+        for(int i=0;i<nums.length;i++){
+            max_so_far=Math.max(nums[i],Math.max(max_so_far*nums[i],min_so_far*nums[i]));
+            System.out.println(max_so_far);
+            min_so_far=Math.min(nums[i],Math.min(prev_max_so_far*nums[i],min_so_far*nums[i]));
+            System.out.println(min_so_far);
+            prev_max_so_far= max_so_far;
+            maxProd=Math.max(maxProd,max_so_far);
+        }
+
+        return maxProd;
+    }
+
+    //[-2,3,-4]
+    /*We need to track a minimum value,
+    so that when a negative number is given, it can also find the maximum value.
+ */   public static int maxProductSubarray(int[] nums){
+        int[] max= new int[nums.length];
+        int[] min= new int[nums.length];
+        int result=nums[0];
+        max[0]=nums[0];min[0]=nums[0];
+        for(int i=1;i<nums.length;i++) {
+            if (nums[i] >= 0) {
+                max[i] = Math.max(max[i - 1] * nums[i], nums[i]);
+                min[i] = Math.min(min[i - 1] * nums[i], nums[i]);
+            }
+            //when the current number is negative ,the max number will be given
+            //by multiplying current value with the min value so far
+            //and the min will be obtained by applying with the most maximum value obtained
+            //so far
+            else {
+                max[i] = Math.max(min[i - 1] * nums[i], nums[i]);
+                min[i] = Math.min(max[i - 1] * nums[i], nums[i]);
+            }
+            result=Math.max(result,max[i]);
+        }
+        return result;
+    }
+/*
+
+    public static int longestNonRepeatingSubstring(String str){
+        int max=0,i=0,j=0,index=0;
+        Map<Character,Integer> charMap = new HashMap<Character,Integer>();
+        for(;j<str.length();j++){
+            if(charMap.containsKey(str.charAt(j))){
+                index=charMap.get(str.charAt(j));
+                if(index>=i)
+                    i=index+1;
+                else {
+                    charMap.put(str.charAt(j), j);
+                    max=Math.max(max,j-i+1);
+
+                }
+            }
+            else{
+                charMap.put(str.charAt(j),j);
+                max=Math.max(max,j-i+1);
+            }
+        }
+        return max;
+
+    }
+*/
+
+    //edit distance problem
+    //any 3 operations ,insertion ,deletion
+    // https://www.youtube.com/watch?v=We3YDTzNXEk
+    //LCS[1][1] is actually string[0][0]
+    //matrix will include o so m+1,n+1 last ,which corresponds to
+    //m and n in for loop
+    //which corresponds to str i-1 and str j-1 in string ,hence compare
+    //str[i-1] str[j-1]
+    public static int editDistance(String s1,String s2) {
+        int m=s1.length();
+        int n=s2.length(); int store=0;
+        int [][] L = new int[m+1][n+1];
+        for(int i=0;i<=m;i++){
+            for(int j=0;j<=n;j++){
+                if(i==0||j==0)
+                    L[i][j]=i+j;
+                else if (s1.charAt(i-1)==s2.charAt(j-1))
+                    L[i][j]=L[i-1][j-1];
+                else {
+                    store=Math.min(L[i - 1][j], L[i][j - 1]);
+                    L[i][j]=Math.min(store,L[i-1][j-1])+1;
+                }
+            }
+        }
+        GeneralUtility.printMatrix(L);
+        return L[m][n];
+    }
+
+    // MUST Probs
+    //longest-substring-without-repeating-characters
+    public static int lengthOfLongestSubstring(String s) {
+        //"pwwkew"
+        int maxLength=0; int i=0,j=0;
+        int[] charArr= new int[128];
+        while(j<s.length()){
+            char c=s.charAt(j);
+            charArr[c]++;
+            //a matching character in right is found, so decrement the count
+            //slide the window to right
+            //until we no longer have dups
+            //set corresponds to the window
+            while(charArr[c]>1){
+                char l=s.charAt(i);
+                charArr[l]--;
+                i++;
+            }
+            maxLength=Math.max(maxLength,j-i+1);
+            j++;
+        }
+        return maxLength;
+    }
+    /*You are given a string s and an integer k.
+    You can choose any character of the string and change it to any other uppercase English character.
+    You can perform this operation at most k times.
+    Return the length of the longest substring containing the same letter you can get after performing the above operations.
+    */
+    /*The problem says that we can make at most k changes to the string (any character can be replaced with any other character).
+    So, let's say there were no constraints like the k. Given a string convert it to a string with all same characters with minimal changes.
+    The answer to this is
+    length of the entire string - number of times of the maximum occurring character in the string
+    Given this, we can apply the at most k changes constraint and maintain a sliding window such that
+            (length of substring - number of times of the maximum occurring character in the substring) <= k*/
+    public int characterReplacement(String s, int k) {
+        int[] charset = new int[128];
+        int maxCount = 0, i = 0, j=0, maxLength = 0;
+        while(j<s.length()){
+            char c = s.charAt(j);
+            charset[c]++;
+            maxCount = Math.max(maxCount, charset[c]);
+
+            // if max character frequency + distance between start and end is greater than k
+            // this means we have considered changing more than k charactres. So time to shrink window
+            //maxcount in repeated substring
+            if(j - i + 1 - maxCount > k){
+                char l = s.charAt(i);
+                charset[l]--;
+                i ++;
+            }
+            //in this max length you can replace the non repeating characters i.e j-i+1-maxcount within allowable limits to k and get amx length
+            maxLength = Math.max(maxLength, j - i + 1);
+            j++;
+        }
+
+        return maxLength;
+    }
+    /* Given two strings s and t of lengths m and n respectively, return the minimum window substring of s such that every character in
+     t (including duplicates) is included in the window. If there is no such substring, return the empty string "".*/
+    public String minWindow(String s, String t) {
+        if (s.length() == 0 || t.length() == 0) {
+            return "";
+        }
+        int[] charSetS = new int[128];
+        int[] charSetT = new int[128];
+        int[] soln={-1,0,0};
+        for(int i=0;i<t.length();i++){
+            char c = t.charAt(i);
+            charSetT[c]++;
+        }
+        int i=0,j=0,formed=0;
+        int required= t.length();
+
+        while(j<s.length()){
+            char c= s.charAt(j);
+            charSetS[c]++;
+            if(charSetT[c]!=0 && charSetS[c]<=charSetT[c])
+                formed++;
+            //shrink when all characters are formed
+            while(i<=j && formed==required){
+                if(soln[0]==-1 || j-i+1<soln[0]){
+                    soln[0]=j-i+1;
+                    soln[1]=i;
+                    soln[2]=j;
+                }
+                char l = s.charAt(i);
+                charSetS[l]--;
+                //Note is less
+                if(charSetT[l]!=0 && charSetS[l]<charSetT[l])
+                    formed--;
+                i++;
+            }
+            j++;
+        }
+        return soln[0]==-1?"":s.substring(soln[1],soln[2]+1);
+    }
+
+    //longest Palindrome
+//Usually to find this if you have a string, reverse it and then find the LCS... but this may not work if there is reversed non palindromic substring in other
+    //part of main string
+    //abac caba
+    // O(n2)
+    public String longestPalindromeSubstring(String s) {
+        //badad
+        if (s == null || s.length() < 1) return "";
+        int start=0, end=0, maxLength=0;
+        for(int i=0;i<s.length();i++){
+            //to find odd length palindromes expand around a single word
+            int[] arr1 = expandAroundCenter(s,i,i);
+            //to find odd length palindromes expand around a single word
+            int[] arr2 = expandAroundCenter(s,i,i+1);
+            if(arr1[0]>arr2[0]){
+                if(arr1[0]>maxLength){
+                    maxLength=arr1[0];
+                    start=arr1[1];
+                    end=arr1[2];
+                }
+            }
+            else{
+                if(arr2[0]>maxLength){
+                    maxLength=arr2[0];
+                    start=arr2[1];
+                    end=arr2[2];
+                }
+            }
+        }
+        return s.substring(start,end+1);
+    }
+
+    public int[] expandAroundCenter(String s, int left, int right) {
+        while (left >= 0 && right < s.length() && s.charAt(left) == s.charAt(right)) {
+            left--;
+            right++;
+        }
+        left += 1;
+        right -= 1;
+        return new int[]{right - left + 1, left, right};
+    }
+
+    public int countPalindromicSubstrings(String s) {
+        int count=0;
+        for(int i=0;i<s.length();i++){
+            count+=expandAroundCenterPalindromicSubstring(s,i,i);
+            count+=expandAroundCenterPalindromicSubstring(s,i,i+1);
+        }
+        return count;
+
+    }
+    public int expandAroundCenterPalindromicSubstring(String s, int left, int right) {
+        int count=0;
+        while (left >= 0 && right < s.length() && s.charAt(left) == s.charAt(right)) {
+            left--;
+            right++;
+            count++;
+        }
+        return count;
+    }
+
+    public static void main(String args[]){
+        System.out.println("Longest common subsequence");
+        System.out.println(longestCommonSubsequence("ABAZDC","BACBAD"));
+        System.out.println("Maximum subarray subsequence");
+        int[] nums_cs={-2,1,-3,4,-1,2,1,-5,4};
+        System.out.println("Dp with storage  "+maxSubArray(nums_cs));
+        System.out.println("O(1) solution "+maxSubArrayO1(nums_cs));
+        System.out.println("Longest non repeating subsequence");
+        //System.out.println(longestNonRepeatingSubstring("pwwkew"));
+        System.out.println("Longest substring "+lengthOfLongestSubstring("pwwkew"));
+
+        System.out.println("Edit distance "+editDistance("TASH","SAURABH"));
+
+    }
+
+}

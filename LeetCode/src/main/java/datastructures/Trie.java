@@ -17,65 +17,44 @@ E (end)
 all links null
 */
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
 class TrieNode{
-    private TrieNode[] links;
-    private final int R=26;
-    private boolean isEnd;
-    //maximum r roots to children
+    String word; // Can instead use boolean word to denote end of word
+    HashMap<Character,TrieNode> children;
 
     public TrieNode(){
-        links = new TrieNode[26];
-    }
-
-    public boolean containsKey (char ch){
-        return links[ch-'a']!=null;
-    }
-
-    public void put (char ch, TrieNode node){
-        links[ch-'a']=node;
-    }
-
-    public TrieNode getNode (char ch){
-        return links[ch-'a'];
-    }
-
-    public void setEnd(){
-        isEnd=true;
-    }
-
-    public boolean isEnd(){
-        return isEnd;
+        children= new HashMap<Character,TrieNode>();
     }
 }
 
-public class Trie {
 
-    private TrieNode root;
-
+class Trie {
+    TrieNode root;
     public Trie() {
-        root= new TrieNode();
+        root = new TrieNode();
 
     }
 
     public void insert(String word) {
-        TrieNode node = root;
+        TrieNode node=root;
         for(int i=0;i<word.length();i++){
-            if(!node.containsKey(word.charAt(i))){
-                node.put(word.charAt(i), new TrieNode());
-            }
-            //continue on the same node for next char
-                node=node.getNode(word.charAt(i));
+            char ch= word.charAt(i);
+            if(!node.children.containsKey(ch))
+                node.children.put(ch,new TrieNode());
+            node=node.children.get(ch);
         }
-        node.setEnd();
-
-
+        node.word=word;
     }
 
     public TrieNode searchPrefix(String word) {
         TrieNode node=root;
         for(int i=0;i<word.length();i++){
-            if(node.containsKey(word.charAt(i)))
-                node=node.getNode(word.charAt(i));
+            char ch= word.charAt(i);
+            if(node.children.containsKey(ch))
+                node=node.children.get(ch);
             else
                 return null;
         }
@@ -84,15 +63,37 @@ public class Trie {
 
     public boolean search(String word) {
         TrieNode node=searchPrefix(word);
-        return (node!=null && node.isEnd());
-
+        return (node!=null && node.word!=null &&!node.word.isEmpty());
     }
-    //cod..cannot be coc
     public boolean startsWith(String prefix) {
         TrieNode node=searchPrefix(prefix);
-        return (node!=null);
-
+        return node!=null;
     }
+    public boolean searchInNode(String word, TrieNode node){
+        for (int i=0;i<word.length();i++){
+            char ch=word.charAt(i);
+            if(!node.children.containsKey(ch)){
+                if(ch=='.'){
+                    for(char x :node.children.keySet()){
+                        boolean result=searchInNode(word.substring(i+1),node.children.get(x));
+                        if(result)
+                            return true;
+                    }
+                   /* return false; */
+                }
+                return false;
+                /*else
+                    return false;*/
+            }
+            node=node.children.get(ch);
+        }
+        return node.word==null;
+    }
+
+    public boolean searchInNode(String word){
+        return searchInNode(word,root);
+    }
+
     public static void main(String args[]){
         Trie obj = new Trie();
         obj.insert("apple");
@@ -102,6 +103,14 @@ public class Trie {
         obj.insert("app");
         System.out.println(obj.search("app"));
 
+        //Word Dictionary part
+        obj.insert("bad");
+        obj.insert("dad");
+        obj.insert("mad");
+        System.out.println(obj.searchInNode("pad"));
+        System.out.println(obj.searchInNode("bad"));
+        System.out.println(obj.searchInNode(".ad"));
+        System.out.println(obj.searchInNode("b.."));
 
     }
 
