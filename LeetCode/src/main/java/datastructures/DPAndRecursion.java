@@ -566,52 +566,6 @@ public class DPAndRecursion {
 
         return dp[n];
     }
-    //Longest increasing subsequence
-    public int lengthOfLIS(int[] nums) {
-        int n=nums.length;
-        int[] dp=new int[n];
-        Arrays.fill(dp,1);
-        int maxLength=1;
-        for(int i=1;i<n;i++){
-            for(int j=0;j<i;j++){
-                if(nums[i]>nums[j]){
-                    //captured previously
-                    dp[i]=Math.max(dp[i],dp[j]+1);
-                    if(dp[i]>maxLength)
-                        maxLength=dp[i];
-                }
-            }
-        }
-        System.out.println(Arrays.toString(dp));
-        return maxLength;
-
-    }
-    public int lengthOfLISNew(int[] nums) {
-        // [8, 1, 6, 2, 3, 10]
-        //create a sub keep adding elements
-        //if element inside sub is bigger, drop all
-        //pick the new one
-        //[8],[1],[1,6],[1,2],[1,2,3],[1,2,3,10]
-        List<Integer> sub = new ArrayList<Integer>();
-        sub.add(nums[0]);
-
-        for(int i=1;i<nums.length;i++){
-            if(nums[i]>sub.get(sub.size()-1))
-                sub.add(nums[i]);
-            else{
-                int j=0;
-                //can be replaced by binary search
-                //int j=binary search(sub,nums)
-                //revisit binary search
-                while(sub.get(j)<nums[i]){
-                    j++;
-                }
-                sub.set(j,nums[i]);
-            }
-        }
-
-        return sub.size();
-    }
     public static void main(String args[]){
        System.out.println("Fibonacci recursion " +fibonacciRecursion(5));
        System.out.println("Fibonacci memoization " +fibonacciMemoization(5));

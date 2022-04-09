@@ -2,9 +2,7 @@ package main.java.datastructures;
 
 import main.java.util.GeneralUtility;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class StringArraySubsequenceProblems {
 
@@ -312,6 +310,114 @@ public class StringArraySubsequenceProblems {
             count++;
         }
         return count;
+    }
+
+    public String longestCommonPrefixHscan(String[] strs) {
+        if (strs == null || strs.length == 0) return "";
+        String prefix = strs[0];
+        //find a match by reducing until you find second string within first
+        //this match is then used to check next string
+        // if at any time the string match is empty, it means there is no match
+        //so least common prefix is blank and therefore return
+        // horizontal scan
+        for (int i = 0; i < strs.length; i++) {
+            while (strs[i].indexOf(prefix) != 0) {
+                prefix = prefix.substring(0, prefix.length() - 1);
+                if (prefix.isEmpty() || prefix.equals(""))
+                    return "";
+            }
+        }
+        return prefix;
+    }
+ /*  public String longestCommonPrefix(String[] strs) {
+    if (strs == null || strs.length == 0) return "";
+    String prefix= strs[0];
+    //find a match by reducing until you find second string within first
+    //this match is then used to check next string
+    // if at any time the string match is empty, it means there is no match
+    //so least common prefix is blank and therefore return
+    // horizontal scan
+    for (int i=0; i <strs.length;i++){
+     while  (strs[i].indexOf(prefix)!=0) {
+        prefix=prefix.substring(0,prefix.length()-1);
+        if(prefix.isEmpty()||prefix.equals(""))
+            return "";
+     }
+    }
+    return prefix;
+  } */
+
+    //vertical scan
+    //take first string and comparing first character to
+    //character of every string
+    //if for a given string one character does not match
+    //it means the string till prior is common prefix
+    // strs[j].length()==i for cases such as [ab,a]
+
+    //vertical scan
+    //take first string and comparing first character to
+    //character of every string
+    //if for a given string one character does not match
+    //it means the string till prior is common prefix
+    // strs[j].length()==i for cases such as [ab,a]
+    public String longestCommonPrefix(String[] strs) {
+        if (strs == null || strs.length == 0) return "";
+        for (int i = 0; i < strs[0].length(); i++) {
+            char c = strs[0].charAt(i);
+            for (int j = 1; j < strs.length; j++) {
+                if (strs[j].length() == i || strs[j].charAt(i) != c) {
+                    return strs[0].substring(0, i);
+                }
+            }
+        }
+        return strs[0];
+    }
+
+    //Longest increasing subsequence
+    public int lengthOfLIS(int[] nums) {
+        int n=nums.length;
+        int[] dp=new int[n];
+        Arrays.fill(dp,1);
+        int maxLength=1;
+        for(int i=1;i<n;i++){
+            for(int j=0;j<i;j++){
+                if(nums[i]>nums[j]){
+                    //captured previously
+                    dp[i]=Math.max(dp[i],dp[j]+1);
+                    if(dp[i]>maxLength)
+                        maxLength=dp[i];
+                }
+            }
+        }
+        System.out.println(Arrays.toString(dp));
+        return maxLength;
+
+    }
+    public int lengthOfLISNew(int[] nums) {
+        // [8, 1, 6, 2, 3, 10]
+        //create a sub keep adding elements
+        //if element inside sub is bigger, drop all
+        //pick the new one
+        //[8],[1],[1,6],[1,2],[1,2,3],[1,2,3,10]
+        List<Integer> sub = new ArrayList<Integer>();
+        sub.add(nums[0]);
+
+        for(int i=1;i<nums.length;i++){
+            if(nums[i]>sub.get(sub.size()-1))
+                sub.add(nums[i]);
+            else{
+                int j=0;
+                //can be replaced by binary search
+                //int j=binary search(sub,nums)
+                //revisit binary search
+                while(sub.get(j)<nums[i]){
+                    j++;
+                }
+                sub.set(j,nums[i]);
+            }
+        }
+
+        return sub.size();
     }
 
     public static void main(String args[]){
