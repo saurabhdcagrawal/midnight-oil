@@ -315,7 +315,7 @@ public class StringArraySubsequenceProblems {
     public String longestCommonPrefixHscan(String[] strs) {
         if (strs == null || strs.length == 0) return "";
         String prefix = strs[0];
-        //find a match by reducing until you find second string within first
+        //find a match by reducing until you find second string within first i.e (strs[i].indexOf(prefix) != 0)
         //this match is then used to check next string
         // if at any time the string match is empty, it means there is no match
         //so least common prefix is blank and therefore return
@@ -329,23 +329,6 @@ public class StringArraySubsequenceProblems {
         }
         return prefix;
     }
- /*  public String longestCommonPrefix(String[] strs) {
-    if (strs == null || strs.length == 0) return "";
-    String prefix= strs[0];
-    //find a match by reducing until you find second string within first
-    //this match is then used to check next string
-    // if at any time the string match is empty, it means there is no match
-    //so least common prefix is blank and therefore return
-    // horizontal scan
-    for (int i=0; i <strs.length;i++){
-     while  (strs[i].indexOf(prefix)!=0) {
-        prefix=prefix.substring(0,prefix.length()-1);
-        if(prefix.isEmpty()||prefix.equals(""))
-            return "";
-     }
-    }
-    return prefix;
-  } */
 
     //vertical scan
     //take first string and comparing first character to
@@ -393,6 +376,7 @@ public class StringArraySubsequenceProblems {
         return maxLength;
 
     }
+    //MUST
     public int lengthOfLISNew(int[] nums) {
         // [8, 1, 6, 2, 3, 10]
         //create a sub keep adding elements
@@ -418,6 +402,44 @@ public class StringArraySubsequenceProblems {
         }
 
         return sub.size();
+    }
+    /*  public int pivotIndex(int[] nums) {
+
+       int i = 0, j = nums.length - 1, sumLeft = 0, sumRight = 0;
+       while (i < nums.length) {
+           System.out.println("Pivot " + i);
+           System.out.println(i + " " + "sumLeft " + sumLeft);
+           while (j > i) {
+               sumRight = sumRight + nums[j];
+               j--;
+           }
+           System.out.println(j + " " + "sumRight " + sumRight);
+           if (sumLeft == sumRight)
+               return i;
+           sumLeft = sumLeft + nums[i];
+           i++;
+           j = nums.length - 1;
+           sumRight = 0;
+       }
+       return -1;
+   } */
+    // Optimized O(n)
+/*
+    Given an array of integers nums, calculate the pivot index of this array.
+*/
+
+    public int pivotIndex(int[] nums) {
+        int sumTotal = 0, leftSum = 0;
+        for (int i = 0; i < nums.length; i++)
+            sumTotal = sumTotal + nums[i];
+        //System.out.println("sumTotal " + sumTotal);
+        for (int i = 0; i < nums.length; i++) {
+            // System.out.println(leftSum);
+            if (leftSum == (sumTotal - leftSum - nums[i]))
+                return i;
+            leftSum += nums[i];
+        }
+        return -1;
     }
 
     public static void main(String args[]){

@@ -335,15 +335,15 @@ public class DPAndRecursion {
     public static ArrayList<String> getPermutations(String str){
      ArrayList<String> permutations = new ArrayList<String>();
      if(str.length()==0){
-      ArrayList<String> strList= new ArrayList<String>();
-      strList.add("");
-      return strList;
+         permutations.add("");
+      return permutations;
      }
      char c=str.charAt(0);
      //differentListOnlyPerm
      ArrayList<String> allWords= getPermutations(str.substring(1));
 
      for(String word:allWords){
+         //going with full length of word
          for(int i=0;i<=word.length();i++){
           String newWord= getNewWord(i,word,c);
           permutations.add(newWord);
@@ -352,75 +352,255 @@ public class DPAndRecursion {
 
        return permutations;
  }
-
- //List is an ordered collection
-    public static ArrayList<ArrayList<Integer>> permute(int[] nums , int index) {
-        ArrayList<ArrayList<Integer>> permutations = new ArrayList<ArrayList<Integer>>();
-        if(index==nums.length){
-            ArrayList<Integer> emptySet = new ArrayList<Integer>();
-            permutations.add(emptySet);
-            return permutations;
+    public static String getNewWord(int position ,String word ,char c) {
+        String head = null, tail = null;
+        //endIndex included
+        head = word.substring(0, position);
+        tail = word.substring(position);
+        System.out.println(head+c+tail);
+        return head+c+tail;
+    }/*
+    public static ArrayList<String> getPermutationsAlt(String str){
+        int len= str.length();
+        ArrayList<String> result= new ArrayList<String>();
+        if(len==0){
+            result.add("");
+            return result;
         }
 
-        int number= nums[index];
-        ArrayList<ArrayList<Integer>> sets= permute(nums,index+1);
-         //permutations= permute(nums,index+1);
-        ArrayList<ArrayList<Integer>> currentListSet= new ArrayList<ArrayList<Integer>>();
-        for(ArrayList<Integer> set:sets){
-                  for(int i=0;i<=set.size();i++){
-                      ArrayList<Integer> newSet= new ArrayList<Integer>();
-                      newSet.addAll(set);
-                      newSet.add(i,number);
-                      System.out.println("Permutations"+permutations);
-                      currentListSet.add(newSet);
-                  }
-                 }
-        permutations.addAll(currentListSet);
-      return permutations;
+        for(int i=0;i<len;i++){
+            String before= str.substring(0,i);
+            String after=str.substring(i+1,len);
+            ArrayList<String> perms=getPermutationsAlt(before+after);
+            for(String s: perms){
+                result.add(str.charAt(i)+s);
+            }
+        }
+        return result;
+    }
+
+    public static ArrayList<String> getPermutationsAlt2(String str) {
+
+        ArrayList<String> result = new ArrayList<String>();
+        getPerms("", str, result);
+        return result;
+    }
+    public static void getPerms(String prefix,String remainder,ArrayList<String> result) {
+          if(remainder.length()==0)
+              result.add(prefix);
+          int len=remainder.length();
+          for(int i=0;i<len;i++){
+            String before= remainder.substring(0,i);
+            String after=remainder.substring(i+1,len);
+            char c=remainder.charAt(i);
+            getPerms(c+prefix,before+after,result);
+        }
+    }
+*/
+    public static ArrayList<String> getPermutationsRepeatedCharacters(String str) {
+
+        ArrayList<String> result = new ArrayList<String>();
+        HashMap<Character,Integer> freqMap=buildFrequencyMap(str);
+        getPerms(freqMap,"", str.length(), result);
+        return result;
+
+    }
+    public static HashMap<Character,Integer> buildFrequencyMap(String str){
+        HashMap<Character,Integer> freqMap= new HashMap<Character,Integer>();
+        for(int i=0;i<str.length();i++)
+            freqMap.put(str.charAt(i),freqMap.getOrDefault(str.charAt(i),0)+1);
+        return freqMap;
+    }
+    //no need to pass word as we are going to pass the freqMap
+    public static void getPerms(HashMap<Character,Integer> freqMap,String prefix,int length,ArrayList<String> result) {
+     if(length==0) {
+         result.add(prefix);
+         return;
+     }
+        for(Character c:freqMap.keySet()){
+            Integer count= freqMap.get(c);
+            if(count>0){
+                freqMap.put(c,count-1);
+                getPerms(freqMap,prefix+c,length-1,result);
+                freqMap.put(c,count);
+            }
+
+        }
     }
 
 
+        //get all Subsets of a set
+        public static ArrayList<ArrayList<Integer>> getSubsets(List<Integer> set, int index) {
+            ArrayList<ArrayList<Integer>> result= new ArrayList<>();
+            if(index==set.size()){
+                ArrayList<Integer> emptySet = new ArrayList<Integer>();
+                result.add(emptySet);
+                return result;
+            }
+            int number=set.get(index);
+            ArrayList<ArrayList<Integer>> subsets= getSubsets(set,index+1);
+            result.addAll(subsets);
+            for(ArrayList<Integer>subs:subsets){
+                ArrayList<Integer> temp= new ArrayList<Integer>();
+                temp.addAll(subs);
+                temp.add(number);
+                result.add(temp);
+            }
+            return result;
+        }
+
+    public static ArrayList<ArrayList<Integer>> getSubsets(List<Integer> set) {
+        return getSubsets(set,0);
+    }
+
+    //checkInclusion
+  //  O(l1)+26*(l2-l1)l1
+    public boolean checkS2PermutationOfS1(String s1, String s2) {
+        //simple case
+        //s1 is within s2
+        if(s1.length()>s2.length())
+            return false;
 
 
-     public static String getNewWord(int position ,String word ,char c) {
-         String head = null, tail = null;
-         //endIndex included
-             head = word.substring(0, position);
-             tail = word.substring(position);
-             System.out.println(head+c+tail);
-             return head+c+tail;
- }
+        int[] s1_charset = new int[26];
+        for(int i=0;i<s1.length();i++){
+            int  index= s1.charAt(i)-'a';
+            s1_charset[index]++;
+        }
+//01122334 etc... so length should be <=s2.length-s1.length and second loop should be s1.length
+        for(int i=0;i<=s2.length()-s1.length();i++){
+            int[] s2_charset= new int[26];
+            for(int j=0;j<s1.length();j++){
+                int index= s2.charAt(i+j)-'a';
+                s2_charset[index]++;
+            }
+            if(charsetEquals(s1_charset,s2_charset))
+                return true;
+        }
+
+        return false;
+    }
+    //Ol1+(l2-l1)*26
+//Sliding window optimization
+ /*   int[] s1_charset = new int[26];
+      int[] s2_charset= new int[26];
+        for(int i=0;i<s1.length();i++){
+        int  index= s1.charAt(i)-'a';
+        s1_charset[index]++;
+        int  index_s2= s2.charAt(i)-'a';
+        s2_charset[index_s2]++;
+    }
+        for(int i=0;i<s2.length()-s1.length();i++){
+        if(charsetEquals(s1_charset,s2_charset))
+            return true;
+        int  index_old= s2.charAt(i)-'a';
+        int  index_new= s2.charAt(i+s1.length())-'a';
+        s2_charset[index_old]--;
+        s2_charset[index_new]++;
+    }
+         if(charsetEquals(s1_charset,s2_charset))
+            return true;
+        return false;
+}*/
+
+    public boolean charsetEquals(int[] s1_charset, int[] s2_charset){
+        for(int i=0;i<s1_charset.length;i++){
+            if(s1_charset[i]!=s2_charset[i])
+                return false;
+        }
+        return true;
+    }
+    //find anagrams of p in s and return index locations
+   /* Input: s = "cbaebabacd", p = "abc"
+    Output: [0,6]*/
+    public List<Integer> findAnagrams(String s, String p) {
+        //simple case
+        //s1 is within s2
+        List<Integer> result= new ArrayList<Integer>();
+        if(s.length()<p.length())
+            return result;
+        int[] p_charset = new int[26];
+        int[] s_charset= new int[26];
+        for(int i=0;i<p.length();i++){
+            int index_p= p.charAt(i)-'a';
+            p_charset[index_p]++;
+            int  index_s= s.charAt(i)-'a';
+            s_charset[index_s]++;
+        }
+
+        int i=0;
+        for(;i<s.length()-p.length();i++){
+            if(charsetEquals(s_charset,p_charset))
+                result.add(i);
+            int  index_old= s.charAt(i)-'a';
+            int  index_new= s.charAt(i+p.length())-'a';
+            s_charset[index_old]--;
+            s_charset[index_new]++;
+        }
+        if(charsetEquals(s_charset,p_charset))
+            result.add(i);
+
+        return result;
+    }
+
+
 //abcde
-
-    public static ArrayList<String> getAllPermsOfString(String str) {
-        if(str==null)
-            return null;
-        ArrayList<String> perms = new ArrayList<String>();
-        if (str.length() == 0) {
-            perms.add(str);
-            return perms;
+//Standard like wordPerm
+    public static Set<String> generateParentheses(int remaining){
+        Set<String> sets = new HashSet<String>();
+        if(remaining==0){
+            sets.add("");
+            return sets;
         }
-        int index=0;
-        char c = str.charAt(0);
-        ArrayList<String> words = getAllPermsOfString(str.substring(1));
-        for (String word : words)
-            perms.addAll(getAllPermsWithNewChar(c, word));
 
-        return perms;
+        Set<String> pairs = generateParentheses(remaining-1);
+        String paren="()";
+        for(String pair:pairs){
+            for(int i=0;i<=pair.length();i++){
+                String front= pair.substring(0,i);
+                String end= pair.substring(i,pair.length());
+                String newPair =front+paren+end;
+                sets.add(newPair);
+            }
+        }
+        return sets;
     }
-  //less than equal to word length, substring of stringlength is "", substring(1) remaining string, substring(0) entire string
-     public static ArrayList<String> getAllPermsWithNewChar(char c, String word){
-         ArrayList<String> words = new ArrayList<String>();
-         int length=word.length();
-         for(int i=0;i<=word.length();i++){
-             String begin=word.substring(0,i);
-             String end=word.substring(i);
-             String newWord=begin+c+end;
-             words.add(newWord);
-         }
-         return words;
+
+    public List<String> letterCombinations(String digits, Map<String,String> mappings) {
+        List<String> result = new ArrayList<String>();
+        if(digits.length()==0){
+            result.add("");
+            return result;
         }
-//cost [10,15,20]  = 15
+
+        String current_dig= digits.substring(0,1);
+        List<String> combos=letterCombinations(digits.substring(1),mappings);
+        for(String combo: combos){
+            for(int i=0;i<=combo.length();i++){
+                String front= combo.substring(0,i);
+                String end= combo.substring(i,combo.length());
+                String letters=mappings.get(current_dig);
+                for(int j=0;j<letters.length();j++){
+                    String newWord= front+letters.charAt(j)+end;
+                    result.add(newWord);
+                }
+
+            }
+        }
+        return result;
+
+    }
+
+    public List<String> letterCombinations(String digits){
+        Map<String,String> mappings= new HashMap<String,String>();
+        mappings.put("2","abc");mappings.put("3","def");
+        mappings.put("4","ghi");mappings.put("5","jkl");
+        mappings.put("6","mno");mappings.put("7","pqrs");
+        mappings.put("8","tuv");mappings.put("9","wxyz");
+        return letterCombinations(digits,mappings);
+    }
+
+    //cost [10,15,20]  = 15
     public static int minCostClimbingStairs(int[] cost) {
         int n=cost.length;
         int[] dp =new int[n+1];
@@ -577,7 +757,8 @@ public class DPAndRecursion {
         System.out.println(getPermutations("abc"));
         System.out.println("Integer Permutations");
         int[] perm_arr={1,2,3};
-        System.out.println(permute(perm_arr,0));
+        Integer[] set={1,2,3,4};
+        System.out.println(getSubsets(Arrays.asList(set)));
         System.out.println("No of ways steps");
         System.out.println(countNoOfWaysSteps(20));
         System.out.println(countNoOfWaysStepsMemoization(20));
@@ -596,9 +777,14 @@ public class DPAndRecursion {
         System.out.println(coinProblemDP(8,denoms));
         System.out.println("Get all perms of a word");
         System.out.println(getPermutations("abcd"));
-        System.out.println(getAllPermsOfString("abcd"));
+        /*System.out.println(getPermutationsAlt("abcd"));
+        System.out.println(getPermutationsAlt2("abca"));*/
+        System.out.println(getPermutationsRepeatedCharacters("abca"));
+        System.out.println(generateParentheses(1));
+
 
         System.out.println(minCostClimbingStairs(new int[]{}));
+
     }
 
 

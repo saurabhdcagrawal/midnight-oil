@@ -6,21 +6,29 @@ import java.util.List;
 public class MatrixProblems {
 
     public int islandPerimeter(int[][] grid) {
-        int perimeter = 0;
-        int m = grid.length;
-        int n = grid[0].length;
-        for (int i = 0; i < m; i++) {
-            for (int j = 0; j < n; j++) {
-                if (grid[i][j] == 1) {
-                    if (i == 0 || grid[i - 1][j] == 0) perimeter++;
-                    if (i == m - 1 || grid[i + 1][j] == 0) perimeter++;
-                    if (j == n - 1 || grid[i][j + 1] == 0) perimeter++;
-                    if (j == 0 || grid[i][j - 1] == 0) perimeter++;
-                }
-            }
+        int m=grid.length;
+        int n=grid[0].length;
+        int left,right,top,bottom=0;
+        int count=0;
+        //boundaries will only lead to perimeters for every square
+        for(int i=0;i<m;i++){
+            for(int j=0;j<n;j++){
+                //  top=grid[i-1][j];
+                //  bottom=grid[i+1][j];
+                //  left=grid[i][j-1];
+                //  right=grid[i][j+1];
+                if(grid[i][j]==1){
+                    top= i==0||grid[i-1][j]==0?1:0;
+                    bottom=i==m-1||grid[i+1][j]==0?1:0;
+                    left=j==0||grid[i][j-1]==0?1:0;
+                    right=j==n-1||grid[i][j+1]==0?1:0;
+                    count+=top+bottom+left+right;
 
+                }
+
+            }
         }
-        return perimeter;
+        return count;
     }
 
 

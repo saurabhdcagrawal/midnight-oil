@@ -244,50 +244,6 @@ public class SearchSort {
         }
     }
 
-    //        String[] str_arr = {"at", "", "", "", "", "ball", "", "", "car", "", "", "dad", ""};
-    //empty strings changes lexicographic order
-    //within an interval, we are searching for nearest non empty string ,
-    // only if you find in that interval then its valid , else the algorithm won't converge
-    //return vs no return to think
-    public static int sparseSearch(String[] arr, String str, int low, int high) {
-        //Base condition
-        if(low>high)
-            return -1;
-        int mid = (low + high) / 2;
-        System.out.println("Low " + low + " High " + high + " Mid " + mid);
-        if (arr[mid].isEmpty()) {
-            int left = mid - 1;
-            int right = mid + 1;
-            while (true) {
-                System.out.println("Left " + left + " Right " + right);
-                if (left < low && right > high)
-                    return -1;
-                else if (!arr[left].isEmpty() && left >= low) {
-                    mid = left;
-                    System.out.println("Mid set to " + mid);
-                    break;
-                } else if (!arr[right].isEmpty() && right <= high) {
-                    mid = right;
-                    System.out.println("Mid set to " + mid);
-                    break;
-                }
-                left--;
-                right++;
-            }
-        }
-        if (arr[mid].equals(str))
-            return mid;
-        else if (arr[mid].compareTo(str) < 0)
-            return sparseSearch(arr, str, mid + 1, high);
-        else
-            return sparseSearch(arr, str, low, mid - 1);
-    }
-
-    public static int sparseSearch(String[] arr, String str) {
-        if (str.isEmpty() || arr == null || arr.length == 0)
-            return -1;
-        return sparseSearch(arr, str, 0, arr.length - 1);
-    }
 
     //Technique1 O(n)
     // swap center element with adjacent largest element.
@@ -524,9 +480,6 @@ public class SearchSort {
         SearchSort.AnagramSort(a);
         System.out.println("Sorted with custom" + Arrays.toString(a));
 
-        System.out.println("***************************************");
-        String[] str_arr = {"at", "", "", "", "", "ball", "", "", "car", "", "", "dad", ""};
-        System.out.println("Position is at" + SearchSort.sparseSearch(str_arr, "chi"));
 
         System.out.println("***************************************Valley and Peaks ");
         int[] arr_int = {5, 3, 1, 2, 3};

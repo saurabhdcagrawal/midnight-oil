@@ -2,6 +2,9 @@ package main.java.datastructures;
 
 import java.util.*;
 
+//Substring function works as normal length s.substring(0,length) will give entire length not length-1;
+//s.sunstring(i+1_)
+//subs
 //Brute Force
 //Sort and compare
 public class StringProbs {
@@ -347,6 +350,10 @@ public boolean isPalindrome(String s) {
 
 
     public static void main(String args[]) {
+        String s= "Saurabh";
+        int i=2;
+        System.out.println(s.substring(0,s.length()-1));
+        System.out.println(s.substring(i));
         StringProbs sp = new StringProbs();
         sp.printAllSubstrings("Deepa");
         sp.myAtoi("42");
