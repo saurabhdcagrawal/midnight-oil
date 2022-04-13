@@ -189,7 +189,7 @@ that node.*/
                 n2=n2.next;
             n3=n3.next;
 
-        }
+        }//Ump step
         if (carryOver!=0)
             n3.next= new Node(carryOver);
         return dummyHead.next;
@@ -208,12 +208,12 @@ that node.*/
         }
         // dummy->1->2->3->4->5
         //3
-        int nodeNumberToReach= size-n;//to remove Node at position L-n+1;
+        int diff= size-n;//to remove Node at position L-n+1;
         Node dummy = new Node(0);
         dummy.next=head;
         l =dummy;
-        while(nodeNumberToReach>0){
-            nodeNumberToReach--;
+        while(diff>0){
+            diff--;
             l=l.next;
         }
         l.next=l.next.next;
@@ -242,6 +242,25 @@ that node.*/
         return dummy.next;
     }
 
+    //3
+    //dummy->5->7->8->9->1
+    public Node insertNodePositionGiven(Node head, int position, int newVal) {
+        if(head==null)
+            return null;
+        Node dummy = new Node(0);
+        Node n= dummy;
+        int diff=position-1;
+        while(diff>0){
+            diff--;
+            if(n==null)
+                return null;
+            n=n.next;
+        }
+        Node newNode= new Node(newVal);
+        newNode.next=n.next;
+        n.next=newNode;
+        return dummy.next;
+    }
 
     public Node determineLoop(Node head){
         if(head==null)
@@ -278,7 +297,7 @@ that node.*/
         //check for no null
         if (fastPointer == null || fastPointer.next == null)
             return null;
-
+//     both meet exactly k nodes before start of head;
         slowPointer = head;
         while (slowPointer != fastPointer) {
             slowPointer = slowPointer.next;
@@ -299,6 +318,7 @@ that node.*/
             } else {
                 t.put(n, n);
             }
+
             n = n.next;
         }
         return null;
@@ -307,36 +327,21 @@ that node.*/
     // 5->7->8->10->12
 
 
-    //3
-    //dummy->5->7->8->9->1
-    public Node insertNodePositionGiven(Node head, int position, int newVal) {
-        Node dummy= new Node(0);
-        dummy.next=head;
-        Node n=dummy;
-        Node newNode= new Node(newVal);
-        int positionToReach=position-1;
-        while(positionToReach>0){
-            positionToReach--;
-            n=n.next;
-        }
-        n.next=n.next.next;
-        return dummy.next;
-    }
 
     public static Node getIntersectionNode(Node headA, Node headB) {
         int aLength = 0, bLength = 0;
         Node p1 = headA;
         Node p2 = headB;
-        while (p1 != null) {
+        while (p1.next != null) {
             aLength++;
             p1 = p1.next;
         }
-        aLength++;
 
-        while (p2 != null) {
+        while (p2.next != null) {
             bLength++;
             p2 = p2.next;
         }
+        //incrementing length coz we stopped at last
         aLength++;
         bLength++;
 
@@ -424,6 +429,7 @@ that node.*/
             current=nextNode;
         }
         //after current will point to lastNode, next will point to node after
+        //if the first node is included in left, then new head will be prev
         if(con!=null)
             con.next=prev;
         else
@@ -451,6 +457,7 @@ that node.*/
         Node middleNode = findMiddleNode(head);
        // System.out.println("Printing middle node " + middleNode.data);
         Node secondHead = reverseLinkedList(middleNode);
+        //reversing the second LL will create a null for second LL so use the pointer on second Node
        // Wrong approach middleNode.next = null;
        /* System.out.println("Second half");
         printNode(secondHead);

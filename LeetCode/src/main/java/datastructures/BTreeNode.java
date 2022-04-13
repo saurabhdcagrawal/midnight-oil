@@ -1,6 +1,7 @@
 package main.java.datastructures;
 import java.util.*;
 import java.util.Stack;
+//q offer, q add
 //diameter,rootToLeaf,deleteSuccesorBST,VerticalSum,zigzag,minimalBST
 //A binary tree is similar to linked list but instead of simply pointing to next node
 //In a binary tree each node,points to several nodes
@@ -222,12 +223,13 @@ public class BTreeNode{
     }
 
 // Creating Mirror of tree will also use post Order Traversal
+    //Same as invert Binary Tree
     public static BTreeNode getMirrorOfBinaryTree(BTreeNode root){
      if(root==null)
          return null;
      getMirrorOfBinaryTree(root.left);
      getMirrorOfBinaryTree(root.right);
-     BTreeNode temp=root;
+     BTreeNode temp=root.left;
      root.left=root.right;
      root.right=temp;
      return root;
@@ -363,6 +365,7 @@ public class BTreeNode{
             return (findMinimum(node.left));
 
     }
+    //there should be a false condition
     public boolean findElementInBTree(BTreeNode root, int elem) {
         if (root == null)
             return false;
@@ -374,9 +377,8 @@ public class BTreeNode{
             return (findElementInBTree(root.left, elem) || findElementInBTree(
                     root.right, elem));
     }
-
+//Standard BFS traversal
     public BTreeNode findNode(BTreeNode root, int value) {
-
         Queue<BTreeNode> queue = new LinkedList<BTreeNode>();
 
         queue.add(root);
@@ -416,14 +418,14 @@ public class BTreeNode{
 
     }
 
-    //preorder traversal
+    //preorder traversal //O(n2) space is O(n)
     public static boolean validateIsBST(BTreeNode root){
      if (root==null)
          return true;
 
-     if(root.left!=null && findMaximumElement(root.left)< root.data)
+     if(root.left!=null && findMaximumElement(root.left)> root.data)
          return false;
-     if(root.right!=null && findMinimumElement(root.right)>root.data)
+     if(root.right!=null && findMinimumElement(root.right)<root.data)
          return false;
 
      return (validateIsBST(root.left) && validateIsBST(root.right));
@@ -455,6 +457,7 @@ public class BTreeNode{
                 isMirrorOfEachOther(root1.right,root2.left));
 
     }
+    //Symmetric means left and right half are mirror of each other
     public boolean isSymmetric(BTreeNode root) {
         if(root==null) return true;
         return isMirrorOfEachOther(root.left,root.right);
@@ -497,6 +500,8 @@ public class BTreeNode{
         return (isSubtree(root.left,subRoot)||isSubtree(root.right,subRoot));
     }
 
+//Preorder DFS... Printing data
+//1,2,null,null,3,4,null,null,5,null,null,
     public static String serialize(BTreeNode root){
         return serialize(root,"");
     }
@@ -577,7 +582,7 @@ public class BTreeNode{
 
     public BTreeNode createBSTMinimalLength(int[] array, int start, int end) {
 
-        if (end < start)
+        if (start>end)
             return null;
 
         int mid = (start + end) / 2;
@@ -595,18 +600,18 @@ public class BTreeNode{
     }
 
 
-    public int findLeaf(BTreeNode root) {
+    public int countLeafNodes(BTreeNode root) {
         if (root == null)
             return 0;
         else if (root.left == null && root.right == null)
             return 1;
 
         else
-            return (findLeaf(root.left) + findLeaf(root.right));
+            return (countLeafNodes(root.left) + countLeafNodes(root.right));
 
     }
 
-    public int findHalfNode(BTreeNode root) {
+    public int countHalfNodes(BTreeNode root) {
         if (root == null)
             return 0;
         else if ((root.left == null && root.right != null)
@@ -614,7 +619,7 @@ public class BTreeNode{
             return 1;
 
         else
-            return (findHalfNode(root.left) + findHalfNode(root.right));
+            return (countHalfNodes(root.left) + countHalfNodes(root.right));
 
     }
 
@@ -1179,9 +1184,9 @@ public class BTreeNode{
        System.out.println("Serializing and deserializing B tree");
        System.out.println(serialize(temp));
        BTreeNode node=deserialize(serialize(temp));
-       //getMirrorOfBinaryTree(root);
-       //System.out.println("Mirrored B tree") ;
-       //inOrderTraversal(root);
+       getMirrorOfBinaryTree(root);
+       System.out.println("Mirrored B tree") ;
+       inOrderTraversal(root);
 
          System.out.println("Sum is 19?"+hasSum(root,19));
          System.out.println("Sum is 18?"+hasSum(root,18));
