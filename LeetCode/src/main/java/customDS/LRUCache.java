@@ -20,7 +20,65 @@ public class LRUCache {
         int value;
         DLLNode prev;
         DLLNode next;
+
+        public DLLNode() {
+        }
+
+        public DLLNode(int key, int value) {
+            this.key = key;
+            this.value = value;
+            prev = null;
+            next = null;
+        }
     }
+
+    private Map<Integer, DLLNode> lruMap = new HashMap<>();
+    private int capacity;
+    private DLLNode front, end;
+
+    public LRUCache(int capacity) {
+        lruMap = new HashMap<Integer,DLLNode> ();
+
+        //create dummmy nodes for better handling
+        //they are not added to map thereby not affecting the size
+        front = new DLLNode();
+        // front.prev = null;
+        end = new DLLNode();
+        // end.next = null;
+        this.capacity=capacity;
+
+        front.next = end;
+        end.prev = front;
+    }
+
+    public int get(int key) {
+        if (!lruMap.containsKey(key))
+            return -1;
+        DLLNode node = lruMap.get(key);
+        moveNodeToFront(node);
+        printCache();
+        return node.value;
+    }
+
+    public void put(int key, int value) {
+        if(lruMap.containsKey(key)){
+            DLLNode node= lruMap.get(key);
+            node.value=value;
+            moveNodeToFront(node);
+        }
+        else{
+            DLLNode node = new DLLNode(key,value);
+            lruMap.put(key,node);
+            addNode(node);
+            if(lruMap.size()>capacity){
+                node= popTailNode();
+                lruMap.remove(node.key);
+            }
+        }
+        printCache();
+    }
+
+
 
     private void addNode(DLLNode node) {
         /**
@@ -33,7 +91,7 @@ public class LRUCache {
         front.next = node;
     }
 
-    private void removeNode(DLLNode node){
+    private void removeNode(DLLNode node) {
         /**
          * Remove an existing node from the linked list.
          */
@@ -44,15 +102,17 @@ public class LRUCache {
         next.prev = prev;
     }
 
-    private void moveToFront(DLLNode node){
+    private void moveNodeToFront(DLLNode node){
         /**
          * Move certain node in between to the front.
          */
+        //remove node from its current position
         removeNode(node);
+        //then add it to front
         addNode(node);
     }
 
-    private DLLNode popTail() {
+    private DLLNode popTailNode() {
         /**
          * Pop the current end.
          */
@@ -61,82 +121,29 @@ public class LRUCache {
         return res;
     }
 
-    private Map<Integer, DLLNode> cache = new HashMap<>();
-    private int size;
-    private int capacity;
-    private DLLNode front, end;
-
-    public LRUCache(int capacity) {
-        this.size = 0;
-        this.capacity = capacity;
-
-        //create dummmy nodes for better handling
-        front = new DLLNode();
-        // front.prev = null;
-
-        end = new DLLNode();
-        // end.next = null;
-
-        front.next = end;
-        end.prev = front;
-    }
-
-    public int get(int key) {
-        DLLNode node = cache.get(key);
-        if (node == null) return -1;
-
-        // move the accessed node to the front;
-        moveToFront(node);
-
-        return node.value;
-    }
-
-    public void put(int key, int value) {
-        DLLNode node = cache.get(key);
-
-        if(node == null) {
-            DLLNode newNode = new DLLNode();
-            newNode.key = key;
-            newNode.value = value;
-
-            cache.put(key, newNode);
-            addNode(newNode);
-
-            ++size;
-
-            if(size > capacity) {
-                // pop the end
-                DLLNode end = popTail();
-                cache.remove(end.key);
-                --size;
-            }
-        } else {
-            // update the value.
-            node.value = value;
-            moveToFront(node);
-        }
-
-    }
     public void printCache(){
-        DLLNode node=front;
-        while (node!=null){
-            System.out.println("Key" +node.key +":"+"Value"+node.value);
+        System.out.println("***Start of cache *****");
+        DLLNode node =front.next;
+        while(node!=end){
+            System.out.println(" key " +node.key + " value "+ node.value);
             node=node.next;
         }
+        System.out.println("***End of cache *****");
     }
     public static void  main(String args[]){
-        LRUCache cache = new LRUCache(4);
+        LRUCache cache = new LRUCache(3);
         cache.put(1,5);
         cache.put(2,7);
         cache.put(4,8);
         cache.put(5,11);
-        cache.printCache();
-        cache.get(1);
+       // cache.printCache();
+        System.out.println(cache.get(1));
+        System.out.println(cache.get(2));
         System.out.println("Printing after get");
-        cache.printCache();
+       // cache.printCache();
         cache.put(6,12);
         System.out.println("Printing after new entry added");
-        cache.printCache();
+        //cache.printCache();
     }
 
 }
