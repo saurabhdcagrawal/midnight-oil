@@ -1,8 +1,7 @@
-package main.java.datastructures;
+package main.java.customDS;
 
 
 import java.util.*;
-import java.util.Stack;
 //Nested Integer can be integer or it can be list... You have to write an iterator over it
 
 // This is the interface that allows for creating nested lists.

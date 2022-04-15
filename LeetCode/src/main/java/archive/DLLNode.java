@@ -1,4 +1,4 @@
-package main.java.datastructures;
+package main.java.archive;
 
 class DLLNode {
     int key;

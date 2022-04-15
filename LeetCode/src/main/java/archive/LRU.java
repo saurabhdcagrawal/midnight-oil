@@ -1,5 +1,7 @@
-package main.java.datastructures;
+package main.java.archive;
 //programcreek
+
+
 import java.util.HashMap;
 
 //We are given  total pages and cache with finite size of page frame
@@ -15,8 +17,9 @@ import java.util.HashMap;
 //page is a DLL node
 //LRU cache is a hashtable of keys and DLL nodes
 public class LRU {
-
-
+//DLL propogation
+ //  front.prev=null--- front--->1--->2-->end (end.next = null)
+                           //front.next
     HashMap<Integer, DLLNode> lrumap;
     int capacity;
     DLLNode front;

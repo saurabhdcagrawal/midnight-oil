@@ -87,7 +87,7 @@ class Trie {
             }
             node=node.children.get(ch);
         }
-        return node.word==null;
+        return node.word!=null;
     }
 
     public boolean searchInNode(String word){

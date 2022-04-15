@@ -175,7 +175,7 @@ public class DPAndRecursion {
 
     //start with highest denomination...
     //denoms={25,10,5,1}
-    public static int coinProblemRecurse(int n, int[] denoms){
+   /* public static int coinProblemRecurse(int n, int[] denoms){
         return coinProblemRecurse(n,denoms,0);
     }
     public static int coinProblemRecurse(int amount, int[] denoms,int index){
@@ -191,7 +191,7 @@ public class DPAndRecursion {
         }
         return ways;
     }
-
+*/
     public static int coinProblemDP(int n, int[] denoms){
         int[][] map= new int[n+1][denoms.length+1];
         int value=coinProblemDP(n,denoms,map,0);
@@ -201,10 +201,13 @@ public class DPAndRecursion {
     }
 
     public static int coinProblemDP(int amount, int[] denoms,int[][]map,int index){
+        if(amount==0)
+            return 1;
+        else if (index>=denoms.length)
+            return 0;
         if(map[amount][index]>0)
             return map[amount][index];
-        if(index>=denoms.length-1)
-            return 1;
+
         int coin=denoms[index];
         int ways=0;
         for(int i=0; i*coin<=amount;i++) {
@@ -214,6 +217,60 @@ public class DPAndRecursion {
         map[amount][index]=ways;
         return map[amount][index];
     }
+
+    public int change(int amount, int[] coins) {
+        int[][] dp = new int[amount+1][coins.length+1];
+        return change(dp,amount,coins,0);
+
+    }
+
+    public int change(int[][]dp,int amount, int[] coins, int index) {
+        if(amount==0)
+            return 1;
+
+        else if (index>=coins.length)
+            return 0;
+
+        if(dp[amount][index]!=0)
+            return dp[amount][index];
+
+
+        int coin=coins[index];
+        int ways=0;
+
+        for(int i=0;i*coin<=amount;i++){
+            int remaining_amount=amount-coin*i;
+            ways+=change(dp,remaining_amount,coins,index+1);
+        }
+
+        dp[amount][index]=ways;
+        return ways;
+
+    }
+
+
+   public int combinationSum4(int[] nums, int target) {
+       Map<Integer,Integer> memo = new HashMap<Integer,Integer>();
+       return combinationSum4(nums,target,memo);
+    }
+
+    //same as coin change but permutation
+    public int combinationSum4(int[] nums, int target,Map<Integer,Integer> memo) {
+            if(target==0)
+                return 1;
+
+            if(memo.containsKey(target))
+                return memo.get(target);
+            int ways=0;
+            for(int i=0;i<nums.length;i++){
+                int remainder= target- nums[i];
+                if(remainder>=0)
+                    ways+=combinationSum4(nums,remainder);
+            }
+            memo.put(target,ways);
+            System.out.println(memo);
+            return ways;
+        }
 
     public static int countNoOfWaysSteps(int n){
        if(n<0)
@@ -771,10 +828,10 @@ public class DPAndRecursion {
         System.out.println(uniquePathsWithObstaclesMemoization(obstaclePath));
 
         System.out.println("Coin problem");
-        int [] denoms={5,2,1};
-        System.out.println(coinProblemRecurse(8,denoms));
+        int [] denoms={2};
+       // System.out.println(coinProblemRecurse(8,denoms));
         System.out.println("Coin problem DP");
-        System.out.println(coinProblemDP(8,denoms));
+        System.out.println(coinProblemDP(3,denoms));
         System.out.println("Get all perms of a word");
         System.out.println(getPermutations("abcd"));
         /*System.out.println(getPermutationsAlt("abcd"));
