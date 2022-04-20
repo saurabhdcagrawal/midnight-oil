@@ -622,7 +622,36 @@ public class BTreeNode{
             return (countHalfNodes(root.left) + countHalfNodes(root.right));
 
     }
+    class SolutionBTreeToCircular {
+        BTreeNode first;
+        BTreeNode last;
 
+        public void helper(BTreeNode node){
+            if(node!=null){
+                helper(node);
+                if(last!=null){
+                    last.right=node;
+                    node.left=last;
+                }
+                last=node;
+                if(first==null){
+                    first=node;
+                }
+                helper(node.right);
+
+            }
+        }
+
+        public BTreeNode treeToDoublyList(BTreeNode root) {
+            if(root==null)
+                return null;
+            helper(root);
+            last.right=first;
+            first.left=last;
+            return first;
+
+        }
+    }
 
     public static int getDiameter(BTreeNode root){
           int diameter=new DiameterBTree().getDiameter(root);

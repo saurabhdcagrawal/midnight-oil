@@ -73,7 +73,9 @@ DFS is more space-efficient than BFS, but may go to unnecessary depths.
         }*/
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Graph {
 //Number of Connected Components in an Undirected Graph
@@ -192,5 +194,130 @@ public class Graph {
        int[][] edges = {{0,1},{1,2},{3,4}};
        System.out.println(countComponents(n,edges));
    }
+    class TopSortCourseOrder {
+        //there are 3 modes.. while during recursion if node is encountered again then its a cycle
+
+        //if node is encountered after recursion ends then its not a cycle
+        //during recursion node will be gray but not black;
+
+        static int WHITE = 1;
+        static int GRAY =  2;
+        static int BLACK = 3;
+
+        public int[] findOrder(int numCourses, int[][] prerequisites) {
+
+            Map<Integer,Integer> color= new HashMap<Integer,Integer>();
+            List<Integer>[] adjList = new ArrayList[numCourses];
+            ArrayList<Integer> result= new ArrayList<Integer>();
+
+            for(int i=0;i<adjList.length;i++)
+                adjList[i]= new ArrayList<Integer>();
+
+            for(int i=0;i<numCourses;i++)
+                color.put(i,WHITE);
+
+            for(int i=0; i<prerequisites.length;i++)
+                adjList[prerequisites[i][0]].add(prerequisites[i][1]);
+
+            boolean res= true;
+
+            for(int i=0;i<numCourses;i++){
+                if(color.get(i)==WHITE){
+                    res= dfs(i,adjList,result,color);
+                    if(!res)
+                        return new int[0];
+                }
+            }
+
+            int[] res_array= new int[result.size()];
+
+            for(int i=0;i<result.size();i++)
+                res_array[i]=result.get(i);
+
+
+            return res_array;
+
+        }
+
+        public boolean dfs(int node,List<Integer>[] adjList, ArrayList<Integer> result, Map<Integer,Integer> color){
+            if(color.get(node)==GRAY)
+                return false;
+
+            color.put(node,GRAY);
+
+            boolean res= true;
+
+            for(int i=0;i<adjList[node].size();i++){
+                int neighbor= adjList[node].get(i);
+                if(color.get(neighbor)==GRAY)
+                    return false;
+                else if(color.get(neighbor)==WHITE){
+                    res=dfs(neighbor,adjList,result,color);
+                    if(!res)
+                        break;
+                }
+            }
+            color.put(node,BLACK);
+            result.add(node);
+            return res;
+
+        }
+
+
+    }
+    class TopSortCourseDependency {
+
+        static int WHITE=1;
+        static int GRAY=2;
+        static int BLACK=3;
+
+        public boolean canFinish(int numCourses, int[][] prerequisites) {
+
+            Map<Integer,Integer> color = new HashMap<Integer,Integer>();
+
+            List<Integer>[] adjList= new ArrayList[numCourses];
+
+            for(int i=0;i<adjList.length;i++)
+                adjList[i]= new ArrayList<Integer>();
+
+            for(int i=0;i<numCourses;i++)
+                color.put(i,WHITE);
+
+            for(int i=0;i<prerequisites.length;i++)
+                adjList[prerequisites[i][0]].add(prerequisites[i][1]);
+
+            boolean res=true;
+
+            for(int i=0;i<numCourses;i++){
+                if(color.get(i)==WHITE){
+                    res= dfs(i,adjList,color);
+                    if(!res)
+                        break;
+                }
+            }
+
+            return res;
+        }
+
+        public boolean dfs(int node,List<Integer>[] adjList, Map<Integer,Integer> color){
+            if(color.get(node)==GRAY)
+                return false;
+            color.put(node,GRAY);
+            boolean res=true;
+            for(int i=0;i<adjList[node].size();i++){
+                int neighbor=adjList[node].get(i);
+                if(color.get(neighbor)==GRAY)
+                    return false;
+                else if(color.get(neighbor)==WHITE){
+                    res=dfs(neighbor,adjList,color);
+                    if(!res)
+                        break;
+                }
+            }
+            color.put(node,BLACK);
+            return res;
+        }
+
+    }
 
 }

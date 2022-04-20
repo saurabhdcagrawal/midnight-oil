@@ -219,19 +219,19 @@ public class DPAndRecursion {
     }
 
     public int change(int amount, int[] coins) {
-        int[][] dp = new int[amount+1][coins.length+1];
+        Integer[][] dp = new Integer[amount+1][coins.length+1];
         return change(dp,amount,coins,0);
 
     }
 
-    public int change(int[][]dp,int amount, int[] coins, int index) {
+    public int change(Integer[][]dp,int amount, int[] coins, int index) {
         if(amount==0)
             return 1;
 
         else if (index>=coins.length)
             return 0;
 
-        if(dp[amount][index]!=0)
+        if(dp[amount][index]!=null)
             return dp[amount][index];
 
 
@@ -281,6 +281,38 @@ public class DPAndRecursion {
      return countNoOfWaysSteps(n-1)+countNoOfWaysSteps(n-2)+countNoOfWaysSteps(n-3);
 //put condition in function and check
     }
+    //word break problem
+    public boolean wordBreak(String s, List<String> wordDict) {
+        HashSet<String> dict = new HashSet<String>();
+        Boolean[] memo = new Boolean[s.length()];
+        for(String word: wordDict)
+            dict.add(word);
+        return wordBreak(s,dict, 0, memo);
+    }
+
+    public boolean wordBreak(String s, HashSet<String> dict, int i, Boolean[] memo) {
+
+        if(i==s.length())
+            return true;
+
+        if(memo[i]!=null)
+            return memo[i];
+
+        boolean result=false;
+        for(int j=i+1;j<=s.length();j++){
+            if(dict.contains(s.substring(i,j))){
+                result= wordBreak(s,dict,j, memo);
+                if(result)
+                    break;
+            }
+
+        }
+        memo[i]=result;
+        System.out.println(Arrays.toString(memo));
+        return result;
+    }
+
+
     public static int countNoOfWaysStepsMemoization(int n){
        int [] memo = new int[n+1];
        return countNoOfWaysStepsMemoization(n,memo);
