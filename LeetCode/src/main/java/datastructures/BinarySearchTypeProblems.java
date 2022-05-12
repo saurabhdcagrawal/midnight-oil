@@ -16,82 +16,83 @@ public class BinarySearchTypeProblems {
         //0 1 2 3 4 5 6 7
         //7 0 1 2 3 4 5 6
 
-        int left=0;
-        int right=nums.length-1;
+        int left = 0;
+        int right = nums.length - 1;
         //always <=
-        while(left<=right){
-            int mid=(left+right)/2;
-            System.out.println(left+ " "+ mid+ " "+right);
-            if(nums[mid]==target)
+        while (left <= right) {
+            int mid = (left + right) / 2;
+            System.out.println(left + " " + mid + " " + right);
+            if (nums[mid] == target)
                 return mid;
                 //rotation index is on the right half //so decreasing sequence on right
                 //left half is increasing and sorted
-            else if(nums[mid]>nums[right]){
+            else if (nums[mid] > nums[right]) {
                 //around nums mid
-                if (target>=nums[left]&& target<nums[mid])
-                    right=mid-1;
+                if (target >= nums[left] && target < nums[mid])
+                    right = mid - 1;
                 else
-                    left=mid+1;
+                    left = mid + 1;
             }
             //right half is increasing and sorted
             else {
-                if (target>nums[mid] && target<=nums[right])
-                    left=mid+1;
+                if (target > nums[mid] && target <= nums[right])
+                    left = mid + 1;
                 else
-                    right=mid-1;
+                    right = mid - 1;
             }
         }
         return -1;
     }
+
     public int findMin(int[] nums) {
         //4,5,6,7,0,1,2
         //2,4,5,6,7,0,1
 
-        int low=0;
-        int high=nums.length-1;
+        int low = 0;
+        int high = nums.length - 1;
 
-        if(nums.length==1||nums[low]<nums[high])
+        if (nums.length == 1 || nums[low] < nums[high])
             return nums[low];
 
         //magic index cannot be at position 0 if array is rotated
-        while(low<=high){
-            int mid =(low+high)/2;
-            if(mid>0 && nums[mid]<nums[mid-1])
+        while (low <= high) {
+            int mid = (low + high) / 2;
+            if (mid > 0 && nums[mid] < nums[mid - 1])
                 return nums[mid];
-            if(mid<nums.length-1 && nums[mid]>nums[mid+1])
-                return nums[mid+1];
+            if (mid < nums.length - 1 && nums[mid] > nums[mid + 1])
+                return nums[mid + 1];
             //standard so its in right position
-            if(nums[mid]>nums[high])
-                low=mid+1;
+            if (nums[mid] > nums[high])
+                low = mid + 1;
             else
-                high=mid-1;
+                high = mid - 1;
         }
         return -1;
     }
+
     //https://leetcode.com/problems/search-in-rotated-sorted-array-ii/description/
     public boolean searchRotatedArrayWithDuplicates(int[] nums, int target) {
 
-        int low=0;int high=nums.length-1;
+        int low = 0;
+        int high = nums.length - 1;
         int mid;
-        while(low<=high){
-            mid=(low+high)/2;
-            if(nums[mid]== target)
+        while (low <= high) {
+            mid = (low + high) / 2;
+            if (nums[mid] == target)
                 return true;
-            else if(nums[low]<nums[mid]){
+            else if (nums[low] < nums[mid]) {
 
-                if(nums[low]<=target && target<nums[mid])
-                    high=mid-1;
+                if (nums[low] <= target && target < nums[mid])
+                    high = mid - 1;
                 else
-                    low=mid+1;
-            }
-            else if(nums[low]>nums[mid]){
-                if(nums[mid]<target && target<=nums[high])
-                    low=mid+1;
+                    low = mid + 1;
+            } else if (nums[low] > nums[mid]) {
+                if (nums[mid] < target && target <= nums[high])
+                    low = mid + 1;
                 else
-                    high=mid-1;
+                    high = mid - 1;
 
-            }
-            else
+            } else
                 low++;
         }
         return false;
@@ -127,7 +128,7 @@ public class BinarySearchTypeProblems {
     //return vs no return to think
     public static int sparseSearch(String[] arr, String str, int low, int high) {
         //Base condition
-        if(low>high)
+        if (low > high)
             return -1;
         int mid = (low + high) / 2;
         System.out.println("Low " + low + " High " + high + " Mid " + mid);
@@ -164,6 +165,7 @@ public class BinarySearchTypeProblems {
             return -1;
         return sparseSearch(arr, str, 0, arr.length - 1);
     }
+
     //case of non repeated elements
     public static int magicIndex(int[] arr) {
         int low = 0, high = arr.length - 1, mid = 0;
@@ -178,10 +180,12 @@ public class BinarySearchTypeProblems {
         }
         return -1;
     }
+
     //case of repeated elements
     public static int magicIndexRepeated(int[] arr) {
         return magicIndexRepeated(arr, 0, arr.length - 1);
     }
+
     public static int magicIndexRepeated(int[] arr, int low, int high) {
         if (low > high)
             return -1;
@@ -205,6 +209,7 @@ public class BinarySearchTypeProblems {
     public static int binarySearchRecursionImpl(int[] arr, int target) {
         return binarySearch(arr, target, 0, arr.length - 1);
     }
+
     public static int binarySearch(int[] arr, int target, int low, int high) {
         if (high < low)
             return -1;
@@ -218,7 +223,47 @@ public class BinarySearchTypeProblems {
         else
             return binarySearch(arr, target, mid + 1, high);
     }
-    public static void main(String args[]){
+//find the first and last position of element in array with repeated elements
+    public int[] searchRange(int[] nums, int target) {
+
+        int first = searchRange(nums, target, "first");
+        int last = searchRange(nums, target, "last");
+        return new int[]{first, last};
+
+
+    }
+
+    public int searchRange(int[] nums, int target, String position) {
+
+        int low = 0;
+        int high = nums.length - 1;
+        while (low <= high) {
+            int mid = (low + high) / 2;
+            if (nums[mid] == target) {
+                if (position.equalsIgnoreCase("first")) {
+                    if (mid == low || nums[mid - 1] != target) {
+                        return mid;
+                    } else {
+                        high = mid - 1;
+                    }
+                } else {
+                    if (mid == high || nums[mid + 1] != target) {
+                        return mid;
+                    } else {
+                        low = mid + 1;
+                    }
+
+                }
+            } else if (target < nums[mid])
+                high = mid - 1;
+            else
+                low = mid + 1;
+
+        }
+        return -1;
+    }
+
+    public static void main(String args[]) {
         System.out.println("***************************************");
         String[] str_arr = {"at", "", "", "", "", "ball", "", "", "car", "", "", "dad", ""};
         System.out.println("Position is at" + sparseSearch(str_arr, "chi"));

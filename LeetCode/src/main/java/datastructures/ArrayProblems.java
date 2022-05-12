@@ -796,8 +796,27 @@ public class ArrayProblems {
         }
         return dp[n];
     }
-
-
+   /* Input: flowerbed = [1,0,0,0,1], n = 1
+    Output: true*/
+   // return if n new flowers can be planted in the flowerbed without violating the no-adjacent-flowers rule
+    public boolean canPlaceFlowers(int[] flowerbed, int n) {
+        int len= flowerbed.length-1;
+        int count=0;
+        for(int i=0;i<=len;i++) {
+            if(flowerbed[i]==0) {
+                boolean leftbound= ((i==0) || (i-1>=0 && flowerbed[i-1]==0));
+                boolean rightbound=((i==len) ||(i+1<=len && flowerbed[i+1]==0));
+                if(leftbound && rightbound){
+                    flowerbed[i]=1;
+                    count++;
+                    i++;
+                }
+                if(n<=count)
+                    return true;
+            }
+        }
+        return(n<=count);
+    }
 
     //Pass  by reference
     public static void main(String args[]){

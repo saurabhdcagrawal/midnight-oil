@@ -348,6 +348,50 @@ public boolean isPalindrome(String s) {
             return true;
     }
 
+    //not so important
+    public String reorganizeString(String s) {
+
+        int[] charset = new int[26];
+        for(int i=0;i<s.length();i++){
+            int index=s.charAt(i)-'a';
+            charset[index]++;
+        }
+        int max=0;
+        char c_max=s.charAt(0);
+
+        for(int i=0;i<charset.length;i++){
+            if(charset[i]>max){
+                max=charset[i];
+                c_max=(char)(i+'a');
+            }
+        }
+        if((s.length() %2==0 && max>s.length()/2) || (s.length()%2!=0 && max>s.length()/2+1))
+            return "";
+        char[] new_str= new char[s.length()];
+        int idx=0;
+        while(charset[c_max-'a']>0){
+            new_str[idx]=c_max;
+            charset[c_max-'a']--;
+            idx+=2;
+        }
+
+        //idx=1;
+        //continuous counter is the intelligent part
+        for(int i=0;i<charset.length;i++){
+            while(charset[i]>0){
+                //intelligence
+                if (idx >= s.length()) {
+                    idx = 1;
+                }
+                new_str[idx]= (char)(i+'a');
+                charset[i]--;
+                idx+=2;
+            }
+        }
+
+        return new String(new_str);
+    }
+
 
     public static void main(String args[]) {
         String s= "Saurabh";

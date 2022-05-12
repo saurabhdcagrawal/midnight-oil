@@ -265,6 +265,10 @@ public class Graph {
 
 
     }
+   /* In directed graphs, we often detect cycles by using graph coloring. All nodes start as white, and then once
+    they're first visited they become grey, and then once all their outgoing nodes have been fully explored, they become black.
+    We know there is a cycle if we enter a node that is currently grey (it works because all nodes that are currently on the
+            stack are grey*/
     class TopSortCourseDependency {
 
         static int WHITE=1;

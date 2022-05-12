@@ -25,6 +25,8 @@ prevents an application server from being a single point of failure.
 Advantages->Less wait time, the new request does not need to wait for the previous request to be fully serviced
 Load balancing algorithms->Round Robin, Weighted Round Robin, Less Recently Used, Least connection method,IP hash.
 LB has to continuously health check back end nodes and see if they are up and running
+User gets IP address of load balancer via DNS and internally communicates with web servers using private network
+
 
 Load balancer itself can be a point of failure, to overcome this a second load balancer can be added to the top
 of current one. Active LB and passive LB
@@ -41,6 +43,11 @@ CDN cache(more frequently used for static data), distributed cache
 Cache invalidation... keep the cache consistent with the data (in case of data updation)
 Write through cache, Write back cache, write around cache
 Cache eviction policies-- LRU,MRU,LFU,MFU,FIFO,LIFO, Random removal
+
+Database replication-> Using slave master... Master for writes, slave for reads.. builds up redundancy
+Can work multiple queries at the same time
+(slave gets copies)
+Better performance, high reliability and availability
 
 8)Data Partitioning-- Breaking a large database into smaller parts (multiple smaller DB's) to improve reliability,
 performance and serviceability and load balancing. After one point vertical scaling is not possible and it is cheaper
@@ -70,6 +77,14 @@ with an attempt to remove single point of failure
 Replication is usually for data. For eg in case of DBMS systems there is a primary replica and a secondary replica
 Updates first go to primary replica and then are slowly transitioned to secondary replica
 
+12) CDN is a network of geographically dispersed servers used to store static content (images/vide).
+When the user visits a website, a CDN server geo-close to the user will deliver static content.
+If the CDN server does not have the resource, it will request the web server and store the content
+CDN is run by 3rd party providers and you are charged for data transfers in and out of CDN, so do not cache infrequently used assets
+Webserver/website can invalidate content in CDN by API provided by the CDN providers
+
+Stateless web tier -- Store user and session data outside of the web tier (such as NoSQL DB),
+ so any server then can serve the subsequent requests of the client
 
 CAP theorem
 In presence of network partition, choose consistency or availability. In a DS system only 2 of 3 are guaranteed.
@@ -221,7 +236,17 @@ Step 5: Redesign for the Key Issues
   Be open about any limitations in your design. Your interviewer will likely be aware of them, so it's important
   to communicate that you're aware of them, too.
 
-  \
+
+ Keep web tier stateless
+• Build redundancy at every tier
+• Cache data as much as you can
+• Support multiple data centers
+• Host static assets in CDN
+• Scale your data tier by sharding
+• Split tiers into individual services
+• Monitor your system and use automation tools
+
+
 
 Amazon leadership principle
 Use STAR technique

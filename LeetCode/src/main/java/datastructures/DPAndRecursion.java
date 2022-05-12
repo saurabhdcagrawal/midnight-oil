@@ -870,9 +870,16 @@ public class DPAndRecursion {
         System.out.println(getPermutationsAlt2("abca"));*/
         System.out.println(getPermutationsRepeatedCharacters("abca"));
         System.out.println(generateParentheses(1));
-
-
         System.out.println(minCostClimbingStairs(new int[]{}));
+
+        System.out.println("Hello\sWorld");
+        String s="example  good a";
+
+        //Escape here in regex
+        List<String> stringList=Arrays.asList(s.trim().split("\\s+"));
+        Collections.reverse(stringList);
+        //Dont escape here
+        System.out.println(String.join("\s",stringList));
 
     }
 
