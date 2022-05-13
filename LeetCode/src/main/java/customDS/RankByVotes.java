@@ -37,7 +37,7 @@ public class RankByVotes {
 
             while(pq.size()>0)
                 finalRank.append(pq.poll());
-            
+
             return finalRank.toString();
         }
 

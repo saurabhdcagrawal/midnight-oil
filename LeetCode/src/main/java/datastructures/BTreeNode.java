@@ -1167,6 +1167,46 @@ public class BTreeNode{
             }
             return nodes;
         }
+
+    //Standard preorder
+    //https://leetcode.com/problems/merge-two-binary-trees/
+    public BTreeNode mergeTrees(BTreeNode root1, BTreeNode root2) {
+        if(root1==null && root2==null)
+            return null;
+        else if(root1==null)
+            return root2;
+        else if(root2==null)
+            return root1;
+        root1.data+=root2.data;
+
+        //how to propogate when not boolean
+        root1.left=mergeTrees(root1.left,root2.left);
+        root1.right=mergeTrees(root1.right,root2.right);
+
+        return root1;
+    }
+
+    //Trim a B Tree
+    public BTreeNode trimBST(BTreeNode root, int low, int high) {
+
+        if(root==null)
+            return null;
+
+        if(root.data>high)
+            return trimBST(root.left,low,high);
+
+        if(root.data<low)
+            return trimBST(root.right,low,high);
+
+        root.left=trimBST(root.left,low,high);
+
+        root.right=trimBST(root.right,low,high);
+
+        return root;
+
+    }
+
+
      //Binary Tree Maximum Path Sum
     class SolutionMaxPathSum {
         //max node is node value + 0 or 1 of its subtrees can add
