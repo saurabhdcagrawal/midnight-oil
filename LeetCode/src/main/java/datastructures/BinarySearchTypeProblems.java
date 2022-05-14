@@ -1,5 +1,5 @@
 package main.java.datastructures;
-
+//Ternary search is worse than binary search
 import java.util.ArrayList;
 
 public class BinarySearchTypeProblems {
@@ -100,26 +100,58 @@ public class BinarySearchTypeProblems {
 
     //Find position of insertion using binary search
 //see Low<High not <=
-    private int binarySearch(ArrayList<Integer> sub, int num) {
+    public int searchInsert(int[] nums, int target) {
+        //convergence problem
         int left = 0;
-        int right = sub.size() - 1;
+        int right = nums.length-1;
         int mid = (left + right) / 2;
-
-        while (left < right) {
+        while (left <= right) {
             mid = (left + right) / 2;
-            if (sub.get(mid) == num) {
+            if (nums[mid] == target) {
                 return mid;
             }
 
-            if (sub.get(mid) < num) {
+            if (nums[mid] < target) {
                 left = mid + 1;
             } else {
-                right = mid;
+                right = mid-1;
             }
         }
-
+        System.out.println(left);
+        System.out.println(right);
         return left;
     }
+
+    //koko banana problem convergence
+    public int minEatingSpeed(int[] piles, int h) {
+
+        int low=1;
+        int high=0;
+        for(int i=0;i<piles.length;i++)
+            high= Math.max(high,piles[i]);
+        //convergence
+        while(low<high){
+
+            int mid= (high+low)/2;
+            int k=returnTotalTime(mid,piles);
+            if(k>h)
+                low=mid+1;
+                //convergence
+            else
+                high=mid;
+        }
+        return low;
+
+    }
+    public int returnTotalTime(int k, int[] piles){
+        int time=0;
+        int n=piles.length;
+        for(int i=0;i<n;i++)
+            time+=(int)Math.ceil((double)piles[i]/k);
+        return time;
+    }
+
+
 
     //        String[] str_arr = {"at", "", "", "", "", "ball", "", "", "car", "", "", "dad", ""};
     //empty strings changes lexicographic order
@@ -262,6 +294,61 @@ public class BinarySearchTypeProblems {
         }
         return -1;
     }
+//same for perfect sq
+    public int mySqrt(int x) {
+        if(x<2)
+            return x;
+
+        int low=2;
+        int high=x/2;
+
+        while(low<=high){
+            int mid=low+(high-low)/2;
+            long product= (long)mid*mid;
+            if(product==x)
+                return mid;
+            else if(product>x)
+                high=mid-1;
+            else
+                low=mid+1;
+
+        }
+        return high;
+    }
+    //template 2
+    //find peak element
+    public int findPeakElement(int[] nums) {
+        //for decreasing \ move slope to left
+        //for increasing/...move slope to right
+        //
+        int low=0, high=nums.length-1;;
+        while(low<high){
+            int mid=low+(high-low)/2;
+            if(nums[mid]>nums[mid+1])
+                high=mid;
+            else
+                low=mid+1;
+        }
+
+        return low;
+
+    }
+/*
+    public class Solution extends VersionControl {
+        public int firstBadVersion(int n) {
+            int low=1, high=n;
+            while(low<high){
+                int mid=low+(high-low)/2;
+                System.out.println(low+ " " +mid +" "+high);
+                if(isBadVersion(mid))
+                    high=mid;
+                else
+                    low=mid+1;
+            }
+
+            return low;
+        }
+    }*/
 
     public static void main(String args[]) {
         System.out.println("***************************************");
@@ -269,6 +356,28 @@ public class BinarySearchTypeProblems {
         System.out.println("Position is at" + sparseSearch(str_arr, "chi"));
 
     }
+    //template 2
+    //mid not discarded from search
+    //Search Condition needs to access the element's immediate right neighbor
+    //guarantees search space is at least 2
+    //Use the element's right neighbor to determine if the condition is met and decide whether to go left or right
+    /*int binarySearch(int[] nums, int target){
+        if(nums == null || nums.length == 0)
+            return -1;
 
+        int left = 0, right = nums.length;
+        while(left < right){
+            // Prevent (left + right) overflow
+            int mid = left + (right - left) / 2;
+            if(nums[mid] == target){ return mid; }
+            else if(nums[mid] < target) { left = mid + 1; }
+            else { right = mid; }
+        }
+
+        // Post-processing:
+        // End Condition: left == right
+        if(left != nums.length && nums[left] == target) return left;
+        return -1;
+    }*/
 
 }
