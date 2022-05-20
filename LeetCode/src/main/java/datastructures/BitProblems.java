@@ -44,6 +44,24 @@ public class BitProblems {
 
         return a;
     }
+    public static int superDigit(String n, int k) {
+
+        long val=getSumOfDigits(n)*k;
+        while(val>9)
+            val=getSumOfDigits(String.valueOf(val));
+
+        return (int)(val);
+
+    }
+
+    public static long getSumOfDigits(String n) {
+        long sum=0;
+        for(int i=0;i<n.length();i++){
+            sum+=Integer.parseInt(n.substring(i,i+1));
+        }
+        return sum;
+
+    }
 
     public static void main(String args[]){
 

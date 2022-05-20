@@ -277,3 +277,87 @@ Ask pointed questions
 Password SHA256(encrypted and stored)
 Third party payment such as Stripe/Square
 https://www.youtube.com/watch?v=NtMvNh0WFVM&ab_channel=Exponen
+
+
+Machine Learning
+What distinguishes a machine learning algorithm from a non-machine-learning algorithm,
+such as a program that controls traffic lights, is its ability to adapt its behaviors to new input.
+And this adaptation, which seems to have no human intervention, occasionally leads to the impression
+that the machine is actually learning
+
+A machine learning algorithm is the process that uncovers the underlying relationship within the data.
+
+The outcome of a machine learning algorithm is called machine learning model,
+which can be considered as a function FF, which outputs certain results, when given the input.
+Rather than a predefined and fixed function, a machine learning model is derived from historical data.
+Therefore, when fed with different data, the output of machine learning algorithm changes, i.e.
+the machine learning model changes.
+
+Types of ML
+Supervised Learning
+Data is labeled and we have some ground truth.
+We used the data to train the ML model and then use the ML to predict non-labeled data
+
+Unsupervised Learning
+One is expected to learn the underlying patterns or rules from the data,
+without having the predefined ground truth as the benchmark.
+
+Clustering---Cluster the samples based on groups based on similarities among the data set
+Eg: Customers who buy electronics, who buy books...targeted campaigns
+Association----uncover hidden association patterns between the attributes of the sample
+Who buy books buy greeting cards...rearrange merchandise to promote sales
+
+Semi Supervised Learning ---
+Not all data is labeled.. takes years to label a data
+
+Classification vs Regression (Part of Supervised ML model)
+
+If the output of a machine learning model is discrete values, e.g. a boolean value, we then call it a classification model.
+While we call the model that outputs continuous values as regression model.
+
+Sometimes in real world..the regression problems will have data that is not all numeric
+Eg: type of house.. we may have to transform
+
+Speaking of features, we would also like to mention that some of the machine learning models (e.g. decision tree)
+can handle directly the non-numeric feature as it is, while more often one has to transform those non-numeric features
+into numeric one way or another.
+
+Problems can be converted..thin line
+Eg:Logistic Regression probability of cat or not as a continuous value of probabilities
+
+The ultimate goal of the machine learning workflow is to build a machine learning model.
+We obtain the model from the data. As a result, it is the data that determines the upper bound of performance
+that the model can achieve. There are numerous models that can fit a specific data. The best that we can do,
+is to find a model that can approach the most to the upper bound set by the data. We cannot really expect that a
+model can learn something else out of the scope of data.
+
+Feature Engineering (Building the pipeline etc)..Divide data into 2 sets
+training and testing
+Use data to train and rest of data to test
+
+
+An under fitting model is the one that does not fit well with the training data,
+i.e. significantly deviated from the ground truth.
+using an over simplified model for the kind of data.(not able to capture hidden relationships)
+..a simple linear regression (Wrong ML model)
+
+
+Contrary to the case of underfitting, an over-complicated model that is able to fit every bit of the data,
+would fall into the traps of noises and errors. The model managed to have less misclassification in the training data,
+ yet it is more likely that it would stumble on the unseen data.
+
+Bias and Variance.... how close prediction is to actual value...variance is how responsive to changes in input data
+Tune the parameters... there is a co-relation between bias and variance
+
+Through the separation of model and data, ML algorithms can solve many problems in a more flexible,
+generic and autonomous manner, i.e. much like a human, the ML algorithms seem to be able to learn from the
+environment (i.e. the data) and adjust its behaviors (i.e. the model) accordingly in order to solve a specific problem.
+Without explicitly coding the rules (i.e. the model) in the ML algorithms, we construct a sort of meta-algorithm that is
+able to learn the rules/patterns from the data, in a supervised or even unsupervised manner
+
+Best ML model can provide 80% accuracy
+
+Therefore, in the scenarios where the accuracy of the algorithm is critical,one should carefully examine their
+decision of adopting ML algorithms.
+. In summary, one can not treat the mistakes made by a ML model simply as bugs in the software.
+It requires a holistic approach to improve the model, rather than patching the model case by case.

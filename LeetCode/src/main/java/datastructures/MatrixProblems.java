@@ -3,6 +3,9 @@ package main.java.datastructures;
 import java.util.ArrayList;
 import java.util.List;
 
+//matrix diagonals are (i,i) && secondary are (m-i-1)(i)
+
+
 public class MatrixProblems {
 
     public int islandPerimeter(int[][] grid) {
