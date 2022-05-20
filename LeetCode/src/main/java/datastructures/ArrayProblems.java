@@ -3,6 +3,8 @@ package main.java.datastructures;
 import java.lang.reflect.Array;
 import java.util.*;
 import java.math.*;
+//in 2 sum, 3 sum problems as long as position is not required we can use binary search
+//HashMap if position is required
 
 public class ArrayProblems {
 

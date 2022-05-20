@@ -390,19 +390,38 @@ public class StringArraySubsequenceProblems {
             if(nums[i]>sub.get(sub.size()-1))
                 sub.add(nums[i]);
             else{
-                int j=0;
+                //int j=0;
                 //can be replaced by binary search
                 //int j=binary search(sub,nums)
                 //revisit binary search
-                while(sub.get(j)<nums[i]){
+               /* while(sub.get(j)<nums[i]){
                     j++;
-                }
+                }*/
+                int j= bsearch(sub,nums[i]);
                 sub.set(j,nums[i]);
             }
         }
 
         return sub.size();
     }
+
+    public int bsearch(List<Integer> s, int target){
+        int low=0, high=s.size()-1;
+        while(low<=high){
+            int mid=(low+high)/2;
+            if (s.get(mid)== target) {
+                return mid;
+            }
+
+            if (s.get(mid) < target) {
+                low = mid + 1;
+            } else {
+                high = mid-1;
+            }
+        }
+        return low;
+    }
+
     /*  public int pivotIndex(int[] nums) {
 
        int i = 0, j = nums.length - 1, sumLeft = 0, sumRight = 0;
@@ -480,6 +499,28 @@ public class StringArraySubsequenceProblems {
       return false;
     } */
 
+        public String removeDuplicates(String s, int k) {
+
+            StringBuilder sb= new StringBuilder(s);
+            //remember the length of string
+            //break condition
+            int length=-1;
+            while(length!=sb.length()){
+                length=sb.length();
+                int count=1;
+                for(int i=1;i<sb.length();i++){
+                    if(sb.charAt(i)!=sb.charAt(i-1))
+                        count=1;
+                    else
+                        count++;
+                    if(count==k){
+                        sb.delete(i-k+1,i+1);
+                        break;
+                    }
+                }
+            }
+            return sb.toString();
+        }
 
     public static void main(String args[]){
         System.out.println("Longest common subsequence");

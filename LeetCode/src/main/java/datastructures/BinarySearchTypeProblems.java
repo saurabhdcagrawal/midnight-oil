@@ -26,7 +26,8 @@ public class BinarySearchTypeProblems {
                 return mid;
                 //rotation index is on the right half //so decreasing sequence on right
                 //left half is increasing and sorted
-            else if (nums[mid] > nums[right]) {
+          /*  else if (nums[mid] > nums[right]) {*/
+            else if (nums[mid]>=nums[left]){ //= is for convergence
                 //around nums mid
                 if (target >= nums[left] && target < nums[mid])
                     right = mid - 1;

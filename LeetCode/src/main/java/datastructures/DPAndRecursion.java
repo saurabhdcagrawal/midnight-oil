@@ -217,7 +217,7 @@ public class DPAndRecursion {
         map[amount][index]=ways;
         return map[amount][index];
     }
-
+//This is the coin change 2 problem
     public int change(int amount, int[] coins) {
         Integer[][] dp = new Integer[amount+1][coins.length+1];
         return change(dp,amount,coins,0);
@@ -280,36 +280,6 @@ public class DPAndRecursion {
     else
      return countNoOfWaysSteps(n-1)+countNoOfWaysSteps(n-2)+countNoOfWaysSteps(n-3);
 //put condition in function and check
-    }
-    //word break problem
-    public boolean wordBreak(String s, List<String> wordDict) {
-        HashSet<String> dict = new HashSet<String>();
-        Boolean[] memo = new Boolean[s.length()];
-        for(String word: wordDict)
-            dict.add(word);
-        return wordBreak(s,dict, 0, memo);
-    }
-
-    public boolean wordBreak(String s, HashSet<String> dict, int i, Boolean[] memo) {
-
-        if(i==s.length())
-            return true;
-
-        if(memo[i]!=null)
-            return memo[i];
-
-        boolean result=false;
-        for(int j=i+1;j<=s.length();j++){
-            if(dict.contains(s.substring(i,j))){
-                result= wordBreak(s,dict,j, memo);
-                if(result)
-                    break;
-            }
-
-        }
-        memo[i]=result;
-        System.out.println(Arrays.toString(memo));
-        return result;
     }
 
 
@@ -755,6 +725,8 @@ public class DPAndRecursion {
         //Create 2 set based on 2 routes
         int[] set1= new int[nums.length-1];
         int[] set2= new int[nums.length-1];
+        //  src,startPositionSource,dest,destStart,NoOfElements
+
         System.arraycopy(nums, 0, set1, 0,nums.length-1);
         System.arraycopy(nums, 1, set2, 0,nums.length-1);
         int maxSet1=rob(set1);

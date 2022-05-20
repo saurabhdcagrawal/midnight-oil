@@ -1,5 +1,6 @@
 package main.java.datastructures;
 
+import java.sql.Time;
 import java.util.*;
 
 //Substring function works as normal length s.substring(0,length) will give entire length not length-1;
@@ -315,22 +316,55 @@ public boolean isPalindrome(String s) {
     }
     return true;
 }
+// a      p    p     l      e    p     e     n      a      p   p     l      e
+//[true, null, null, null, null, true, null, null, true, null, null, null, null]
+//word break problem
+public boolean wordBreak(String s, List<String> wordDict) {
+    HashSet<String> dict = new HashSet<String>();
+    Boolean[] memo = new Boolean[s.length()];
+    for(String word: wordDict)
+        dict.add(word);
+    return wordBreak(s,dict, 0, memo);
+}
+//Time O(n^3)... O(2^n)
+//Space O(N)
+    public boolean wordBreak(String s, HashSet<String> dict, int i, Boolean[] memo) {
 
-    public boolean wordBreak(String s, List<String> wordDict) {
+        if(i==s.length())
+            return true;
+
+        if(memo[i]!=null)
+            return memo[i];
+
+        boolean result=false;
+        for(int j=i+1;j<=s.length();j++){
+            if(dict.contains(s.substring(i,j))){
+                result= wordBreak(s,dict,j, memo);
+                if(result)
+                    break;
+            }
+
+        }
+        memo[i]=result;
+        System.out.println(Arrays.toString(memo));
+        return result;
+    }
+
+    public boolean wordBreakBruteForce(String s, List<String> wordDict) {
         Map<String,String> hmap= new HashMap<String,String>();
         for(String str:wordDict)
             hmap.put(str,str);
-        return wordBreak(s,hmap);
+        return wordBreakBruteForce(s,hmap);
     }
 //word break brute force
-    public boolean wordBreak(String s,Map<String,String> hmap) {
+    public boolean wordBreakBruteForce(String s,Map<String,String> hmap) {
         if(s.length()==0)
             return true;
         boolean flag=false;
         for (int i=1;i<=s.length();i++){
             String pref= s.substring(0,i);
             if(hmap.containsKey(pref)){
-                flag= wordBreak(s.substring(i,s.length()),hmap);
+                flag= wordBreakBruteForce(s.substring(i,s.length()),hmap);
                 //if its not working for later part, maybe try a different combo
                 if(flag)
                     break;

@@ -106,10 +106,10 @@ public class Graph {
         int connectedComponents=0;
 
         for(int i=0;i<n;i++){
-            if (!visited[i])
+            if (!visited[i]) {
                 connectedComponents++;
-            dfs(adjList,visited,i);
-
+                dfs(adjList, visited, i);
+            }
         }
        return connectedComponents;
     }
