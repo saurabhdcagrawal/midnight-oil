@@ -72,10 +72,7 @@ DFS is more space-efficient than BFS, but may go to unnecessary depths.
         }
         }*/
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Graph {
 //Number of Connected Components in an Undirected Graph
@@ -269,6 +266,12 @@ public class Graph {
     they're first visited they become grey, and then once all their outgoing nodes have been fully explored, they become black.
     We know there is a cycle if we enter a node that is currently grey (it works because all nodes that are currently on the
             stack are grey*/
+    //there are 3 modes.. while during recursion if node is encountered whose recursion is not complete
+    //again then its a cycle
+
+    //if node is encountered after recursion ends for that node then its not a cycle
+    //during recursion node will be gray but not black;
+
     class TopSortCourseDependency {
 
         static int WHITE=1;
@@ -322,6 +325,91 @@ public class Graph {
             return res;
         }
 
+    }
+
+}
+
+/*
+// Definition for a Node.
+class Node {
+    public int val;
+    public List<Node> neighbors;
+    public Node() {
+        val = 0;
+        neighbors = new ArrayList<Node>();
+    }
+    public Node(int _val) {
+        val = _val;
+        neighbors = new ArrayList<Node>();
+    }
+    public Node(int _val, ArrayList<Node> _neighbors) {
+        val = _val;
+        neighbors = _neighbors;
+    }
+}
+*/
+//Deep clone of a graph
+class Solution {
+
+    HashMap<Node,Node> visited= new HashMap<Node,Node>();
+    public Node cloneGraph(Node node) {
+        if(node==null)
+            return null;
+
+        if(visited.containsKey(node))
+            return visited.get(node);
+
+
+        Node clonedNode = new Node(node.val, new ArrayList<Node>());
+        visited.put(node, clonedNode);
+
+        for(int i=0;i<node.neighbors.size();i++)
+            clonedNode.neighbors.add(cloneGraph(node.neighbors.get(i)));
+
+
+        return clonedNode;
+
+
+    }
+
+    public Node cloneGraphBFS(Node node) {
+        if(node==null)
+            return null;
+
+        Node clonedNode=new Node(node.val, new ArrayList<Node>());
+        visited.put(node,clonedNode);
+        Queue<Node> q = new LinkedList<Node>();
+        q.offer(node);
+
+        while(!q.isEmpty()){
+            Node n = (Node) q.poll();
+            for(Node neighbor: n.neighbors){
+                if(!visited.containsKey(neighbor)){
+                    Node clonedNeighbor= new Node(neighbor.val, new ArrayList<Node>());
+                    visited.put(neighbor,clonedNeighbor);
+                    q.offer(neighbor);
+                }
+                //get visited
+                visited.get(n).neighbors.add(visited.get(neighbor));
+            }
+        }
+        return clonedNode;
+    }
+    class Node {
+        public int val;
+        public List<Node> neighbors;
+        public Node() {
+            val = 0;
+            neighbors = new ArrayList<Node>();
+        }
+        public Node(int _val) {
+            val = _val;
+            neighbors = new ArrayList<Node>();
+        }
+        public Node(int _val, ArrayList<Node> _neighbors) {
+            val = _val;
+            neighbors = _neighbors;
+        }
     }
 
 }
