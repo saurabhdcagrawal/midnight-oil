@@ -807,6 +807,85 @@ public class DPAndRecursion {
 
         return dp[n];
     }
+    class Solution {
+        //DP
+        public boolean canJump(int[] nums){
+            boolean[] dp = new boolean[nums.length];
+            dp[nums.length-1]=true;
+
+            for(int index=nums.length-2;index>=0;index--){
+                for(int i=nums[index];i>=1;i--){
+                    int furthestJump=Math.min((index+i),nums.length-1);
+                    if (dp[furthestJump]){
+                        dp[index]=true;
+                        break;
+                    }
+                    //Array marked to false anyways
+               /* else
+                    dp[index]=false; */
+                }
+            }
+            return dp[0];
+        }
+    }
+    //Memoization.. I prefer using object arrays for memoization
+    class SolutionJump {
+        Boolean[] memo;
+        public boolean canJumpDPMemo(int[] nums) {
+            memo = new Boolean [nums.length];
+            return canJump(nums,0);
+        }
+
+        public boolean canJump(int[] nums, int index){
+            //if index we arrive is greater than or equal
+            //greater than will approach when we go for biggest jump first
+            if(index>=nums.length-1)
+                return true;
+
+            if(memo[index]!=null)
+                return memo[index];
+
+            boolean flag=false;
+            // for(int i=1;i<=nums[index];i++){
+            for(int i=nums[index];i>=1;i--){
+                flag=canJump(nums,index+i);
+                if(flag)
+                    break;
+            }
+            memo[index]=flag;
+            return flag;
+        }
+
+
+        public boolean canJumpNaive(int[] nums, int index){
+
+            if(index>=nums.length-1)
+                return true;
+
+            boolean flag=false;
+
+            for(int i=1;i<=nums[index];i++){
+                flag=canJumpNaive(nums,index+i);
+                if(flag)
+                    return true;
+            }
+            return false;
+        }
+
+    //Greedy
+        public boolean canJump(int[] nums){
+
+            int dest= nums.length-1;
+
+            for(int i=nums.length-2;i>=0;i--){
+                if(i+nums[i]>=dest){
+                    dest=i;
+                }
+            }
+            return dest==0;
+        }
+    }
+
     public static void main(String args[]){
        System.out.println("Fibonacci recursion " +fibonacciRecursion(5));
        System.out.println("Fibonacci memoization " +fibonacciMemoization(5));

@@ -197,68 +197,64 @@ public class Graph {
         //if node is encountered after recursion ends then its not a cycle
         //during recursion node will be gray but not black;
 
-        static int WHITE = 1;
-        static int GRAY =  2;
-        static int BLACK = 3;
+
+        static int WHITE=0;
+        static int GRAY=1;
+        static int BLACK=2;
 
         public int[] findOrder(int numCourses, int[][] prerequisites) {
 
-            Map<Integer,Integer> color= new HashMap<Integer,Integer>();
-            List<Integer>[] adjList = new ArrayList[numCourses];
-            ArrayList<Integer> result= new ArrayList<Integer>();
-
-            for(int i=0;i<adjList.length;i++)
+            List<Integer>[] adjList= new ArrayList[numCourses];
+            for(int i=0; i<numCourses;i++){
                 adjList[i]= new ArrayList<Integer>();
+            }
 
-            for(int i=0;i<numCourses;i++)
-                color.put(i,WHITE);
-
-            for(int i=0; i<prerequisites.length;i++)
+            for(int i=0;i<prerequisites.length;i++)
                 adjList[prerequisites[i][0]].add(prerequisites[i][1]);
 
-            boolean res= true;
+            Map<Integer,Integer> visited= new HashMap<Integer,Integer>();
 
+            for(int i=0;i<numCourses;i++)
+                visited.put(i,WHITE);
+
+            List<Integer> result= new ArrayList<Integer>();
+            //calling when white
             for(int i=0;i<numCourses;i++){
-                if(color.get(i)==WHITE){
-                    res= dfs(i,adjList,result,color);
-                    if(!res)
-                        return new int[0];
+                if(visited.get(i)==WHITE){
+                    boolean flag= dfs(adjList,visited,result,i);
+                    if(!flag)
+                        return new int[]{};
                 }
             }
 
-            int[] res_array= new int[result.size()];
+            int[] res_array=new int[result.size()];
 
             for(int i=0;i<result.size();i++)
                 res_array[i]=result.get(i);
 
-
             return res_array;
-
         }
+        public boolean dfs( List<Integer>[] adjList,Map<Integer,Integer> visited,List<Integer> result, int node){
 
-        public boolean dfs(int node,List<Integer>[] adjList, ArrayList<Integer> result, Map<Integer,Integer> color){
-            if(color.get(node)==GRAY)
-                return false;
-
-            color.put(node,GRAY);
-
-            boolean res= true;
-
+            visited.put(node,GRAY);
+            boolean flag=true;
+            //checking gray inside for loop
             for(int i=0;i<adjList[node].size();i++){
-                int neighbor= adjList[node].get(i);
-                if(color.get(neighbor)==GRAY)
+                int neighbor=adjList[node].get(i);
+                if(visited.get(neighbor)==GRAY)
                     return false;
-                else if(color.get(neighbor)==WHITE){
-                    res=dfs(neighbor,adjList,result,color);
-                    if(!res)
-                        break;
+                else if(visited.get(neighbor)==WHITE){
+                    flag=dfs(adjList,visited,result,neighbor);
+                    if(!flag)
+                        return false;
+
                 }
             }
-            color.put(node,BLACK);
+            visited.put(node,BLACK);
             result.add(node);
-            return res;
-
+            return true;
         }
+
 
 
     }
@@ -273,58 +269,52 @@ public class Graph {
     //during recursion node will be gray but not black;
 
     class TopSortCourseDependency {
-
-        static int WHITE=1;
-        static int GRAY=2;
-        static int BLACK=3;
+        static int WHITE=0;
+        static int GRAY=1;
+        static int BLACK=2;
 
         public boolean canFinish(int numCourses, int[][] prerequisites) {
 
-            Map<Integer,Integer> color = new HashMap<Integer,Integer>();
-
             List<Integer>[] adjList= new ArrayList[numCourses];
 
-            for(int i=0;i<adjList.length;i++)
-                adjList[i]= new ArrayList<Integer>();
-
             for(int i=0;i<numCourses;i++)
-                color.put(i,WHITE);
+                adjList[i]= new ArrayList<Integer>();
 
             for(int i=0;i<prerequisites.length;i++)
                 adjList[prerequisites[i][0]].add(prerequisites[i][1]);
 
-            boolean res=true;
+            HashMap<Integer,Integer> visited= new HashMap<Integer,Integer>();
 
             for(int i=0;i<numCourses;i++){
-                if(color.get(i)==WHITE){
-                    res= dfs(i,adjList,color);
-                    if(!res)
-                        break;
-                }
+                visited.put(i,WHITE);
             }
 
-            return res;
+            for(int i=0;i<numCourses;i++){
+                if(visited.get(i)==WHITE){
+                    boolean flag=dfs(adjList,visited,i);
+                    if(!flag)
+                        return false;
+                }
+            }
+            return true;
         }
+        public boolean dfs(List<Integer>[] adjList,HashMap<Integer,Integer> visited, int node){
 
-        public boolean dfs(int node,List<Integer>[] adjList, Map<Integer,Integer> color){
-            if(color.get(node)==GRAY)
-                return false;
-            color.put(node,GRAY);
-            boolean res=true;
+            visited.put(node,GRAY);
+
             for(int i=0;i<adjList[node].size();i++){
                 int neighbor=adjList[node].get(i);
-                if(color.get(neighbor)==GRAY)
+                if(visited.get(neighbor)==GRAY)
                     return false;
-                else if(color.get(neighbor)==WHITE){
-                    res=dfs(neighbor,adjList,color);
-                    if(!res)
-                        break;
+                else if (visited.get(neighbor)==WHITE){
+                    boolean flag=dfs(adjList,visited,neighbor);
+                    if(!flag)
+                        return false;
                 }
             }
-            color.put(node,BLACK);
-            return res;
+            visited.put(node,BLACK);
+            return true;
         }
-
     }
 
 }
@@ -386,10 +376,11 @@ class Solution {
             for(Node neighbor: n.neighbors){
                 if(!visited.containsKey(neighbor)){
                     Node clonedNeighbor= new Node(neighbor.val, new ArrayList<Node>());
+                    //still be visited for linking but not cloned again
                     visited.put(neighbor,clonedNeighbor);
                     q.offer(neighbor);
                 }
-                //get visited
+                //still be visisted for linking but not cloned again
                 visited.get(n).neighbors.add(visited.get(neighbor));
             }
         }
