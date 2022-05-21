@@ -503,20 +503,16 @@ public class BTreeNode{
 //Preorder DFS... Printing data
 //1,2,null,null,3,4,null,null,5,null,null,
     public static String serialize(BTreeNode root){
-        return serialize(root,"");
-    }
-    public static String serialize(BTreeNode root,String str){
-        if(root==null){
-            str+="null,";
+            if(root==null)
+                return "null,";
+
+            String str=root.data+",";
+            str+=serialize(root.left);
+            str+=serialize(root.right);
+            System.out.println(str);
             return str;
+
         }
-        else{
-            str+=String.valueOf(root.data)+",";
-            str=serialize(root.left,str);
-            str=serialize(root.right,str);
-            return str;
-        }
-    }
 
     public static BTreeNode deserialize(String data){
         String[] dataArr=data.split(",");
@@ -528,13 +524,11 @@ public class BTreeNode{
             data.remove(0);
             return null;
         }
-        else{
             BTreeNode root=new BTreeNode(Integer.valueOf(data.get(0)));
             data.remove(0);
             root.left=deserialize(data);
             root.right=deserialize(data);
             return root;
-        }
     }
 
 //if one traversal is inorder then the binary tree can be created

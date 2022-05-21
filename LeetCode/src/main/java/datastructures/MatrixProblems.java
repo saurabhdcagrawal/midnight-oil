@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 //matrix diagonals are (i,i) && secondary are (m-i-1)(i)
+//diagonals do not intersect in odd even lengthed matrices
 
 
 public class MatrixProblems {
@@ -325,6 +326,43 @@ public class MatrixProblems {
 
     }
 
+    public int maxAreaOfIsland(int[][] grid) {
+
+        int m = grid.length;
+        int n= grid[0].length;
+        int maxArea=0;
+
+        for(int i=0;i<m;i++){
+            for(int j=0;j<n;j++){
+                if(grid[i][j]==1){
+                    int area=dfs(grid,i,j,m,n);
+                    maxArea=Math.max(area,maxArea);
+
+                }
+            }
+        }
+        return maxArea;
+    }
+
+    public int dfs(int[][] grid, int i, int j, int m , int n){
+        if(i<0||i>=m||j<0||j>=n||grid[i][j]==0)
+            return 0;
+
+        int area=1;
+        grid[i][j]=0;
+        int[] row_offset = {1, 0, -1, 0};
+        int[] col_offset = {0, 1, 0, -1};
+
+        for (int k = 0; k < row_offset.length; k++){
+            int new_i = row_offset[k] + i;
+            int new_j = col_offset[k] + j;
+            area+= dfs(grid,new_i,new_j,m,n);
+        }
+
+        return area;
+
+    }
+
     class Solution {
         int perimeter = 0;
 
@@ -362,46 +400,6 @@ public class MatrixProblems {
     }
 
 
-    class SolutionMaxArea {
-        int area = 0;
-        int max_area = 0;
-
-        public int maxAreaOfIsland(int[][] grid) {
-            int m = grid.length;
-            int n = grid[0].length;
-            for (int i = 0; i < m; i++) {
-                for (int j = 0; j < n; j++) {
-                    if (grid[i][j] == 1) {
-                        area = 0;
-                        mergeGrid(grid, m, n, i, j);
-                        if (area > max_area)
-                            max_area = area;
-                    }
-                }
-
-
-            }
-
-            return max_area;
-        }
-
-        public boolean mergeGrid(int[][] grid, int m, int n, int i, int j) {
-
-            if (i < 0 || j < 0 || i >= m || j >= n || grid[i][j] != 1)
-                return false;
-
-            if (grid[i][j] == 1) {
-                grid[i][j] = 'X';
-                area++;
-                mergeGrid(grid, m, n, i - 1, j);
-                mergeGrid(grid, m, n, i + 1, j);
-                mergeGrid(grid, m, n, i, j - 1);
-                mergeGrid(grid, m, n, i, j + 1);
-            }
-
-
-            return true;
-        }
 
         public void setZeroes(int[][] matrix) {
             boolean[] rows = new boolean[matrix.length];
