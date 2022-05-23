@@ -633,7 +633,7 @@ public class ArrayProblems {
         return mergedInterval.toArray(finalIntervals);
     }
       //Input: intervals = [[1,2],[2,3],[3,4],[1,3]]
-      public int OverlapIntervals(int[][] intervals) {
+      public int eraseOverlapIntervals(int[][] intervals) {
           Arrays.sort(intervals, (a, b) -> (Integer.compare(a[0], b[0])));
           int overlapIntervalCount = 0;
           int[] prev = intervals[0];

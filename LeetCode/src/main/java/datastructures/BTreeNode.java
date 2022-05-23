@@ -423,9 +423,9 @@ public class BTreeNode{
      if (root==null)
          return true;
 
-     if(root.left!=null && findMaximumElement(root.left)> root.data)
+     if(root.left!=null && findMaximumElement(root.left)>= root.data)
          return false;
-     if(root.right!=null && findMinimumElement(root.right)<root.data)
+     if(root.right!=null && findMinimumElement(root.right)<=root.data)
          return false;
 
      return (validateIsBST(root.left) && validateIsBST(root.right));
@@ -841,33 +841,6 @@ public class BTreeNode{
 
 
 
-    //Revisit********************************************************************
-/*
- * follow a chain in which p and q are on the same side. That is, if p and q
- * are both on the left of the node, branch left to look for the common
- * ancestor. When p and q are no longer on the same side, you must have
- * found the first common ancestor
- */
-    public BTreeNode commonAncestor(BTreeNode root, BTreeNode p, BTreeNode q) {
-        if (covers(root.left, p) && covers(root.left, q))
-            return commonAncestor(root.left, p, q);
-
-        if (covers(root.right, p) && covers(root.right, q))
-            return commonAncestor(root.right, p, q);
-        return root;
-
-    }
-
-    // if p lies in any subtree below root
-    public boolean covers(BTreeNode root, BTreeNode p) {
-        if (root == null)
-            return false;
-
-        if (root == p)
-            return true;
-
-        return (covers(root.left, p) || covers(root.right, p));
-    }
 
     /*
      * 1) If right subtree of node is not NULL or parent is NULL, then succ lies
@@ -1280,31 +1253,12 @@ class SolutionDiameter {
         }
     }
 
-    class SolutionisBST {
-        BTreeNode prev;
-
-
-        public boolean isValidBST(BTreeNode root) {
-            if (root != null)
-            {
-                if (!isValidBST(root.left))
-                    return false;
-
-                // allows only distinct values node
-                if (prev != null && root.data <= prev.data)
-                    return false;
-                prev = root;
-                return isValidBST(root.right);
-            }
-            return true;
-
-        }
 
 
 
     }
 
-}
+
 
 //remaining problems ,print root to leaf paths
 //construct b tree

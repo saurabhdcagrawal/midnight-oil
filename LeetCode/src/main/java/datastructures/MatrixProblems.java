@@ -1,7 +1,9 @@
 package main.java.datastructures;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
 //matrix diagonals are (i,i) && secondary are (m-i-1)(i)
 //diagonals do not intersect in odd even lengthed matrices
@@ -420,5 +422,81 @@ public class MatrixProblems {
             }
         }
 
+
+    static int EMPTY= Integer.MAX_VALUE;
+    public void wallsAndGates(int[][] rooms) {
+        if(rooms.length==0)
+            return;
+        int m=rooms.length;
+        int n=rooms[0].length;
+
+        for(int i=0;i<m;i++){
+            for(int j=0;j<n;j++){
+                if(rooms[i][j]==EMPTY)
+                    rooms[i][j]= bfs(i,j,rooms,m,n);
+            }
+        }
+    }
+
+    private int bfs(int i, int j, int[][] rooms, int m, int n){
+        int[][] distance= new int[m][n];
+        Queue<int[]> q = new LinkedList<>();
+        q.add(new int[]{i,j});
+        while(!q.isEmpty()){
+            int[] point=q.poll();
+            i=point[0];
+            j=point[1];
+                int[] x_off = {-1, 0, 1, 0};
+                int[] y_off = {0, 1, 0, -1};
+
+            for(int k=0;k<x_off.length;k++){
+                int new_i=i+x_off[k];
+                int new_j=j+y_off[k];
+                //wall is approached ..or distance is already computed
+                if(new_i<0||new_i>=m||new_j<0||new_j>=n||rooms[i][j]==-1||distance[new_i][new_j]!=0)
+                    continue;
+                distance[new_i][new_j]=distance[i][j]+1;
+                //gate
+                if(rooms[new_i][new_j]==0)
+                    return distance[new_i][new_j];
+
+                q.add(new int[]{new_i,new_j});
+            }
+        }
+        return Integer.MAX_VALUE;
+    }
+    public void wallsAndGatesOptimized(int[][] rooms) {
+        if(rooms.length==0)
+            return;
+        int m=rooms.length;
+        int n=rooms[0].length;
+        Queue<int[]> q = new LinkedList<int[]>();
+
+        for(int i=0;i<m;i++){
+            for(int j=0;j<n;j++){
+                //GATE
+                if(rooms[i][j]==0)
+                    q.add(new int[]{i,j});
+            }
+        }
+
+        while(!q.isEmpty()){
+            int[] point=q.poll();
+            int i=point[0];
+            int j=point[1];
+            int[] x_off = {-1, 0, 1, 0};
+            int[] y_off = {0, 1, 0, -1};
+            for(int k=0;k<x_off.length;k++){
+                int new_i=i+x_off[k];
+                int new_j=j+y_off[k];
+                //wall is approached ..or distance is already computed...since we override the value
+                if(new_i<0||new_i>=m||new_j<0||new_j>=n||rooms[new_i][new_j]!=EMPTY)
+                    continue;
+                //start from the gate
+                rooms[new_i][new_j]=rooms[i][j]+1;
+                //add normal room to gate
+                q.add(new int[]{new_i,new_j});
+            }
+        }
     }
 }
