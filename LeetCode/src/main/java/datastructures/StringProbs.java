@@ -60,6 +60,30 @@ public class StringProbs {
 
         return true;
     }
+     //difference in counts of anagram..tells us char differences
+    public static int makingAnagrams(String s1, String s2) {
+        // Write your code here
+
+        int[] s1map= new int[26];
+
+        int deletions=0;
+
+        for(int i=0;i<s1.length();i++){
+            int index=s1.charAt(i)-'a';
+            s1map[index]++;
+        }
+        for(int i=0;i<s2.length();i++){
+            int index=s2.charAt(i)-'a';
+            s1map[index]--;
+        }
+
+        for(int i=0;i<s1map.length;i++){
+            if(s1map[i]!=0)
+                deletions+=Math.abs(s1map[i]);
+        }
+
+        return deletions;
+    }
 //remove duplicates
 
 //sliding window
@@ -219,103 +243,6 @@ public class StringProbs {
         return -1;
     }
 
-    //NKLogK ,Map O(N)
-    public List<List<String>> groupAnagramsSortApproach(String[] strs) {
-        Map<String, List<String>> hmap = new HashMap<>();
-        //  //  System.out.println(String.valueOf(key));
-        //Gives the String representation of argument passed
-        for (String str : strs) {
-            char[] arr = str.toCharArray();
-            Arrays.sort(arr);
-            String key = new String(arr);
-            if (!hmap.containsKey(key)) {
-                ArrayList<String> al = new ArrayList<>();
-                al.add(str);
-                hmap.put(key, al);
-            } else {
-                hmap.get(key).add(str);
-            }
-
-        }
-        return new ArrayList(hmap.values());
-
-    }
-
-    // O (NK)
-    public String getCountChar(String str) {
-        StringBuilder sb = new StringBuilder();
-        int[] countChar = new int[26];
-        for (int i = 0; i < str.length(); i++) {
-            int index = str.charAt(i) - 'a';
-            countChar[index]++;
-        }
-        for (int i = 0; i < countChar.length; i++) {
-            if (countChar[i] > 0) {
-                sb.append('a' + i);
-                sb.append(countChar[i]);
-            }
-        }
-        return sb.toString();
-    }
-
-    public List<List<String>> groupAnagramsCountApproach(String[] strs) {
-        Map<String, List<String>> hmap = new HashMap<>();
-        //  //  System.out.println(String.valueOf(key));
-        //Gives the String representation of argument passed
-        for (String str : strs) {
-            String key = getCountChar(str);
-            if (!hmap.containsKey(key)) {
-                ArrayList<String> al = new ArrayList<>();
-                al.add(str);
-                hmap.put(key, al);
-            } else {
-                hmap.get(key).add(str);
-            }
-
-        }
-        return new ArrayList(hmap.values());
-    }
-
-// Check if a string's permutation can be palindrome
-    //for even length words eg noon, deed , count of all chars should be even
-    //for odd length words e.g madam, at the most one letter can have odd numbered counts
-    //chars in word with odd numbered count <=1 in any palindrome
-    public boolean canPermutePalindrome(String s) {
-
-        int countOdd=0;
-        int [] countChar = new int [26];
-        for (int i=0; i<s.length();i++){
-            int index=s.charAt(i)-'a';
-            countChar[index]++;
-        }
-        for (int i=0; i<countChar.length;i++){
-            if(countChar[i]%2!=0)
-                countOdd++;
-
-        }
-        return countOdd<=1?true:false;
-
-    }
-//Utility method to remove non alpha numeric chars
-// String builder has reverse method
-//Use character class to lower case, to is letter or digit for utility methods
-//inner loop should also run until i<j
-public boolean isPalindrome(String s) {
-
-    int i=0,j=s.length()-1;
-    while(i<j){
-        //isNonAlphaNumericChar(s.charAt(i));
-        while(!Character.isLetterOrDigit(s.charAt(i)) && i<j)
-            i++;
-        while(!Character.isLetterOrDigit(s.charAt(j)) && j>i)
-            j--;
-        if(Character.toLowerCase(s.charAt(i))!=Character.toLowerCase(s.charAt(j)))
-            return false;
-        i++;
-        j--;
-    }
-    return true;
-}
 // a      p    p     l      e    p     e     n      a      p   p     l      e
 //[true, null, null, null, null, true, null, null, true, null, null, null, null]
 //word break problem
@@ -425,7 +352,73 @@ public boolean wordBreak(String s, List<String> wordDict) {
 
         return new String(new_str);
     }
+    public String removeAdjacentKDuplicates(String s, int k) {
 
+        StringBuilder sb = new StringBuilder(s);
+        int length=-1,count=1;
+        while(length!=sb.length()){
+            length=sb.length();
+            for(int i=0;i<sb.length();i++){
+                if(i==0|| sb.charAt(i-1)!=sb.charAt(i)){
+                    count=1;
+                }
+                else {
+                    count++;
+                    if(count>=k) {
+                        sb.delete(i - k + 1, i + 1);
+                        break;
+                    }
+                }
+            }
+        }
+        return sb.toString();
+    }
+    //dont have to go back to start every time
+    public String removeAdjacentKDuplicatesOptimized(String s, int k) {
+        int count[] = new int[s.length()];
+        StringBuilder sb = new StringBuilder(s);
+        int length=-1;
+        while(length!=sb.length()){
+            length=sb.length();
+            for(int i=0;i<sb.length();i++){
+                if(i==0|| sb.charAt(i-1)!=sb.charAt(i)){
+                    count[i]=1;
+                }
+                else {
+                    count[i]=count[i-1]+1;
+                    if(count[i]==k){
+                        sb.delete(i-k+1,i+1);
+                        i=i-k;
+                    }
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    public String removeAdjacentKDuplicatesStack(String s, int k) {
+        java.util.Stack<Integer> st= new java.util.Stack<Integer>();
+        StringBuilder sb = new StringBuilder(s);
+        int length=-1;
+        while(length!=sb.length()){
+            length=sb.length();
+            for(int i=0;i<sb.length();i++){
+                if(i==0|| sb.charAt(i-1)!=sb.charAt(i)){
+                    st.push(1);
+                }
+                else {
+                    int newCount= st.pop()+1;
+                    if(newCount==k){
+                        sb.delete(i-k+1,i+1);
+                        i=i-k;
+                    }
+                    else
+                        st.push(newCount);
+                }
+            }
+        }
+        return sb.toString();
+    }
 
     public static void main(String args[]) {
         String s= "Saurabh";

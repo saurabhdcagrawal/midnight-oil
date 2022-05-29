@@ -465,6 +465,7 @@ public class MatrixProblems {
         }
         return Integer.MAX_VALUE;
     }
+    //bfs guarantees shortest path
     public void wallsAndGatesOptimized(int[][] rooms) {
         if(rooms.length==0)
             return;
@@ -499,4 +500,51 @@ public class MatrixProblems {
             }
         }
     }
+//no need to solve... dBFS from . to grid
+
+    public int getFood(char[][] grid) {
+
+        int m= grid.length;
+        int n=grid[0].length;
+        int [][] distance = new int[m][n];
+
+        Queue<int[]> q = new LinkedList<int[]>();
+        int[] dest= new int[2];
+        for(int i=0;i<m;i++){
+            for(int j=0;j<n;j++){
+                if(grid[i][j]=='#'){
+                    q.add(new int[]{i,j});
+                    distance[i][j]=0;
+                }
+                if(grid[i][j]=='*'){
+                    dest[0]= i;
+                    dest[1]= j;
+                }
+
+            }
+        }
+        bfs(q,grid,m,n,distance);
+        return distance[dest[0]][dest[1]]==0?-1:distance[dest[0]][dest[1]];
+    }
+
+    public void bfs(Queue<int[]> q, char[][]grid, int m, int n,int [][] distance){
+
+        while(!q.isEmpty()){
+            int[] point= q.poll();
+            int i=point[0];
+            int j=point[1];
+            int[] rowOffset = {-1, 0, 1, 0};
+            int[] colOffset = {0, 1, 0, -1};
+            for(int k=0;k<rowOffset.length;k++){
+                int new_i=i+rowOffset[k];
+                int new_j=j+colOffset[k];
+                if(new_i<0||new_i>=m||new_j<0||new_j>=n||grid[new_i][new_j]=='X'||grid[new_i][new_j]=='#'||distance[new_i][new_j]!=0)
+                    continue;
+                distance[new_i][new_j]= distance[i][j]+1;
+                q.add(new int[]{new_i,new_j});
+            }
+        }
+    }
+
+
 }

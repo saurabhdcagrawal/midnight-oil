@@ -134,9 +134,10 @@ public class StringArraySubsequenceProblems {
     //m and n in for loop
     //which corresponds to str i-1 and str j-1 in string ,hence compare
     //str[i-1] str[j-1]
+    // if char[i]=char[j]
     public static int editDistance(String s1,String s2) {
         int m=s1.length();
-        int n=s2.length(); int store=0;
+        int n=s2.length();
         int [][] L = new int[m+1][n+1];
         for(int i=0;i<=m;i++){
             for(int j=0;j<=n;j++){
@@ -145,8 +146,7 @@ public class StringArraySubsequenceProblems {
                 else if (s1.charAt(i-1)==s2.charAt(j-1))
                     L[i][j]=L[i-1][j-1];
                 else {
-                    store=Math.min(L[i - 1][j], L[i][j - 1]);
-                    L[i][j]=Math.min(store,L[i-1][j-1])+1;
+                    L[i][j]=1+Math.min(L[i-1][j-1],Math.min(L[i-1][j],L[i][j-1]));
                 }
             }
         }
@@ -251,66 +251,6 @@ public class StringArraySubsequenceProblems {
         return soln[0]==-1?"":s.substring(soln[1],soln[2]+1);
     }
 
-    //longest Palindrome
-//Usually to find this if you have a string, reverse it and then find the LCS... but this may not work if there is reversed non palindromic substring in other
-    //part of main string
-    //abac caba
-    // O(n2)
-    public String longestPalindromeSubstring(String s) {
-        //badad
-        if (s == null || s.length() < 1) return "";
-        int start=0, end=0, maxLength=0;
-        for(int i=0;i<s.length();i++){
-            //to find odd length palindromes expand around a single word
-            int[] arr1 = expandAroundCenter(s,i,i);
-            //to find odd length palindromes expand around a single word
-            int[] arr2 = expandAroundCenter(s,i,i+1);
-            if(arr1[0]>arr2[0]){
-                if(arr1[0]>maxLength){
-                    maxLength=arr1[0];
-                    start=arr1[1];
-                    end=arr1[2];
-                }
-            }
-            else{
-                if(arr2[0]>maxLength){
-                    maxLength=arr2[0];
-                    start=arr2[1];
-                    end=arr2[2];
-                }
-            }
-        }
-        return s.substring(start,end+1);
-    }
-
-    public int[] expandAroundCenter(String s, int left, int right) {
-        while (left >= 0 && right < s.length() && s.charAt(left) == s.charAt(right)) {
-            left--;
-            right++;
-        }
-        left += 1;
-        right -= 1;
-        return new int[]{right - left + 1, left, right};
-    }
-
-    public int countPalindromicSubstrings(String s) {
-        int count=0;
-        for(int i=0;i<s.length();i++){
-            count+=expandAroundCenterPalindromicSubstring(s,i,i);
-            count+=expandAroundCenterPalindromicSubstring(s,i,i+1);
-        }
-        return count;
-
-    }
-    public int expandAroundCenterPalindromicSubstring(String s, int left, int right) {
-        int count=0;
-        while (left >= 0 && right < s.length() && s.charAt(left) == s.charAt(right)) {
-            left--;
-            right++;
-            count++;
-        }
-        return count;
-    }
 
     public String longestCommonPrefixHscan(String[] strs) {
         if (strs == null || strs.length == 0) return "";
@@ -521,7 +461,21 @@ public class StringArraySubsequenceProblems {
             }
             return sb.toString();
         }
+        //store sum in map... get count of sum-k at each step and add to the count...
+    // sum[i]=k-sum[j] then until then array must have had sum
+    public int subarraySum(int[] nums, int k) {
+        Map<Integer,Integer> sumMap = new HashMap<Integer,Integer>();
+        sumMap.put(0,1);
+        int count=0,sum=0;
+        for (int i=0;i<nums.length;i++){
+            sum+=nums[i];
+            if(sumMap.containsKey(sum-k))
+                count+=sumMap.get(sum-k);
 
+            sumMap.put(sum,sumMap.getOrDefault(sum,0)+1);
+        }
+        return count;
+    }
     public static void main(String args[]){
         System.out.println("Longest common subsequence");
         System.out.println(longestCommonSubsequence("ABAZDC","BACBAD"));

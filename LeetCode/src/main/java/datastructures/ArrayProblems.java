@@ -658,6 +658,43 @@ public class ArrayProblems {
           }
           return overlapIntervalCount;
       }
+//Same as above
+    public int findLongestChain(int[][] pairs) {
+
+        Arrays.sort(pairs,(a,b)->Integer.compare(a[0],b[0]));
+        LinkedList<int[]> mergedInt= new LinkedList<int[]>();
+        int[] prev=pairs[0];
+        int subtractCount=0;
+        mergedInt.add(pairs[0]);
+        for(int i=1;i<pairs.length;i++){
+            if(pairs[i][0]>mergedInt.getLast()[1])
+                mergedInt.add(pairs[i]);
+            else if(mergedInt.getLast()[1]>pairs[i][1]){
+                mergedInt.removeLast();
+                mergedInt.add(pairs[i]);
+            }
+        }
+        return mergedInt.size();
+    }
+      //car pooling flavor...Not important
+    public boolean carPooling(int[][] trips, int capacity) {
+        //Sort by start time
+        Arrays.sort(trips,((a,b)->Integer.compare(a[1],b[1])));
+        //For ordering by end time
+        PriorityQueue<int[]> minHeap = new PriorityQueue<int[]>((a,b)->a[2]-b[2]);
+        int remainingCap=capacity;
+        for(int i=0;i<trips.length;i++){
+            //while next interval start time is greater than end time in min heap, reclaim capacity
+            while(!minHeap.isEmpty() && trips[i][1]>=minHeap.peek()[2]){
+                remainingCap+=minHeap.poll()[0];
+            }
+            remainingCap-=trips[i][0];
+            minHeap.add(trips[i]);
+            if(remainingCap<0)
+                return false;
+        }
+        return true;
+    }
         //15 20 35   //1 25
     //you are given 2 arrays ,merge a into b in sorted order
     //start merging from right
@@ -819,7 +856,64 @@ public class ArrayProblems {
         }
         return(n<=count);
     }
+    public int trap(int[] height) {
+        int res = 0;
+        for (int i = 0; i < height.length; i++){
+            int leftMax = 0, rightMax = 0;
+            for (int k = i-1; k >= 0; k--){
+                leftMax = Math.max(leftMax, height[k]);
+            }
+            for (int j = i+1; j < height.length; j++){
+                rightMax = Math.max(rightMax, height[j]);
+            }
+            int intermediate= Math.min(leftMax, rightMax) - height[i];
+            System.out.println(intermediate);
+            res+=intermediate<0?0:intermediate;
+        }
+        return res;
+    }
+    public int trapDP(int[] height) {
+        int n= height.length,res=0;
+        int[] leftMax= new int[n];
+        int[] rightMax= new int[n];
+        leftMax[0]=0;
 
+        for (int i =1; i < height.length; i++){
+            leftMax[i]=Math.max(leftMax[i-1],height[i-1]);
+        }
+
+        rightMax[height.length-1]=0;
+
+        for (int i = height.length-2; i >=0; i--){
+            rightMax[i] = Math.max(rightMax[i+1], height[i+1]);
+        }
+
+        for(int i=0;i<n;i++){
+            int intermediate= Math.min(leftMax[i], rightMax[i]) - height[i];
+            res+=intermediate<0?0:intermediate;
+        }
+
+        return res;
+    }
+    public int trapGreedy(int[] height) {
+        int n= height.length,res=0,intermediate=0;
+        int leftMax=0,rightMax=0,left=0,right=height.length-1;
+        while(left<=right){
+            if(leftMax<rightMax){
+                intermediate= leftMax-height[left];
+                leftMax=Math.max(leftMax,height[left]);
+                left++;
+            }
+            else{
+                intermediate= rightMax-height[right];
+                rightMax=Math.max(rightMax,height[right]);
+                right--;
+            }
+            System.out.println(intermediate);
+            res+=intermediate<0?0:intermediate;
+        }
+        return res;
+    }
     //Pass  by reference
     public static void main(String args[]){
       int[] arr=new int[]{0,1,1,1,0,2};

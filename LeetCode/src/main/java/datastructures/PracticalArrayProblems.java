@@ -39,22 +39,6 @@ public class PracticalArrayProblems {
         return (x==reverted||x==reverted/10);
     }
 
-
-    public int searchInsertSortedArray(int[] nums, int target) {
-        int low=0,high=nums.length-1,mid=0;
-        while(low<=high){
-            mid =(low+high)/2;
-            if(target == nums[mid])
-                return (mid);
-            else if (target <nums[mid]){
-                high=mid-1;
-            }
-            else
-                low=mid+1;
-        }
-        return low;
-
-    }
     public int getMaxProfit(int[] prices) {
         //you need to find the valley and associated next peek ,traverse first to find the minimum,
         // if you found a valley ,compare if you see any other valley ,else find next peak
@@ -81,22 +65,6 @@ public class PracticalArrayProblems {
         for(int i=2;i<nums.length;i++)
             max_amt[i] =Math.max((max_amt[i-2]+nums[i]),max_amt[i-1]);
         return max_amt[nums.length-1];
-    }
-
-//hamming distance number of bits required to convert one number to other
-//   8    6
- // 1000 1010
-//  0010
-//c&1 is not expressiom
-    //1000 //0001 / //1001
-    public static int hammingDistance(int x, int y) {
-        int count=0;
-        for(int c= x^y ;c!=0; c=c>>1){//c&1 is value
-            System.out.println(c&1);
-            //if((c&1)==1)
-            count=count+ (c&1);
-        }
-        return count;
     }
 
 
@@ -296,7 +264,6 @@ public class PracticalArrayProblems {
      System.out.println("Robbing house results");
      System.out.println(instance.rob(house));
      System.out.println("Hamming distance results");
-     System.out.println("Count is "+instance.hammingDistance(1,8));
 
     }
 }

@@ -44,6 +44,7 @@ public class BitProblems {
 
         return a;
     }
+
     public static int superDigit(String n, int k) {
 
         long val=getSumOfDigits(n)*k;
@@ -63,7 +64,34 @@ public class BitProblems {
 
     }
 
+    //hamming distance number of bits required to convert one number to other
+//   8    6
+    // 1000 1010
+//  0010
+//c&1 is not expressiom
+    //1000 //0001 / //1001
+    public static int hammingDistance(int x, int y) {
+        int count=0;
+        for(int c= x^y ;c!=0; c=c>>1){//c&1 is value
+            System.out.println(c&1);
+            //if((c&1)==1)
+            count=count+ (c&1);
+        }
+        return count;
+    }
+//hamming weight...number of 1 bits... and with 1 and keep left shifting 1
+    //if result of anding is not 0, that means the bit is 1
+    public int hammingWeight(int n) {
+        int mask=1,bits=0;
+        for(int i=0;i<32;i++){
+            int result=mask&n;
+            bits+=result!=0?1:0;
+            mask<<=1;
+        }
+        return bits;
+    }
     public static void main(String args[]){
+        System.out.println("Count is "+hammingDistance(1,8));
 
     }
 

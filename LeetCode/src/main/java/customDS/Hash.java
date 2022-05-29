@@ -1,4 +1,4 @@
-package main.java.datastructures;
+package main.java.customDS;
 //Hashmap or a hashing is a technique for retreiving and storing information
 //as fast as possible
 //should not be used when ordering of data elements is required

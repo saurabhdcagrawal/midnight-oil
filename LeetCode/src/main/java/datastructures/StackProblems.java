@@ -79,7 +79,40 @@ public class StackProblems {
            return s2;
          }
 
+    public int[] asteroidCollision(int[] asteroids) {
+        Stack<Integer> s= new Stack<Integer>();
+        s.push(asteroids[0]);
+        for(int i=1;i<asteroids.length;i++){
+            int currentAsteroid=asteroids[i];
+            //reduction to the last remaining asteroid but not push yet
+            while(!s.isEmpty() && isAsteroidCollision(s.peek(),currentAsteroid)){
+                int biggerAsteroid=getBiggerAsteroid(s.pop(),currentAsteroid);
+                currentAsteroid=biggerAsteroid;
+            }
+            //push here but avoid 0 from step above for asteroid of equal lengths
+            if(currentAsteroid!=0)
+                s.push(currentAsteroid);
+        }
 
+        int n=s.size();
+        int [] result = new int[n];
+        for(int i=n-1;i>=0;i--)
+            result[i]=s.pop();
+
+        return result;
+    }
+
+
+    public boolean isAsteroidCollision(int ast1,int ast2){
+        return (ast1>0 &&ast2<0);
+    }
+
+    public int getBiggerAsteroid(int ast1,int ast2){
+        if(Math.abs(ast1)==Math.abs(ast2))
+            return 0;
+        else
+            return Math.abs(ast1)>Math.abs(ast2)?ast1:ast2;
+    }
     public static void main(String args[]) {
     StackProblems sp = new StackProblems();
     System.out.println(sp.isValidParentheses("{([])}")==true?"Balanced":"Unbalanced");

@@ -192,85 +192,6 @@ public class DPAndRecursion {
         return ways;
     }
 */
-    public static int coinProblemDP(int n, int[] denoms){
-        int[][] map= new int[n+1][denoms.length+1];
-        int value=coinProblemDP(n,denoms,map,0);
-        printMatrix(map);
-        return value;
-        //return coinProblemDP(n,denoms,map,0);
-    }
-
-    public static int coinProblemDP(int amount, int[] denoms,int[][]map,int index){
-        if(amount==0)
-            return 1;
-        else if (index>=denoms.length)
-            return 0;
-        if(map[amount][index]>0)
-            return map[amount][index];
-
-        int coin=denoms[index];
-        int ways=0;
-        for(int i=0; i*coin<=amount;i++) {
-            int remainingAmount = amount - i * coin;
-            ways += coinProblemDP(remainingAmount, denoms,map, index+1);
-        }
-        map[amount][index]=ways;
-        return map[amount][index];
-    }
-//This is the coin change 2 problem
-    public int change(int amount, int[] coins) {
-        Integer[][] dp = new Integer[amount+1][coins.length+1];
-        return change(dp,amount,coins,0);
-
-    }
-
-    public int change(Integer[][]dp,int amount, int[] coins, int index) {
-        if(amount==0)
-            return 1;
-
-        else if (index>=coins.length)
-            return 0;
-
-        if(dp[amount][index]!=null)
-            return dp[amount][index];
-
-
-        int coin=coins[index];
-        int ways=0;
-
-        for(int i=0;i*coin<=amount;i++){
-            int remaining_amount=amount-coin*i;
-            ways+=change(dp,remaining_amount,coins,index+1);
-        }
-
-        dp[amount][index]=ways;
-        return ways;
-
-    }
-
-
-   public int combinationSum4(int[] nums, int target) {
-       Map<Integer,Integer> memo = new HashMap<Integer,Integer>();
-       return combinationSum4(nums,target,memo);
-    }
-
-    //same as coin change but permutation
-    public int combinationSum4(int[] nums, int target,Map<Integer,Integer> memo) {
-            if(target==0)
-                return 1;
-
-            if(memo.containsKey(target))
-                return memo.get(target);
-            int ways=0;
-            for(int i=0;i<nums.length;i++){
-                int remainder= target- nums[i];
-                if(remainder>=0)
-                    ways+=combinationSum4(nums,remainder);
-            }
-            memo.put(target,ways);
-            System.out.println(memo);
-            return ways;
-        }
 
     public static int countNoOfWaysSteps(int n){
        if(n<0)
@@ -885,6 +806,55 @@ public class DPAndRecursion {
             return dest==0;
         }
     }
+    public int jobScheduling(int[] startTime, int[] endTime, int[] profit) {
+        int n=profit.length;
+        Integer[] memo= new Integer[n];
+        List<List<Integer>> jobList= new ArrayList();
+        for(int i=0;i<profit.length;i++){
+            List<Integer> job= new ArrayList<Integer>();
+            job.add(startTime[i]);
+            job.add(endTime[i]);
+            job.add(profit[i]);
+            jobList.add(job);
+        }
+        Collections.sort(jobList,((a,b)->Integer.compare(a.get(0),b.get(0))));
+        Arrays.sort(startTime);
+        return findMaxProfit(jobList,startTime,0,memo);
+    }
+
+
+    public int findMaxProfit( List<List<Integer>> jobList,int[] startTime, int currIndex, Integer[] memo){
+        if(currIndex>=startTime.length)
+            return 0;
+        if(memo[currIndex]!=null)
+            return memo[currIndex];
+
+        int nextNonOverLapIndex=findNextJob(jobList.get(currIndex).get(1),startTime);
+
+        //dp comes here
+
+        int maxProfit=Math.max(jobList.get(currIndex).get(2)+findMaxProfit(jobList,startTime,nextNonOverLapIndex, memo),findMaxProfit(jobList,startTime,currIndex+1,memo));
+
+        memo[currIndex]=maxProfit;
+        return maxProfit;
+
+    }
+
+    //Start time to be sorted //search insert position
+    public int findNextJob(int prevJobEndTime, int[] startTime){
+        int low=0, /* default is array length*/index=startTime.length;
+        int high=startTime.length-1;
+        while(low<=high){
+            int mid=low+(high-low)/2;
+            if(prevJobEndTime<=startTime[mid]){
+                index=mid;
+                high=mid-1;
+            }
+            else
+                low=mid+1;
+        }
+        return index;
+    }
 
     public static void main(String args[]){
        System.out.println("Fibonacci recursion " +fibonacciRecursion(5));
@@ -910,11 +880,8 @@ public class DPAndRecursion {
         int [][] obstaclePath={{0,0,0},{0,1,0},{0,0,0}};
         System.out.println(uniquePathsWithObstaclesMemoization(obstaclePath));
 
-        System.out.println("Coin problem");
-        int [] denoms={2};
-       // System.out.println(coinProblemRecurse(8,denoms));
-        System.out.println("Coin problem DP");
-        System.out.println(coinProblemDP(3,denoms));
+
+
         System.out.println("Get all perms of a word");
         System.out.println(getPermutations("abcd"));
         /*System.out.println(getPermutationsAlt("abcd"));
