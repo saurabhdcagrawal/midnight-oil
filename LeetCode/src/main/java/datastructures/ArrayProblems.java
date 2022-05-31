@@ -7,6 +7,30 @@ import java.math.*;
 //HashMap if position is required
 
 public class ArrayProblems {
+//Input: nums = [3,1,4,1,5], k = 2
+//Output: 2
+    //k diff pairs
+    //only exception is k=0;
+    public int findPairs(int[] nums, int k) {
+        int count=0;
+        HashMap<Integer,Integer> freqMap = new HashMap<Integer,Integer>();
+        for(int i=0;i<nums.length;i++){
+            freqMap.put(nums[i],freqMap.getOrDefault(nums[i],0)+1);
+        }
+        //[1,3,1,5,4]
+        for(Integer i: freqMap.keySet()){
+            if(k>0){
+                if(freqMap.containsKey(i+k))
+                    count++;
+            }
+            else if(k==0){
+                if(freqMap.get(i)>1)
+                    count++;
+            }
+        }
+
+        return count;
+    }
 
     //gas station problem
    // https://leetcode.com/problems/gas-station/

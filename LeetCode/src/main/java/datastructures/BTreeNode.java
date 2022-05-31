@@ -474,13 +474,13 @@ public class BTreeNode{
 
  }
 //leetcode style when you want the empty root with 0 input combo as false
-    /*public boolean hasPathSum(BTreeNode root, int targetSum) {
+    public boolean hasPathSum(BTreeNode root, int targetSum) {
         if(root==null)
             return false;
         if(root.left==null && root.right==null)
             return(targetSum-root.data==0);
         return (hasPathSum(root.left,targetSum-root.data)||hasPathSum(root.right,targetSum-root.data));
-    }*/
+    }
 
 //preorder traversal
     public static int heightBTree(BTreeNode root){
@@ -952,6 +952,42 @@ public class BTreeNode{
 
     }
 */
+
+
+
+    public List<List<Integer>> pathSum(BTreeNode root, int targetSum) {
+        List<List<Integer>> result = new ArrayList();
+        List<Integer> currentPath = new ArrayList<Integer>();
+        pathSum(root,targetSum,result,currentPath);
+        return result;
+    }
+
+    //Standard backtracking
+    public void pathSum(BTreeNode root, int targetSum,List<List<Integer>> result,List<Integer> currentPath){
+
+        if(root==null)
+            return;
+
+        currentPath.add(root.data);
+
+        targetSum-=root.data;
+
+        if(root.left==null && root.right==null && targetSum==0)
+            result.add(new ArrayList<>(currentPath));
+       else {
+            pathSum(root.left, targetSum, result, currentPath);
+            pathSum(root.right, targetSum, result, currentPath);
+        }
+        currentPath.remove(currentPath.size()-1);
+
+
+    }
+    //[[5,4,11,7,2],[5,4,11,7,2,8,13,4,5]]
+
+
+
+
+
         public void printPath(BTreeNode root) {
 
             int[] path = new int[256];
@@ -981,6 +1017,28 @@ public class BTreeNode{
 
     }
 
+    HashMap<Integer,Integer> prefixMap = new HashMap<Integer,Integer>();
+    int count=0;
+
+    public int pathSumIII(BTreeNode root, int targetSum) {
+        prefixMap.put(0,1);
+        preOrder(root,targetSum, 0);
+        return count;
+    }
+
+
+    public void preOrder(BTreeNode root,int targetSum, int sum){
+        if(root==null)
+            return;
+
+        sum+=root.data;
+
+        count+=prefixMap.getOrDefault(sum-targetSum,0);
+        prefixMap.put(sum,prefixMap.getOrDefault(sum,0)+1);
+        preOrder(root.left,targetSum,sum);
+        preOrder(root.right,targetSum,sum);
+        prefixMap.put(sum,prefixMap.get(sum)-1);
+    }
     public void printArray(int[] path, int pathlen) {
 
         for (int i = 0; i < pathlen; i++)

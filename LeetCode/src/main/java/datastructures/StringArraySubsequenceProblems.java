@@ -463,6 +463,8 @@ public class StringArraySubsequenceProblems {
         }
         //store sum in map... get count of sum-k at each step and add to the count...
     // sum[i]=k-sum[j] then until then array must have had sum
+    //https://www.youtube.com/watch?v=fFVZt-6sgyo&ab_channel=NeetCode
+    //if sum is s , find if s-k exists whethere sum or individual ..so we can remove that portion
     public int subarraySum(int[] nums, int k) {
         Map<Integer,Integer> sumMap = new HashMap<Integer,Integer>();
         sumMap.put(0,1);

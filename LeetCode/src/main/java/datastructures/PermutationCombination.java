@@ -242,8 +242,68 @@ public int coinChange(int[] coins, int amount){
     public static ArrayList<ArrayList<Integer>> getSubsets(List<Integer> set) {
         return getSubsets(set,0);
     }
+//get next permutation
 
- public static void main(String args[]){
+   /* Input: nums = [1,2,3]
+    Output: [1,3,2]
+    Example 2:
+
+    Input: nums = [3,2,1]
+    Output: [1,2,3]
+    Example 3:
+
+    Input: nums = [1,1,5]
+    Output: [1,5,1]*/
+
+    //my obs: decrement last, increment second last
+    //boring question read through once
+
+    // 1) traverse from right you should see increasing sequence //get the first dip...
+    // 2) careful for sequence like 3,2,1 .. dip will get -1 in that case skip the next 2 steps
+    // 3) traverse again from right..find number just greater than dip in first step
+    // 4) swap the dip and just greater number
+    //Always perform step 5
+    //5reverse section of array after dip
+
+
+    public void nextPermutation(int[] nums) {
+        int i=nums.length-2;
+
+        while(i>=0 &&  nums[i+1]<=nums[i])
+            i--;
+
+        int j= nums.length-1;
+
+        //i can be -1 in case of 321
+        if(i>=0){
+            while(j>0  && nums[j]<=nums[i])
+                j--;
+            swap(i,j,nums);
+        }
+        //reverse has to still happen even if i=-1;
+        reverse(i+1,nums.length-1,nums);
+
+    }
+
+    public void swap(int a ,int b, int[] nums){
+        int temp=nums[a];
+        nums[a]=nums[b];
+        nums[b]=temp;
+    }
+
+
+    public void reverse(int start, int end, int[] nums){
+        int i=start, j=end;
+        while(i<j){
+            swap(i,j,nums);
+            i++;
+            j--;
+        }
+    }
+
+
+
+    public static void main(String args[]){
      System.out.println("Coin problem DP");
      System.out.println("Coin problem");
      int [] denoms={2};

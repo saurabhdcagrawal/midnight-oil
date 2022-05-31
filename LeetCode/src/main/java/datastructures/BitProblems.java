@@ -4,7 +4,7 @@ package main.java.datastructures;
 2) n&1==0 the n is even else odd
 3)if last bit is set then number is odd
 4)if n abcdel000, then n-1 abcde0111
-n & n-1 operation will clear the most significant bit of n and keep the other bits untouched
+n & n-1 operation will clear the rightmost significant bit of n and keep the other bits untouched
 n&n-1==0 indicates n is a power of 2... 00001000,,, power of 2 format
 return (n&(n-1))==0;
 This concept can be used to determine the number of 1's in a
@@ -68,7 +68,7 @@ public class BitProblems {
 
         return a;
     }
-    
+
     public int missingNumber(int[] nums) {
         int result=nums.length;
         for(int i=0;i<nums.length;i++){
