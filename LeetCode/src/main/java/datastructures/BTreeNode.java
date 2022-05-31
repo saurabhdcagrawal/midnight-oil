@@ -333,7 +333,29 @@ public class BTreeNode{
         q=null;
         return max_level;
     }
+    public List<Integer> rightSideView(BTreeNode root) {
+        List<Integer> nodes= new ArrayList<Integer>();
+        if(root==null)
+            return nodes;
+        //by the time we finish the last node in a level, we already have
+        //processed all nodes in queue for next level
 
+        Queue<BTreeNode> q = new LinkedList<BTreeNode>();
+        q.add(root);
+        while(!q.isEmpty()){
+            int l= q.size();
+            for(int i=0;i<l;i++){
+                BTreeNode node = q.poll();
+                if(i==l-1)
+                    nodes.add(node.data);
+                if(node.left!=null)
+                    q.add(node.left);
+                if(node.right!=null)
+                    q.add(node.right);
+            }
+        }
+        return nodes;
+    }
 
     public static int findMinimumElement(BTreeNode root) {
      if (root==null) return -1;
