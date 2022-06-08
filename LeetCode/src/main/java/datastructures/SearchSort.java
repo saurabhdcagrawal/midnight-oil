@@ -101,6 +101,7 @@ public class SearchSort {
         for (int i = 1; i < count_arr.length; i++)
             count_arr[i] += count_arr[i - 1];
         System.out.println("Count array after cumulative sum" + Arrays.toString(count_arr));
+        //As we can see after addition..higher position..gets index number
         int[] sorted_arr = new int[arr.length];
         for (int i = 0; i < arr.length; i++) {
             sorted_arr[count_arr[arr[i]] - 1] = arr[i];

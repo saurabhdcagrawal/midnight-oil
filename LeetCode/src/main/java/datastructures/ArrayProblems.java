@@ -938,6 +938,66 @@ public class ArrayProblems {
         }
         return res;
     }
+    public int largestRectangleArea(int[] heights) {
+        int maxArea=Integer.MIN_VALUE;
+        for(int i=0;i<heights.length;i++){
+            int minHeight=Integer.MAX_VALUE;
+            for(int j=i;j<heights.length;j++){
+                minHeight=Math.min(minHeight,heights[j]);
+                int area= minHeight*(j-i+1);
+                maxArea=Math.max(maxArea,area);
+            }
+        }
+        return maxArea;
+
+    }
+    public int largestRectangleAreaDivideAndConquer(int[] heights) {
+        return calcArea(heights,0,heights.length-1);
+
+    }
+    public int calcArea(int[] heights,int start, int end) {
+        if(start>end)
+            return 0;
+
+        int minIndex=start;
+        int minHeight=heights[start];
+        for(int i=start;i<=end;i++){
+            if(heights[i]<heights[minIndex]){
+                minIndex=i;
+                minHeight= heights[i];
+            }
+        }
+
+
+        return Math.max(minHeight*(end-start+1),Math.max(calcArea(heights,start,minIndex- 1),calcArea(heights,minIndex+1,end)));
+
+    }
+
+    public int largestRectangleAreaStack(int[] heights) {
+        int maxArea=Integer.MIN_VALUE;
+        java.util.Stack<Integer> s = new java.util.Stack<Integer>();
+        s.push(-1);
+        for(int i=0;i<heights.length;i++){
+            while(s.peek()!=-1 && heights[s.peek()]>=heights[i]){
+                int currentHeight= heights[s.pop()];
+                int width=i-s.peek()-1;
+                maxArea= Math.max(maxArea,currentHeight*width);
+            }
+            s.push(i);
+        }
+
+        while(s.peek()!=-1){
+            int currentHeight=heights[s.pop()];
+            int width=heights.length-s.peek()-1;
+            maxArea=Math.max(maxArea,currentHeight*width);
+        }
+
+        return maxArea;
+    }
+
+
+
+
     //Pass  by reference
     public static void main(String args[]){
       int[] arr=new int[]{0,1,1,1,0,2};
