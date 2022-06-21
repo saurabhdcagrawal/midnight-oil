@@ -13,7 +13,12 @@ public class PermutationCombination {
             1 + 3 + 5 = 9
             2 + 3 + 4 = 9
     There are no other valid combinations.*/
-
+//i+1 ..next combination unique number ..repeat of array elements not allowed [[1,2,4]]
+//start+1===moving forward first number, not same number combo but repeat allowed.,..[[1,1,5],[1,2,4],[1,3,3],[2,2,3]]
+// [[1,1,5],[1,2,4],[1,3,3],[1,4,2],[1,5,1],[2,1,4],[2,2,3],[2,3,2],[2,4,1],[3,1,3],[3,2,2],[3,3,1],[4,1,2],[4,2,1],[5,1,1]]
+    //i+1 ke bad bhi agar number repeated hai to problem ayegi
+    //then use
+//no start any combo    //everything allowed
     public List<List<Integer>> combinationSum3(int k, int n) {
         List<List<Integer>> results = new ArrayList<List<Integer>>();
         List<Integer> combo = new ArrayList<Integer>();
@@ -42,7 +47,7 @@ public class PermutationCombination {
 /*
     Input: candidates = [2,3,6,7], target = 7
     Output: [[2,2,3],[7]]*/
-
+// O(N^T/M+1) height of N ary tree with lenth T/M where M is minimal value
         public List<List<Integer>> combinationSum(int[] candidates, int target) {
 
             List<List<Integer>> result= new ArrayList();
@@ -51,6 +56,7 @@ public class PermutationCombination {
             return result;
 
         }
+        //start to only move forward
         public void backtrack(List<List<Integer>> result, List<Integer> combo,
         int[] candidates, int target, int start){
 
@@ -69,7 +75,34 @@ public class PermutationCombination {
             }
 
         }
+/**************************************************************************/
+//array with duplicates
+//strategies will fail
+    public List<List<Integer>> combinationSum2(int[] candidates, int target) {
+        List<List<Integer>> result= new ArrayList<>();
+        List<Integer> combo= new ArrayList<Integer>();
+        Arrays.sort(candidates);
+        backtrackcombinationSum2(result,combo,candidates,target,0);
+        return result;
+    }
 
+        public void backtrackcombinationSum2    (List<List<Integer>> result, List<Integer> combo, int[] candidates, int target, int start){
+            if(target==0){
+                result.add(new ArrayList<Integer>(combo));
+                return;
+            }
+            else if(target<0)
+                return;
+
+            for(int i=start;i<candidates.length;i++){
+                if(i>start && candidates[i]==candidates[i-1])
+                    continue;
+                combo.add(candidates[i]);
+
+                backtrack(result,combo,candidates,target-candidates[i],i+1);
+                combo.remove(combo.size()-1);
+            }
+        }
 /*************************************************************************************************************/
     /*Input: nums = [1,2,3], target = 4
     Output: 7
@@ -219,6 +252,7 @@ public int coinChange(int[] coins, int amount){
 
     }
 /*****************************************************************************************************************/
+//O(2^N)*N
     //get all Subsets of a set
     public static ArrayList<ArrayList<Integer>> getSubsets(List<Integer> set, int index) {
         ArrayList<ArrayList<Integer>> result= new ArrayList<>();
@@ -302,6 +336,55 @@ public int coinChange(int[] coins, int amount){
     }
 
 
+    public static Set<String> generateParentheses(int remaining){
+        Set<String> sets = new HashSet<String>();
+        if(remaining==0){
+            sets.add("");
+            return sets;
+        }
+
+        Set<String> pairs = generateParentheses(remaining-1);
+        String paren="()";
+        for(String pair:pairs){
+            for(int i=0;i<=pair.length();i++){
+                String front= pair.substring(0,i);
+                String end= pair.substring(i,pair.length());
+                String newPair =front+paren+end;
+                sets.add(newPair);
+            }
+        }
+        return sets;
+    }
+    public static ArrayList<String> getPermutations(String str){
+        ArrayList<String> permutations = new ArrayList<String>();
+        if(str.length()==0){
+            permutations.add("");
+            return permutations;
+        }
+        char c=str.charAt(0);
+        //differentListOnlyPerm
+        ArrayList<String> allWords= getPermutations(str.substring(1));
+
+        for(String word:allWords){
+            //going with full length of word
+            for(int i=0;i<=word.length();i++){
+                String newWord= getNewWord(i,word,c);
+                permutations.add(newWord);
+            }
+        }
+
+        return permutations;
+    }
+    public static String getNewWord(int position ,String word ,char c) {
+        String head = null, tail = null;
+        //endIndex included
+        head = word.substring(0, position);
+        tail = word.substring(position);
+        System.out.println(head+c+tail);
+        return head+c+tail;
+    }
+
+
 
     public static void main(String args[]){
      System.out.println("Coin problem DP");
@@ -317,6 +400,13 @@ public int coinChange(int[] coins, int amount){
             for (int j=0; j <matrix[0].length;j++)
                 System.out.print(matrix[i][j]+ " ");
             System.out.println("");
+            System.out.println(generateParentheses(1));
+            System.out.println(getPermutations("abc"));
+            Integer[] set={1,2,3,4};
+            System.out.println(getSubsets(Arrays.asList(set)));
+
+
+
         }
     }
 

@@ -312,34 +312,7 @@ public class DPAndRecursion {
     //second b then c
     //Wat is concurrent modification exception
     //O(n)
-    public static ArrayList<String> getPermutations(String str){
-     ArrayList<String> permutations = new ArrayList<String>();
-     if(str.length()==0){
-         permutations.add("");
-      return permutations;
-     }
-     char c=str.charAt(0);
-     //differentListOnlyPerm
-     ArrayList<String> allWords= getPermutations(str.substring(1));
-
-     for(String word:allWords){
-         //going with full length of word
-         for(int i=0;i<=word.length();i++){
-          String newWord= getNewWord(i,word,c);
-          permutations.add(newWord);
-          }
-         }
-
-       return permutations;
- }
-    public static String getNewWord(int position ,String word ,char c) {
-        String head = null, tail = null;
-        //endIndex included
-        head = word.substring(0, position);
-        tail = word.substring(position);
-        System.out.println(head+c+tail);
-        return head+c+tail;
-    }/*
+   /*
     public static ArrayList<String> getPermutationsAlt(String str){
         int len= str.length();
         ArrayList<String> result= new ArrayList<String>();
@@ -409,29 +382,6 @@ public class DPAndRecursion {
     }
 
 
-        //get all Subsets of a set
-        public static ArrayList<ArrayList<Integer>> getSubsets(List<Integer> set, int index) {
-            ArrayList<ArrayList<Integer>> result= new ArrayList<>();
-            if(index==set.size()){
-                ArrayList<Integer> emptySet = new ArrayList<Integer>();
-                result.add(emptySet);
-                return result;
-            }
-            int number=set.get(index);
-            ArrayList<ArrayList<Integer>> subsets= getSubsets(set,index+1);
-            result.addAll(subsets);
-            for(ArrayList<Integer>subs:subsets){
-                ArrayList<Integer> temp= new ArrayList<Integer>();
-                temp.addAll(subs);
-                temp.add(number);
-                result.add(temp);
-            }
-            return result;
-        }
-
-    public static ArrayList<ArrayList<Integer>> getSubsets(List<Integer> set) {
-        return getSubsets(set,0);
-    }
 
     //checkInclusion
   //  O(l1)+26*(l2-l1)l1
@@ -526,25 +476,6 @@ public class DPAndRecursion {
 
 //abcde
 //Standard like wordPerm
-    public static Set<String> generateParentheses(int remaining){
-        Set<String> sets = new HashSet<String>();
-        if(remaining==0){
-            sets.add("");
-            return sets;
-        }
-
-        Set<String> pairs = generateParentheses(remaining-1);
-        String paren="()";
-        for(String pair:pairs){
-            for(int i=0;i<=pair.length();i++){
-                String front= pair.substring(0,i);
-                String end= pair.substring(i,pair.length());
-                String newPair =front+paren+end;
-                sets.add(newPair);
-            }
-        }
-        return sets;
-    }
 
     public List<String> letterCombinations(String digits, Map<String,String> mappings) {
         List<String> result = new ArrayList<String>();
@@ -864,11 +795,9 @@ public class DPAndRecursion {
         int[] nums={1,2,3,1};
         System.out.println(" " +rob(nums));
         System.out.println("Permutations");
-        System.out.println(getPermutations("abc"));
         System.out.println("Integer Permutations");
         int[] perm_arr={1,2,3};
         Integer[] set={1,2,3,4};
-        System.out.println(getSubsets(Arrays.asList(set)));
         System.out.println("No of ways steps");
         System.out.println(countNoOfWaysSteps(20));
         System.out.println(countNoOfWaysStepsMemoization(20));
@@ -883,11 +812,9 @@ public class DPAndRecursion {
 
 
         System.out.println("Get all perms of a word");
-        System.out.println(getPermutations("abcd"));
         /*System.out.println(getPermutationsAlt("abcd"));
         System.out.println(getPermutationsAlt2("abca"));*/
         System.out.println(getPermutationsRepeatedCharacters("abca"));
-        System.out.println(generateParentheses(1));
         System.out.println(minCostClimbingStairs(new int[]{}));
 
         System.out.println("Hello\sWorld");

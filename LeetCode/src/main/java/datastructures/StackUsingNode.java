@@ -10,6 +10,17 @@ going down
 //
 //only top is required
 public class StackUsingNode {
+    class LLNode {
+        Object data;
+        LLNode next;
+
+        public LLNode(Object o) {
+            data = o;
+            next = null;
+        }
+    }
+
+
    LLNode top;
    public Object pop() {
        if (top != null) {

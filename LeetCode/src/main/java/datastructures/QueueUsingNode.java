@@ -7,7 +7,19 @@ package main.java.datastructures;
   /*|
   |
   |*/ //end -pointing downwards
+
+
 public class QueueUsingNode {
+    class LLNode {
+        Object data;
+        LLNode next;
+
+        public LLNode(Object o) {
+            data = o;
+            next = null;
+        }
+    }
+
     LLNode front;
     LLNode end;
 

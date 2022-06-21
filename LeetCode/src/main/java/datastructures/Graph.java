@@ -183,7 +183,75 @@ public class Graph {
             if(!visited[i])
                 return false;
         }
+        System.out.println();
         return true;
+    }
+//O (C)
+    //O(E+V)
+    //E cant be more than V^2 both and 2 relations can lead to N-1 edges
+    //smaller than both
+    //O(V+min(V^2,N-1)
+    //O(min(V^2,N-1))+O(C) .. so O(C+min(V^2,N-1))=O(C+min(V^2,N))
+    //Space complexity is 1 if 26 letters ..if others then O(V+min(V^2,N))..
+    public String alienOrder(String[] words) {
+        //draw inferences and relations from characters
+        //put it in an adjacency list
+        //find incoming nodes.. if no incoming nodes indegree 0
+        //place those elements in o/p first and BFS queue first
+        //place only those elements in o/p whose indegree is 0
+        //when you place those elements in o/p decrease indegree for others
+        //queue will be eventually empty
+
+        Map<Character,List<Character>> adjListMap= new HashMap<>();
+        Map<Character,Integer> inDegreeMap= new HashMap<Character,Integer>();
+
+        for(String word: words){
+            for(char c: word.toCharArray()){
+                adjListMap.put(c,new ArrayList<Character>());
+                inDegreeMap.put(c,0);
+            }
+        }
+
+        for(int i=1;i<words.length;i++){
+            String word1= words[i-1];
+            String word2= words[i];
+            //abcdef abc ? no relation can be determined
+            if(word1.length()>word2.length() && word1.startsWith(word2))
+                return "";
+            int upperBound=Math.min(word1.length(),word2.length());
+            int j=0;
+            while(j<upperBound && word1.charAt(j)==word2.charAt(j))
+                j++;
+            //"t","tacfeiea" will yield no relation
+            if(j<upperBound){
+                List<Character> adjList = adjListMap.get(word1.charAt(j));
+                adjList.add(word2.charAt(j));
+                inDegreeMap.put(word2.charAt(j),inDegreeMap.get(word2.charAt(j))+1);
+            }
+        }
+        System.out.println(adjListMap);
+        System.out.println(inDegreeMap);
+
+        Queue<Character> q = new LinkedList<Character>();
+        StringBuilder sb = new StringBuilder();
+        for(Character c: inDegreeMap.keySet())
+            if(inDegreeMap.get(c)==0)
+                q.add(c);
+        while(!q.isEmpty()){
+            Character c= q.poll();
+            sb.append(c);
+            List<Character> adjList=adjListMap.get(c);
+            for(Character k: adjList){
+                inDegreeMap.put(k,inDegreeMap.get(k)-1);
+                if(inDegreeMap.get(k)==0)
+                    q.add(k);
+            }
+        }
+        //cant determine enough relations?
+        if(sb.length()<inDegreeMap.size())
+            return("");
+
+        return sb.toString();
     }
 
     public static void main(String args[]){
@@ -258,6 +326,7 @@ public class Graph {
 
 
     }
+    //finding a cycle in a DAG
    /* In directed graphs, we often detect cycles by using graph coloring. All nodes start as white, and then once
     they're first visited they become grey, and then once all their outgoing nodes have been fully explored, they become black.
     We know there is a cycle if we enter a node that is currently grey (it works because all nodes that are currently on the

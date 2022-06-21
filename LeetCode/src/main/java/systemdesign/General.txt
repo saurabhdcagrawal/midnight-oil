@@ -8,3 +8,7 @@ Kafka
 ML
 
 Courses
+https://leetcode.com/problems/serialize-and-deserialize-n-ary-tree/solution/
+
+As we all know, primitives are pass by value and in no circumstance will they maintain their values.
+So, we create a custom class which is a thin wrapper around an integer.

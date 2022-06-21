@@ -96,13 +96,13 @@ import java.util.ArrayList;
 //https://www.geeksforgeeks.org/static-class-in-java/
 public class Hash<K,V> {
 
-    private static class LinkedListNode<K, V> {
+    private static class DLLNode<K, V> {
         public K key;
         public V value;
-        LinkedListNode<K, V> next;
-        LinkedListNode<K, V> prev;
+        DLLNode<K, V> next;
+        DLLNode<K, V> prev;
 
-        public LinkedListNode(K k, V v) {
+        public DLLNode(K k, V v) {
             key = k;
             value = v;
             next=null;
@@ -110,12 +110,12 @@ public class Hash<K,V> {
         }
     }
 
-    private ArrayList<LinkedListNode<K, V>> hashtable;
+    private ArrayList<DLLNode<K, V>> hashtable;
     int capacity;
 
     public Hash(int capacity) {
-         this.capacity = capacity;
-        hashtable = new ArrayList<LinkedListNode<K, V>>();
+        this.capacity = capacity;
+        hashtable = new ArrayList<DLLNode<K, V>>();
         //ensuring capacity
         for(int i=0;i<capacity;i++)
             hashtable.add(null);
@@ -126,8 +126,8 @@ public class Hash<K,V> {
         return Math.abs((hashCode % capacity));
     }
 
-    public LinkedListNode<K,V> getNodeForKey(K key){
-        LinkedListNode<K, V> llNode = hashtable.get(getIndexForKey(key));
+    public DLLNode<K,V> getNodeForKey(K key){
+        DLLNode<K, V> llNode = hashtable.get(getIndexForKey(key));
         if (llNode != null) {
             while (llNode != null) {
                 if (llNode.key == key)
@@ -136,43 +136,43 @@ public class Hash<K,V> {
             }
 
         }
-         return null;
+        return null;
 
     }
 
     public V get(K key) {
-        LinkedListNode<K, V> llNode = getNodeForKey(key);
+        DLLNode<K, V> llNode = getNodeForKey(key);
         if (llNode != null)
             return llNode.value;
-      return null;
+        return null;
     }
 
     public void remove(K key) {
-        LinkedListNode<K, V> llNode = getNodeForKey(key);
+        DLLNode<K, V> llNode = getNodeForKey(key);
         if (llNode.prev!=null)
             llNode.prev.next=llNode.next;
-       else
+        else
             hashtable.set(getIndexForKey(key),llNode.next);
         if (llNode.next!=null)
-        llNode.next.prev=llNode.prev;
+            llNode.next.prev=llNode.prev;
 
     }
 
     public void put(K key, V value) {
-        LinkedListNode<K,V> llNode=getNodeForKey(key);
+        DLLNode<K,V> llNode=getNodeForKey(key);
         if(llNode!=null){
             llNode.value=value;
         }
         else {
-            LinkedListNode<K,V> newLLNode= new LinkedListNode<K,V>(key,value);
+            DLLNode<K,V> newLLNode= new DLLNode<K,V>(key,value);
             int index = getIndexForKey(key);
-            LinkedListNode<K,V> currentLLNode=hashtable.get(index);
+            DLLNode<K,V> currentLLNode=hashtable.get(index);
             if (currentLLNode!= null) {
-            //insert current node at the beginning;
-               newLLNode.next= currentLLNode;
-               currentLLNode.prev=newLLNode;
+                //insert current node at the beginning;
+                newLLNode.next= currentLLNode;
+                currentLLNode.prev=newLLNode;
             } //Set linked list to head for both cases
-               hashtable.set(index,newLLNode);
+            hashtable.set(index,newLLNode);
 
         }
     }
@@ -180,7 +180,7 @@ public class Hash<K,V> {
     void printhashMap(){
 
         for(int i=0;i<hashtable.size();i++){
-            LinkedListNode<K,V> llNode=hashtable.get(i);
+            DLLNode<K,V> llNode=hashtable.get(i);
             if(llNode!=null){
                 while(llNode!=null){
                     System.out.println("Key " +llNode.key +";"+ "Value " +llNode.value +";"+"Bucket" +i);
@@ -201,5 +201,6 @@ public class Hash<K,V> {
         hashEx.put(5,5);
         hashEx.put(6,6);
         hashEx.printhashMap();
-        }
+    }
 }
+

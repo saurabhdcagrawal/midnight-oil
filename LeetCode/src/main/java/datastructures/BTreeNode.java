@@ -334,27 +334,32 @@ public class BTreeNode{
         return max_level;
     }
     public List<Integer> rightSideView(BTreeNode root) {
-        List<Integer> nodes= new ArrayList<Integer>();
+        List<Integer> result= new ArrayList<Integer>();
         if(root==null)
-            return nodes;
-        //by the time we finish the last node in a level, we already have
-        //processed all nodes in queue for next level
-
+            return result;
         Queue<BTreeNode> q = new LinkedList<BTreeNode>();
         q.add(root);
+        q.add(null);
+        //optimize keep last element
+        int prev=0;
+//1 null 2 3 null 5 4 nll
         while(!q.isEmpty()){
-            int l= q.size();
-            for(int i=0;i<l;i++){
-                BTreeNode node = q.poll();
-                if(i==l-1)
-                    nodes.add(node.data);
-                if(node.left!=null)
-                    q.add(node.left);
-                if(node.right!=null)
-                    q.add(node.right);
+            root= q.remove();
+            if(root==null){
+                result.add(prev);
+                if(!q.isEmpty())
+                    q.add(null);
+            }
+            else{
+                prev=root.data;
+                if(root.left!=null)
+                    q.add(root.left);
+                if(root.right!=null)
+                    q.add(root.right);
             }
         }
-        return nodes;
+        q=null;
+        return result;
     }
 
     public static int findMinimumElement(BTreeNode root) {
@@ -669,37 +674,28 @@ public class BTreeNode{
         }
     }
 
-    public static int getDiameter(BTreeNode root){
-          int diameter=new DiameterBTree().getDiameter(root);
-          return diameter;
-      }
 
     //diameter of a tree
     //while finding the depth of the tree,left node and the right node for every node
     //you come to a point where you do L+R+1 for every node
     //save this and find the point where you can get max
-    public static class DiameterBTree {
+    class SolutionDiam {
         int diameter;
-
-        public  int getDiameter(BTreeNode root) {
-            diameter = 0;
-            getHeightForDiameter(root);
-          return diameter;
+        public int diameterOfBinaryTree(BTreeNode root) {
+            findLongestHeightNode(root);
+            return diameter;
         }
 
-        public  int getHeightForDiameter(BTreeNode root) {
-            if (root == null)
+        public int findLongestHeightNode(BTreeNode root){
+            if (root==null)
                 return 0;
-            else {
-                int left = getHeightForDiameter(root.left);
-                int right = getHeightForDiameter(root.right);
-                diameter = Math.max(diameter, (left + right));
-                return (1 + Math.max(left, right));
-            }
+            int left=findLongestHeightNode(root.left);
+            int right=findLongestHeightNode(root.right);
+            diameter=Math.max(diameter,left+right);
+            return Math.max(left,right)+1;
         }
+
     }
-
-
 //height or depth without recursion
 
     public int maxDepth(BTreeNode node) {
@@ -752,7 +748,7 @@ public class BTreeNode{
       q=null;
       return  level;
      }
-
+//because we dont want to print the node itself
     public boolean printAllAncestors(BTreeNode root ,BTreeNode node){
 
      if (root==null)
@@ -858,7 +854,7 @@ public class BTreeNode{
             return root;
         else
             return left!=null?left:right;
-
+//thi is propogating //findLCA(root.left,root.right)
     }
 
 
@@ -1178,19 +1174,7 @@ public class BTreeNode{
 
 
     /************************************************Revamp***************/
- /* Binary Tree Inorder Traversal */
-  public List<Integer> inorderTraversalRec(BTreeNode root) {
-             List<Integer> nodes= new ArrayList<Integer>();
-             inorderTraversalRec(root, nodes);
-             return nodes;
-         }
-        public void inorderTraversalRec(BTreeNode root, List<Integer> nodes) {
-            if (root != null) {
-                inorderTraversalRec(root.left, nodes);
-                nodes.add(root.data);
-                inorderTraversalRec(root.right, nodes);
-            }
-        }
+
 
 
         public List<Integer> inorderTraversalIter(BTreeNode root){
@@ -1296,7 +1280,6 @@ public class BTreeNode{
       System.out.println("Validate BST "+ validateIsBST(temp));
       System.out.println("Height of tree " + heightBTree(root));
        System.out.println("Non recursive Height of tree " + depthNonRecursive(root));
-       System.out.println("Diameter is "+getDiameter(root));
        System.out.println("Serializing and deserializing B tree");
        System.out.println(serialize(temp));
        BTreeNode node=deserialize(serialize(temp));

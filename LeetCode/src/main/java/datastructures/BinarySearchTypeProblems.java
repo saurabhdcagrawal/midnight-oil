@@ -72,6 +72,7 @@ public class BinarySearchTypeProblems {
     }
 
     //https://leetcode.com/problems/search-in-rotated-sorted-array-ii/description/
+    //bounds remove and else added with low++;
     public boolean searchRotatedArrayWithDuplicates(int[] nums, int target) {
 
         int low = 0;
@@ -130,7 +131,7 @@ public class BinarySearchTypeProblems {
         int high=0;
         for(int i=0;i<piles.length;i++)
             high= Math.max(high,piles[i]);
-        //convergence
+        //convergence   
         while(low<high){
 
             int mid= (high+low)/2;
@@ -350,6 +351,27 @@ public class BinarySearchTypeProblems {
             return low;
         }
     }*/
+//counting sort principles
+    public int twoSumLessThanK(int[] nums, int k) {
+        int[] counting = new int[1001];
+        int maxSum=-1;
+        for(int i=0;i<nums.length;i++)
+            counting[nums[i]]++;
+        int low=1,high=1000;
+        while(low<=high){
+            //bring it to range
+            if(low+high>=k||counting[high]==0)
+                high--;
+            else{
+                //ensure high and low exists
+                if(counting[low]>(low<high?0:1)){
+                    maxSum=Math.max(low+high,maxSum);
+                }
+                low++;
+            }
+        }
+        return maxSum;
+    }
 
     public static void main(String args[]) {
         System.out.println("***************************************");

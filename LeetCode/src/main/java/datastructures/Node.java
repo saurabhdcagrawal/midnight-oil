@@ -3,6 +3,7 @@ package main.java.datastructures;
 import main.java.datastructures.assist.Result;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.PriorityQueue;
 
 //inside same LLnode then reference head using this
@@ -10,6 +11,11 @@ import java.util.PriorityQueue;
 2 ways prev pointer and n.next
 condition n.null && n.next ! =null
  */
+/*
+        while(diff>0){
+        longerNode=longerNode.next;
+        diff--;
+        }*/
 public class Node {
 
     int data;
@@ -73,9 +79,9 @@ public class Node {
         }
         return head;
         /*alternate way?
-        while(n!=null && n.next.data==data)
+        while(n!=null && n.next!=null && n.next.data==data)
             n = n.next;
-        if(n!=null)
+        if(n!=null && n.next!=null)
             n.next=n.next.next;
         return head;*/
 
@@ -85,28 +91,19 @@ public class Node {
    // 1->2->3->2->2 reason why prev to be incremented only in the put section
     public static Node removeDuplicates(Node head) {
         if (head == null) return null;
-        HashMap t = new HashMap();
+        HashSet t = new HashSet();
         Node n = head;
         Node prev = null;
         while (n != null) {
-            if (t.containsKey(n.data)) {
-                prev.next = n.next;
-            } else {
-                t.put(n.data, n.data);
+            if (!t.contains(n.data)) {
                 prev = n;
+                t.add(n.data);
+            } else {
+                prev.next = n.next;
             }
             n = n.next;
         }
         return head;
-        //cannot be till the penultimate node ,because even last node
-        //can be duplicate
-   /* while(n.next!=null){
-    if(t.containsKey(n.next.data))
-        n.next=n.next.next;
-     else
-       t.put(n.data,n.data);
-     n=n.next;
-     }*/
     }
 
     //5->7->9->11
@@ -221,7 +218,7 @@ that node.*/
     }
 
     public Node removeNthFromEndSinglePass(Node head, int n) {
-
+//takes care of edge cases like [1] and n=1
         Node dummy = new Node(0);
         dummy.next=head;
         Node p1 =dummy;
@@ -368,6 +365,15 @@ that node.*/
         return shorterNode;
     }
 
+    public Node getIntersectionNodeOptimum(Node headA, Node headB) {
+        Node pA=headA;
+        Node pB=headB;
+        while(pA!=pB){
+            pA=pA==null?headB:pA.next;
+            pB=pB==null?headA:pB.next;
+        }
+        return pA;
+    }
     //reverse linked list
 
 

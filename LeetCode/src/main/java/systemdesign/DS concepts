@@ -403,6 +403,11 @@ Feature Engineering (Building the pipeline etc)..Divide data into 2 sets
 training and testing
 Use data to train and rest of data to test
 
+Feature engineering is the development of new data features from raw data.
+With this technique, engineers analyze the raw data and potential information
+in order to extract a new or more valuable set of features.
+Feature engineering can be seen as a generalization of mathematical optimization that allows for better analysis.
+
 
 An under fitting model is the one that does not fit well with the training data,
 i.e. significantly deviated from the ground truth.
