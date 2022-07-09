@@ -156,6 +156,34 @@ public class StringProbs {
         return new String(urlChar);
     }
 
+    public boolean isIsomorphic(String s, String t) {
+        HashMap<String,Integer> hmap=new HashMap<String,Integer>();
+
+
+        if(s.length()!=t.length())
+            return false;
+
+        for(Integer i=0;i<s.length();i++){
+
+            StringBuilder sb1= new StringBuilder("s");
+            sb1.append(s.charAt(i));
+
+            StringBuilder sb2= new StringBuilder("t");
+            sb2.append(t.charAt(i));
+
+            if(!hmap.containsKey(sb1.toString()))
+                hmap.put(sb1.toString(),i);
+
+            if(!hmap.containsKey(sb2.toString()))
+                hmap.put(sb2.toString(),i);
+
+            if(hmap.get(sb1.toString())!=hmap.get(sb2.toString()))
+                return false;
+
+        }
+        return true;
+    }
+
     //Expt
     public void printAllSubstrings(String str) {
         for (int i = 0; i < str.length(); i++) {

@@ -1,6 +1,7 @@
 package main.java.datastructures;
 //Ternary search is worse than binary search
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class BinarySearchTypeProblems {
 
@@ -372,6 +373,84 @@ public class BinarySearchTypeProblems {
         }
         return maxSum;
     }
+//minimum trips
+    public long minimumTime(int[] time, int totalTrips) {
+        long minTime=time[0];
+        for(int i=1;i<time.length;i++){
+            minTime=Math.min(minTime,time[i]);
+        }
+
+        long high=minTime*totalTrips;
+
+        long low=1;
+
+        while(low<high){
+            long mid= low+(high-low)/2;
+            long trips=getTotalTrips(mid,time);
+            if(trips<totalTrips)
+                low=mid+1;
+            else
+                high=mid;
+        }
+
+        return low;
+
+    }
+
+
+    public long getTotalTrips(long clock, int[] time){
+        long trips=0;
+        for(int i=0;i<time.length;i++)
+            trips+=(long)clock/time[i];
+        return trips;
+    }/*
+    Input: arr1 = [4,5,8], arr2 = [10,9,1,8], d = 2
+    Output: 2
+    Explanation:
+    For arr1[0]=4 we have:
+            |4-10|=6 > d=2
+            |4-9|=5 > d=2
+            |4-1|=3 > d=2
+            |4-8|=4 > d=2
+    For arr1[1]=5 we have:
+            |5-10|=5 > d=2
+            |5-9|=4 > d=2
+            |5-1|=4 > d=2
+            |5-8|=3 > d=2
+    For arr1[2]=8 we have:
+            |8-10|=2 <= d=2
+            |8-9|=1 <= d=2
+            |8-1|=7 > d=2
+            |8-8|=0 <= d=2*/
+    public int findTheDistanceValue(int[] arr1, int[] arr2, int d) {
+        // We are returning the number of elements in arr1 where all of its distances are MORE THAN than d.
+//find if value in arr 2 lies within +- of each element of arr1
+//if yes then no count, if no then increase count
+
+        int count=0;
+        Arrays.sort(arr2);
+        for(int i=0;i<arr1.length;i++){
+            int num=arr1[i];
+            if(!isElementInArrWithinD(arr2,num-d,num+d))
+                count++;
+        }
+        return count;
+    }
+
+    public boolean isElementInArrWithinD(int[] arr, int lowerBound, int higherBound){
+        int low=0;
+        int high=arr.length-1;
+        while(low<=high){
+            int mid=(low+high)/2;
+            if(arr[mid]>=lowerBound && arr[mid]<=higherBound)
+                return true;
+            else if(arr[mid]<lowerBound)
+                low=mid+1;
+            else
+                high=mid-1;
+        }
+        return false;
+    }
 
     public static void main(String args[]) {
         System.out.println("***************************************");
@@ -402,5 +481,7 @@ public class BinarySearchTypeProblems {
         if(left != nums.length && nums[left] == target) return left;
         return -1;
     }*/
+
+
 
 }

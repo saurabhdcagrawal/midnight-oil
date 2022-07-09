@@ -94,6 +94,8 @@ import java.util.ArrayList;
 //outer inner class
 //only inner class can be static
 //https://www.geeksforgeeks.org/static-class-in-java/
+
+//new nodes at the beginning
 public class Hash<K,V> {
 
     private static class DLLNode<K, V> {

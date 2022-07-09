@@ -131,6 +131,31 @@ having count(*)> 50
 SELECT EmpName from Employee where salary= (select max(salary) from Employee
 where salary < (SELECT max(salary) from employee))
 
+Get nth highest salary
+CREATE FUNCTION getNthHighestSalary(N INT) RETURNS INT
+BEGIN
+      DECLARE M INT;
+      SET M=N-1;
+  RETURN (
+      # Write your MySQL query statement below.
+      SELECT DISTINCT salary from Employee e order by salary desc limit 1 offset M
+
+  );
+END
+
+Employee
+
++-------------+---------+
+| Column Name | Type    |
++-------------+---------+
+| id          | int     |
+| name        | varchar |
+| salary      | int     |
+| managerId   | int     |
++-------------+---------+
+
+select e. name as 'Employee' from employee e where e.salary>(select m.salary from employee m where e.managerId=m.id);
+
 //One coding question with arrays or maps
 1)How to check if 2 strings are anagrams of each other
 //triangle integral

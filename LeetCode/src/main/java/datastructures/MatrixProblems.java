@@ -545,6 +545,41 @@ public class MatrixProblems {
             }
         }
     }
+/*
+    Input: box = [["#",".","#"]]
+    Output: [["."],
+            ["#"],
+            ["#"]]*/
+    public char[][] rotateTheBox(char[][] box) {
 
+        int m=box.length;
+        int n=box[0].length;
+
+        char[][] result= new char[n][m];
+
+        for(int i=0;i<m;i++){
+            int countStone=0;
+            int leftMostObstaclePosn=n-1;
+            for(int j=n-1;j>=0;j--){
+                if(box[i][j]=='#'){
+                    box[i][j]='.';
+                    box[i][leftMostObstaclePosn--]='#';
+                }
+                else if(box[i][j]=='*'){
+                    leftMostObstaclePosn=j-1;
+                }
+            }
+        }
+
+        //1,0 becomes 0,0
+        //1,1 becomes 0,1
+        for(int i=0;i<n;i++){
+            for(int j=0;j<m;j++){
+                //System.out.println(i+" "+j+" gets from "+(m-j-1)+ " "+i);
+                result[i][j]=box[m-j-1][i];
+            }
+        }
+        return result;
+    }
 
 }

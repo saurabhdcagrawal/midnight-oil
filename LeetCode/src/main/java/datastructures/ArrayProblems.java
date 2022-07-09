@@ -995,8 +995,37 @@ public class ArrayProblems {
         }
 
         return maxArea;
-    }
+    }/*
+    Input: seats = [1,0,0,0,1,0,1]
+    Output: 2
+    Explanation:
+    If Arjun sits in the second open seat (i.e. seats[2]), then the closest person has distance 2.
+    If Arjun sits in any other open seat, the closest person has distance 1.
+    Thus, the maximum distance to the closest person is 2.*/
+    public int maxDistToClosest(int[] seats) {
+        int n= seats.length,left=-1, right=0,ans=0;
+        for(int i=0;i<n;i++){
+            if(seats[i]==1)
+                left=i;
+            else{
+                //head start to right or n-1 for last value
+                right=Math.min(i+1,n-1);
+                while(right<n && seats[right]==0)
+                    right++;
+                //in event no candidate is present at left.. this value will be -1
+                //make distance infinite or n to disregard this distance in condn Math.min(leftDistance,rightDistance)
+                int leftDistance=left==-1?n:i-left;
 
+                //in event no candidate is present at right.. this value will n
+                //make distance infinite or n to disregard this distance in condn Math.min(leftDistance,rightDistance)
+
+                int rightDistance=right==n?n:right-i;
+                ans=Math.max(ans,Math.min(leftDistance,rightDistance));
+
+            }
+        }
+        return ans;
+    }
 
 
 

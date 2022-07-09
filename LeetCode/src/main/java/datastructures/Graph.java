@@ -253,6 +253,33 @@ public class Graph {
 
         return sb.toString();
     }
+    public boolean isBipartite(int[][] graph) {
+        //Input: graph = [[1,2,3],[0,2],[0,1,3],[0,2]]
+        //
+        int n= graph.length;
+        int[] color= new int[n];
+        Arrays.fill(color,-1);
+        for(int i=0;i<n;i++){
+            if(color[i]==-1){
+                java.util.Stack<Integer> st = new java.util.Stack<Integer>();
+                st.push(i);
+                color[0]=0;
+                while(!st.isEmpty()){
+                    Integer node=st.pop();
+                    for(Integer neigh: graph[node]){
+                        if(color[neigh]==-1){
+                            st.push(neigh);
+                            color[neigh]=color[node]^1;
+                        }
+                        else if(color[neigh]==color[node])
+                            return false;
+                    }
+                }
+
+            }
+        }
+        return true;
+    }
 
     public static void main(String args[]){
        int n = 5;
@@ -454,6 +481,45 @@ class Solution {
             }
         }
         return clonedNode;
+    }
+//EulerianPath
+    public List<String> findItinerary(List<List<String>> tickets) {
+
+        Map<String,LinkedList<String>> flightMap = new HashMap<>();
+        LinkedList<String> result = new LinkedList<String>();
+
+        for(int i=0;i<tickets.size();i++){
+            List<String> singleTick=tickets.get(i);
+            String origin=singleTick.get(0);
+            String dest=singleTick.get(1);
+            if(!flightMap.containsKey(origin))
+                flightMap.put(origin, new LinkedList<String>());
+            LinkedList<String> destList=flightMap.get(origin);
+            destList.addLast(dest);
+        }
+
+        System.out.println(flightMap);
+
+        for(String origin: flightMap.keySet()){
+            LinkedList<String> destList=flightMap.get(origin);
+            Collections.sort(destList);
+        }
+
+        System.out.println(flightMap);
+        postOrderDFS("JFK",flightMap,result);
+        return result;
+
+    }
+    public void postOrderDFS(String source,Map<String,LinkedList<String>> flightMap,LinkedList<String> result){
+
+        if(flightMap.containsKey(source)){
+            LinkedList<String> dest = flightMap.get(source);
+            while(dest!=null && !dest.isEmpty()){
+                String newSource= dest.pollFirst();
+                postOrderDFS(newSource,flightMap,result);
+            }
+        }
+        result.addFirst(source);
     }
     class Node {
         public int val;

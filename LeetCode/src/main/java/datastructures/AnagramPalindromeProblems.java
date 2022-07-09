@@ -189,4 +189,25 @@ public class AnagramPalindromeProblems {
         }
         return count;
     }
+    public boolean isStrobogrammatic(String num) {
+
+        HashMap<Character,Character> hmap= new HashMap<Character,Character>();
+
+        hmap.put('6','9');
+        hmap.put('9','6');
+        hmap.put('8','8');
+        hmap.put('1','1');
+        hmap.put('0','0');
+
+
+        int i=0,j=num.length()-1;
+        while(i<=j){
+            if((!hmap.containsKey(num.charAt(j)))||(num.charAt(i)!=hmap.get(num.charAt(j))))
+                return false;
+
+            i++;j--;
+        }
+
+        return true;
+    }
 }

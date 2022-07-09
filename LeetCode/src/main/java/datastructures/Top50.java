@@ -348,4 +348,52 @@ public class Top50 {
         minDiff=Math.min(minDiff,24*60-largestValue+smallestVal);
         return minDiff;
     }
+    //routes = [[1,2,7],[3,6,7]], source = 1, target = 6
+    public int numBusesToDestination(int[][] routes, int source, int target) {
+        if(source==target)
+            return 0;
+
+        HashMap<Integer,ArrayList<Integer>> bus_routes= new HashMap<>();
+        HashSet<Integer> seen = new HashSet<Integer>();
+        Queue<Integer> q= new LinkedList<Integer>();
+        //{1->0;2->0;7->0,1;3->1;6->1}
+        for(int i=0;i<routes.length;i++){
+            for(int j=0;j<routes[i].length;j++){
+                //for all stops, get all the buses that go through it
+                if(!bus_routes.containsKey(routes[i][j]))
+                    bus_routes.put(routes[i][j], new ArrayList<Integer>());
+                ArrayList<Integer> li = bus_routes.get(routes[i][j]);
+                li.add(i);
+            }
+        }
+        q.add(source);
+        int level=0;
+
+        while(!q.isEmpty()){
+            level++;
+            //get all buses at same level
+            int len= q.size();
+            for(int i=0;i<len;i++){
+
+                int stop=q.poll();
+                //fro stop go to the buses/routes... eg bus 1 /route 1, bus 2 etc
+                ArrayList<Integer> busList=bus_routes.get(stop);
+                for(Integer bus: busList){
+                    //if bus seen go ahead with another
+                    if(seen.contains(bus))
+                        continue;
+                    seen.add(bus);
+                    //from bus go to stop again ... 1,2,7
+                    for(int j=0;j<routes[bus].length;j++){
+                        if(target==routes[bus][j])
+                            return level;
+                        q.add(routes[bus][j]);
+
+                    }
+                }
+
+            }
+        }
+        return -1;
+    }
 }
