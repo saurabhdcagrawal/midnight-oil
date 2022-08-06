@@ -1,0 +1,31 @@
+Data is needed to be moved between applications and data stores
+Apache Kafka--provides messaging infrastructure.. 1.4 trillion messages every day
+Data movement/logistics:Get lots of messages from one system to another, rapidly, scalably and reliably
+In computing, transfer of data is called messaging but unlike other systems..Kafka is used for
+high throughput use cases,,vast amount of data is needed to be moved
+**other applications***traditional message systems** struggle with scalability***
+Database replication/log shipping (that support replication)
+ETL is option..proprietary and costly.Lots of custom development
+Apps are publishers... brokers is like mailbox and consumers are like apps who consume
+Under higher volumes, blast the broker with messages.. if there is no throttling
+message is dropped.. feed it to consumers..lazy slow or unresponsive application consumers
+Messaging systems are more of a middleware
+Kafka is a distributed messaging system,designed to move data at high volumes
+Created to address shortcomings of traditional data movement tools and approaches particulary when the data is growing
+and it needs to move faster across more and more diverse systems
+
+***Kafka architecture*******
+Publishers, consumers, brokers, topic
+Publisher sends messages to a location called topic
+Topics have a specific name that can be decided upfront or on demand
+As long as producers know the topic name and have perm to send on the particular topic, they should be able to send the messages
+Consumer receive messages based on topic they are interested in
+The place where kafka keeps and maintains topics is called broker(physical containers of data)
+Broker is a executable daemon process that runs on a machine.. physical machine or a virtual machine
+(Multiple Throughput)
+Broker uses file system of underlying machine
+With Kafka, you can scale out as much as brokers to achieve level of throughput
+Kafka cluster is a grouping of multiple Kafka brokers(Grouping mechanism that determines a cluster's membership
+of brokers is important part of Kafka's architecture and enables scaling)-->Apache Zookeeper?
+
+

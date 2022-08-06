@@ -396,4 +396,59 @@ public class Top50 {
         }
         return -1;
     }
+    public boolean isValidSudoku(char[][] board) {
+
+        int n=9;
+        int[] rows= new int[n];
+        int[] cols= new int[n];
+        int[] boxes= new int[n];
+
+        for(int i=0;i<n;i++){
+            for(int j=0;j<n;j++){
+                char ch= board[i][j];
+                if(ch!='.'){
+                    int box_id=(i/3)*3+j/3;
+                    int pos=ch-'1';
+                    if(((1<<pos & rows[i])!=0)||((1<<pos & cols[j])!=0)||((1<<pos & boxes[box_id])!=0))
+                        return false;
+                    rows[i]|=1<<pos;
+                    cols[j]|=1<<pos;
+                    boxes[box_id]|=1<<pos;
+                }
+            }
+        }
+        return true;
+    }
+//Optimal Account balancing O(n!)
+    public int minTransfers(int[][] transactions) {
+
+        Map<Integer,Integer> debtMap= new HashMap<Integer,Integer>();
+        for(int i=0;i<transactions.length;i++){
+            debtMap.put(transactions[i][0],debtMap.getOrDefault(transactions[i][0],0)-transactions[i][2]);
+            debtMap.put(transactions[i][1],debtMap.getOrDefault(transactions[i][1],0)+transactions[i][2]);
+        }
+        return backtrack(0, new ArrayList<Integer>(debtMap.values()));
+    }
+
+    public int backtrack(int start, List<Integer> debtList){
+        //if transaction is 0 not point in settling
+        while(start<debtList.size() && debtList.get(start)==0)
+            start++;
+
+        if(start==debtList.size())
+            return 0;
+        int r= Integer.MAX_VALUE;
+        for(int i=start+1;i<debtList.size();i++){
+            //settle opposite transactions
+            if(debtList.get(start)*debtList.get(i)<0){
+                debtList.set(i,debtList.get(i)+debtList.get(start));
+                //settled start with next.. now start with next one
+                r=Math.min(r,1+backtrack(start+1,debtList));
+                //backtrack restore state
+                debtList.set(i,debtList.get(i)-debtList.get(start));
+            }
+        }
+        return r;
+    }
+
 }

@@ -2,6 +2,7 @@ package main.java.customDS;
 
 import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.PriorityQueue;
 
 public class SlidingWindowMax {
@@ -68,4 +69,31 @@ public class SlidingWindowMax {
         }
         return result;
     }
+ //   *****************************************************/
+ /*Longest Continuous Subarray With Absolute Diff Less Than or Equal to Limit
+    Input: nums = [8,2,4,7], limit = 4
+    Output: 2*/
+    public int longestSubarray(int[] nums, int limit) {
+     Deque<Integer> maxD= new ArrayDeque<Integer>();
+     Deque<Integer> minD= new ArrayDeque<Integer>();
+     int i=0,maxLen=0;
+     //i signifies start. j is other end
+     for(int j=0;j<nums.length;j++){
+         while(!maxD.isEmpty()&& nums[j]>maxD.getLast())
+             maxD.removeLast();
+         while(!minD.isEmpty()&& nums[j]<minD.getLast())
+             minD.removeLast();
+         maxD.addLast(nums[j]);
+         minD.addLast(nums[j]);
+         while(maxD.getFirst()-minD.getFirst()>limit){
+             if(nums[i]==maxD.getFirst())
+                 maxD.removeFirst();
+             if(nums[i]==minD.getFirst())
+                 minD.removeFirst();
+             i++;
+         }
+         maxLen=Math.max(maxLen,j-i+1);
+     }
+     return maxLen;
+ }
 }

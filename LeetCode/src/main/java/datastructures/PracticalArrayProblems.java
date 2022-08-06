@@ -255,6 +255,18 @@ public class PracticalArrayProblems {
         return pq.poll();
     }
 
+    public int numRescueBoats(int[] people, int limit) {
+        Arrays.sort(people);
+        int i=0,j=people.length-1,count=0;
+        while(i<=j){
+            count++;
+            if(people[i]+people[j]<=limit)
+                i++;
+            j--;
+        }
+        return count;
+    }
+
     public static void main(String[] args) {
 	int [] prices ={7,6,9,1,10};
 	PracticalArrayProblems instance = new PracticalArrayProblems();

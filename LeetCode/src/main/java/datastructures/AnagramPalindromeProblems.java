@@ -128,6 +128,28 @@ public class AnagramPalindromeProblems {
         }
         return true;
     }
+//construct K Palindrome strings
+    public boolean canConstruct(String s, int k) {
+        int countOdd=0;
+
+        if(s==null||s.isEmpty()||s.length()<k)
+            return false;
+
+        int[] char_str= new int[26];
+
+        for(int i=0;i<s.length();i++){
+            int index= s.charAt(i)-'a';
+            char_str[index]++;
+        }
+
+        for(int i=0;i<char_str.length;i++){
+            if(char_str[i]%2!=0)
+                countOdd++;
+        }
+
+        return countOdd<=k;
+
+    }
 
     //longest Palindrome
 //Usually to find this if you have a string, reverse it and then find the LCS... but this may not work if there is reversed non palindromic substring in other

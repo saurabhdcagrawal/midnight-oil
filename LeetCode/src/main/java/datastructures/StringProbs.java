@@ -424,6 +424,33 @@ public boolean wordBreak(String s, List<String> wordDict) {
         return sb.toString();
     }
 
+    public boolean isAlienSorted(String[] words, String order) {
+
+        int[] orderMap= new int[26];
+
+        for(int i=0;i<order.length();i++)
+            orderMap[order.charAt(i)-'a']=i;
+        System.out.println(Arrays.toString(orderMap));
+
+        for(int i=1;i<words.length;i++){
+            String second= words[i];
+            String first=words[i-1];
+            int n= Math.min(first.length(),second.length());
+            int diffChar=-1;
+            for(int j=0;j<n;j++){
+                diffChar=orderMap[second.charAt(j)-'a']-orderMap[first.charAt(j)-'a'];
+                if(diffChar<0)
+                    return false;
+                else if(diffChar>0)
+                    break;
+            }
+            if(diffChar==0 && first.length()>second.length())
+                return false;
+
+        }
+        return true;
+    }
+
     public String removeAdjacentKDuplicatesStack(String s, int k) {
         java.util.Stack<Integer> st= new java.util.Stack<Integer>();
         StringBuilder sb = new StringBuilder(s);

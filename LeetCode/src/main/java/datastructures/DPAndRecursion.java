@@ -680,6 +680,64 @@ public class DPAndRecursion {
             return dp[0];
         }
     }
+
+    public int deleteAndEarn(int[] nums) {
+
+        int max=0;
+        Map<Integer,Integer> points= new HashMap<Integer,Integer>();
+        for(int i=0;i<nums.length;i++){
+            points.put(nums[i],points.getOrDefault(nums[i],0)+nums[i]);
+            max=Math.max(max,nums[i]);
+        }
+        Map<Integer,Integer> cache= new HashMap<Integer,Integer>();
+        return deleteAndEarn(max,points,cache);
+    }
+
+    public int deleteAndEarn(int max, Map<Integer,Integer> points, Map<Integer,Integer> cache){
+
+        if(max==0)
+            return 0;
+        if(max==1)
+            return points.getOrDefault(1,0);
+
+        if(cache.containsKey(max))
+            return cache.get(max);
+
+        int maxGain= Math.max(deleteAndEarn(max-1,points,cache),points.getOrDefault(max,0)+ deleteAndEarn(max-2,points,cache));
+
+        cache.put(max,maxGain);
+
+        return maxGain;
+
+    }
+
+    public int deleteAndEarnDP(int[] nums) {
+        int max=0;
+        Map<Integer,Integer> points= new HashMap<Integer,Integer>();
+        for(int i=0;i<nums.length;i++){
+            points.put(nums[i],points.getOrDefault(nums[i],0)+nums[i]);
+            max=Math.max(max,nums[i]);
+        }
+        Map<Integer,Integer> cache= new HashMap<Integer,Integer>();
+        cache.put(0,0);
+        cache.put(1,points.getOrDefault(1,0));
+
+
+        for(int i=2;i<=max;i++){
+            int maxGain= Math.max(cache.getOrDefault(i-1,0),points.getOrDefault(i,0)+ cache.getOrDefault(i-2,0));
+            cache.put(i,maxGain);
+        }/*
+        int twoBack=0;
+        int oneBack= points.getOrDefault(1,0);
+        for(int i=2;i<=max;i++){
+            int maxGain= Math.max(oneBack,points.getOrDefault(i,0)+ twoBack);
+            twoBack=oneBack;
+            oneBack=maxGain;
+        }
+        return  oneBack;*/
+
+        return  cache.get(max);
+    }
     //Memoization.. I prefer using object arrays for memoization
     class SolutionJump {
         Boolean[] memo;
