@@ -58,6 +58,7 @@ public class TaskScheduler {
 
     }
 /*** Part 2 different problem **//*
+//num_tasks * n * log(26)
     Input: tasks = ["A","A","A","B","B","B"], n = 2
     Output: 8
     Explanation:
