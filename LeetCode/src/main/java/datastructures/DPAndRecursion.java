@@ -738,6 +738,47 @@ public class DPAndRecursion {
 
         return  cache.get(max);
     }
+
+    //Brute
+    public boolean divisorGameBrute(int n) {
+
+     if(n<=1)
+          return false;
+
+      for(int i=1;i<=n/2;i++){
+          if(n%i==0 && !divisorGameBrute(n-i))
+            return true;
+          }
+     return false;
+    }
+    public boolean divisorGame(int n) {
+        Boolean[] cache= new Boolean[n+1];
+        return divisorGame(cache,n);
+    }
+
+    public boolean divisorGame(Boolean[] cache, int n){
+        if(n<=1)
+            return false;
+
+        if(cache[n]!=null)
+            return cache[n];
+        //factors can only go until n/2;
+        for(int i=1;i<=n/2;i++){
+            if(n%i==0 && !divisorGame(cache,n-i)){
+                cache[n]=true;
+                return true;
+            }
+        }
+        cache[n]=false;
+        return false;
+    }
+    //whoever gets 2 wins..thats the base case and last step in reduction..
+    //if Alice gets even in beginning eg 6 they will only oddpass factors so other person gets odd (as a part of their strategy) Alice gets6 then pass 3 .. bob gets 6-3=3 can only pass 1 **odd number has odd factors only unlike even numbers*** whatever bob passes .. it will be odd ..going back to alice as even in our eg..Alice gets 2 base case//
+    //if Alice passed 2 when se got 6, then Bob gets 4, then he can pass 1. Alice gets 3, she can only pass 1..Bob gets 2 bob wins
+    //see thats why the optimal stragegy for each other is to land other in odd numbers.. so to get 2 to win the end
+    //one step solution
+    //return n%2==0;
+
     //Memoization.. I prefer using object arrays for memoization
     class SolutionJump {
         Boolean[] memo;

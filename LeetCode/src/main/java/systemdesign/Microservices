@@ -1,0 +1,215 @@
+Microservices -- autonomous individually deployable services collaborate together to form an application or system
+Easy to change, deploy, scale
+Monolith vs Micro Services
+Divide overall system functionality into individual microservices
+How microservices can communicate with each other
+Delivering microservices
+https://github.com/dotnet-architecture/eShopOnContainers
+Monolith->all code in a single code base and all developers collobarate on same source code
+Single executable or code base on single host server and persists all of data on single db
+single consistent technology
+Benefits->Simplicity
+Single line of code needs entire application to be deployed
+Difficult to deploy.. Requires downtime
+Scaling horizontally is difficult unless you have made it stateless..therefore scale vertically
+Cannot scale individual components, you have to scale everything
+Wedded to a legacy technology
+Reduces agility
+Dont confuse with
+Distributed monoliths.. shared database.. change to one requires changes everywhere..everything must be deployed together
+
+Benefits of micro service
+Each microservice can be owned by a small team
+Adopt of new tech without upgrading everything
+One uses RDMS while other document.. functional language
+Individual teams have the
+Loose Coupling deploy them indvidually
+Individual deployment lower risk,frequent updates, minimize downtime
+Scale services individually
+Agile adapt more rapidly
+
+Issues with microservices
+Download every single code and configure
+Texting in the context of whole application
+Developers productivity
+You will need to automate the process
+Need to have a great monitoring solution in place
+
+*****************Architecting a microservice application***************
+Evolve towards microservices
+Micro service should be autonomous
+Should be individually develop
+Hard to get service boundaries right
+Each microservice should have its own data store
+If you need access to data from other microservice, you should access it using public API of the other microservice
+No longer performs database join
+Avoid sharing data store
+Cannot update multiple data stores in one transaction
+Make your application sucj that it is able to cope up with this temporary inconsistency and eventual consistency
+Service boundary well --will minimize the need to aggregate data
+A cached copy can be made of data from other microservice
+Microservice has bunch of components/process but independent deployable as an entire unit
+Important thing is microservice has a clearly defined boundary with a public interface and its
+data can only be accessed through public interface
+Microservice can be upgraded without their clients needing to upgrade..do not make breaking change to public interface
+its like a contract.The clients should not be upgraded simultaneously
+New endpoints
+New properties
+Introduce version2 api... still supporting version 1.. later clients can upgrade
+Client should be upgrade to new features/version/API as part 2
+
+(1)Identify loosely coupled components
+(2)Look for seams in database.. Are there certain groups of tables that belong together? find places where they read and write
+data and seperate it
+(3)organize microservices around business capabilities
+Microservices do not share models eg order item and catalog item
+Sketch ideas on whiteboard and run through real world usecases, if too many services are required to collaborate to
+achieve a single business functionality capability, then there is an issue
+4) Defining microservice boundary is important else it can be costly, you will get disadv of microservices and loose benefits
+avoid circular dependencies on frequent chatty communication between microservices
+Scalability perspective-->based on volumes of data and access patterns
+Catalog, basket,ordering, identity, marketing, location
+
+**Building microservices *****
+Use 1 --> One VM for each microservice expensive, One vm for multiple microservice has operational challenges
+Use PaaS (platform as a service)..Serverless compute.. extremely small microservices that do a single task
+Automatic scale Out, Load Balancing, Monitoring etc
+***3rd option use containers****
+Let ypu package an application with all its dependencies so you can easily package an application
+in a container host.. The container host would be running in the cloud but also laptop\Tools like docker compose
+Its called containerizing a microservice
+Docker Compose usually for local development,otherwise the productivity of developers will be hampered
+every microservice should have their own Source control repository
+Continuos integration build on check in... run automated tests
+Unit test, Service level tests, End to End tests
+Microservice templates-> Logging,Health Check, Configuration, Authentication, Build Scriptd
+Each microservice should have a docker file that produces container image using docker compose
+Run locally using docker compose
+***Communication between micro services **************
+Different micro service can communicate with each other using event bus asynchronously
+They raise integration events(Rabbit MQ or Azure Service Bus)
+Use API gateway to connect from client level applications (mobile app or SPA) and microservices
+Offers additional security.Decouples client application from specifics/implemntation of backend API's
+
+Back ends for front ends(concept).. For each client create an API gateway
+
+Service discovery-> Service registry.. registry of all IP's/VM's that host a service
+All modern microservice hosting platform (paas) offer dns capabilities.. by a service name..
+Every microservice is allocated a DNS name that points to a load balancer that sit in front of the service
+Container orchestration service platforms (Kubernetes)...
+refer other service by service name, Kubernetes has got its own built in DNS
+Implementing RESTful API's .. Publish messages to the event bus
+
+*****Resilient communications*****
+Message retries with back off's
+Circuit Breakers
+Caching
+Message Retries
+Idempotent Message Handlers
+
+******** Securing microservice ********
+Data should be encrypted in transit...For HTTP commn, secure comminication
+ can be obtained Use transport layer security... HTTPS... Need to configure SSL certificates
+ need a trusted certificate authority  for each services , update/acquire... cloud providers can help
+ Data should also be encrypted in rest if people need (Encryption in rest)
+HTTPS helps encryption in transit
+ Each HTTP req should have authorization header..might contain a user name and password
+ Industry standards OAuth 2.0 and Open id connect
+ Have an authentication server/identity server...that will be responsible for authenticating the clients
+ and provide access token which has a limited lifetime.. this token is signed using public key crypthography
+ Client add this access token in the HTTP authorization header...
+It is possible to find if this token really signed by our identity server
+Authentication->Who is calling
+Authorization->What they can do
+if client calls the ordering service which in turn calls payment service..it can issue on behalf of token
+
+If microservices are connexted within virtual network, easy for internal comm..preotect if from outside
+From outsside, we can use API gateway ...to protect lets say if we have an SPA application
+All incoming requests go via single point of entry API gateways...can be integrated
+with DDOS/ Use IP whitelisting for allowing only wesbites which it allows to access backend microservices
+
+So https+Access tokens+ private networks(virtual networks+IP whitelisting+Firewalls)API gatewys
+.. dont rely on a single technique
+Defense in Depth-->The more sensitive the data the more layers of protection..these techniques are essential
+for microservices
+
+For microservices
+Automated Deployment
+ Reliable and repeatable
+ Continuos Integration
+
+Build artificats we need to store ..    in a service registry(similar to dist)
+deploy latest version or roll back to previous version
+Build every microservice as a docker container image
+
+Each microservice should be emitting logs, aggregated in a centralized place
+and elastic search..kibana to view them
+In Azure use application insights
+docker compose use localhost:5107 healthchecks
+localhost:5340 logs
+all containers are configured to send a log to application called seq
+
+
+
+
+
+
+
+
+
+
+
+
+**************Docker Kubernetes*****************************************************
+Kubernetes is a Container Orchestrator
+A server has CPU, disk and memory
+Old days.. one server..one OS.. more capacity than needed ..to err on the side of caution
+it led to a lot of waste and under utilization of the server and resources
+Then came hypervisor and VMware(virtualization)..Create multiple VM machines in 1 physical server
+cpu,memory and disk are split across the VM's
+Each VM machine has its own OS. However OS needs memory,disk and cpu ..consumes  a little
+and has its own challenges for maintenance///
+Better utilization..multiple apps in one server..however disadvantage
+of having OS in each VM machine
+
+Come to concept of containers..its like virtualization 2.0
+Multiple containers in 1 machine ...sharing the same OS
+Container is like a Lightweight VM
+Light weight.. docker image is like an app... you can run container of a docker image
+like a web host..easy to start and stop
+Faster,Cheaper and give better utilization
+Cloud native and microservices application?
+Build your source code as a docker image// image is like a stopped container or template how to build a container
+Step 1 containerize the app docker image build
+Step 2 Push the image to registry/Docker Hub
+Step 3 Now run a container, give it name, port based on an image..
+Docker inc -.Co Enterpsie platofirm, enterrise support
+Technology---   Apps in containers
+******Kubernetes**********************************************
+Docker is for starting and stopping containers
+Kubernetes is not low level...how many containers to run..which nodes to run it on
+Scheduling/Scaling/healing/Updating
+Issuing commands to docker instances telling them when to start and stop containers and how to run them
+Kubernetes cluster -->each nodes run Kubernetes software and a container runtime(Docker or containerd)
+Tell kubernetes single container on backend more resources but on front end 2 containers(less resources)
+if load goes up,node goes down/ it will spin up more containers..if load decreases, it scales back down
+Kubernetes makes it happen and deals within it..docker does low level stuff like spinning up container etc
+but it only does it when kubernetes tells it to..kubernetes maintains a bunch of docker nodes
+Kubernetes runs on prem on cloud everywhere
+Its open source...poster child for cloud native cloud computing foundation
+Build Kubernetes cluster to host your applications, it can be anywhere, on premises in your data center
+or just about any cloud..So we package our apps, tell Kubernetes what it should look like
+Have also started working with StateFul apps(databases)
+
+Apps comprise of Multiple parts
+Game Plan-> Describe the app(how they connect, ordered startups)
+Store it in version control..Give the game plan to an orchestrator (Yaml Manifest files)  ..Let the orchestrater deploy the app and manage it
+Deploy and manage microservices apps
+Coach Orchestrator
+Game Plan is Description of your application... app manifest, players are different services
+Docker Compose is miniature Kubernetes, so are Terrafarm, Azure Arm Template
+
+
+
+
+

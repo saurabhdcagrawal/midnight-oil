@@ -538,4 +538,82 @@ class Solution {
         }
     }
 
+//Serialize and Deseralize an N'ary tree
+    class Codec {
+        class Node {
+            public int val;
+            public List<Node> children;
+
+            public Node() {}
+
+            public Node(int _val) {
+                val = _val;
+            }
+
+            public Node(int _val, List<Node> _children) {
+                val = _val;
+                children = _children;
+            }
+        }
+        // Encodes a tree to a single string.
+        public final String DELIM=",";
+        public final String SENTINEL="X";
+
+    public String serialize(Node root) {
+        StringBuilder sb= new StringBuilder();
+        if(root==null)
+            return "X";
+        encode(root,sb);
+        int size=sb.length();
+        sb.deleteCharAt(sb.length()-1);
+        System.out.println(sb);
+        return sb.toString();
+
+    }
+
+    public void encode(Node n, StringBuilder sb){
+        sb.append(n.val);
+        sb.append(DELIM);
+        for(Node children: n.children){
+            encode(children,sb);
+        }
+        sb.append(SENTINEL);
+        sb.append(DELIM);
+    }
+//    //1,2,X,3,6,X,7,11,14,X,X,X,X,4,8,12,X,X,X,5,9,13,X,X,10,X,X,X
+        // Decodes your encoded data to tree.
+//when child is null, we make that node and travel upwards
+//first leaf nodes are created
+    //thats why null is important
+        public Node deserialize(String data) {
+            if(data.isEmpty())
+                return null;
+
+            String[] dataArr= data.split(",");
+            List<String> dataList= new LinkedList<String>(Arrays.asList(dataArr));
+            return decode(dataList);
+        }
+
+        public Node decode(List<String>dataList){
+            if(dataList.get(0).equals("X")){
+                dataList.remove(0);
+                return null;
+            }
+
+            String val= dataList.get(0);
+            dataList.remove(0);
+            List<Node> children= new ArrayList<Node>();
+            while(!dataList.isEmpty()){
+                Node child=decode(dataList);
+                if(child!=null)
+                    children.add(child);
+                else
+                    break;
+            }
+            Node n = new Node(Integer.parseInt(val), children);
+            return n;
+
+        }
+    }
+
 }

@@ -383,7 +383,26 @@ public int coinChange(int[] coins, int amount){
         System.out.println(head+c+tail);
         return head+c+tail;
     }
+    //generate Pascal Triangle..O(nums2)
+    public List<List<Integer>> generate(int numRows) {
+        List<List<Integer>> result= new ArrayList<>();
+        List<Integer> unary= new ArrayList<Integer>();
+        unary.add(1);
+        result.add(unary);
 
+        for(int i=1;i<numRows;i++){
+            List<Integer> currentRow= new ArrayList<Integer>();
+            List<Integer> prevRow= result.get(i-1);
+            currentRow.add(1);
+            //1st row has 2 elements ..i=1 but save one spot for last 1 element has <i
+            for(int j=1;j<i;j++){
+                currentRow.add(prevRow.get(j-1)+prevRow.get(j));
+            }
+            currentRow.add(1);
+            result.add(currentRow);
+        }
+        return result;
+    }
 
 
     public static void main(String args[]){
