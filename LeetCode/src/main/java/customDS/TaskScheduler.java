@@ -1,10 +1,19 @@
 package main.java.customDS;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.PriorityQueue;
+import java.util.*;
 
+class Task{
+    int startTime;
+    int processTime;
+    int sequence;
+
+    public Task(int startTime, int processTime, int sequence){
+        this.startTime=startTime;
+        this.processTime=processTime;
+        this.sequence=sequence;
+    }
+
+}
 public class TaskScheduler {
 
     public int[] getOrder(int[][] tasks) {
@@ -48,18 +57,46 @@ public class TaskScheduler {
         return orderArr;
 
     }
-}
+/*** Part 2 different problem **//*
+    Input: tasks = ["A","A","A","B","B","B"], n = 2
+    Output: 8
+    Explanation:
+    A -> B -> idle -> A -> B -> idle -> A -> B
+    There is at least 2 units of time between any two same tasks.*/
+    public int leastInterval(char[] tasks, int n) {
+        Map<Character,Integer> taskCount= new HashMap<Character,Integer>();
+        for(int i=0;i<tasks.length;i++){
+            taskCount.put(tasks[i],taskCount.getOrDefault(tasks[i],0)+1);
+        }
+        PriorityQueue<Integer> maxHeap= new PriorityQueue<Integer>((a,b)->Integer.compare(b,a));
 
+        Queue<Pair<Integer,Integer>> q = new LinkedList<>();
+        for(Character t: taskCount.keySet())
+            maxHeap.add(taskCount.get(t));
 
-class Task{
-    int startTime;
-    int processTime;
-    int sequence;
-
-    public Task(int startTime, int processTime, int sequence){
-        this.startTime=startTime;
-        this.processTime=processTime;
-        this.sequence=sequence;
+        int t=0;
+        //
+        while(!maxHeap.isEmpty() || !q.isEmpty()){
+            t++;
+            if(!maxHeap.isEmpty()){
+                int val=maxHeap.poll();
+                // System.out.println("executing at "+t);
+                val--;
+                if(val>0){
+                    Pair<Integer,Integer> p= new Pair<>(val,t+n);
+                    q.add(p);
+                }
+            }
+               /*else
+                   System.out.println("idle at "+t);*/
+            //for ["A","A","A","B","B","B"] and 2
+            // t is 3 during 1st iteration but task executed at 4..so we add time after which task can be executed
+            //what we add is not the time the task should get executed
+            if(!q.isEmpty() && q.peek().getValue()==t)
+                maxHeap.add(q.poll().getKey());
+        }
+        return t;
     }
 
 }
+
