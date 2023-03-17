@@ -1,15 +1,17 @@
 /*
 1) Working with threads is difficult and error prone. Java 5,7 addressed some bits of it
-2) More concise code and simpler use of multicore processors is the whole reason for java 8
+2) More concise code,do away with boilerplate code and simpler use of multicore processors is the whole reason for java 8
 3) Streams for complex pipeline operations..like unix..
    an abstraction rather than working with one independent item at a time.
    Java 8 can run your pipeline of stream operations on several CPU cores on disjoint parts of the input
    (Parallelism for free)
-4) Behavior parameterization--passing code to methods
+4) Behavior parameterization--passing code to methods.. similar to a strategy design pattern
 5) Passing codes and predicates
 6) Anonymous functions
 7) Filter and predicate are available and generic methods in Java 8
+You can use a default method in an interface to provide a method body if an implementingclasschooses not to do so
 Using streams API do not think of looping..Think as a stream of data
+methods or functions are not second class citizens
 -----Chapter 2
 behaviour parameterization
 Adopt to changing requirements.Strategy Design patternD
@@ -31,48 +33,344 @@ When lambda expression has multiple statements use curly braces
 (String s) -> {return "Iron Man";}.
 Lambda --->function of the object implementing an interface ---directly Lambda is used in the context of functional interface (Like a predicate)
 A functional interface is an interface which implements only one abstract method.
-Lambda expressions let you provide the implementation of the abstract method of a functional interface directly inline and treat the whole expression as an instance of a functional interface (more technically speaking, an instance of a concrete implementation of the functional interface). You can achieve the same
-thing with an anonymous inner class, although it’s clumsier: you provide an implementation and instantiate it directly inline.
+Lambda expressions let you provide the implementation of the abstract method of a functional interface directly
+ inline and treat the whole expression as an instance of a functional interface (more technically speaking, an instance of a concrete implementation of the functional interface). You can achieve the same
+thing with an anonymous inner class, although it’s clumsier:
+you provide an implementation and instantiate it directly inline.
 
-public class MyRunnable implements Runnable {
+Streams are an update to the Java API that lets you manipulate collections of data in a declarative way
+(you express a query rather than code an ad hoc implementation for it). In addition, streams can be processed in parallel
+ transparently, without you having to write any multithreaded code!
+You chain together several building-block operations to express a complicated data processing pipeline
+(you chain the filter by linking sorted, map, and collect operations, as illustrated in figure 4.1) while keeping your code readable and its intent clear. The result of the filter is passed to the sorted method, which is then passed to the map method and then to the collect method.
 
-    public void run(){
-       System.out.println("MyRunnable running");
-    }
-  }
+Collections in Java 8 support a new stream method that returns a stream. You’ll later see that you can also get streams
+in various other ways (for example, generating stream elements from a numeric range or from I/O resources).
+So first, what exactly is a stream?
+A short definition is “a sequence of elements from a source
+ Next, you apply a series of data processing operations on the stream:
+ filter, map, limit, and collect. All these operations except collect return another stream
+ so they can be connected to form a pipeline, which can be viewed as a query on the source.
+ Finally, the collect operation starts processing the pipeline to return a result
+ (it’s different because it returns something other than a stream—here, a List).
+Figure 4.2 shows the sequence of stream operations:
+filter, map, limit, and collect, each of which is briefly described here:
+Stream vs Collection
+Stream is traversable only once.. can be consumed only once similar to iterator
+Stream operations return stream and can be pipelined
+filter—Takes a lambda to exclude certain elements from the stream. In this case, you select dishes that
+have more than 300 calories by passing the lambda d -> d.getCalories() > 300.
+map—Takes a lambda to transform an element into another one or to extract information.
+In this case, you extract the name for each dish by passing the method reference Dish::getName,which is
+equivalent to the lambda d -> d.getName().
+limit—Truncates a stream to contain no more than a given number of elements.
+collect—Converts a stream into another form. In this case you convert the stream into a list.
+It looks like a bit of magic; we describe how collect works in more detail in chapter 6.
+At the moment, you can see collect as an operation that takes as an argument various recipes
+for accumulating the elements of a stream into a summary result. Here, toList() describes
+a recipe for converting a stream into a list.
+Difference between collection and stream . iteration is taken care for you..
 
-
-    Runnable runnable = new MyRunnable();Thread thread = new Thread(Runnable)thread.start();
-        Create a new thread, that executes the run method
-
-
-        Using Anonymous
-        Runnable runnable = new Runnable(){  public void run(){
-           System.out.println("Hello");   }}
-
-        Runnable runnable = ()-> System.out.println("Hello");
-        Streams
-
-        Streams are an update to the Java API that lets you manipulate collections of data in a declarative way (you express a query rather than code an ad hoc implementation for it). In addition, streams can be processed in parallel transparently, without you having to write any multithreaded code!
-        You chain together several building-block operations to express a complicated data processing pipeline (you chain the filter by linking sorted, map, and collect operations, as illustrated in figure 4.1) while keeping your code readable and its intent clear. The result of the filter is passed to the sorted method, which is then passed to the map method and then to the collect method.
-
-        Collections in Java 8 support a new stream method that returns a stream. You’ll later see that you can also get streams in various other ways (for example, generating stream elements from a numeric range or from I/O resources).
-        So first, what exactly is a stream? A short definition is “a sequence of elements from a source that supports data processing operations.” 
-        Next, you apply a series of data processing operations on the stream: filter, map, limit, and collect. All these operations except collect return another stream so they can be connected to form a pipeline, which can be viewed as a query on the source. Finally, the collect operation starts processing the pipeline to return a result (it’s different because it returns something other than a stream—here, a List).
-
-        Figure 4.2 shows the sequence of stream operations: filter, map, limit, and collect, each of which is briefly described here:
-
-        Stream vs Collection
-        Stream is traversable only once.. can be consumed only once similar to iterator
-        Stream operations return stream and can be pipelined
-        filter—Takes a lambda to exclude certain elements from the stream. In this case, you select dishes that have more than 300 calories by passing the lambda d -> d.getCalories() > 300.
-        map—Takes a lambda to transform an element into another one or to extract information. In this case, you extract the name for each dish by passing the method reference Dish::getName, which is equivalent to the lambda d -> d.getName().
-
-        limit—Truncates a stream to contain no more than a given number of elements.
-
-        collect—Converts a stream into another form. In this case you convert the stream into a list. It looks like a bit of magic; we describe how collect works in more detail in chapter 6. At the moment, you can see collect as an operation that takes as an argument various recipes for accumulating the elements of a stream into a summary result. Here, toList() describes a recipe for converting a stream into a list.
-
-        Difference between collection and stream ... More on this Streams ... iteration is taken care for you..
-
+Stream can be processed or consumed only once
+Fixed data structure, you cannot add or remove elements
+Stream is a lazily constructed collection
+values are computed only when they are needed
+Collection is a eagerly constructed collection
+A collection is an in-memory data structure that holds all the values the data structure currently has—every element
+in the collection has to be computed before it can be added to the collection.
+(You can add things to, and remove them from, the collection, but at each moment in time,
+every element in the collection is stored in memory; elements have to be computed before becoming part of the collection.)
+Collections use external iteration, Stream use internal iteration
 
 */
+New.................... Durgasoft
+(1)Lambda expressions
+(2)Functional interfaces
+(3)Default methods(Concrete methods) can be defined in interfaces..
+(4)Static methods defined(inside interface)
+(5)Predefined functional interfaces: predicate, function, consumer
+(6) Double colon operator used for method reference and constructor reference
+(7) Streams API
+(8) Joda API (Date and time API)
+(9) Optional
+(10)Method reference
+Method references are special types of lambda expressions that execute only one method.
+General syntax of method reference:
+
+object::methodName
+https://medium.com/javarevisited/a-comprehensive-guide-to-java-8-method-reference-f0bf5457b72d
+Intention---
+-
+First objective to simplify programming (concise code) (do away with boilerpate code)
+To enable functional programming in forms of lamda expressions(behaviour parameterization)
+To enable parallel processing and be able to write compatible code which runs on multicore processors
+A)
+Lambda expressions
+To enable functional programming in java to get functional programming benefits
+To write and read more reusable code and reuse API's very easily and effectively
+Desc:
+lambda expression is a function which is not having name, not having any modifiers, not having any return type
+1)
+()->sop{("Hello")}
+can remove curly brace..only one statement then curly brace is optional
+()->sop("Hello")
+----
+2)
+(int a, int b)->{Sop(a+b)}
+//type inference...if compiler can guess..then no need to add type
+(a,b)->sop(a+b);
+
+3) (String s) ->{return s.length())
+//no need to write return... for single argument remove parentheses for input
+s->s.length();
+
+So remove curly braces for single statement, remove return type , remove type if type can be determined
+and remove parentheses if only one i/p argument
+When you mention return use curly braces
+parentheses on left, curly brace on right--
+
+B) we use functional interface To invoke lambda expression
+You can use a lambda expression in the context of a functional interface
+if an interface contains single abstract method then its called a functional interface
+(it can have any number of static or default methods)
+Can do the same with anonymous inner class?
+Runnable,Callable,ActionListener,Comparable(compareTo)
+https://www.baeldung.com/java-static-default-methods
+Static and default methods in an interface is a new concept of java 8
+You can use @FunctionalInterface annotation so compiler will give an error
+
+//Lambda expressions can exist with or without class
+//they can be passed around as parameters to another method
+
+FunctionalInterface fi = (String name) -> {"hello "+name};
+
+
+
+(i)If an interface extends another interface and child interface does not contain any abstract method
+parent is functional interface then child interface will be also a functional interface
+(ii) if parent interface is a functional interface and child interface extends the same
+abstract method then its also a functional interface
+(iii) if child has an abstract method then its not a functional interface
+
+By using functional interface one can call lambda expressioni
+interface exampleInterface{
+    public void m1()
+}
+
+class MainClass{
+public static void main(String args[]){
+    exampleInterface i=()->Sopn("m1 method implementation")
+    }
+}
+
+No need to create implementation of interface
+In a nutshell just use lamda and implement the method directly
+----Standard way..create a class implements runnable.. pass an instance of this class to thread object
+class Multi3 implements Runnable{
+public void run(){
+System.out.println("thread is running...");
+}
+
+public static void main(String args[]){
+Multi3 m1=new Multi3();
+Thread t1 =new Thread(m1);   // Using the constructor Thread(Runnable r)
+t1.start();
+ }
+
+----Anonymous class way
+Thread t = new Thread(new Runnable() {
+public void run(){
+System.out.println("Hello world");
+}
+});
+t.start;
+-------------Lambda----------------
+Thread t= new Thread(()->(System.out.println("Hello world"));
+Note: concrete implementation of functional interface
+Runnable r1=()->(System.out.println("Hello world"));
+Runnable r2=(new Runnable() {
+            public void run(){
+            System.out.println("Hello world");
+            }
+Lambda expression can be passed to a function that is expecting a functional interface
+a concrete implementation of functional interface...
+interface intf{
+    public void func();
+}
+
+public class mainClass{
+    public static void main(String args[]){
+        intf i1=()->(System.out.println(m1));
+        intf i2=()->(System.out.println(m2));
+        i1.func();
+        i2.func();
+    }
+}
+Lambdas are used to pass different behaviours
+
+public static String processFile() throws IOException{
+    try{
+    BufferedReader br = new BufferedReader(new FileReader("data.text"));
+    }
+    return br.readLine;
+}
+
+//what if you want to read 2 lines
+
+public static String processFile() throws IOException{
+    try{
+    BufferedReader br = new BufferedReader(new FileReader("data.text"));
+    }
+    return br.readLine;
+}
+
+@FunctionalInterface
+public interface BufferedReaderInterface{
+    public String process(BufferedReader br);
+}
+
+Rewrite method
+public static String processFile(BufferedReaderInterface bri) throws IOException{
+    try{
+    BufferedReader br = new BufferedReader(new FileReader("data.text"));
+    }
+    return bri.process(br);
+}
+
+Implementations
+processFile((BufferedReader br)->br.readLine()+br.readLine);
+processFile((BufferedReader br)->br.readLine());
+
+List<Integer> l= new ArrayList<Integer>();
+Collections.sort(l,(a,b)->(a-b))
+
+INHERITANCE_____________________________
+Java does not support multiple inheritance
+A Java class can only extend one parent class. Multiple inheritance (extends) is not allowed.
+Interfaces are not classes, however, and a class can implement more than one interface.
+An interface can extend from another interface
+Abstract class may not necessarily have abstract method
+if it has abstract method then abstract class should be overridden
+otherwise child class should be declared abstract
+abstract class or interface cannot be instantiated
+Proof:
+Both B and C implement m1 method
+
+Class A extends B, C{
+
+public static void main (String args[]){
+        A a_obj= new A();
+        a_obj.m1();
+    }
+//ambiguity //compiler doesnt know which method to call
+}
+//diamond problem
+Grandfather
+  /      \
+ Parent 1  Parent 2
+  \           /
+    Child
+
+ Grandfather has m1, Parent 1 has implemntation of m1, Parent 2 has implementation of m1
+ Child instance on invoking m1 doesnt know which version of method to call (diamond problem)
+
+2)
+Java 8 supports default methods where interfaces can provide a default implementation of methods.
+And a class can implement two or more interfaces.
+In case both the implemented interfaces contain default methods with the same method signature,
+the implementing class should explicitly specify which default method is to be used in some method
+Java 1.8  interfaces with default methods
+//java 1.8 B and C are interfaces with default m1 method
+Class A implements B, C{
+
+public static void main (String args[]){
+        A a_obj= new A();
+        a_obj.m1();
+    }
+//ambiguity //compiler doesnt know which method to call
+//A should provide implementation
+    public void m1(){
+        B.super.m1();
+        //C.super.m2();
+    }
+}
+You have to add an implementation of default method in child class
+otherwise you will have a compilation error
+
+Why do you can have static methods in public interface? They are invoked by using interface name only
+to define general utility methods
+
+Interface static class, can be redefined in child class but its not overriding
+if you redefine without static , compiler wont give a compiler time error
+if you redefine normal base class with private static, compiler wont give a compile time error
+
+https://www.interviewbit.com/java-8-interview-questions/#what-is-default-method-and-why-is-it-needed
+
+A method in the interface that has a predefined body is known as the default method. It uses the keyword default. default methods were introduced in Java 8
+to have 'Backward Compatibility in case JDK modifies any interfaces(adds new features). In case a new abstract method is added to the interface, all classes implementing
+ the interface will break and will have to implement the new method. With default methods, there will not be any impact on the interface implementing classes.
+  default methods can be overridden if needed in the implementation. Also, it does not qualify as synchronized or final.
+  So, if a developer wanted to add a new method to an interface, then the implementation code must be provided in the class that is implementing the interface.
+  To cater to this issue, default methods allow the interfaces to have methods with implementation without affecting the classes that implement the interface.
+
+ public default String m1()
+
+ 10. What are the various categories of pre-defined function interfaces?
+ Function: To transform arguments in returnable value.
+
+ Predicate: To perform a test and return a Boolean value.
+
+ Consumer: Accept arguments but do not return any values.
+
+ Supplier: Do not accept any arguments but return a value.
+
+ Operator: Perform a reduction type operation that accepts the same input types
+
+ Consumer is functional interface that takes a single argument and returns nothing.
+ We have used consumer functional interface in 3 ways.
+ For each uses consumer
+
+
+ Optional
+ The ifPresent() method enables us to run some code on the wrapped value if it's found to be non-null. Before Optional, we'd do:
+
+ if(name != null) {
+     System.out.println(name.length());
+ }
+ Copy
+ This code checks if the name variable is null or not before going ahead to execute some code on it. This approach is lengthy, and that's not the only problem — it's also prone to error.
+
+
+ AD
+
+ Indeed, what guarantees that after printing that variable, we won't use it again and then forget to perform the null check?
+
+ This can result in a NullPointerException at runtime if a null value finds its way into that code. When a program fails due to input issues, it's often a result of poor programming practices.
+
+ Optional makes us deal with nullable values explicitly as a way of enforcing good programming practices.
+
+ Let's now look at how the above code could be refactored in Java 8.
+
+ In typical functional programming style, we can execute perform an action on an object that is actually present:
+
+ @Test
+ public void givenOptional_whenIfPresentWorks_thenCorrect() {
+     Optional<String> opt = Optional.of("baeldung");
+     opt.ifPresent(name -> System.out.println(name.length()));
+ }
+ Copy
+ In the above example, we use only two lines of code to replace the five that worked in the first example:
+  one line to wrap the object into an Optional object and the next to perform implicit validation as well as execute the
+  code.
+
+  We briefly explored some reasons why we would choose to use Optional instead of explicit null checking
+  and input validation.
+
+  //concurrent hashmap
+  //aop
+  //executor and executor service
+  //blockingqueue
+  //semaphores
+  //deadlock and race around condition
+  //web services spring
+  //speak on parallelization

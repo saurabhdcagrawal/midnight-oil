@@ -55,19 +55,6 @@ public class PracticalArrayProblems {
     }
 
 
-    public int rob(int[] nums) {
-        if(nums.length==0) return 0;
-        if(nums.length==1) return nums[0];
-        int[] max_amt = new int[nums.length] ;
-        max_amt[0]=nums[0];
-
-        max_amt[1]=Math.max(nums[0],nums[1]);
-        for(int i=2;i<nums.length;i++)
-            max_amt[i] =Math.max((max_amt[i-2]+nums[i]),max_amt[i-1]);
-        return max_amt[nums.length-1];
-    }
-
-
     //find longest parentheses
     // ((()
     //())))
@@ -255,26 +242,11 @@ public class PracticalArrayProblems {
         return pq.poll();
     }
 
-    public int numRescueBoats(int[] people, int limit) {
-        Arrays.sort(people);
-        int i=0,j=people.length-1,count=0;
-        while(i<=j){
-            count++;
-            if(people[i]+people[j]<=limit)
-                i++;
-            j--;
-        }
-        return count;
-    }
 
     public static void main(String[] args) {
 	int [] prices ={7,6,9,1,10};
 	PracticalArrayProblems instance = new PracticalArrayProblems();
      System.out.print(instance.getMaxProfit(prices));
-     System.out.println("Robbing");
-     int[] house={2,7,9,3,1};
-     System.out.println("Robbing house results");
-     System.out.println(instance.rob(house));
      System.out.println("Hamming distance results");
 
     }

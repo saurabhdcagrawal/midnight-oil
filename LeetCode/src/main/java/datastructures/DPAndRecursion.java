@@ -173,6 +173,27 @@ public class DPAndRecursion {
         return paths[m-1][n-1];
     }
 
+    public int minPathSum(int[][] grid) {
+        int m=grid.length;
+        int n=grid[0].length;
+        int[][] minCostGrid= new int[m][n];
+        minCostGrid[0][0]=grid[0][0];
+        for(int i=0;i<m;i++){
+            for(int j=0;j<n;j++){
+                if(i==0 & j==0)
+                    continue;
+                else if(i==0)
+                    minCostGrid[i][j]=minCostGrid[i][j-1]+grid[i][j];
+                else if(j==0)
+                    minCostGrid[i][j]=minCostGrid[i-1][j]+grid[i][j];
+                else
+                    minCostGrid[i][j]=Math.min(minCostGrid[i-1][j],minCostGrid[i][j-1])+grid[i][j];
+            }
+        }
+
+        return minCostGrid[m-1][n-1];
+    }
+
     //start with highest denomination...
     //denoms={25,10,5,1}
    /* public static int coinProblemRecurse(int n, int[] denoms){
@@ -542,7 +563,7 @@ public class DPAndRecursion {
     //example how dp runs till n; n includes and not n+1
     //can skip more than 1 houses e.g //[2,1,1,2]
     public static int rob(int[] nums) {
-        int n=nums.length;
+        /*int n=nums.length;
         int[] dp = new int[n];
         if(nums.length==1)
             return nums[0];
@@ -551,23 +572,28 @@ public class DPAndRecursion {
         for(int i=2;i<n;i++)
             dp[i]=Math.max(dp[i-1],dp[i-2]+nums[i]);
         System.out.println(Arrays.toString(dp));
-        return dp[n-1];
+        return dp[n-1];*/
+        int n= nums.length;
+        int[] dp = new int[n+1];
+        dp[0]=0;
+        dp[1]=nums[0];
+        for(int i=2;i<=n;i++){
+            dp[i]=Math.max(dp[i-2]+nums[i-1],dp[i-1]);
+        }
+
+        return dp[n];
     }
     public int robConstantMemory(int[] nums) {
-        int n=nums.length;
-        int[] dp = new int[n];
-        if(nums.length==1)
-            return nums[0];
-        int maxMoneyFromTwoHousesAway=nums[0];
-        int maxMoneyFromOneHouseAway=Math.max(nums[0],nums[1]);
-        //we are incrementing by one step, so one step away cost is our recurrence relation
-        for(int i=2;i<n;i++){
-            int temp =maxMoneyFromOneHouseAway;
-            maxMoneyFromOneHouseAway=Math.max(maxMoneyFromOneHouseAway,maxMoneyFromTwoHousesAway+nums[i]);
-            maxMoneyFromTwoHousesAway=temp;
+        int n= nums.length;
+        int oneBack=nums[0];
+        int twoBack=0;
+        for(int i=2;i<=n;i++){
+            int result=Math.max(twoBack+nums[i-1],oneBack);
+            twoBack=oneBack;
+            oneBack=result;
         }
-        System.out.println(maxMoneyFromOneHouseAway);
-        return maxMoneyFromOneHouseAway;
+
+        return oneBack;
     }
 
     public int robCircularHouses(int[] nums) {

@@ -1,0 +1,54 @@
+Relationships between objects in Java
+Composition is a belongs to relationship
+Strong has a relationship
+Room belongs to building
+If we destroy the containing object the contained object is also destroyed
+
+Model with non static inner class
+Its important that inner class is non static since it binds all its instances
+to the containing class
+Class Building{
+    List<Room> rooms;
+    class Room{}
+}
+
+
+class Building{
+    class InlineRoom implements Room{
+        @Override
+        void doInRoom(){}
+        }
+    }
+    return new InlineRoom();
+
+}
+
+2) Aggregation has a relationship.car has wheels
+however it doesnt involve owning..as a result the lifecycle of the objects is not tied
+They can exist independently of each other
+static inner class or plain old java reference
+
+class Wheel{}
+class Car{
+List<Wheel> wheels
+}
+
+
+class Car {
+    List<Wheel> wheels;
+    static class Wheel {}
+}
+
+3) Association weakest relationship..it isnt has a relationship
+Objects only know each other
+Mother and child
+both have reference of each other
+
+class Child{
+Mother mother;
+}
+class Mother{
+    List<Child> children
+}
+
+Tesseract is for open cv

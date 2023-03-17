@@ -527,9 +527,54 @@ public class BTreeNode{
         return (isSubtree(root.left,subRoot)||isSubtree(root.right,subRoot));
     }
 
+        public static final String DELIM=",";
+
+        // Encodes a tree to a single string.
+        public static String serialize(BTreeNode root) {
+            StringBuilder sb= new StringBuilder();
+            encode(root,sb);
+            sb.deleteCharAt(sb.length()-1);
+            return sb.toString();
+        }
+
+        public static StringBuilder encode(BTreeNode root,StringBuilder sb){
+            if(root==null){
+                sb.append("null");
+                sb.append(DELIM);
+                return sb;
+            }
+            sb.append(root.data);
+            sb.append(DELIM);
+            encode(root.left,sb);
+            encode(root.right,sb);
+            return sb;
+        }
+
+
+        // Decodes your encoded data to tree.
+        public static BTreeNode deserialize(String data) {
+            if(data==null||data.isEmpty())
+                return null;
+            String[] dataArr= data.split(",");
+            List<String> dataList= new LinkedList<String>(Arrays.asList(dataArr));
+            return decode(dataList);
+
+        }
+        public static BTreeNode decode(List<String> dataList) {
+            if(dataList.get(0).equals("null")){
+                dataList.remove(0);
+                return null;
+            }
+            String val= dataList.get(0);
+            dataList.remove(0);
+            BTreeNode root= new BTreeNode(Integer.parseInt(val));
+            root.left=decode(dataList);
+            root.right=decode(dataList);
+            return root;
+        }
 //Preorder DFS... Printing data
 //1,2,null,null,3,4,null,null,5,null,null,
-    public static String serialize(BTreeNode root){
+    /*public static String serialize(BTreeNode root){
             if(root==null)
                 return "null,";
 
@@ -556,7 +601,7 @@ public class BTreeNode{
             root.left=deserialize(data);
             root.right=deserialize(data);
             return root;
-    }
+    }*/
 
 //if one traversal is inorder then the binary tree can be created
    //W Construct Binary Tree from Preorder and Inorder Traversal
@@ -856,7 +901,36 @@ public class BTreeNode{
             return left!=null?left:right;
 //thi is propogating //findLCA(root.left,root.right)
     }
+    public BTreeNode lowestCommonAncestorII(BTreeNode root, BTreeNode p, BTreeNode q) {
+        //A way to avoid the class level variables is by using an array as arrays are passed by reference in Java.
+        //primitives are passed by value... this wont work if we use a simple int variable
+        //pass by reference-> called function can change the state of the argument(variable) as the address of variable is sent
+        //pass by value-->changes only reflected locally in called function, a copy of value is sent..
+        //original value (or address) is not impacted
+        int[] state=new int[1];
+        BTreeNode LCA=searchLCA(root,p,q,state);
+        //System.out.println(state);
+        return state[0]==2?LCA:null;
+    }
 
+    public BTreeNode searchLCA(BTreeNode root, BTreeNode p, BTreeNode q,int[] state) {
+
+        if(root==null)
+            return root;
+
+        BTreeNode left= searchLCA(root.left,p,q,state);
+        BTreeNode right= searchLCA(root.right,p,q,state);
+
+        if(root==p||root==q){
+            state[0]++;
+            return root;
+        }
+
+        if(left!=null && right!=null)
+            return root;
+        else
+            return left==null?right:left;
+    }
 
 
 

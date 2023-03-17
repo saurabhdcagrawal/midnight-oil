@@ -3,6 +3,8 @@ Scalability may be needed because of increased data volume or because of more wo
 It comes at the cost of performance
 A scalable architecture helps to balance the load across different nodes
 Following types of scaling
+As the system grows (in data volume, traffic volume, or complexity),
+there should be reasonable ways of dealing with that growth
 
 Horizontal scaling-> Add more servers/machines in your pool of resources to meet growing need.
 
@@ -10,13 +12,17 @@ Vertical Scaling-> Needs downtime, limited by server capacity.. Increase the res
 
 2) A system is Reliable if it continues to deliver services even if one or more of its hardware or software components fail.
 It is achieved with the help of redundancy of data and software components
-
+The system should continue to work correctly (performing the correct function at the desired level of performance)
+even in the face of adversity
+(hardware or software faults, and even human error)
 3) Availability is how long a system is available to do its function
 High reliability guarantees high availability but not vice versa
 
 4) Efficiency generally for a DS it is throughput and latency
 
 5) Serviceability or Manageability is the ease with which system can be maintained or repaired.
+Over time, many different people will work on the system (engineering and operations, both maintaining current behavior
+and adapting the system to new use cases), and they should all be able to work on it productively
 
 6)Load Balancing - Loan balancing is used to improve the availability and responsiveness, increase the efficiency of the system,
 remove single point of failure,reduce wait time. A load balancer is a hardware/software component that
@@ -434,3 +440,8 @@ Therefore, in the scenarios where the accuracy of the algorithm is critical,one 
 decision of adopting ML algorithms.
 . In summary, one can not treat the mistakes made by a ML model simply as bugs in the software.
 It requires a holistic approach to improve the model, rather than patching the model case by case.
+
+
+
+Design data intensive applications
+to achieve: reliable, scalable, and maintainable data systems

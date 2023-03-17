@@ -615,5 +615,47 @@ class Solution {
 
         }
     }
+//Maze
+    public boolean hasPath(int[][] maze, int[] start, int[] destination) {
+
+        int m= maze.length;
+        int n=maze[0].length;
+
+        boolean[][] visited = new boolean[m][n];
+
+        Queue<int[]> q = new LinkedList<int[]>();
+        q.add(start);
+        visited[start[0]][start[1]]=true;
+        return bfs(q,maze,visited,m,n,destination);
+    }
+
+    public boolean bfs(Queue<int[]>q, int[][] maze,boolean[][] visited,int m, int n,int[] destination){
+        while(!q.isEmpty()){
+            int[] point=q.poll();
+            int i= point[0];
+            int j=point[1];
+            if(i==destination[0] && j==destination[1])
+                return true;
+            int[] x_dir= {-1,0,1,0};
+            int[] y_dir= {0,1,0,-1};
+            for(int k=0;k<x_dir.length;k++){
+                int new_i=i+x_dir[k];
+                int new_j=j+y_dir[k];
+                //propogating in same direction//keep rolling//if gate is hanging it will keep rolling
+                while(new_i>=0 && new_i<m && new_j>=0 && new_j<n && maze[new_i][new_j]==0){
+                    new_i+=x_dir[k];
+                    new_j+=y_dir[k];
+                }
+                //hit a wall
+                //the posn just before it hit a wall
+                //queue will have all positions before it hit a wall
+                if(!visited[new_i-x_dir[k]][new_j-y_dir[k]]){
+                    visited[new_i-x_dir[k]][new_j-y_dir[k]]=true;
+                    q.add(new int[]{new_i-x_dir[k],new_j-y_dir[k]});
+                }
+            }
+        }
+        return false;
+    }
 
 }

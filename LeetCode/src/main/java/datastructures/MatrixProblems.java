@@ -466,6 +466,8 @@ public class MatrixProblems {
         return Integer.MAX_VALUE;
     }
     //bfs guarantees shortest path
+    public static int INF=Integer.MAX_VALUE;
+
     public void wallsAndGatesOptimized(int[][] rooms) {
         if(rooms.length==0)
             return;
@@ -482,21 +484,18 @@ public class MatrixProblems {
         }
 
         while(!q.isEmpty()){
-            int[] point=q.poll();
-            int i=point[0];
-            int j=point[1];
-            int[] x_off = {-1, 0, 1, 0};
-            int[] y_off = {0, 1, 0, -1};
-            for(int k=0;k<x_off.length;k++){
-                int new_i=i+x_off[k];
-                int new_j=j+y_off[k];
-                //wall is approached ..or distance is already computed...since we override the value
-                if(new_i<0||new_i>=m||new_j<0||new_j>=n||rooms[new_i][new_j]!=EMPTY)
-                    continue;
-                //start from the gate
-                rooms[new_i][new_j]=rooms[i][j]+1;
-                //add normal room to gate
-                q.add(new int[]{new_i,new_j});
+            int[] point = q.poll();
+            int i= point[0];
+            int j= point[1];
+            int[] x_dir= {-1,0,1,0};
+            int[] y_dir= {0,1,0,-1};
+            for(int k=0;k<x_dir.length;k++){
+                int new_i=i+x_dir[k];
+                int new_j=j+y_dir[k];
+                if(new_i>=0 && new_i<m && new_j>=0 && new_j<n && rooms[new_i][new_j]==INF){
+                    rooms[new_i][new_j]=1+rooms[i][j];
+                    q.add(new int[]{new_i,new_j});
+                }
             }
         }
     }
