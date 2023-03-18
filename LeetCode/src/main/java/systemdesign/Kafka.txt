@@ -60,6 +60,7 @@ Partition:
 	every message in a partition gets an incremental id called Kafka partition offset
 	Kafka topics are immutable..once the data is written to the partition..it cannot be changed
 	Once sent to a topic, a message can be modified?
+	Each partition will have message from one or more topics?
 	
 Offset
 	Multiple services are reading from the same stream of data thats an advantage for eg truck GPS goes to location dashboard and notification service
@@ -73,29 +74,42 @@ Offset
 Producers 
 	They write data to topics(which made to partitions)
 	Producers know to which partition to write to and which Kafka broker has it (producer knows/decides in advance)
-	In case of Kafka broker failures producers will automatically recover
+	In case of Kafka broker failures producers will automatically recover?	
+	Producers send data across all partitions (load balancing) based on some mechanism --this is how kafka scales
+	Each partition will have message from one or more topics
 
-Key: Producer can add keys to messages.. if key is null, then data is sent round robin
-if key!= null then messages for same key will go to same partition for eg truck id..where we want to get continuos set of data
-jkey is sent for message ordering
-Key binary+Value-Binary+Compression+Headers(optional ) key value pair+partition+offset+timestamp(set by system or user)
-This kafka message gets sent to kafka for storage
+Message Keys 
+	Producer can add keys to messages (String,number, binary)
+	A key is sent when you need message ordering for a specific field
+	if key is null, then data is sent round robin
+	if key!= null then messages for same key will go to same partition (hashing strategy)
+	for eg provide truck id as key of messages..where we want to get continuos set of data for position... 
+	Key(binary)+Value(binary) i.e message content +Compression(lz4,gzip) +Headers.i.e key value pair(optional ) +partition+offset+timestamp(set by system or user)
+	This kafka message gets sent to kafka for storage
 
 Kafka Message Serializer
-Accept bytes as input from producers and sends bytes as outputs to consumers
-We perform serialization..transform data into bytes..used into value and key.. IntegerSerializer and Value serializer
+	Accept bytes as input from producers and sends bytes as outputs to consumers
+	We perform serialization-transform object/data into bytes
+	They are used into value and key
+	Key=123; Value="Hello World" KeySerializer=IntegerSerializer and Value serializer= StringSerializer
+	Common serializer->Int,Float String, Avro,ProtoBuf
 
-Kafka partioner (code logic that takes a record and determines to which partition to send it to) ..More on this?
+Kafka partioner 
+	Code logic (resides in producer) that takes a record and determines to which partition to send it to
 
 Consumers
-They read data from a topic (pull model)
-A consumer may read data from one or more partition.. consumers know which broker to reader from
-They know how to recover
-Data is read in order from low to high offsets
+	They read data from a topic(identified by a name) (pull model)
+	A consumer may read data from one or more topic partition
+	Consumers will know which broker to reader from
+	Consumers will know how to recover if a broker fails
+	Data is read in order from low to high offsets within each partition
+	No ordering between partitions but only within a partition
 Consumer deserialize--transform bytes into object used on both key and value of the message(can be for Integer string Avro protobuf)
-Consumer needs to know in advance what is the expected format for your key and value
-During the topic lifecycle, once the topic ic created, You must not change the type of data which is sent by the producers
-otherwise you are going to change the consumers... You can create a new topic instead.. and reprogram consumers
+	Consumer needs to know in advance what is the expected format for your key and value
+	During the topic lifecycle, once the topic ic created, you must not change the type of data which is sent by the producers
+	otherwise you are going to break the consumers
+	Instead You can create a new topic instead and consumers will have to be reprogrammed
+	
 Consumer group-> A group of consumers who read from the partitions covering a topic
 Multiple consumer groups can read from one topic
 However within a consumer group, one partition can be assigned to only one consumer
@@ -138,47 +152,71 @@ Topic replication factor
 	Broker 101			Broker 102 			 Broker 103
 	Topic-A Part 0		Topic A Part 1 		 Topic-A Part 1(repl)
 						Topic-A Part 0(repl)
+						
+	In above if Broker 101 goes down broker 101 and broker 103 can still serve the data	
 	
+Leader of a partion	
 	There can be however only 1 leader for a partition at a given time
-	Producers will send data to leader to the leader of the partition, the other brokers will replicate the data ..if its fast enough we call it ISR
+	By default Producers will send data to leader only to the leader of the partition
+	Other brokers will replicate the data ..if its fast enough we call it ISR (In sync replica)
 	Each partition has one leader and multiple ISR
-
-Kafka v2.4( possible to read the data from the closest replica) to improve latency, performance
-Producer acknowledgement--> acks=0 producer will not wait for acknowledgement from broker that write happened(possibl data loss)
-acks=1 producer will wait for leader to acknowledge(limited data loss)
-acks=all (all in sync replicas to provide confirmation) -> no data loss
+	Similarly by default Kafka comsumers will rrequest/read data from the leader of the partition
+	By default :In the event the leader broker of a partition goes down then an ISR can become a new leader and serve data for producer and consumer
+	
+Newer Kafka versions
+	Kafka v2.4( possible to read the data from the closest replica) to improve latency, performance
+	Called Kafka Consumers replica fetching
+	Decrease network cost if using the cloud
+	
+Producer acknowledgement
+	Producers send data to brokers that have topic partitions
+	acks=0 producer will not wait for acknowledgement from broker that write happened(possibl data loss) because if broker goes down we wont know about it
+	acks=1 producer will wait for leader to acknowledge(limited data loss)
+	acks=all (all in sync replicas to provide confirmation) -> no data loss
 
 Kafka topic durability
-if you have replication factor of N, you can still loose N-1 brokers and recover your data
+	If you have replication factor of N, you can still loose N-1 brokers and recover your data
 
 Zookeeper
-manages brokers(keeps a list of them)
-helps in performer leader elections
-sends notification to kafka in case of changes( new broker, broker dies, broker comes up, delete topics)
+	a software
+	manages brokers(keeps a list of them)
+	helps in performer leader elections (whenever a broker goes down)
+	sends notification to Kafka ? in case of changes( new topic created, broker dies, broker comes up, delete topics, etc)
+	Apache zookeeper used by kafka for storing metadata for the users?
+	Since the beginning of Kapka, a companion to brokers (Kafka 2.x cannot work without zookeeper)
+	Starting with 3.x Kafka raft mechanism , it can work without zookeeper
+	Kafka 4.0 will work without zookeeper (Still done? not production ready yet)
+	Zookeeper by design operates with an odd number of servers(1,3,5,7)
+	Zookeeper cluster (1 leader for writes and rest are followers (reads))
+	Below were configured to be connected to zookeeper before
+		Producer
+		Consumer
+		Kafka Clients
+		Admin Clients
+	But now never use zookeeper as a configuration in your kafka clients..
+	Over time the kafka clients  and CLI have been migrated to leverage the brokers as a connection instead of zookeeper
+	Since Kafka 0.10 consumers store offsets in kafka topics and consumer must not connect to zookeeper
+	Since Kafka 2.2 kafka-topics.sh CLI commands references Kafka brokers and not zookeeper for topic management (creation, deletion)
+	The Zookeeper CLI is deprecated
+	All API's and commands that were previously leveraging Zookeeper are migrated to use Kafka instead so that in future when cluster is migrated to be without zookeeper,
+	the change will be invisible to clients
+	Kafka 3.x implements kraft to replace zookeeper
+	Zookeeper is less secure and care should be taken to ensure ports are open to allow traffic only from Kafka brokers and not Kafka clients
+	Basically modern day developer will never use zookeeper as configuration in your kafka clients and other programs that connect to Kafka
+	Do not connect to Zookeeper, only connect to Kafka
+	3 zookeepers managing 3 brokers// in new system only 3 brokers, one is designated as leader to replace zookeeper function
 
-Apache zookeeper used by kafka for storing metadata for the users
-Used for leader election
-Keeps list of brokers
-Sends notification to brokers.. kafka until 2.x cannot work without zookeper
-starting with 3.x Kafka raft mechanism , it can work without zookeeper
-kafka 4.0 can work without zookeeper
-Zookeeper by design operates with an odd number of servers(1,3,5,7)
-Zookeeper cluster (1 leader for writes and rest are followers (reads))
-Kafka clients were configured to be connected to zookeeper,,before
-But now never use zookeeper as a configuration in your kafka clients..over time the kafka clients  and CLI have been migrated to leverage the brokers as a connection
-instead of zookeeper
-Since Kfka 0.10 offsets are stored in kafka topics and consumer must not connect to zookeeper
-Since Kafka 2.2 kafka-topics.sh CLI commands Kafka brokers and not zookeeper for topic management
-With more than 100,000 partitions in cluster, zookeeper was having scaling issues
-Kafka 3.x implements kraft to replace zookeeper
-Zookeeper is less secure and care should be taken to ensure ports are open to allow traffic only from Kafka brokers and not Kafka clients
-Basically modern day developer will never use zookeeper as configuration in your kafka clients and other programs that connect to Kafka
- 3 zookeepers managing 3 brokers// in new system only 3 brokers, one is designated as leader to replace zookeeper function
 
-
-
-
-
+Kafka kRaft (come back to this )
+	In 2020 Kafka project started to remove zookeeper dependency
+	With more than 100,000 partitions in cluster, zookeeper was having scaling issues
+	Now w/o Zookeeper scales to millions of partitions , easier to maintain and setup
+	improves stability makes it easier to monitor, support and administer
+	Single Security Model for the whole system
+	Faster controller shutdown and recovery time
+	Kafka 3.x implements Kraft 
+	Gives performance improvement
+	how to launch a cluster in Kraft mode
 
 
 
