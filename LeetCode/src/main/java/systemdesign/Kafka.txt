@@ -110,23 +110,42 @@ Consumer deserialize--transform bytes into object used on both key and value of 
 	otherwise you are going to break the consumers
 	Instead You can create a new topic instead and consumers will have to be reprogrammed
 	
-Consumer group-> A group of consumers who read from the partitions covering a topic
-Multiple consumer groups can read from one topic
-However within a consumer group, one partition can be assigned to only one consumer
-To create distinct consumer groups we will use consumer property group.id
+Consumer group-> 
+	A group of consumers who read from the partitions covering a topic
+	All consumers in an application read data as a consumer group
+	Group is reading from the Kafka topic as a whole
+	Multiple consumer groups can read from one topic
+	However within a consumer group, one partition can be assigned to only one consumer
+	To create distinct consumer groups we will use consumer property group id
+	
+	Topic-A Part 0		Topic A Part 1 		Topic-A Part 2
+	Consumer 1			Consumer 2			Consumer 3		Consumer 4 (Inactive)
+	
+	<----------------------------Consumer Group--------------------------------->
+	To create distinct consumer groups use property group.id
 
-kafka stores offset at which consumer group has been reading..Why consumer group here.. More on this?
-The offsets are in the Kafka topic name of __consumer_offsets and are periodically committed
-If a consumer dies, it will be able to read back from where it left off thanks to the committed consumer offsets
+Consumer offsets
+	Kafka stores offset at which consumer group has been reading..Why consumer group here.. Is it a single value(highest) or multiple values of each consumer?
+	The offsets are in the Kafka topic name of __consumer_offsets and are periodically committed when a consumer in a group has processed data from Kafka
+	By this information we will be able to store how far a topic a consumer group has read
+	The Kafka broker will write to __consumer_offsets
+	If a consumer dies, it will be able to read back from where it left off, thanks to the committed consumer offsets
 
 Delivery strategy-semantics
-Java consumer by default will commit at least once (right after the message is processed)
-Our processing should be idempotent so reprocessing the message has no impact
+	At least once
+		Java consumer by default will commit at least once (right after the message is processed)
+		This is usually preferred. However this can lead to reprocessing of the same message
+		Our processing should be idempotent so reprocessing the message has no impact
 
-At most once--> as soon as me/ssage is received..if processing goes wrong some messages will be lost
-
-Exactly once--->Use the transactional API
-
+	At most once--> 
+		As soon as message is received by consumers offsets are committed
+		..if processing goes wrong some messages will be lost because we have committed offsets sooner than we have processed them
+		(This will happen if we reread message from the next commit after lets say 4262 onwards)
+	
+	Exactly once--->
+		For Kafka->Kafka workflows Use the transactional API
+		For Kafka->External system workflows use an idempotent consumer
+		
 Kafka brokers: 
 	A Kafka cluster is composed of multiple brokers(server)
 	Each broker identified by an id (integer)
