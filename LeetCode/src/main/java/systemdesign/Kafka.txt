@@ -277,17 +277,17 @@ Kafka Topics CLI
 		localhost has only one broker
 		cannot create a topic with a replication factor > 1 in localhost 
 #List topic
-	kafka-topics.sh --bootstrap-server localhost:9092 --list
+	sh kafka-topics.sh --bootstrap-server localhost:9092 --list
 
 #Describe topic
-	kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --describe
+	sh kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --describe
 	Response
 		Topic: first_topic      TopicId: x3oItUuxQeK7oNhuvfJMMw PartitionCount: 3       ReplicationFactor: 1    Configs: segment.bytes=1073741824
 				Topic: first_topic      Partition: 0    Leader: 0       Replicas: 0     Isr: 0
 				Topic: first_topic      Partition: 1    Leader: 0       Replicas: 0     Isr: 0
 				Topic: first_topic      Partition: 2    Leader: 0       Replicas: 0     Isr: 0
 #Delete Topic
-	kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --delete
+	sh kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --delete
 	
 
 Kafka Producer CLI
@@ -363,15 +363,77 @@ Actual order
 
 Thus you dont get full ordering but you get ordering within partition
 
+Kafka Consumer Group CLI
+
+	Each partition goes to one consumer in a group
+	#Create consumer group by giving a group name --group parameter
+	sh kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic second_topic --group my-first-application
+	
+	#Create 2 consumers like above
+	Partition will be divided among the above 2 consumers and any messages sent to second topic will come to the consumer based on partition assigned
+	Shows power of Kafka. Messages spread across all consumers
+	4 consumers for 3 partitions... one consumer will never be reading any data
+	Number of consumers in group application<= total number of partitions
+	#When he restarted a given consumer , messages appeared.. if there was  a lag.. 
+	To replicate, send a lot of messages in topic, quickly close a consumer and start again
+	#Question--> if you stop a consumer in a group, wouldnt the partition be re-assigned to another consumer(rebalance)? instead of waiting on the old consumer to start
+	#Solved---> only 1 consumer at a time, all partitions go to same consumer... once you stop and write to topic, then you restart consumer, messages would appear (lag)
+	#Same topic second consumer group
+	Without from beginning you only see messages once the consumer/consumer group has been launched
+	With from beginning you see the messages since inception
+	sh kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic second_topic --group my-second-application --from-beginning
+	
+	Shows all messages in that topic.. once a consumer has read, consumer offset has been committed
+	If you run one more time , consumer offset has been comitted, from beginning would not show old messages
+	
+	
+	
 
 
 
 
 
+---------------------Kafka Java------------------------------------------------
+
+Official SDK for Apache kafka is the Java SDK
+https://www.conduktor.io/kafka/kafka-sdk-list/ for all languages
+
+kafka clients
+slf4j api
+sl4j simple
 
 
+dependencies {
+    // https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients
+    implementation 'org.apache.kafka:kafka-clients:3.1.0'
 
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    implementation 'org.slf4j:slf4j-api:1.7.36'
 
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-simple
+    implementation 'org.slf4j:slf4j-simple:1.7.36'
+}
+
+File->Settings->Build,Execution & deployment->Buld Tools->Gradle->Build and run using Intellij(instead of Gradle)	
+Trick
+
+Issues on Java connectivity
+https://www.udemy.com/course/apache-kafka/learn/lecture/11567132#questions/17130518
+
+Step1
+First, stop Kafka and Zookeeper.
+Then, please run these commands on your end, on WSL2, one by one
+
+sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
+sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
+
+When the two commands have succeeded, relaunch Zookeeper and Kafka
+
+Step2 In Kafka /config/server.properties file add below
+
+advertised.listeners=PLAINTEXT://127.0.0.1:9092
+listener.security.protocol.map=PLAINTEXT:PLAINTEXT
+listeners=PLAINTEXT://0.0.0.0:9092
 
 
 
