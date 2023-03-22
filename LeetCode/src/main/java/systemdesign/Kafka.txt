@@ -1,4 +1,4 @@
-------------Kafka--Section 1 Stephen Maarek
+------------Kafka--Section 1 Udemy
 
 1) Kafka Introduction
 
