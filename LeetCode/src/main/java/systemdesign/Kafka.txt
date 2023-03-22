@@ -125,6 +125,9 @@ Consumer group->
 	
 	<----------------------------Consumer Group--------------------------------->
 	To create distinct consumer groups use property group.id
+	Same command is used to create kafka consumer and consumer group, the only difference being that the consumer group
+	uses group id property
+	Without this every consumer created uses a random group id
 
 Consumer offsets
 	Kafka stores offset at which consumer group has been reading..Why consumer group here.. Is it a single value(highest) or multiple values of each consumer?
@@ -275,7 +278,11 @@ Kafka Topics CLI
 	sh kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --create --partitions 3 --replication-factor 1
 	Note	
 		localhost has only one broker
-		cannot create a topic with a replication factor > 1 in localhost 
+		cannot create a topic with a replication factor > 1 in localhost
+		Question?
+		When a topic is auto-created, how many partitions and replication factor does it have by default?
+			by default it's 1 & 1, but these can be controlled by the settings num.partitions and default.replication.factor
+
 #List topic
 	sh kafka-topics.sh --bootstrap-server localhost:9092 --list
 
@@ -367,6 +374,7 @@ Kafka Consumers in Group
 
 	Each partition goes to one consumer in a group
 	#Create consumer group by giving a group name --group parameter
+	#uses same kafa console consumer
 	sh kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic second_topic --group my-first-application
 	
 	#Create 2 consumers like above
@@ -434,7 +442,25 @@ my-second-application second_topic    2          35              35             
 	console-consumer-79678
 	
 	
-Reset Offsets of a consumer group	
+Reset Offsets of a consumer group
+#reset offset (earliest the data exist in job , dry run will not execute but show you how the odffsets will be )
+#note it needs also topics
+	sh kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group my-second-application --reset-offsets --to-earliest --dry-run --topic second_topic
+#Response
+	GROUP                          TOPIC                          PARTITION  NEW-OFFSET
+	my-second-application          second_topic                   0          0
+	my-second-application          second_topic                   1          0
+	my-second-application          second_topic                   2          0	
+	
+	sh kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group my-second-application --reset-offsets --to-earliest --execute --topic second_topic
+#Response
+	GROUP                          TOPIC                          PARTITION  NEW-OFFSET
+	my-second-application          second_topic                   0          0
+	my-second-application          second_topic                   1          0
+	my-second-application          second_topic                   2          0
+
+Reset cannot happen when consumer is running.. so consumer must be off
+If you now start consumer, you will see all messages after reset
 
 ---------------------Kafka Java------------------------------------------------
 
