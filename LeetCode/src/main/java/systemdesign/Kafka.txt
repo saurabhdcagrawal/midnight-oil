@@ -363,7 +363,7 @@ Actual order
 
 Thus you dont get full ordering but you get ordering within partition
 
-Kafka Consumer Group CLI
+Kafka Consumers in Group
 
 	Each partition goes to one consumer in a group
 	#Create consumer group by giving a group name --group parameter
@@ -380,18 +380,61 @@ Kafka Consumer Group CLI
 	#Solved---> only 1 consumer at a time, all partitions go to same consumer... once you stop and write to topic, then you restart consumer, messages would appear (lag)
 	#Same topic second consumer group
 	Without from beginning you only see messages once the consumer/consumer group has been launched
+	
 	With from beginning you see the messages since inception
 	sh kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic second_topic --group my-second-application --from-beginning
 	
 	Shows all messages in that topic.. once a consumer has read, consumer offset has been committed
 	If you run one more time , consumer offset has been comitted, from beginning would not show old messages
 	
+Kafka Consumer Groups CLI
+
+#List all consumer groups
+	sh kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+Response
+	my-first-application
+	my-second-application
+	
+#Describe a given consumer group
+	sh kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group my-second-application
+Response
+	GROUP                 TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+	my-second-application second_topic    0          27              27              0               -               -               -
+	my-second-application second_topic    1          56              56              0               -               -               -
+	my-second-application second_topic    2          35              35              0               -               -               -
+
+Publish to second topic, create lag
+
+	GROUP                 TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+	my-second-application second_topic    0          27              28              1               -               -               -
+	my-second-application second_topic    1          56              58              2               -               -               -
+	my-second-application second_topic    2          35              35              0               -               -      
+
+
+Now if you open the consumer group again, lagged messages will reappear
+	sh kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic second_topic --group my-second-application
+	
+	consumer id will appear if the consumer group is listening
+	
+GROUP                 TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                                           HOST            CLIENT-ID
+my-second-application second_topic    0          28              28              0               consumer-my-second-application-1-1f6223e8-2eb5-4647-873d-3c369ef05b80 /127.0.0.1      consumer-my-second-application-1
+my-second-application second_topic    1          58              58              0               consumer-my-second-application-1-1f6223e8-2eb5-4647-873d-3c369ef05b80 /127.0.0.1      consumer-my-second-application-1
+my-second-application second_topic    2          35              35              0               consumer-my-second-application-1-1f6223e8-2eb5-4647-873d-3c369ef05b80 /127.0.0.1      consumer-my-second-application-1
+
+#partition are going to same consumer id... since only one consumer exists in consumer group
+# if we create another consumer in the consumer group, it will rebalance and partition will go to another consumer id	
+
+
+#if you dont specify group id but give by beginning, temporary console consumer groups are created
+	sh kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic second_topic --from-beginning
+	sh kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+#Response	
+	my-first-application
+	my-second-application
+	console-consumer-79678
 	
 	
-
-
-
-
+Reset Offsets of a consumer group	
 
 ---------------------Kafka Java------------------------------------------------
 
