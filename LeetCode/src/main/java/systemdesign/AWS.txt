@@ -1,0 +1,313 @@
+----------------Introduction
+Distractor services?
+
+---------------------Section 3------------------------------------------------------------------------------------------------
+Cloud computing is the on demand delivery of compute power, database storage, applications, and other IT resources.
+Through a cloud services platform with a pay as you go compute pricing
+Can provision exactly the right type and size of computing resources you need
+You can access as many resources instantly
+
+#Deployment models for cloud
+	Private cloud-> Cloud services used by a single organization not exposed to the public(managed by someone else)
+	Complete control
+	Security for sensitive applications
+#Public Cloud
+	Cloud services owned and operated by a third party cloud service provider delivered over the internet
+#Hybrid Cloud
+		Some servers on premises
+		Some on third party cloud
+		Sensitive data on prem, flexibility and cost effectiveness of public cloud
+#FiveCharacteristics
+		On Demand Self Service
+		Broad network access
+		Multitenancy and resource sharing
+		Rapid elasticity and scalability
+		Measured Service -> pay as you use
+#SixAdvantages
+	Trade Capex for Opex
+	Benefits from massive economies of scale
+	Stop guessing capacity
+	Increased speed and agility
+	Stop spending money running and maintaining data centers
+	Go Global in few minutes
+Problems Solved
+	Flexibility
+	Cost Effectiveness
+	Scalability
+	Elasticity
+	High availability and Fault tolerance
+	Agility ->rapidly, develop, test and launch software applications
+
+Types of Cloud Computing
+	On prem						---> Applications, data, runtime, middleware, O/S, virtualization, servers, storage, networking	
+	Infrastructure As a service--> dont have to manage virtualization, servers, storage, networking	
+	Platform as a service----> dont have to manage runtime, middleware, O/S, virtualization, servers, storage, networking ..Only applications and data
+	Software as a service-----> Also applications and data everything is managed 	
+		
+AWS pricing model
+			Compute-> pay for compute time
+			Storage-> pay for amount of data stored
+			Networking-> Pay when Data leaves the cloud
+		Thus we only pay what we need
+AWS history
+			2002->internal
+			2004 SQS first public launch and offering
+			2006 relaunch with EC2, SQS
+AWS regions
+			All around the workd
+			Names can be us-east-l, eu-west-3
+			A region is a cluster of data centers
+			Most AWS services are region scoped?
+How do you choose an AWS region?
+			Compliance --Data in france should be in france
+			Latency--> close to users
+			Available services--->Are the services you are looking for available in the region
+			Pricing
+Availability Zones
+			One or more discrete data center with redundant power, networking and connectivity
+			Each AWS region has many availability zones (min 3 max 6)
+			Separate from each other so isolated from disasters	
+			Connected to each other with ultra low latency high bandwidth networking
+AWS points of presence?			
+		216
+
+AWS console
+		Global console for some services such as Route 53
+		IAM is a global service encompasses all regions
+		For EC2 view is different for each region in terms of the resources one sees	
+AWS global infrastructure
+		Information around services
+AWS regional services
+	Gives you services list by a region
+	If you dont see a service then you may have to switch region in the console because not all services are located in the same region
+	New EC2 experience toggle on top left.. switching it off would make the old UI appear
+Shared Responsibility Model for Security 
+	You as a customer are responsibility for security in the cloud--> security, data, network firewall conf,platform, application, identity and access management
+	AWS Responsible for security of the cloud-->infra, hardware, software, internal security
+
+---------------------Section 4------------------------------------------------------------------------------------------------
+IAM
+		Global Service
+		Root Account shouldnt be used or shared
+		Create users for people within your organization and if needed users can be grouped together
+		Groups can only contain users, not other groups
+		a user can belong to multiple togethers
+		A user may not be part of any group but its not best practice
+		Groups for permissions
+		Users or Groups can be assigned JSON documents called policies
+		Policies define what permissions can be assigned to users -> effect, action & resource
+		Least privelege principle: Dont give a user more permission than he needs
+		IAM->Create user->add user to a created group admin with Admin access policy
+		Tags key value pairs to add information to assist search capabilities when searching resources.
+Account Alias
+		Helps you create alias and generate sign in URL for users of your account ..the users can then sign in as IAM user
+		https://-*.signin.aws.amazon.com/console
+		IAM user will show as IAM user in the right hand side
+		Root will show as root
+		Preferred to login as IAM user
+IAM Policies Inheritance
+IAM Policy Structure
+			Version,Id,One or more Statements, a statement has Sid(Optional), Effect->allow,deny, Principal->account, role to which this policy applies to 
+			Action->List of action this policy allows or denies, resources-> list of resources to which the actions are applied to
+Inline policy-> policy directly for a user
+You can also create custom policies
+
+
+----------------------Section 5-----------------------------------------------------------------------------------------
+EC2
+Billing & Budget
+		If you let IAM users who are admins to access billing data: From root->account->edit IAM user and role access to billing information
+		IAM user/role access to billing information is activated.
+		Now login as IAM user
+		Home--> see bills--> charges by account, by service etc
+		AWS Free TierInfo --> gives info about AWS free tier
+		Set up Budget-> To control cost->Choose budget type-->zero spend budget, monthly cost budget
+		
+EC2 
+		Elastic compute cloud ..one of the most popular of AWS offering
+		Infrastructure as a service
+		Rent virtual machines (EC2), store data on virtual drives (EBS), distribute load across machines (ELB), Scale services using autoscale group ASG	
+EC2 sizing and configuration
+	OS,Compute power and cores,RAM,storage space - network attached(EBS &EFS), network card, firewall rules security group
+	Bootstrap script	
+EC2 user data
+	BootStrap script (configure at first launch)...bootstrap instances using EC2 User Data Script	
+	Script is run only at first start
+	bootstrapping launching commands when a machine starts
+	EC2 user data runs with the root user.. so sudo root
+	t2 micro is part of aws free tier (up to 750 hours in a month)
+	Need key pairs for SSH
+	.pem for above windows 10
+	Allow HTTP traffice from internet because we have to configure web server
+	Delete on termination EBS--> once we terminate the volume is also going to be deleted
+	Advanced-> User data ..enter following bootstrap code (Install web server)
+	
+	#!/bin/bash
+	# Use this for your user data (script from top to bottom)
+	# install httpd (Linux 2 version)
+	yum update -y
+	yum install -y httpd
+	systemctl start httpd
+	systemctl enable httpd
+	echo "<h1>Hello World from $(hostname -f)</h1>" > /var/www/html/index.html
+	Use http://public ip
+	Private Ip to connect from outside
+	Stop instance---> no longer billed..instance state is kept
+	however the public ip might have changed, private ip will always same
+
+EC2 instance types
+	https://aws.amazon.com/ec2/instance-types/
+	A)General Purpose
+		m5.2xlarge
+		m instance, 5 generation, 2x large size of instance
+		t2.micro general purpose ec2 instance
+	B) Compute Optimized
+		compute intensive tasks that need high performance processors
+		media transcoding
+		Dedicated Gaming servers
+		High performance computing
+		Scientific modeling & machine learning
+		C5, c6
+	C) Memory Optimized
+		Process large data sets in memory(RAM)
+		High performance (in memory databases for BI)
+		Real time processing of unstructured data
+		R6, R5
+	D) Storage optimized
+		Storage intensive tasks that require high sequential read, write access to large data sets on local storage
+		Distributed file systems
+		OLTP systems
+		I4
+	ec2instances.info -> Compare all instances
+
+Security Groups
+
+
+
+
+
+
+
+------------------------Amazon S3-------------------------------------------------
+One of the main building blocks of AWS
+At its core, its storage(backup, storage)
+Infinitely scaling storage	
+Many websites use Amazon S3 as the backbone
+Many AWS services use Amazon s3 as an integration as well	
+
+Uses
+	Backup and storage
+	Disaster recovery
+	to host media
+	to host applications 
+	Static Website
+	Archive
+	Static website
+	Nasdaq stores 7 years of data into s3 Glacier
+Amazon S3
+	Allows users to stores object (file) into buckets)top level directories
+	Must have a globally unique name
+	Buckets are created in a region
+	Objects (files) have a key
+	prefix+ object name
+	There are no directories..keys a very very long names with /
+	Object Values are contents of the body
+	Max object size is 5TB
+	if uploading more than 5 gb must use multi part upload
+	Bucket names globally unique
+Bucket policy S3 security
+	User based-> IAM policies --> which API calls should be allowed for a specific user from IAM
+	Resource based-> bucket wide rules allows cross account, object ACL , bucket ACL 
+	Another way is to encrypt object using encryption keys
+S3 Bucket Policies
+	Resource: buckets and objects the policy applies on 
+	Effect Allow:Deny
+	Actions: Set of API to allow/deny
+	Principal: The account or user to apply the policy to
+	
+	Anonymous user wants to access S3 bucket then use S3 bucket policy that allows public access
+	IAM user wants to access S3 bucket, assign IAM permissions to user through policy, then user can access that S3 bucket
+	EC2 instance wants access to S3 bucket, then IAM users are not appropriate, we need to use EC2 instance role with correct IAM permissions and EC2 instance will get instance to s3 buckets
+	Cross account access->use s3 bucket policy that allows cross account access
+	For block public access-> by default to prevent company data leaks
+	Can also be set at account level if none of your S3 buckets should ever be public
+Hands on
+	Make S3 as public
+	Use policy generator https://awspolicygen.s3.amazonaws.com/policygen.html
+	arn:aws:s3:::saurabh-******r-s3/*, get object
+	principal->users
+	resource is resource
+	
+	{
+    "Version": "2012-10-17",
+    "Id": "Policy1679878858678",
+    "Statement": [
+        {
+            "Sid": "Stmt1679878757567",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::saurabh-******r-s3/*"
+        }
+    ]
+}
+	
+	
+Static Website
+		 S3 can host static websites and have them accessible on the internet
+		 Attach S3 bucket policy that allows it to be public (cannot be private)
+		 S3 properties->static website hosting
+Amazon S3 Versioning
+		Versioning is possible
+		Enabled at bucket level
+		Same key overwrite will change version
+		Protect unintended delete, rollbacks
+		Any file that is not versioned prior to enabling will have version null
+		Suspending will not delete the previous versions
+	HandsOn
+		Go to Properties->enable versioning
+		Show versions 
+		If you delete with show versions toggle off -> delete marker will override previous file
+		Delete delete marker will restore previous file
+
+Amazon S3 replication (CRR & SRR)
+
+		
+-------------------------------Databases -------------------------------------------------------
+Storing data on EBS, S3, EFS, EC2 Instance store can have its limits		
+No SQL Databases -Non relational
+	Modern databases --> built for a specific data model and have flexible schema for building modern applications
+	More flexibility, Scalable(Horizontal scaling) , High performance and highly functional ->optimized for a data model 
+	Eg, key Value, Document, graph, In memory, search databases
+	Data can be in JSON format
+AWS will offer use to managed databases
+		Advantages of managed database
+		Quick provisioning, high availability, vertical and horizontal scaling , Upgrades, patching, monitoring , autmated backup & restore
+		You can use EC2 but IaaS shortcomings
+		
+RDS
+	Relational Database service.. Use SQL as query language
+    Create databases in cloud managed by AWS ..PostGres, MySQL, Aurora (AWS proprietary database)
+	Storage backed by EBS
+	But you cant SSH into the instances
+Aurora
+	Supports 2 kinds of database technologies PostGres and My SQL
+	AWS cloud optimized 5x performance improvement over My SQL on RDS
+	Grows in increments of 10GB upto 128 TB
+	Proprietary(not open source)
+	RDS & Aurora are 2 ways of creating relation databases in AWS
+ 
+HandsOn
+	Database port 3306
+	VPC security group (firewall)Info
+	Choose one or more VPC security groups to allow access to your database. Make sure that the security group rules allow the appropriate incoming traffic.
+	New VPC security group name: demo-database-rds 
+	Take a snapshot so that you can rollback
+
+Actions can be done from RDS snapshot	
+	You can restore from a snapshot to a new database, create a new database out of snapshot, create a db with different settings or a bigger db, or create a copy
+	Copy snapshot to a different region for disaster recovery
+	Share snapshot so you can share your copy of database to another accounts so they can create/restore the database from your snapshot
+
+	
+		
