@@ -227,7 +227,7 @@ S3 Bucket Policies
 	
 	Anonymous user wants to access S3 bucket then use S3 bucket policy that allows public access
 	IAM user wants to access S3 bucket, assign IAM permissions to user through policy, then user can access that S3 bucket
-	EC2 instance wants access to S3 bucket, then IAM users are not appropriate, we need to use EC2 instance role with correct IAM permissions and EC2 instance will get instance to s3 buckets
+	EC2 instance wants access to S3 bucket, then IAM user permissions are not appropriate, we need to use EC2 instance role with correct IAM permissions and EC2 instance will get instance to s3 buckets
 	Cross account access->use s3 bucket policy that allows cross account access
 	For block public access-> by default to prevent company data leaks
 	Can also be set at account level if none of your S3 buckets should ever be public
@@ -287,6 +287,7 @@ AWS will offer use to managed databases
 		
 RDS
 	Relational Database service.. Use SQL as query language
+	OLTP
     Create databases in cloud managed by AWS ..PostGres, MySQL, Aurora (AWS proprietary database)
 	Storage backed by EBS
 	But you cant SSH into the instances
@@ -296,6 +297,7 @@ Aurora
 	Grows in increments of 10GB upto 128 TB
 	Proprietary(not open source)
 	RDS & Aurora are 2 ways of creating relation databases in AWS
+	CLoud Native version
  
 HandsOn
 	Database port 3306
@@ -309,5 +311,125 @@ Actions can be done from RDS snapshot
 	Copy snapshot to a different region for disaster recovery
 	Share snapshot so you can share your copy of database to another accounts so they can create/restore the database from your snapshot
 
-	
+RDS Deployment Options
+	Read Replicas
+		Create Read Replicas ->distributing reads upto 15 read replicas
+		Writing Data is done to only one main DB
+		Sharing load
+	MultiAz->
+		Failover In case of AZ outage..
+		Failover DB takes over in case the main DB is unaccessible due to AZ outage
+		Reads and writes are written to the failover DB.it is passive
+		Can have only 1 AZ as a failover zone
+	MultiRegion(read replicas)
+		Application and read replica exists in different zones
+		Application reads data from read replica (local DB) in same AZ where the application exists
+		All writes from applications across zones happen to one main Database
+		Provides disaster recover strategy	
+		low latency
+		Cons: Replication cost associated with the network transfer data across regions
 		
+Amazon ElastiCache
+	Managed Redis or Memcached
+	Caches are in memory database with high performance, low latency
+	Reduce load off databases for read intensive workloads
+
+DynamoDB		
+	Fully managed highly available with replication across 3 AZ
+	NoSQL DB not a relational DB (key-value DB)
+	Amazon's flagship product
+	Scales to massive workloads, distributed serverless database (dont provision instance type thats why serverless)
+	Scales to millions of requests per second, trillions of rows, 100's of TB of storage
+	Single digit millisecond latency
+	standard and frequent IA table class
+	Key->(partition key+sort key)
+	Value->Column attributes
+
+DynamoDB Accelator- DAX	
+	Fully managed in memory cache for Dynamo DB	
+	Integrated and only used with Dynamo DB (microsecond latency)
+	Secure, highly scalable and highly available	
+HandsOn
+	Serverless, create db without having to create instances
+	Cannot normalize.. link data between tables
+	So we have to make sure our relevant data is well formatted within our main Dynamo DB table	
+
+DynamoDB- Global tables
+	Make a dynamoDB table accessible with low latency in multiple regions
+	Create a global table in another region and set up 2 way replication between the tables
+	Active-Active replication.. writes in one region are propogated everywhere	
+	Upto 10 tables in 10 regions
+	Users close to a specific region can access the data from table close to their region thereby helping with low latency
+
+Amazon Redshift 
+	Based on PostGreSQL but not used for OLTP
+	Its OLAP (analytics and data warehousing)
+	Analyzing data and making computations
+	Load data every hour not every second
+	10x performance better than other data warehouses
+	Columnar storage of data (instead of row based)
+	Massively parallel Query execution 
+	BI tools to integrate with it
+	
+Amazon EMR
+	Elastic map reduce
+	EMR helps Create hadoop cluster to analyze and process vast amounts of data
+	The clusters can be made of 100's of EC2 instances that will be collaborating together to analyze your data	
+	Also supports Apache Spark ,Hbase, Presto, Flink will be working on top of your hadoop cluster
+	EMR takes care of provisioning and configuring these EC2 instances so they work and analyze data together from a hadoop perspective
+	data processing, machine learning, web indexing, big data
+
+Amazon Athena
+	Serverless query service to perform queries against S3 objects
+	Analyze data in S3 using serverless SQL
+	Uses SQL to query the files
+	Supports CSV, Json, ORC, Avro ,Parquet
+	Can have reporting on top of athena such as using Amazon Quicksight
+	BI, Analytics, Reporting, analyze and query VPC logs,ELB logs, CloudTrails trails
+
+Amazon QuickSights
+	Serverless machine learning powered BI service to create interactive dashboards
+	Per session pricing
+	Usecases: Business Analytics, Building Visualizations, get business insights using data
+	Integrated with RDS, Aurora, Athena, Redshift, S3	
+	
+Amazon DocumentDB
+	Aurora version of MongoDB
+	MongoDB-Used to store, query and index JSON data
+	Fully Managed, highly available, replication across three zones	
+	Scales to workloads with millions of requests per second
+
+Amazon Neptune	
+	Fully Managed Graph Database
+	Replication across 3 AZ's upto 15 replicas
+	Work with Highly connected datasets
+	Can store up to billions of relations and query the graph with milliseconds latency
+	Great for storing knowledge graph(such as Wiki), fraud detection, recommendation engines, social networking
+
+QLDB Overview(Quantum Ledger Database)	
+	Used to review history of all changes made to your application data over time
+	immutable system
+	Better performance than common ledger blockchain frameworks
+	There is no concept of decentralization ,it has a central authority components and is a ledger, write to only one central database, in accordance with financial regulation rules
+	
+Amazon Managed BlockChain
+	Blockchain makes it possible to build application where multiple parties can execute transactions without the need for trusted central authority
+	Amazon Managed Blockchain is a managed service to
+		Join public blockchain networks
+		create your own scalable private network	
+	Compatible with 2 blockchains ethereum,hyperledger fabric
+	Decentralized blockchain
+
+AWS Glue
+	Managed ETL service
+	Use to prepare and transform data for analytics	
+	Fully serverless service
+Glue Data Catalog
+	Catalog of datasets in AWS infrastructure
+	reference (metadata) col name, col type ,etc
+	can be used by Athena, Redshift OR EMR to discover data sets and build proper schemas for them
+	
+DMS DataBase Migration Service	
+	Quick and secure db migration service that will be resilient and self healing
+	Source Database remains available during migration
+	Homogenous and heteregenous migrations 
