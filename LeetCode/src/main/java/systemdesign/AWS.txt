@@ -316,11 +316,13 @@ RDS Deployment Options
 		Create Read Replicas ->distributing reads upto 15 read replicas
 		Writing Data is done to only one main DB
 		Sharing load
+		Main purpose scalability
 	MultiAz->
 		Failover In case of AZ outage..
 		Failover DB takes over in case the main DB is unaccessible due to AZ outage
 		Reads and writes are written to the failover DB.it is passive
 		Can have only 1 AZ as a failover zone
+		Main purpose availability
 	MultiRegion(read replicas)
 		Application and read replica exists in different zones
 		Application reads data from read replica (local DB) in same AZ where the application exists
@@ -426,6 +428,7 @@ AWS Glue
 	Fully serverless service
 Glue Data Catalog
 	Catalog of datasets in AWS infrastructure
+	 store structural and operational metadata for data assets
 	reference (metadata) col name, col type ,etc
 	can be used by Athena, Redshift OR EMR to discover data sets and build proper schemas for them
 	
@@ -433,3 +436,96 @@ DMS DataBase Migration Service
 	Quick and secure db migration service that will be resilient and self healing
 	Source Database remains available during migration
 	Homogenous and heteregenous migrations 
+	
+	
+	
+-----------------Machine Learning Section--------------------------------------------------------------------------------------------------	
+Amazon Rekognition
+	Find objects, people, text ,scenes in images and videos using ML
+	Facial Analysis, face search to do user verification, people counting
+	Create a database of familiar faces or compare against celebrities
+	Usecases
+		Custom Labeling
+		Content Moderation	
+		Face detection and Analysis(gender, age range, emotions)
+		Face search and verification
+		Pathing for sports games analysis	
+		Text Detection
+		Celebrity Recognition
+		
+
+Amazon Transcribe
+		Automatically convert speech to text
+		Uses deep learning process called automatic speech recognition (ASR) to convert speech to text accurately
+		Automatically remove PII using Redaction
+		Supports Automatic Language Identification for multi-lingual audio
+		Usecases
+			Transcribe customer service calls
+			automated closed captioning and subtitling
+			generate meta data for assets to create a fully searchable archive
+			Identify and remove PII using redaction
+			
+		Automatic language identification
+			If you do not know the language spoken in audio files, use this option
+			To improve accuracy however you need to select a minimum of 2 languages
+			
+Polly
+		Turn text into speech using deep learning
+		Allowing you to create applications that can talk
+		Neural-> Produces the most Natural and Human like speech possible
+		Standard->More robot sounding -->Produces natural-sounding speech
+
+Translate		
+	Natural and accurate language translation
+	Localize content--> such as websites and applications for international users and to easily translate large volumes of text efficiently
+
+Amazon Lex & connect (same technology that powers Amazon Alexa)
+	ASR to speech to text
+	Natural language understanding to recognize the intent of text, callers
+	Help build chatbots, call center bots
+	
+Amazon Connect
+	Receive calls, create contact flows, cloud based virtual contact center
+	80% cheaper than traditional contact center solutions
+	Phone call->Connect->Lex(understand intent)->invoke Lambda function ->go to crm and schedule meeting... 
+
+Amazon Comprehend
+	for NLP
+	Use machine learning to find insights and relationships in text
+	tokenizations, POS, organizes collection of text files by topic
+	Take a lot of data..text or unstructured and analyze them
+	
+Amazon SageMaker	
+	Fully managed service for developer/data scientists to build ML models
+	Whole process of labeling, building the model, training it , testing it can be done within SageMaker
+	
+Amazon Forecast
+	Fully managed service that uses ML to deliver highly accurate forecasts
+	predict the future sales of a raincoat
+	50% more accurate than looking at data itself??
+	Reduce forecasting time from months to hours
+	Historical Time series Data such as product features, prices, discounts, website traffic , store locations
+	Upload to amazon S3->start amazon forecast service-> creates a forecasting model
+
+Amazon Kendra
+	ML powered search engine
+	Fully managed document search service powered by Machine learning
+	Extract answers from within a document(pdf,html,ppt,docx)
+ 	Kendra will internally build a knowledge index powered by ML
+	Learn from user interactions/feedback to promote preferred results
+	Fine Tune search results
+
+Amazon Personalize
+	Fully managed ML service to build apps with real time personalized recommendations
+	to create a personalization model that generates recommendations for each customer
+	Same technology used by Amazon.com
+	Integrates into existing websites, applications,SMS, email ,marketing systems
+	Use cases
+			Retail
+			Media
+			Stores and Entertainment
+Amazon Textract
+	Extracts text, hand writing and data from scanned documents using AI & ML
+	Eg Driving license
+	Extract data from forms and tables, read and process any type of documents (pdf's)
+	Use cases : financial services, healthcare, passports, tax forms	
