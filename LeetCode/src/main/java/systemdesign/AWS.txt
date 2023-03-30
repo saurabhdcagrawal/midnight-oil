@@ -521,6 +521,31 @@ Amazon API gateway
 	Serverless, support restful API's and also websocket API's for real time streaming of data	
 	Support for security, user authentication, API throttling, API keys, monitoring
 	
+AWS batch
+	Fully managed batch processing at any scale
+	Effeciently run 100,000 of computing batch jobs on AWS
+	A batch job is a job with a start and an end (opposed to continuos)
+	Batch will dynamically launch EC2 instances or Spot instances 
+	Batch will provision the right amount of compute/memory
+	You submit or schedule batch jobs and AWS batch does rest
+	Batch job are defined as docker images and run on ECS
+	Helpful for cost optimizations and focusing less on the infrastructure	
+	
+Batch vs Lambda (not very clear)
+	Lambda has time limit(15mins), limited run times, limited temporary disk space and serverless	
+	Batch has no time limit, any run time as long as you package in Docker image, rely on EC2 store for disk space/EBS storage 	
+	Relies on actual EC2, it is not serverless (but they are managed by AWS)
+
+Amazon Lightsail
+	Standalone service(oddball)
+	Virtual servers, storage, databases and networking in one place
+	Low & predictable pricing, without configuring things much, get started quickly
+	Simpler alternative... for people who have little cloud experience	
+	Use case
+			Websites(wordpress, Joomla,Lamp,Nginx)
+			Dev/Test environment
+	High Availability but no auto scaling, limited AWS integrations
+	
 -----------------Machine Learning Section--------------------------------------------------------------------------------------------------	
 Amazon Rekognition
 	Find objects, people, text ,scenes in images and videos using ML
