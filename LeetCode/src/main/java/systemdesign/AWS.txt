@@ -436,8 +436,90 @@ DMS DataBase Migration Service
 	Quick and secure db migration service that will be resilient and self healing
 	Source Database remains available during migration
 	Homogenous and heteregenous migrations 
+--------------------Other compute Services----------------------------------------------------------------------------------------------
+Docker
+	Software development platform to deploy applications
+	Traditonally install them on linux and then they will work
+	With docker, package your apps in container..the container is very special can be run on any OS very easily..
+	Apps once in the container run the same regardless of where they run(any OS)
+		Any machine
+		No compatibility issues
+		Predictable behaviour
+		Less work
+		Easier to maintain and deploy
+	Scales container up and down very quickly	
+	Docker images are stored in docker repositories hub.docker.com
+	Find base image for many systems Ubuntu,MySQL
+	Amazon ECR->Private docker repository for private images
 	
 	
+ECS
+	Elastic container service-> used to launch docker containers on AWS
+	You must Provision and maintain infrastructure (First create EC2 instances)
+	Responsible for starting and stopping containers	
+	Has integration with Application load balancer
+	Whenever there is a new docker container, it determines on which EC2 instance should we run the docker container
+
+Fargate
+		Launch docker containers however do not need to provision the infrastructure(need not create EC2 instances)
+		Serverless offering
+		With Fargate AWS run containers automatically based on CPU/RAM for each container (we do not know exactly where)
+
+Amazon ECR->Private docker registry (repository)	 for private docker images so it can be run by ECS or Fargate. 	
+
+Serverless
+		Developers dont have to manage servers anymore
+		They just deploy code/functions 
+		Initially it was pioneered as (Function as a service with AWS lambda)..just deploy your code and each function will be run independently by the lambda service
+		Serverless doesnt mean there are no servers.. it means there are servers but you dont see or manage them as an end user
+		Examples
+		Amazon S3 could scale infinitely
+		Dynamo DB ..table could autoscale
+		Fargate
+
+AWS Lambda Overview
+		Conventionally when we have an EC2 instance
+			Virtual server in the cloud
+			Limited by RAM and CPU
+			Continuosly running
+			Scaling means intervention to add/remove servers
+		Lambda is new way to think about it. In this case
+			Virtual functions - no servers to manage
+			Limited by time - short executions
+			Run On Demand
+			Scaling is automated
+			Easy Pricing
+		Event driven-> functions get invoked by AWS when an event happens/needed ..reactive type of service
+		Integrated with many programming languages
+		Easy monitoring through Cloud Watch
+		Scale automatically as needed
+	Lambda container image
+		They let you run docker images on top of lambda 
+		These container images must implement the Lambda Runtime API
+		ECS/Fargate is preferred for running arbitrary docker images
+	
+	Serverless Thumbnail creation	
+		S3 whenever image is uploaded-> AWS lambda performs thumbnail creation --> stores thumbnail back in S3--> stores meta data in Dynamo DB
+	Serverless Cron Job
+		CloudWatch Events eventbridge-> Aws lmabda function trigger every 1 hour... perform a task
+	Pricing based on calls and duration	
+	pay per calls ..very cheap
+	1 million calls free
+	20 cents after that
+	Its very cheap hence its very popular	
+
+Hands on
+	Why is CPU memory on Lamnda function configurable?
+	Integrated with CloudWatch logs
+
+
+Amazon API gateway
+	Lambda function is not exposed as an API right away.. so you need a proxy API
+	We need to expose it through an API gateway
+	Client talks to API gateway, API gateway will proxy the request to Lambda function which will execute the transformation on your data
+	Fully managed serviced to create, publish, maintain, monitor and secure API's in the cloud
+	Serverless, support restful API's and also websocket API's for real time streaming of data	
+	Support for security, user authentication, API throttling, API keys, monitoring
 	
 -----------------Machine Learning Section--------------------------------------------------------------------------------------------------	
 Amazon Rekognition
@@ -497,7 +579,7 @@ Amazon Comprehend
 	
 Amazon SageMaker	
 	Fully managed service for developer/data scientists to build ML models
-	Whole process of labeling, building the model, training it , testing it can be done within SageMaker
+	Whole process of labeling, building the model, training it , deploying it can be done within SageMaker
 	
 Amazon Forecast
 	Fully managed service that uses ML to deliver highly accurate forecasts
