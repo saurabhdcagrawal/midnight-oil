@@ -1,6 +1,8 @@
 ----------------Introduction
 Distractor services?
-
+	There are many services in course which are distractors
+	There are over 200 AWS services and not all can be covered
+	Re-invent AWS conference
 ---------------------Section 3------------------------------------------------------------------------------------------------
 Cloud computing is the on demand delivery of compute power, database storage, applications, and other IT resources.
 Through a cloud services platform with a pay as you go compute pricing
@@ -493,9 +495,11 @@ AWS Lambda Overview
 		Integrated with many programming languages
 		Easy monitoring through Cloud Watch
 		Scale automatically as needed
+		Invocation upto 15 mins
 	Lambda container image
 		They let you run docker images on top of lambda 
 		These container images must implement the Lambda Runtime API
+		Lambda does not support arbitrary docker images
 		ECS/Fargate is preferred for running arbitrary docker images
 	
 	Serverless Thumbnail creation	
@@ -503,6 +507,8 @@ AWS Lambda Overview
 	Serverless Cron Job
 		CloudWatch Events eventbridge-> Aws lmabda function trigger every 1 hour... perform a task
 	Pricing based on calls and duration	
+	(1) time run * RAM provisioned
+	(2) by number of invocations
 	pay per calls ..very cheap
 	1 million calls free
 	20 cents after that
@@ -515,7 +521,7 @@ Hands on
 
 Amazon API gateway
 	Lambda function is not exposed as an API right away.. so you need a proxy API
-	We need to expose it through an API gateway
+	We need to expose it through an API gateway..expose lambda functions as HTTP API
 	Client talks to API gateway, API gateway will proxy the request to Lambda function which will execute the transformation on your data
 	Fully managed serviced to create, publish, maintain, monitor and secure API's in the cloud
 	Serverless, support restful API's and also websocket API's for real time streaming of data	
@@ -546,6 +552,146 @@ Amazon Lightsail
 			Dev/Test environment
 	High Availability but no auto scaling, limited AWS integrations
 	
+--------------Deploying and managing infrastructure at scale----------------------------------------------------------------------------	
+CloudFormation
+	Declarative way of outlining your AWS infrastructure for any resources using a template which is YAML (or JSON?)
+	Within a cloudFormation template you say
+		I want a security group
+		I want 2 EC2 instances using this security group
+		I want an S3 bucket
+		I want a load balancer (ELB) in front of these machines
+		
+	Then cloud formation creates those for you in right order with exact configuration you specify	
+	Infrastructure as code 	
+		No resources are manually created
+		Changes to Infra are reviewed through code
+	Cost 
+		Easy to identify costs using cloudFormation template
+		Ability to destroy and re-create templates on fly
+			In dev you can Automate deletion of templates at 5 pm and recreated at 8 am 
+	Declarative programming
+		No need to figure out order and orchestration (create dynamo DB table first or EC2)
+	Dont re-invent the wheel
+		Leverage existing templates on the web
+		Leverage documentation
+	Supports almost all AWS resources	
+	CloudFormation Stack Designer	
+		it creates the diagram and relationship between all the resources in stack
+
+HandsOn
+	Resources:
+	  MyInstance:
+		Type: AWS::EC2::Instance
+		Properties:
+		  AvailabilityZone: us-east-1a
+		  ImageId: ami-a4c7edb2
+		  InstanceType: t2.micro
+
+	Delete stack will delete all resources associated with stack..no need to delete them manually	
+	Will figure out in which order to delete the resources
+	Same template can be deployed to many AWS regions or AWS accounts	
+	
+AWS CDK
+	Instead of Yaml define your cloud infra using a familiar programming language such as Javascript, Java, Python, .NET
+	The code will be then compiled into a cloudFormation template(json/yaml)
+	Benefits
+		Deploy infrastructure and application code together as they share the same languages
+		apply loop/programming constructs
+	
+Elastic Beanstalk
+	Platform as a service. Developer centric view
+	Run and manage apps
+	Managed Service
+	Just application code is responsibility of developer
+	Full Monitoring Suite
+	
+AWS CodeDeploy
+	Deploy appls automatically
+	Works with EC2 instances 
+	Works with on premise servers
+	Hybrid service
+	Servers must be provisioned and configured ahead of time with the code Deploy agent	
+	Allows you to upgrade both EC2 instance applications and on premise server applications from a single interface
+	
+CodeCommit
+	Store code somewhere .. before pushing application code to servers.. code repo..backed using git technology
+	AWS product is CodeCommit
+	Source control service that hosts Git based repositories
+	Makes it easy to collaborate with others on code
+	Fully managed, lived within AWS account so private, secured and integrated with AWS
+	
+AWS CodeBuild
+	Source code built, run tests and produce packages that are ready to be deployed by Cloud Deploy
+	Fully managed serverless
+	Continuosly scalable, highly available
+	Only pay as you go.. as your code is being built
+	
+AWS CodePipeline
+	Orchestrate different steps to have code automatically pushed to production
+	basis for CICD services
+	Fully managed compatible with code commit, code build, code deploy, elastic beanstalk 
+	Fast delivery, rapid updates
+	
+-----------------------Cloud Integration---------------------------------------------------------------------------------------------------
+Amazon SQS
+	Amazon Simple Queue Service
+	Communication/Integration between 2 systems/services (asynchronous communication)
+	To decouple between application tiers
+	Oldest AWS offering
+	Queue Service in AWS 
+	Producers send message to the queue
+	Scales from 1 message per second to 10000 per second
+	Consumers polling the queue(one or multiple)
+	Once the consumers read the message they are deleted
+	Fully managed serverless service
+	Low latency<10 ms subscribe/pub
+	Web servers->EC2 instances(Web Servers) ->SQS-> EC2 instances (Video Processing)
+					ASG									ASG	
+	The second ASG can be scaled independently depending on how many messages are in the SQS queue.
+	Default retention of message is 4 days, maximum retention is 14 days
+HandsOn
+	Standard & Fifo queue
+
+Amazon Kinesis	
+Real time big data streaming
+	managed service to create, process and analyze real time streaming data at any scale
+	Kinesis Data Stream
+		low latency streaming to ingest data at scale from hundreds of thousands of sources(click streams, IoT devices, metrics & logs)
+	Kinesis Data Analytics
+		perform real time analytics on streams using SQL
+	Kinesis Data Firehose
+		load streams/output into S3, Redshift, Elastic search etc for further analysis
+	Kinesis Video Streams
+		Monitor real-time video streams for analytics or ML		
+			
+SNS overview(pub/sub)
+	Simple Notification service
+	Send one message to many receivers?
+	Direct integration will be complicated because there will be 4 integrations
+	Use SNS..the topic will send notifications to all receivers
+	Notification service in AWS
+	Event publisheres will send messages to one SNS topic
+	As many event subscribers to listen to the SNS topic notification
+	Each subscriber to topic will get all messages..different from SQS*** Consumers are sharing the messages
+	No message rentention..so no storage of messages
+	Each SNS topic 12.5 million subscribers
+	Soft limit of 100,000 topics for each account
+	SNS publish->SQS, Lambda, Emails, SMS notification, Kinesis Data Firehose, HTTP End point
+										Subscribers
+Handson
+	saurabh-ccpdemo@mailinator.com
+	Standard topic
+
+Amazon MQ
+	SNS, SQS cloud native services, proprietory protocols from AWS	
+	On prem protocols --traditional MQTT,AMQP protocols-
+	When migrating to cloud, instead of re-engineering the application to use SQS and SNQ we can use Amazon MQ
+	Amazon MQ is a managed message broker service for 2 technologies- Rabbit MQ, Active MQ
+	Doesnt scale as much SQS/SNS
+	it runs on servers you can have server issue???(others do not?)
+	should/*+-	1	 run in multi AZ with failover if you want it to be highly available
+	Both queue and topic features
+		
 -----------------Machine Learning Section--------------------------------------------------------------------------------------------------	
 Amazon Rekognition
 	Find objects, people, text ,scenes in images and videos using ML
@@ -580,7 +726,12 @@ Polly
 		Turn text into speech using deep learning
 		Allowing you to create applications that can talk
 		Neural-> Produces the most Natural and Human like speech possible
-		Standard->More robot sounding -->Produces natural-sounding speech
+		Standard->More robot sounding -->Produces natura+93
+		.	``		23ERTYU
+	4
+	
+	-*=-0OI-=/
+	l-s*-+ounding speech
 
 Translate		
 	Natural and accurate language translation
@@ -622,7 +773,7 @@ Amazon Kendra
 	Learn from user interactions/feedback to promote preferred results
 	Fine Tune search results
 
-Amazon Personalize
+Amaz-+-on Personalize
 	Fully managed ML service to build apps with real time personalized recommendations
 	to create a personalization model that generates recommendations for each customer
 	Same technology used by Amazon.com
@@ -636,3 +787,69 @@ Amazon Textract
 	Eg Driving license
 	Extract data from forms and tables, read and process any type of documents (pdf's)
 	Use cases : financial services, healthcare, passports, tax forms	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+-----------------OpenAI----------------------------------------------------------------------------------------------
+OpenAI
+	Research and development company
+	Manage models using API that you can deploy and integrate in your application
+	Gather lots of data, train the model..give you access to the model using API and charge you everytime you invoke the API
+GPT3
+	Give it a prompt and it will complete the prompt for you, hence its called a completion model
+	Natural language tasks with prompt " create a slogan for an all or organic ice cream company"
+DALL-E
+	Create original images or edit them "show a dog and cat chasing each other on a busy street"
+Codex
+	Convert natural language to code .. for eg: create a function that returns the square of a number in python	
+	
+Within GPT3
+		davinci-> most capable model with higher quality->cost high-->request size can be high 4000.. so you can provide longer prompts and get longer respnses that are more complex
+				 Create Generation and Completion. Also good at conversation, transformation
+
+		curie->more nuanced tasks like sentiment analysis, complex classification, language translation
+		babbage->simple classification, semantic search->low proce
+		ada->parsing text, address correction and certain classification tasks
+		
+Key Concepts
+		Prompts: in any NLP, prompt is What you give to the model? Response is what you get out. Prompts should be carefully created for model to react accurately
+				Be very instructional in what you want and as specific as you want.
+				Provide examples with good quality data and tell the model; show and tell the model how to respond
+				Dont rely on factual responses.. Its only been trained on data until 2021. So it wont perfect well.
+		Tokens:
+				Tokens are the currency on Open AI's GPT model. Every time you ping the model it uses some tokens. The amount of token used is
+				a combination of the amount of words used in prompt as well as the amount of words/text return by chat Gpt model in the response
+				Its hard to know the exact tokens. 1 token is approx 4 chars , 75 words= 100 tokens
+				For GPT max is 4000 token which is 3000 words
+				2 cents every 1000 tokens
+				Free trial usage of $18.. Total 675k words by math
+				Davinci takes 4000, so it can take a much bigger prompt
+		Temperature:	
+				A parameter from 0-1
+				Higher value means the GPT model will take more risks.. lower values means the GPT answer will be more confident in its answer when it responds
+				Try 0.9 for more creative applications, and 0 for a well defined answer..
+				Return the same response with temperature.. ice cream company slogan.. for different responses, make temperature up
+				
+Environment
+		Go to personal->view API keys		
