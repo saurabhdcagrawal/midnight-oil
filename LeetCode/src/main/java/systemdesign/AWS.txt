@@ -70,8 +70,9 @@ Availability Zones
 			Each AWS region has many availability zones (min 3 max 6)
 			Separate from each other so isolated from disasters	
 			Connected to each other with ultra low latency high bandwidth networking
-AWS points of presence?			
+AWS points of presence(Edge locations)?			
 		216
+		For content delivery as close as possible to users
 
 AWS console
 		Global console for some services such as Route 53
@@ -126,9 +127,9 @@ Billing & Budget
 		Set up Budget-> To control cost->Choose budget type-->zero spend budget, monthly cost budget
 		
 EC2 
-		Elastic compute cloud ..one of the most popular of AWS offering
-		Infrastructure as a service
-		Rent virtual machines (EC2), store data on virtual drives (EBS), distribute load across machines (ELB), Scale services using autoscale group ASG	
+	Elastic compute cloud ..one of the most popular of AWS offering
+	Infrastructure as a service
+	Rent virtual machines (EC2), store data on virtual drives (EBS), distribute load across machines (ELB), Scale services using autoscale group ASG	
 EC2 sizing and configuration
 	OS,Compute power and cores,RAM,storage space - network attached(EBS &EFS), network card, firewall rules security group
 	Bootstrap script	
@@ -632,6 +633,275 @@ AWS CodePipeline
 	Fully managed compatible with code commit, code build, code deploy, elastic beanstalk 
 	Fast delivery, rapid updates
 	
+AWS CodeArtifact
+	Software packages depend on each other to be built and new ones are created
+	Storing and retrieving these dependencies is called artifact management
+	Secure, scalable and cost effective artifact management for software development
+	Gradle,Maven..talk to CodeArtifact to store and retrieve dependencies
+	Developers and CodeBuild can retrieve dependencies straight from code artifact
+	
+AWS CodeStar
+	Unified UI to easily manage software development activities in one place ..allow developers to do CICD and code
+	One stop shop to start a development project, it will give a dashboard 
+	And then a quick way to set up CodeCommit, CodeBuild, CodePipeline, CodeDeploy, Elastic beanStalk, EC2
+	Can edit the code in the cloud using AWS Cloud9
+
+AWS Cloud9
+	Cloud IDE that is used for writing, running and debugging code
+	Run in a web browser
+	Cloud IDE can be used within a web browser unlike IntelliJ
+	Work on your projects from your home, or anywhere with internet with no setup necessary
+	Allows code collaboration in real time(pair programming)
+	
+HandsOn
+	Very cool
+	Any resource creation..always shows progress in CloudFormation
+
+AWS Systems Manager (SSM)
+	Helps you manage your EC2 and on premises systems at scale
+	Get operational insights about the state of your infrastructure
+	Suite of 10+ products
+		Run commands across fleet of servers
+		Patching your fleet of ec2 instances or on premise servers, store parameter configuration
+		Configure all at once
+	Works for Linux, Windows, MacOS and Raspberry PI OS	
+	Install SSM agent onto systems we control
+	
+
+SSM Session manager
+	Allows you to start a secure shell on your ec2 and on premises server
+	No port 22 needed (better security)
+	SSM managed instance core role
+	Without SSH security keys and ssh access? that was disabled in security group
+	Connect EC2 instance via SSM session manager
+    3 ways of accessing EC2
+		port 22 use ssh keys 
+		ec2 instance connect without ssh keys.. but still required port 22 
+		ssm ec2 instance had an iam role that allowed access
+	
+AWS OpsWork
+		Managed Chef and puppet perform server configuration automatically or repetitive actions 
+		provision Standard AWS resources
+	
+Cloud formation and bean stalk are free to use but you pay for resources created
+
+-------------Leveraging the global AWS infrastructure----------------------------------------------------------------------------------------
+Why Global application
+	Application deployed in multiple geographies
+	Decreased latency
+	Disaster Recovery
+	Distributed global infrastructure is harder to attack
+	
+Amazon Route 53
+	Managed DNS
+	DNS is a collection of rules and records which help clients understand how to reach a server through URL's
+	A,AA.CNAME,Alias
+	Simple Routing Policy
+		No health checks
+	Weighted Routing Policy
+		This policy will allows us to distribute traffic across multiple EC2 instances (70%on first EC2, 20% on second EC2 and so on and so forth)
+		This is effectively some kind of load balancing
+		Can use some kind of health checks
+	Latency Routing Policy
+		Route 53 will choose server which is closest to user to minimize latency
+		Can use health check
+	Failover routing Policy
+		Traffic routed to primary but in case primary fails , then clients will be redirected to failover
+		Can use health check
+HandsOn
+	NordVPN
+
+AWS CloudFront
+	Content Delivery Network
+	Caches the content of your website at different edge location, improves read performance, improves user experience, lower latency	
+	We are getting DDOS protection with Shield, AWS application firewall?? how? and AWS WAF? Web application firewall, access control lists
+	Origins-> CloudFront will be connect to an origin(s3 bucket or HTTP server)
+		S3 bucket->for distributing files and caching them at the edge
+					Enhanced Security with Origin Access Control (previously origin access identity)
+					Can be used as an ingress? to upload files to S3
+		Custom origin (HTTP)
+			CloudFront can be in front of any custom origin backend 
+			Application Load Balancer
+			EC2 instance
+			S3 website(first enable the bucket as a static S3 website)
+			Any HTTP backend you want
+	Content in S3 bucket in one location will be distributed around the world through edge locations
+	Great for static content that must be available everywhere
+	Files are cached for a day (TTL)
+	Global edge location
+	Private fast secure reliable network
+	
+	S3 cross region replication must be setup for each region you want replication to happen
+	Files are updated in near real time
+	Read only?
+	Great for dynamic content that needs to be available in low latency in few regions
+	
+S3 Transfer acceleration
+	Increase transfer speed by transferring file to an AWS edge location which will forward the data to S3 bucket in the target region
+	File in USA needs to be uploaded in S3 bucket in australia
+	Choose edge location closest to source file in USA..upload via public network, then use the fast private AWS network to upload the file to S3 bucket
+	When you want to upload or download a file to S3 bucket that is far away from you.	
+	Usecase: If you are a global application that needs to upload a file to a specific amazon bucket
+
+AWS Global Accelerator
+	Improve global application availability and performance using the AWS global network
+	Optimize the route to your application
+	If your website is hosted in India, and you are trying to access it from the US, the nearest edge location will receive your request
+	and then traffic will flow from the edge location to and from the application(hosted server) using the private fast AWS network that edge leverages
+	2 Anycasts IP are created for your application and traffic is sent through Edge locations
+	Improves performance for a wide range of applications over TCP or UDP
+	For global applications
+	
+AWS outposts
+	Business that keep an on premises infrastructure alongside a cloud infrastructure are hybrid clouds
+	2 ways of dealing with IT systems
+		For AWS cloud using AWS console, CLI and web services
+		One for their on premises infrastructure
+		AWS will come and setup outpost racks that offer same infrastructure and tools to build your own applications on premises just as in the cloud 
+		You are responsible for outposts racks physical security
+		benefits
+			Local data processing
+			Low latency access to on premises systems
+			Fully managed service
+		Cool way to extend the cloud directly to your own premises infrastructure
+
+AWS WaveLength
+	Wavelenght zones
+	Infrastructure deployments embedded within telecommunication providers datacenters (at edge of 5g networks?)
+	Bring AWS services to 5G networks (Edge of 5G networks?)
+	EC2,EBS, VPC
+	Low latency applications through 5G networks
+	Smart cities, connected vehicles, real time gaming
+	Ultra low latency through 5G n/w// traffic doesnt reach AWS.. stays within Communication Service Providers Network
+	But it can connect to parent AWS region and dynamo DB etc
+	No additional charges
+		
+		
+AWS Local Zones
+	Places AWS compute,storage, database and other selected AWS services closer to end user to run latency sensitive applications (in addition to Az & regions)
+	Extension of an AWS region?*(VPC?)
+	Example AWS region N.virginia (us east 1) and has six AZ by default
+	Extend AZ with help of more local zones to Boston, Chicago, Houston, Dallas, Miami 
+	You can enable local zone and deploy your cloud instances there (for eg EC2) for low latency
+	
+Global Applications Architecture
+	Single Region, Single AZ
+	Single Region, Multi AZ
+	Multi Region, Multi AZ (Active Passive)
+		Writes happen to primary, replicated to all regions for reads and low latency
+		Read latency improve but write still bad
+	Multi Region, Active Active
+		Reads and writes from multiple region (eg dynamo DB active active)
+		More difficult to implement
+--------------------------------Cloud Monitoring--------------------------------------------------------------------------------------------------------------------------
+CloudWatchMetrics		
+	CloudWatch provides metrics for every service in AWS
+	It has a timestamp
+	Can create cloudwatch dashboard of metrics
+	Billing metric
+	EC2 instances: CPU utilization,status checks, Network(in vs out)... every 5 mins by default
+	EBS Volumes: Disk Read/Writes
+	S3 buckets: BucketSizeBytes, NumberOfObjects, AllRequests
+	Service metric-> how much you've been using a service API
+	Custom metrics-> push your own metrics
+
+CloudWatchAlarms
+	Create Action/TriggerNotifications for any metric
+	Auto Scaling increase or decrease EC2 instances count, start terminate reboot or recover an EC2 instance
+	send notification into an SNS topic	
+	choose the period on which to evaluate an alarm
+	Create a billing arm on Cloud Watch Billing metric
+	Alarm, Ok, Insufficient data are the 3 states of the alarm
+	Billing Alarm is only available in US east coast?	
+		
+CloudWatchLogs
+	CloudWatch logs can collect logs from
+		Elastic BeanStalk: Collection of logs from application
+		ECS: Collection from containers
+		AWS Lambda: Collection from function logs
+		CloudTrail: Based on filter
+		CloudWatch log agents: on EC2 machines or on premise servers
+		Route 53:Log DNS queries
+	Collect logs from all your systems, applications and AWS services that you use, allows real time monitoring of logs
+	Adjustable CloudWatch logs retention
+	You need to create a cloud watch agent on your EC2 instance..they will push the log files to CloudWatch
+	CloudWatch Log agent can be set on the on premises server	
+		
+Amazon EventBridge
+	RuleType: Schedule or rule with an event pattern(through hands on)	
+	Schedule: React to events within your AWS account
+	Create a rule ; every hour an event generated that will run trigger script on Lambda function every hour(cron job)
+	Event pattern: Event rules to react to a service doing something for eg when someone logs in as a root user, send a notification using SNS
+	EC2 started, S3 upload, Code failed, schedule or cron ---> Amazon EventBridge---> Compute lamda, batch....Integration SQS, SNS, Kinesis, Orchestration CodePipeline, Maintenance SSM
+	AWS services: Default event bus
+	AWS Saas partners can send events to your account using partner event bus
+	Also custom apps.. using custom event bus
+	Schema registry: model event schema
+	archive all events
+	Ability to replay archived events
+		
+AWS CloudTrail
+	Provides governance, compliance and audit for your AWS account
+	Enabled by default
+	Get a history of events/API calls made within your AWS account by
+		Console
+		SDK
+		CLI
+		AWS services
+	Can put logs from cloudtrail into cloudwatch logs or S3 bucket (for long term retention)
+	A trail can be applied to all regions or single region
+	if a user deleted something.. cloudTrail
+	CloudTrail Insights: Automated analysis of your cloud trail events 
+
+AWS X-Ray
+	Debugging one monolith service is easy but distributed services is hard
+	No common view of entire architecture
+	Visual analysis of our applications..
+	Trace requests made through your distributed applications
+	Advantages
+		Troubleshooting performances
+		Understanding dependencies in a microservices architecture
+		Pinpoint service issues
+		Review request behaviour
+		Find errors and exceptions
+		Where am I throttled
+		Identify users that are impacted
+
+Amazon CodeGuru
+	An ML powered service for automated code reviews and application performance recommendations
+	CodeGuru Reviewer: automated code reviews for static analysis (during development) with actionable recommendations
+						Identify critical issues, security vulnerabilities, hard to find bugs
+						coding best practices, resource leaks, security detection, input validation
+						using machine learning and automated reasoning
+						Hard learned lessons across millions of code reviews on 1000's of open source and Amazon repositories
+						Supports Java and Python
+						Integrates with Github, Bitbucket and AWS code commit	
+	CodeGuru Profiler: visibility/recommendations about application performance during runtime
+						Detect and optimize the expensive lines of code in preprod
+						Identify performance and cost improvements in production
+						helps identify the runtime behaviour of your application in production
+						For eg: identify if your application is consuming excessive CPU on a logging routine
+						Identify and remove code ineffeciencies
+						Improve application performance (reduce CPU utilization)
+						Decrease compute costs
+						Provides heap summary (identify which objects using up memory)
+						Anomaly detection in case your app behaves weirdly
+	Support applications running on AWS as well as on premise
+	Puts Minimum overhead on application using codeguru
+		
+AWS HealthDashboard-Service history
+	Shows all region, all services health
+	has an RSS feed you can subscribe to
+	Shows historical information for each day
+	Displays general status of AWS services
+AWS HealthDashboard-Your account
+	Provides alerts and remediation guidance when AWS is experiencing events that may Impact you
+	Personalized view into the performance and the availability of AWS services underlying your AWS resource
+	relevant and timely information to help you manage events in progress and provide proactive notifications to help you plan for scheduled activities
+	Can aggregate data from an entire AWS organization---Organization health ..enable organizational view
+Handson
+	Click on bell- event log	
+	
 -----------------------Cloud Integration---------------------------------------------------------------------------------------------------
 Amazon SQS
 	Amazon Simple Queue Service
@@ -773,7 +1043,7 @@ Amazon Kendra
 	Learn from user interactions/feedback to promote preferred results
 	Fine Tune search results
 
-Amaz-+-on Personalize
+Amazon Personalize
 	Fully managed ML service to build apps with real time personalized recommendations
 	to create a personalization model that generates recommendations for each customer
 	Same technology used by Amazon.com
