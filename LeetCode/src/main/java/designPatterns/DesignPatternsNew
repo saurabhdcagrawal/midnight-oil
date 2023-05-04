@@ -1,1 +1,54 @@
-
+Creational Design Pattern
+	Prototype: 
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+Data Science
+		Science of discovering hidden patterns(trends, cycles, rules, association between attributes, groups in data) from large data sets
+		Data sets/Data is usually prepared ->cleansed and structured for the analysis
+		Science->  	statistical tools and techniques employed to understand the data and reliability of identified patterns		
+						Part of Statistics related to understanding data is called descriptive analytics(spread, shape,structure, mean,distribution, gives vital insights about data)
+						Part of Statistics for establishing the reliability of data is called inferential statistics (mean distribution)
+						
+		Data Science lies at the intersection of Computer Science, Math & Statistics & Business/Domain Knowledge
+		Data is the footprints of happenings (natural or human driven) Physical as in files, registers now more digital (browsing, online purchases)
+		Data is the raw material that contains information in it as also noise
+			Eg Ticket Sales, Survey Data
+		Information is processed data 
+		OR It is the data plus the meaning of what the data was collected for minus the noise
+		Data is the input, Information is the output
+		Data is unprocessed but information is processed which is made sense of	
+		
