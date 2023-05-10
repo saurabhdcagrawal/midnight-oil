@@ -4,44 +4,12 @@ Creational Design Pattern
 	
 	
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 Data Science
 		Science of discovering hidden patterns(trends, cycles, rules, association between attributes, groups in data) from large data sets
 		Data sets/Data is usually prepared ->cleansed and structured for the analysis
 		Science->  	statistical tools and techniques employed to understand the data and reliability of identified patterns		
 						Part of Statistics related to understanding data is called descriptive analytics(spread, shape,structure, mean,distribution, gives vital insights about data)
-						Part of Statistics for establishing the reliability of data is called inferential statistics (mean distribution)
+						Part of Statistics for establishing the reliability of potential patterns identified is called inferential statistics (mean distribution)
 						
 		Data Science lies at the intersection of Computer Science, Math & Statistics & Business/Domain Knowledge
 		Data is the footprints of happenings (natural or human driven) Physical as in files, registers now more digital (browsing, online purchases)
@@ -51,4 +19,171 @@ Data Science
 		OR It is the data plus the meaning of what the data was collected for minus the noise
 		Data is the input, Information is the output
 		Data is unprocessed but information is processed which is made sense of	
+		
+Jacob Curtiz		
+	predict products that can go out of stock
+	Forecast sales		
+	Dutch programmer Guido van Rossum created python in 1991..200 version 2, 2004 python 3
+	3d use programming language
+	Python supports NLP, Front end ,back end, all work for data scientists..building ML models
+	Syntax is important		
+
+Advantage of Anaconda
+	In addition to python, we get a bunch of other tools
+	100's of packages for data science, scikit-learn(ML), conda(new packages and manage current packages)
+	Way to access jupiter notebooks-->Interactive environment to run python code
+	With Anaconda, spin up new packages, different version of python that you can easily toggle
+	Anaconda navigator..interact with tools
+	Install Anaconda Individual edition
+	Environments will show all installed libraries
+	Anaconda Navigator->Home->Jupyter Notebook
+Jupyter	Notebook
+	Run time environment for python..Python code is stored inside jupyter in form of notebooks
+	You can save notebooks. Code repository for future reason
+	Cell in a jupiter notebook is where you write code..to execute shift+enter
+	Write as a code block or lines of code.. The code block is executed at once
+	Kernel->tool which controls computation every time you run
+		You can interrupt kernel to stop what is running
+		Restart will restart everything
+	Edit->Manipulate the cells
+	Command mode outside cell.. inside cell you are in edit mode. Some shortcuts do not work in edit mode
+	Different type of cells-> Markdown for comments.. shortcuts next to cell type (keyboard)
+	Markdown is a piece of text..it wont run.. it is a statement..no calculations will be done..It will create text in your file..nothing is being executed
+	Out lines are created by compiler..
+	In a code block, the response the code block gives is the last thing that the code block is asked to calculated
+	Given a notebook, you can run whatever you want to however you want to.. in any order?
+	File type is ipynb..cant open it directly..you need to do it through anaconda navigator->jupyter notebook
+	File made in Jupyter can also downloaded as html file ..and you can use it to share.. dont need jupytor notebook for the person who receives in this way
+
+Google Colab	
+	Computation in the cloud..for models
+	Notebook automatically saved in google drive
+	Many pre installed packages
+	!pip list--> shows all packages installed
+	Read data by storing in drive
+	Work on code(notebook) together
+	Mount google drive in google colab
+
+Python
+	Functions come with normal parentheses & Array, String Matrices come with square parentheses indicating their location 
+	Intialization x=y=z=5
+	Evaluation in code cell x o/p 5
+	String, float, integer 3 basic data types+ bool+complex
+	String
+		Single quotes or Double quotes
+		type function tells you data-type type(x)
+		str1='SA'
+		Can multiply and add strings str1*2 o/p	SASA
+		str1[1],str1[-1] o/p: Both are A
+		str2='Great', str2[0:3] o/p 'Gre'
+	Float
+		d=1.6e4 type(d) is float
+	Complex 
+		x=3+4j	type(x)=complex
+	boolean
+		var1=True
+		10>9 o/p True
+	Change variable type(Casting)
+		float(11) o/p 11.0
+		int(11.0) o/p 11
+		float('11')-> 11.0 but not advisable 
+	Print function
+		Persistent command. It tells python when you see print you have to print irrespective of where it is in the line of code
+		For string with numbers in the end ;following is the syntax; separate numerical part while printing
+		I
+			y=15 print("y = ", y) o/p y =  15
+		II	
+			y=15
+			print('y = ', y,end='\n\n')
+			print(y)
+		O/P	
+			y =  15
+			15
+		f string
+			If number to be printed is in the beginning of string or middle use f string
+	Input function
+		allows the user to add input to the programming environment
+		age = int(input("Please enter age of person: "))
+		print(age)
+		type(age) 	
+	
+	Arithmetic Operators
+		a+b,a-b,a*b,a%b
+		a/b gives float eg: 4/2 =2.0
+		a//b gives integer
+		a**b gives a raised to the power of b
+	Comparison Operators
+		O/p of comparison operation is bool -> True or False
+		a>b,a>=b,a<b,a<=b,a==b,a!=b
+		2.0==2 o/p True
+	Assignment Operators eg a+=5
+	Logical Operators (and, or)
+		x=12
+		a=x>5 and x<15
+		print(a) o/p->True
+		b=x>20 or x<15
+		print(b) o/p-> False
+		
+Data Structures
+	List
+		List is a list of name and numbers[]
+		In Python, List is a collection of objects
+		Nested list 
+		newList=[1,2,['a','b','c'],5]
+		newList[2][1] o/p 'b'
+		newList[2][-1] o/p 'c'
+		List can contain any data type or combination of data types
+		Can identify Strings as list and can do list operations
+		strVar='Saurabh'
+		strVar[2] o/p 'u'
+	Slicing
+		list[startIndex:stopIndex:step].. Indexes start from 0, start at startIndex, stop before stopIndex..increment with step
+		strList=['data science','machine learning','python','html','big data']
+		strList, strList[:] prints everything
+		strList[:3],strList[0:3] prints first 3 elements starting from 0
+		strList[3:] o/p ['html', 'big data']
+		strList[1:4:2]  o/p ['machine learning', 'html']
+	Mutability
+		strList[3]='R'
+		strList o/p: ['data science', 'machine learning', 'python', 'R', 'big data']
+	List Methods
+		Set of methods that can be applied to an object..built in function that applies to a particular kind of object	
+		append
+			strList.append('html')
+			newList=['statistics']
+			strList.append(newList)
+			strList o/p ['data science','machine learning','python','R','big data','html',['statistics']] (creates a new list)
+		insert
+			strList.insert(1,'AI') o/p ['data science','AI','machine learning','python','R','big data','html',	['statistics']]
+		extend
+			strList.append(newList) o/p ['data science', 'machine learning', 'python', 'R', 'big data', 'statistics'] (does not create a new list)
+		operator in python del
+			Not a method or a function
+			del strList[3] remove the 4th element (0-3)
+		remove
+			no location specified
+			strList.remove('R') removes the first occurence of R
+		pop
+			With no arguments removes the last element
+				strList.pop()
+			Can also give location
+				strList.pop(1)... removes the first element
+		reverse
+			strList.reverse()
+		Operators on List
+			strList1+strList2 (Simple concatenation)
+	
+	Tuples(Immutable)
+		Order is important unlike list
+		Like list it also not type checked. It can contain any data type or combination of data types.
+		Tuples care abut the sequence in which things are entered into it
+		Allow arithmetic calculations to be done in them?
+		if only strings then list? but if you want to create objects with numbers inside them for calculation then a tuple is a good construct
+		Normal parenthesis to create a tuple()
+		Can also create a list inside tuple
+		sampleTuple=('a',2,3,['india','asia','japan'])
+		type(sampleTuple) o/p tuple
+		sampleTuple[0] o/p 'a'
+		sampleTuple[0]='b' o/p 'tuple' object does not support item assignment (Immutable)
+		if there is a list inside tuple you can change the element inside the list
 		
