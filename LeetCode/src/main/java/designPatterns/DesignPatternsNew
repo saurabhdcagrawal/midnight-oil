@@ -20,7 +20,7 @@ Data Science
 		Data is the input, Information is the output
 		Data is unprocessed but information is processed which is made sense of	
 		
-Jacob Curtiz		
+Mr JC		
 	predict products that can go out of stock
 	Forecast sales		
 	Dutch programmer Guido van Rossum created python in 1991..200 version 2, 2004 python 3
@@ -124,6 +124,10 @@ Python
 		b=x>20 or x<15
 		print(b) o/p-> False
 		
+	Range
+		range(5) 0->4
+		range
+	
 Data Structures
 	List
 		List is a list of name and numbers[]
@@ -157,7 +161,7 @@ Data Structures
 			strList.insert(1,'AI') o/p ['data science','AI','machine learning','python','R','big data','html',	['statistics']]
 		extend
 			strList.append(newList) o/p ['data science', 'machine learning', 'python', 'R', 'big data', 'statistics'] (does not create a new list)
-		operator in python del
+		del operator in python del
 			Not a method or a function
 			del strList[3] remove the 4th element (0-3)
 		remove
@@ -167,14 +171,14 @@ Data Structures
 			With no arguments removes the last element
 				strList.pop()
 			Can also give location
-				strList.pop(1)... removes the first element
+				strList.pop(1)... removes the first element.. uses index when pop
 		reverse
 			strList.reverse()
 		Operators on List
 			strList1+strList2 (Simple concatenation)
 	
 	Tuples(Immutable)
-		Order is important unlike list
+		Order(sequence) is important unlike list
 		Like list it also not type checked. It can contain any data type or combination of data types.
 		Tuples care abut the sequence in which things are entered into it
 		Allow arithmetic calculations to be done in them?
@@ -185,5 +189,194 @@ Data Structures
 		type(sampleTuple) o/p tuple
 		sampleTuple[0] o/p 'a'
 		sampleTuple[0]='b' o/p 'tuple' object does not support item assignment (Immutable)
-		if there is a list inside tuple you can change the element inside the list
+			if there is a list inside tuple you can change the element inside the list
+		del sampleTuple[0]	
+			'tuple' object does not support deletion
+			
+	Tuple methods	
+		count 
+			Gives the number of times a given value is appearing in the tuple
+			sampleTuple=('a',2,3,2,['india','asia','japan'])
+			sampleTuple.count(2) o/p 2
+		index	
+			Ordered collection, so it will tell where a given value is in the tuple-> Gives the first position where the value is present	
+			sampleTuple.index(2) o/p 1
+		sorted operator (function)
+			numberTuple=(5,4,3,2,1)
+			sorted(numberTuple) o/p [1, 2, 3, 4, 5]
+			however the tuple itself is not sorted as such.. (like in java)..object remains unchanged
+			Even Lists can be sorted	
+	
+	Dictionary	
+		key value pair. Create using curly braces
+		balance={	"Mia":100,
+					"John":200,
+					"Rajneesh":500
+				}	
+		Keys need not be strings. It can be anything including numbers
+		Accessing the dictionary (Square brackets)
+			balance["Mia"] o/p 100
+		Can use get as well (round brace)
+			balance.get("Mia")
+		Trying to access a key not present gives you key error
+			balance["Raj"] o/p KeyError: 'Raj'
+		Mutable..can modify the value
+			balance["Mia"]=150
+				balance o/p {'Mia': 150, 'John': 200, 'Rajneesh': 500}
+			if the key is not found, it will be appended
+				balance['Saurabh']=0
+				balance o/p {'Mia': 150, 'John': 200, 'Rajneesh': 500, 'Saurabh': 0}
+		len function 	
+			len(balance) o/p 3
+			
+		popitem()..removes the last item
+			balance.popitem()
+			balance o/p {"Mia":100,"John":200,"Rajneesh":500}	
+		pop(key) removes the key value pair	
+			balance.pop("Mia")
+			balance o/p {'John': 200, 'Rajneesh': 500}
+		Using python's del keyword
+			del balance["Mia"]
+			balance o/p {'John': 200}
+		clear (method for many objects with entries)
+			balance.clear()
+			balance o/p {}
+		create a copy
+			balance={"Mia":100,"John":200,"Rajneesh":500}
+			copy_dict=balance.copy()
+		 
+		sorted function in dictionary (sort the keys in the dictionary)	
+			numbDict={2:'Sarah',1:'Raj', 5:'Monica'}
+			sorted(numbDict) o/p  [1, 2, 5]
+		update (same as updating a value directly)
+			numbDict.update({2:'Sam'}) 
+			numbDict o/p {2: 'Sam', 1: 'Raj', 5: 'Monica'}
+			//add a new value
+			numbDict.update({7:'Raj'})
+			numbDict o/p {2: 'Sam', 1: 'Raj', 5: 'Monica', 7: 'Raj'}	
 		
+balance
+	Sets
+		Sets are defined with curly braces and stores values without any duplicates in ascending order(Ascending is important)	
+		Sequence doesnt matter..,matters less than it matters in a list
+		Created using curly braces like dictionary
+			s={1,1,1,1,1,1}
+			s o/p{1}
+		Set operator/function
+			returns distinct elements of list
+			set({1,2,4,3,3,2,1}) o/p {1, 2, 3, 4}
+		Same methods, adding, updating, removal, pop, length
+
+
+	Conditional Statements
+		if condition :
+			steps/code to be executed after condition is true 
+			myList=['python','datascience','R','spark','Tableau']
+			learning='python'
+			if learning in myList:
+				print(learning+' tutorial')
+			else:
+				print('Not in my learning')
+						
+			if not x ==500
+				print('the value of x is different from 500')
+				
+			if (not x ==500):
+				print('the value of x is different from 500')	
+				
+			if (x>500):
+				print('Number is greater than 500')
+			elif(x>400):
+				print('Number is greater than 400')
+			else :
+				print('Number is less than 400')	
+	
+		Nested if 	
+			Write a program to i/p a float number and see if its 0, positive or negative		
+		
+			number = float(input("Enter a number: "))
+			if number >= 0:
+				if number == 0:
+					print('Number is zero')
+			else:
+				print('Number is greater than zero')
+			else:
+				print('Number is negative')  
+				
+
+	Looping for loops
+		for i in range(5):
+			print(i)
+		Note: no parentheses for for condition	
+				
+		Write a program to find the sum of numbers in a list
+		Note that sumFinal variable used in the loop had to be initialized (because of scope being used outside)
+			sumFinal=0
+			listVar=[100,220,345,585,645]
+			for num in listVar:
+				sumFinal += num
+			print("sum of numbers is", sumFinal)  
+			
+		While loops (else is integrated)
+		In most of the programming languages, the use of else statement has been restricted with the if conditional statements. But Python also allows us to use the else condition with for loops.
+			
+			a = 1
+			limit = 20
+			intSum=0
+			while a < limit :
+				intSum += a
+				a +=1
+			else:
+				print('Sum is ',intSum)
+				
+	Break
+		Write a program to check a list has even number or not
+		For with else integrated..runs afte
+			listNum=[3,5,5,55,75,15]
+			for i in listNum :
+				if(i%2==0):
+					print('Even number found', i)
+					break
+			else:
+				print('No even numbers met')
+    
+	Continue
+		Print odd numbers from 5 to 15	
+		
+			for i in range(5,15):
+				if (i%2 == 0):
+					continue
+				else:
+					print(i)
+		
+	Question is when is why with else or for with else executed.
+		if there is no break.
+		Essentially else is a part of for ..if it encounters break, it will move out of for and else
+		
+		for i in range(1, 4):
+			print(i)
+		else: # Not executed as there is a break
+			print("Break executes")
+			
+		for i in range(1, 4):
+			print(i)
+			break
+		else: # Not executed as there is a break
+			print("Break does not execute")	
+		
+		
+		
+List of functions glossary
+	del dictionary
+	len
+	print
+	sorted tuple dictionary
+   .pop
+   .get dictionary
+   .copy dictionary
+   .update dictionary
+   
+   sum is a keyword?
+	
+	
+	
