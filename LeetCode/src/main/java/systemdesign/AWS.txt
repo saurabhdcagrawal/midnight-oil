@@ -45,7 +45,7 @@ Types of Cloud Computing
 	Infrastructure As a service--> dont have to manage virtualization, servers, storage, networking	
 	Platform as a service----> dont have to manage runtime, middleware, O/S, virtualization, servers, storage, networking ..Only applications and data
 	Software as a service-----> Also applications and data everything is managed 	
-		
+	Note: Patch Management – AWS is responsible for patching and fixing flaws within the infrastructure, but customers are responsible for patching their guest OS and applications.	
 AWS pricing model
 			Compute-> pay for compute time
 			Storage-> pay for amount of data stored
@@ -56,7 +56,7 @@ AWS history
 			2004 SQS first public launch and offering
 			2006 relaunch with EC2, SQS
 AWS regions
-			All around the workd
+			All around the world
 			Names can be us-east-l, eu-west-3
 			A region is a cluster of data centers
 			Most AWS services are region scoped?
@@ -69,20 +69,25 @@ Availability Zones
 			One or more discrete data center with redundant power, networking and connectivity
 			Each AWS region has many availability zones (min 3 max 6)
 			Separate from each other so isolated from disasters	
-			Connected to each other with ultra low latency high bandwidth networking
+			Connected to each other with ultra low latency high bandwidth networks
+			Name can be us-east-1a & us-east-1b
 AWS points of presence(Edge locations)?			
 		216
 		For content delivery as close as possible to users
-
 AWS console
-		Global console for some services such as Route 53
+		Console for AWS services 
+		has information related to cloudHealth, Account info, Help etc
+		Can choose regions based on where you want to create/use AWS resources
+		View can change in different regions(AWS resources that you see) but for some services called global services such as Route 53 view remains the same
+		For global services, the region on top right corner will appear as global
 		IAM is a global service encompasses all regions
 		For EC2 view is different for each region in terms of the resources one sees	
 AWS global infrastructure
-		Information around services
+		Gives you lot of information around services
 AWS regional services
 	Gives you services list by a region
 	If you dont see a service then you may have to switch region in the console because not all services are located in the same region
+	Not all services maybe present in a given AWS region
 	New EC2 experience toggle on top left.. switching it off would make the old UI appear
 Shared Responsibility Model for Security 
 	You as a customer are responsibility for security in the cloud--> security, data, network firewall conf,platform, application, identity and access management
@@ -91,12 +96,12 @@ Shared Responsibility Model for Security
 ---------------------Section 4------------------------------------------------------------------------------------------------
 IAM
 		Global Service
-		Root Account shouldnt be used or shared
+		Root Account shouldnt be used or shared (You can specify a username for your root account)
 		Create users for people within your organization and if needed users can be grouped together
 		Groups can only contain users, not other groups
-		a user can belong to multiple togethers
+		A user can belong to multiple groups
 		A user may not be part of any group but its not best practice
-		Groups for permissions
+		Groups for permissions/for access to AWS resources
 		Users or Groups can be assigned JSON documents called policies
 		Policies define what permissions can be assigned to users -> effect, action & resource
 		Least privelege principle: Dont give a user more permission than he needs
@@ -182,6 +187,8 @@ EC2 instance types
 		OLTP systems
 		I4
 	ec2instances.info -> Compare all instances
+	
+	
 
 Security Groups
 
@@ -194,13 +201,17 @@ An EBS (elastic block store) volume is a network drive you can attach to your in
 	They can be mounted to (only) one instance at a time
 	Bound(locked) to a specific availabilty zone(only if we do a snapshot?)
 	Think as network USB stick
-	30 GB of free EBS storage of type general purpose SSD ->Free tier
+	30 GB of free EBS storage of type general purpose SSD ->Free tier per month
 	It uses network to communicate to instance which means there might be a bit of latency
 	Have provisioned capacity (size in GB and IOPS)// billed for this capacity but increase capacity over time for better performance
+	EBS volumes can be attached on demand, when you create an EBS volume 
+	Difference between root volume and attached volume? is the 8 gb volume in t2 root or attached?it is root
 	Delete on Termination
 		Controls the EBS behaviour when EC2 instance terminates
 		by default the root EBS volume is deleted, any other attached EBS volume is not deleted
+		root ebs volume vs attached ebs volume?
 		Preserve root volume when instance is terminated..use AWS console, override the default
+		Allows instances to persist data even after their termination
 
 EBS Snapshots
 	Make a backup of your EBS volume at a point in time
@@ -213,33 +224,61 @@ EBS Snapshots
 	Recycle bin for EBS snapshots 
 		Setup rules to retain deleted snapshots so you can recover them after accidental deletion 
 		Specify retention (from 1 day to 1 year)
-
-AMI Overview		
-	Amazon machine image, represent a customization of an EC2 instance(ready to use EC2 instances images)
-	you can prepackage ,add your own software, configuration, OS
-	Faster boot time because all your software is prepackaged
-	Build your AMI.. build for a specific region (and can be copied across regions)
-	You must use an AMI from the same region as that of the EC2 instance. The region of the AMI has no bearing on the performance of the EC2 instance
-	Types of AMI: Public AMI, your AMI, an AWS marketplace AMI's
-
-HandsOn		
-	Create an image from existing customized EC2 instance(after installing web server httpd)
-	Once created from the image launch an EC2 instance
-	In user data just add hello world	
+	Fast Snapshot restore (FSR)
+		Force full initialization of snapshot to have no latency on first use (Costly)
+	Pracs
+		Create snapshot..
+		Copy Snapshot into Any destination
+		Copy snapshots across Az's,useful during disaster recovery
+		Can also create a volume from snapshot..into any target Az(other Az's)
+		Retention rules-> Available for how many days after deletion
+EBS volume types
+	6 types
+	gp2/gp3 ssd
+		General purpose SSD volume that balances price and performance for a wide variety of workloads
+		Cost effective storage, lower latency
+		System boot volumes, virtual desktops 1Gb- 16Tb
+		gp3 newer generation,,baseline of 3000 iops(upto 16000 iops) and throughput of 125 Mb/s(upto 1000 MB/s) --can independently set the iops and throughput
+		gp2 small gp2 volumes ca burst upto 3000 iops..size of volume and iops are linked (max Iops is 16000)--- cannot set independently--linked to size of volume
+	io1/io2
+		Highest performance SSD volume for mission critical low latency or high throughput
+		More than 16000 iops
+		Great for database workloads
+		io2 is newer generation..32000 iops max for nitro ec2 instances 64000 iops--can independently increase the iops independently of storage price
+		io2 have more durability and more iops per gb at the same price as io1
+		io2 block express --sub millisecond latency.. max 256000 iops with a Iops:Gb ratio of 1000:1
+	HDD	
+		Cannot be a boot volume
+		stI(HDD): Throughput optimized 
+			Low cost HDD volume designed for frequently accessed throughput intensive workloads
+			Big data, data warehouse, Log processing
+			Max iops 500, max throughput 500 MB/s
+		sc1(HDD): Cold HDD
+			Lowest cost HDD volume designed for less frequently accessed workloads
+			For data that is infrequently processed
+			Max Iops 250 , max throughput 250 MB/s
+	Size, Throughput,IOPS are parameters
+	Only gp2/gp3 and io1/io2 can be used as root volumes..where root OS is going to be running
 		
-EC2 Image builder overview
-	Automate the creation of virtual machines or container images
-	Automate the creation, maintain, validate and test AMI's
-	Can be run on a schedule (weekly, run whenever packages updated or run manually	)
-	AMI can be created and distributed across regions 
-HandsOn
-	EC2 image builder, choose/create image pipeline		
-	Interesting part: Choose build components to produce the desired output AMI
-					  Optional select tests to verify the output AMI(post build)
-					  Define infrastructure configuration (create an IAM role for image EC2 builder )
-					  Policy needed: EC2ImageProfile for image builder & EC2instanceProfileforImagebuilderECRContainerBuilds, AmazonSSMManaged Instance core -> attach 3 policies  	
+EBS Multi-Attach(io1/io2 family)
+	Same EBS volume to multiple EC2 instances in the same availability zone
+	Each instance has full read and write permission to the high performance volume
+	Application
+		Achieve higher application availability in clustered linux application (Terradata)
+		Application must manage concurrent write operations
+	Limitation	
+		Upto 16 ec2 instances can be attached to a multi-attach 
+		Must use a file system that is more cluster aware	
+
+EBS Encryption
+	For Encrypted EBS volume following are encrypted(handled transparently, nothing to do)
+		Data at rest is encrypted
+		Data in flight between the instance and volume is encrypted
+		All snapshots are encrypted
+		Encryption has minimal impact on latency
 		
-EC2 Instance store
+		
+EC2 Instance store(physical drive)
 	High performance attached volume to your EC2 instances
 	EBS network drives are good but with limited performance
 	EC2 is a virtual server but underlying its a physical server. Some of them have disk space(hard drive) attached to the physical server
@@ -265,6 +304,32 @@ Shared responsibility model for EC2 storage
 		Setting up data encryption
 		Responsibility of any data on drives
 		EC2 instance storage specific
+AMI Overview		
+	Amazon machine image, represent a customization of an EC2 instance(ready to use EC2 instances images)
+	you can prepackage ,add your own software, configuration, OS, monitoring tool
+	Faster boot time & configuration time because all your software is prepackaged
+	Build your AMI.. build for a specific region (and can be copied across regions)
+	So far we been using public AMI provided by AWS
+	You must use an AMI from the same region as that of the EC2 instance. The region of the AMI has no bearing on the performance of the EC2 instance
+	Types of AMI: Public AMI, your AMI, an AWS marketplace AMI's (sold by third party)
+
+HandsOn		
+	Create an image from existing customized EC2 instance(after installing web server httpd) and then stop it first for data integrity
+	Right click on EC2 instance->image and templates
+	Once created from the image launch an EC2 instance->create an image
+	In user data just add hello world	
+		
+EC2 Image builder overview
+	Automate the creation of virtual machines or container images
+	Automate the creation, maintain, validate and test AMI's
+	Can be run on a schedule (weekly, run whenever packages updated or run manually	)
+	AMI can be created and distributed across regions 
+HandsOn
+	EC2 image builder, choose/create image pipeline		
+	Interesting part: Choose build components to produce the desired output AMI
+					  Optional select tests to verify the output AMI(post build)
+					  Define infrastructure configuration (create an IAM role for image EC2 builder )
+					  Policy needed: EC2ImageProfile for image builder & EC2instanceProfileforImagebuilderECRContainerBuilds, AmazonSSMManaged Instance core -> attach 3 policies  	
 		
 Amazon FSx
 	Launch 3rd party high-performance file systems on AWS
@@ -909,7 +974,7 @@ AWS OpsWork
 Cloud formation and bean stalk are free to use but you pay for resources created
 
 -------------Leveraging the global AWS infrastructure----------------------------------------------------------------------------------------
-Why Global application
+Why 	Global application
 	Application deployed in multiple geographies
 	Decreased latency
 	Disaster Recovery
@@ -1126,10 +1191,225 @@ Handson
 	Click on bell- event log	
 	
 ----------------------------------------------------------VPC & Networking-----------------------------------------------------------------
-
-
-
-
+	Public IP address, private IP address
+	private IPv4 is fixed for instances even if you start/stop them
+CIDR
+	method for allocating IP addresses
+	
+VPC
+	VPC= virtual private cloud. It is a private network to deploy your resources
+	Linked to a specific region
+	You can have multiple VPC in an AWS region(Max 5 VPC soft limit per region & Max CIDR(subnet?) per VPC is 5)
+	Subnets allow you to partition the network inside your VPC
+	Public Subnet is a subnet that is accessible from the internet. You can put your load balancer (Default VPC)
+	Private Subnet is a subnet that is not accessible from the internet. You can put your databases(more secure). They dont need access to the internet 
+	VPC can go across 2 or 3 Az
+	As soon as we have an IG and a route to the IG in the subnet, that makes the subnet a  public subnet
+	Nat gateway & Nat instance will allow your private subnet to access internet withoug getting exposed to internet
+	We create a NAT gateway in public subnet and route from private subnet to the nat gateway and another route from the nat gateway to IG
+	cidr.xyz website
+	Min size is /28(16 Ip addresses) and max size is /16 (65536 IP addresses)
+	VPC is private only private IPv4 ranges are allowed
+	10,172,192
+	Your VPC CIDR should not overlap with other networks (basically IP addresses)
+	All new AWS accounts have default VPC
+	New EC2 instances are launched into default VPC if no subnet is specified
+	Default VPC has internet connectivity and all EC2 instances inside it have IPv4 addresses	
+	We also get a public and private Ipv4 DNS names for our EC2 instances
+	Every VPC has CIDR block defined
+	3 subnets have there own CIDR, all of them have 3 different Az's
+	Network ACL: all traffic on all protoc are allowed for inbound and outbound
+	Route table: help traffic route through VPC, by default there are 2 rules, all traffic outside of this CIDR? goes to the internet gateway
+	this internet gateway attached to vpc and it gives internet access to all the ec2 instances within the vpc	
+	Pracs
+		Go to VPC, create new VPC, can specify upto 5 ciders
+Subnet
+	Subrange of ipv4 addresses within your VPC
+	Sunet belongs to a particular Az
+	First 4 and last 1 address in each subnet are reserved and they cant be used or assigned to an EC2 instance	
+	10.0.0.0 network address .1 for VPC router .2 for mapping to amazon provided DNS .3 reserved by AWS for future use .255 for broadcast but aws does not
+	support broadcast in VPC hence reserved
+	Difference between public and private subnet? public subnets are smaller
+	Pracs
+		Go to vpc .create subnets, public subnet cidr subnet..
+		Create an instance , if you choose subnet.. it will get an ip in the cidr range of subnet
+Internet Gateway(IG)
+	Allow resources in VPC to connect to internet
+	scales horizontally & highly available and redundant
+	one VPC can only be connected to one IG and vice versa
+	Not sufficient just to have IG to connect to internet 
+	edit the route tables to make internet work
+	Pracs
+		Create ec2 instance, choose vpc, choose subnet
+		Create IG, attach it to VPC
+		Create route table, assign it to VPC, then go to route table, edit subnet associations and add the subnet 
+		routes, then edit the routes for 10.0.0/16 (within VPIC) target is local for any other 0.0.0.0/0 any IP doesnt match, the target should be going to IG
+Bastion Host
+	Access an ec2 instance in private subnet from users on a public computer
+	Bastion host is a special host has its own security group called the bastion host security group ..
+	We also have a security group for the instance in our private subnet
+	EC2 instance in bastion host SG does have access to ec2 instance in private subnet
+	Connect through ssh to bastion host and from there again connect using ssh to private subnet
+	Bastion host SG must allow inbound from internet on port 22 from restricted public CIDR to guarantee that only few select IP's can access it 
+	SG of private host must allow SG of bastion host or private IP of bastion host 
+	Key pair for ssh?whats use of key pair
+	Security group decides traffic inbound and outbound? who can access that ec2 instance
+NAT instance (outdated? NAT instance vs SG? is security group new?)
+	Network Address Translation
+	Allows EC2 instances in private subnets to connect to the internet without exposing them directly to the internet
+	NAT instance must be launched in public subnet and have an elastic IP attach to it
+	Route tables must be configured to route traffic from private subnets to the NAT instance
+	Use a script to manage failover between instances
+	Must disable Source/Destination check for nat instance?
+Nat gateway 
+	Much better than NAT instance, aws managed NAT, higher bandwidth, high availability within Az
+	Created in a specific Az and will inherit an elastic IP	
+	private subnets->nat gateway->internet gateway
+	Route tables configured both for private subnet and nat gateway
+NACL		
+	A firewall that controls traffic to and from the subnet
+	Can have allow and deny rules 
+	Are attached at the subnet level
+	Rules only include IP addresses
+	Stateless: return traffic must be explicitly allowed by rules
+Security Groups(SG)
+	A firewall that controls traffic to and from the ec2 instances /ENI
+	Can have allow rules 
+	Rules include IP addresses and other SG
+	Stateful: return traffic is allowed regardless of rules.. Right to talk to any website (no outbound rules)
+VPC flow logs
+	Log of all IP traffic going in and out of your interfaces
+	VPC flow log
+	Subnet flow log
+	ENI flow log
+	Helps to monitor and troubleshoot connectivity issues
+		Subnets to internet
+		Subnets to Subnets
+		Internet to subnets
+	Captures network information from AWS managed interfaces too: Elastic load balancers, ElastiCache RDS
+	VPC flow logs can go to s3, Cloudwatch and kinesis data firehose
+VPC Peering
+	Connect 2 vpc privately using AWS network so that they behave like one network (It can be in another region)
+	Must not have overlapping CIDR	
+	Not transitive A to b & B to C does not imply A& C are connected
+	Pracs
+		Go to VPC, flow logs
+VPC Endpoints
+	Endpoints allow you to connect to AWS services using private network instead of the public network
+	Enhanced security and lower latency to access AWS services
+	VPC Endpoint gateways: For S3 & DynamoDB
+	VPC Enpoint Interface:rest of the services
+AWS PrivateLink
+	Allows you to connect a service(lets say application service) running within one VPC to other VPC directly & privately
+	3rd party will have to create a network load balance, you will have to create a ENI and then establish a privateLink between the 2 so you have private access	
+ 	Does not require VPC peering, or IG, Or NAT or route tables or anything
+Direct Connect & Site to Site VPN
+	Hybrid cloud
+	on prem data center, connect it to cloud to your VPC i.e connect an on prem VPN to AWS 
+	Foll options
+		Site to Site VPN: goes over public internet,set up easily Cons: bandwidth & security concern
+		On prem data center should have customer gateways, establush virtual private gateway on VPC in AWS and connect them using site to site VPN
+	Direct connect:
+		Establish a physical connection between your on prem data center and AWS
+		Private secure and fast connection Con: Expensive, takes at least a month to establish
+		Goes over a private network
+AWS client VPN
+	From your computer connect to private network in AWS using openVPN
+	if you have deployed EC2 instances on a private IP and you want to access them 	using a private IP just as if you were on a private VPN
+	(Similar to bastion host?)
+	Install client VPN on your computer.. goes over the public internet
+	If your VPN on cloud is connected to on prem data center using site to site VPN, then you would also be able to access the on prem data center
+Transit Gateway 	
+	For having transitive peering between thousands of VPC, on prem, hub and spoke star system
+	Do not need to peer the VPC with one another, or have different connections and routes using site to site connection or direct connect,instead use a single transit gateway
+	that will provide with this functionality
+	
+---------------------------------------------------------Security & Compliance------------------------------------------------------------
+Shared responsiblity
+	Security of the cloud  is the responsibility of AWS
+	As a customer you are responsible for managing security in the cloud, management of the guest OS(including security patches and updates)
+	Encrypt application data
+	If you are using RDS(managed services), AWS will do the patch management, for EC2 we have to patch the o/s
+	AWS responsbility
+	To be continued
+DDOS attack
+	AWS shield Standard (Free service, activated bt default for every customer)
+	AWS Shield Advanced (Optional service 24*7 support)
+	WAF : Protects your web application from common web exploits
+		Define webACL lists, rules include HTTP headers,IP address, HTTP body or URI Strings
+	CloudFront and Route 53
+Penetration Testing
+	No prior approval for 8 services 
+	Other activities can be prohibited
+	Cannot do DDOS, port flooding, protocol flooding
+	Anything that looks like an attack will not be authorised, reach out to security team
+Encryption
+	For data In transit and at rest	
+	AWS key management service(KMS) ->AWS manages the encryption keys for us
+	Cloud HSM-> you manage keys yourself, AWS provisions the encryption hardware and manages it
+		HSM device is tamper resistant, 
+	Types of customer master keys?
+		Customer managed CMK: We create, manage and use ourselves, define rotation policy, we can bring our own key
+		AWS managed CMK: Created, managed and use on customer behalf by AWS.Used by AWS services(aws/s3/redshift)
+		AWS owned CMK: Collection of CMK that is owned by AWS services and manages to use in multiple accounts
+		CloudHSMkeys: Keys generated from your own cloud HSM hardware, cryptographic operations are performed within the cloud HSM cluster
+	Pracs?
+AWS certificate manager
+	Provision, manage and deploy SSL/TLS certificates
+	Provide in flight encryption for websites	
+	More?
+AWS Secrets manager
+	meant for storing secrets
+	Automate generation of secrets(using Lambda)
+	Capability to force rotation of secrets every X days)
+	Integration with Amazon RDS
+	Secrets are encrypted using KMS 
+	Paid service
+Artifact overview
+	On demand access to AWS compliance documentation and AWS agreements such as PCI, ISO
+	Used to support internal audit and compliance to show that you are compliant using AWS cloud
+	Global service
+GuardDuty
+	Intelligent threat discovery to protect your AWS account
+	Feeds in data
+	Input data includes
+		CloudTrail event logs: unusual API calls, data/management events, s3 data events , unauthorized deployments
+		VPC flow logs
+		DNS logs
+	Uses machine learning algorithm,anomaly detection
+	30 day trial
+	Prevent cryptocurrency attacks
+	can setup eventbridge rules
+Amazon Inspector
+	Automated security assessmnets 
+	Analyze against known running OS vulnerabilities
+	Works with ECR,EC2 instances and lambda functions
+	Reporting and integration with Amazon security hub
+	Send findings to Amazon eventbridge
+	CVE vulnaberity database--risk score is generated
+AWS Config
+	Record all resource configurations and compliance over time				
+	AWS Config is a service that enables you to assess, audit, and evaluate the configurations of your AWS resources. Config continuously monitors and records your AWS resource configurations and allows you to automate the evaluation of recorded configurations against desired configurations.			
+	Auditing and recording compliance of your aws resources
+	Unauthorized access	
+	Record configuration and changes over time
+Macie Overview
+	Fully managed data security and privacy service that uses machine learning and pattern matching alert you sensitive data(PII) in S3 bucketsand will notify you through the event bridge of the discovery	
+Security Hub overview
+	Central tool to manage security across several AWS accounts and automate security checks	
+	Integrated dashboard
+	All security findings in to one place
+	First enable the AWS config service
+Amazon Detective
+	find the root cause of security issues or suspicious activities using ML and graphs
+AWS Abuse
+	Resources used to report AWS owned IP addresses that we suspect of doing abusive behaviour or being used for illegal purposes 
+Root User Priveleges
+	?
+IAM access analyzer
+	Which resources are going to be shared externally?
+	Define zone of trust
+	Any share outside of zone of trust will be reported as finding	
 ---------------------------------------------------------AccountManagement,Billing and support---------------------------------------------
 AWS Organizations
 	Global service
@@ -1189,6 +1469,7 @@ Pricing models in AWS
 						1-or 3 years of commitment, more discount when you pay everything upfront
 	Spot instances: upto 90% discount compared to on-demand hourly rate
 					bid for unused capacity in EC2 instances?(run risk of loosing them)
+					Spot Fleet is a set of Spot Instances and optionally On-demand Instances
 	Dedicated host: Reservation for 1-3 years commitment
 					Amazon EC2 Dedicated Hosts allow you to use your eligible software licenses from vendors such as Microsoft and Oracle on Amazon EC2 so that you get the flexibility and cost-effectiveness of using your licenses, but with the resiliency, simplicity, and elasticity of AWS. An Amazon EC2 Dedicated Host is a physical server fully dedicated for your use, so you can help address corporate compliance requirement. They're not cost-efficient compared to On-Demand instances
 					
@@ -1288,9 +1569,6 @@ AWS support plan pricing
 						Infrastructure event management
 						Designated technical account manager
 						With Enterprise Support, you get access to online training with self-paced labs
-
-AWS Config to record all resource configurations and compliance over time				
-	AWS Config is a service that enables you to assess, audit, and evaluate the configurations of your AWS resources. Config continuously monitors and records your AWS resource configurations and allows you to automate the evaluation of recorded configurations against desired configurations.			
 				
 -----------------------Cloud Integration---------------------------------------------------------------------------------------------------
 Amazon SQS
@@ -1365,8 +1643,6 @@ Amazon Rekognition
 		Pathing for sports games analysis	
 		Text Detection
 		Celebrity Recognition
-		
-
 Amazon Transcribe
 		Automatically convert speech to text
 		Uses deep learning process called automatic speech recognition (ASR) to convert speech to text accurately
@@ -1377,7 +1653,6 @@ Amazon Transcribe
 			automated closed captioning and subtitling
 			generate meta data for assets to create a fully searchable archive
 			Identify and remove PII using redaction
-			
 		Automatic language identification
 			If you do not know the language spoken in audio files, use this option
 			To improve accuracy however you need to select a minimum of 2 languages
@@ -1386,12 +1661,7 @@ Polly
 		Turn text into speech using deep learning
 		Allowing you to create applications that can talk
 		Neural-> Produces the most Natural and Human like speech possible
-		Standard->More robot sounding -->Produces natura+93
-		.	``		23ERTYU
-	4
-	
-	-*=-0OI-=/
-	l-s*-+ounding speech
+		Standard->More robot sounding -->Produces natural sounding speech
 
 Translate		
 	Natural and accurate language translation
@@ -1513,6 +1783,9 @@ AWS Directory Service - AWS Directory Service for Microsoft Active Directory, al
 	
 AWS OpsWorks
 
+AWS workplaces
+An Amazon WorkSpace is a cloud-based virtual desktop that can act as a replacement for a traditional desktop. A WorkSpace is available as a bundle of operating system, compute resources, storage space, and software applications that allow a user to perform day-to-day tasks just like using a traditional desktop.
+
 AWS OpsWorks is a configuration management service that provides managed instances of Chef and Puppet. 
 
 AWS SSO is an AWS service that enables you to makes it easy to centrally manage access to multiple AWS accounts and business applications and provide users with single sign-on access to all their assigned accounts and applications from one place.	
@@ -1588,6 +1861,8 @@ Key Concepts
 				2 cents every 1000 tokens
 				Free trial usage of $18.. Total 675k words by math
 				Davinci takes 4000, so it can take a much bigger prompt
+				10 tokens= 7 words
+				save money for lower tokens using max_tokens
 		Temperature:	
 				A parameter from 0-1
 				Higher value means the GPT model will take more risks.. lower values means the GPT answer will be more confident in its answer when it responds
@@ -1597,3 +1872,115 @@ Key Concepts
 Environment
 		Go to personal->view API keys	
 
+Python
+	Package installer for Python that enables you to install packages for python
+
+Office 365 E5
+	
+
+
+Azure functions
+	_init.py
+		requirement.txt-> Tells azure what libraries we are going to use in our Azure Script
+		
+=====================AWS Solutions architect===========================================================================================================
+EC2 solutions architect level
+	Basics
+		4 byte ..32 bit.. (0-255)(0-255)(0-255)(0-255) 3.7 billion IP addresses	
+		6 byte less commonly used	
+		Public IP means your machine can be identified on the internet.. no 2 machines can have same public IP
+		Private IP machine can be identified on a private network only..IP must be unique only within the private network..
+		Machines in a private network connect to internet using a NAT? internet proxy
+		Only a specified range of IP's can be used as private IP's
+	Elastic IP
+		When you start and stop an instance, the public IP changes
+		You can have Fixed public IP address, AWS allows only 5 elastic IP's in an account
+		If there is a failure it can be masked by remapping the address to another instance in your account
+	Avoid using elastic IP
+		Reflects poor architectural decision
+		Use a random public IP and register a DNS name to use it
+		Or use a load balancer and not use a public IP at all
+	By default AWS machine comes with one public IP and one private IP
+		ssh will only work with private IP address
+	Pracs
+		Go to networking->create elastic IP's, then you can attach those addresses to the elastic ec2 instances/networking instance
+		They are charged if you dont use them, so attach it quickly
+		You can release IP addresses
+	EC2 placement groups cluster
+		Discuss strategy on placing EC2 instances
+			Cluster
+				Same rack(same hardware) and same AZ
+				Pros
+					super low latency and a 10GB speed network, high network throughput
+				Cons
+					if the rack fails all 
+				Applications
+					Big data job that needs to complete fast
+			Spread
+				Minimize risk
+				Each EC2 instance is on different hardware for eg 3 AZ and 6 hardwares
+				Span across multiple Az
+				Pros
+					Reduced risk of simultaneous failure
+					EC2 instances are on different hardware
+				Cons 	
+					Limited to 7 instances per Az per placement group 
+				Applications
+					High availablity
+					Critical applications 
+			Partition
+				Instances spread across partition in multiple Az .Seven partions per Az
+				Each partition is a rack 
+				Partition can span across multiple Az groups
+				Each partition can have 100 machines
+				The instances in partition do not share rack so each partition is isolated from failure
+				Instances get access to partition information using the metadata service--	
+				Application
+					Big data, HDFS, Hbase, Cassandra, Apache Kafka
+					Applications that are partition aware
+				Pracs
+					EC2 ->Placement group->Create placement group
+					Once created you can go to EC2 instance, advanced settings, under placement group name choose the placement group
+
+	EC2 hibernate
+		Stop EC2 instances the data on disk (ebs) is kept intact in the next start
+		when we terminate EC2 instances, if EBS volumes is set to be destroyed then it will be lost
+		When you start an instance
+			OS boots
+			Userdata script runs
+			The OS boots up
+			Application starts and caches getting warmed up
+		Hibernate
+			When you hibernate an instance , the in memory state (RAM is preserved)
+			The instance boot is much faster(The OS is not stopped its just frozen)
+			Under the hood, the RAM state is written to a file in the root EBS volume
+			the root EBS volume must be encrypted
+			on start, Ram will be loaded from EBS the RAM is going to be loaded from disk into the EC2 instance volume just as your EC2 instance never stopped
+			Applications
+				Long running processes and never running stop
+				Save RAM state
+				Boot up fast because you have services which take time to start
+				Instance RAM size limited is 150 GB
+				Make sure the root EBS volume size > ram of your EC2 instance
+			Available for on demand, reserved and spot instances
+				Instance can be hibernated for not more than 60 days
+			Pracs
+				When creating EC2 instance, Stop hibernate behaviour->enable
+				Then when you go to EC2 instance, you have to hibernate it instead of stopping 
+	
+	Elastic Network Interfaces		
+		Logical component in VPC that represents a virtual network card
+		The ENI can have the following attributes
+			Primary private IPv4, one or more secondary IPv4
+			one Elastic IP
+			one public IPv4
+		Bound to a specific Az
+		You can create ENI independently and attach them on fly on EC2 instances for failover
+		If your EC2 instance has a private static IP(why private?), you can move around instances for failover purposes
+		Quick and easy network failover	
+		Pracs
+			Create network interface(ENI)
+			Once created, actions attach and choose an ec2 instance to attach it to
+			By creating your own ENI's more control over private IP's and more control over networking
+			Does ENI come automatically with EC2 instance and get deleted when you terminate the instance?
+		https://aws.amazon.com/blogs/aws/new-elastic-network-interfaces-in-the-virtual-private-cloud/	
