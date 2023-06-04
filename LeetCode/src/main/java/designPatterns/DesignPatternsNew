@@ -694,7 +694,22 @@ Numpy
 			np.log2(10)
 		For other bases uses formula
 		
-		
+	random
+		rand (random uniform numbers)
+			returns a random numpy array whose elements are drawn randomly from the normal distribution of [0,1)
+			rand_mat=np.random.rand(5)
+			print(rand_mat)
+			rand_mat=np.random.rand(5,5) -- 5 X 5 matrix
+		randn (normal random numbers- standard normal distribution with a mean 0 and variance 1--same as Gaussian distribution?)
+			rand_mat=np.random.randn(5)
+				[-1.03228221 -0.13154734 -1.39811266  1.01883486  0.17548056]
+	mean
+		np.mean(rand_mat)
+	std(Standard deviation)
+		np.std(rand_mat)	
+
+
+
 Pandas
 	Another library to create datasets and manipulate datasets
 		import pandas as pd
@@ -1101,4 +1116,33 @@ Pandas
 			1245	AAPL	19-01-2018	178.46	196.306
 			1241	AAPL	12-01-2018	177.09	194.799
 			1247	AAPL	23-01-2018	177.04	194.744
-			
+		datetime
+			Convert date from string to pandas datetime format
+			Otherwise we cant perform date operations
+				data['date']=pd.to_datetime(data['date'],dayfirst=True)
+						stock	date	price	new_price
+					0	AAPL	2013-02-08	67.8542	74.63962
+					1	AAPL	2013-02-11	68.5614	75.41754
+					2	AAPL	2013-02-12	66.8428	73.52708			
+					1   date       5036 non-null   object 
+									to
+					1   date       5036 non-null   datetime64[ns] 
+			ns is number of seconds.. saves it as integer since january 1 000 at midnight
+			Saves it as number of seconds internally
+			Another way
+			date = datetime.date(2022, 1, 29)
+			print(date)
+				2022-01-29
+			Display date in different formats
+				 data['date'].dt.strftime('%m/%d/%Y')
+				 data['date'].dt.strftime('%m-%d-%Y')
+				 data['date'].dt.strftime('%m-%d-%y') -- small y 2 digits for the year
+			Extract year,month and day from datetime object
+				 data['year']=data['date'].dt.year 
+				 dt.month
+				 dt.day
+			Lets you compare date, date calculations 
+				data['date'][1]-data['date'][0]
+					Timedelta('3 days 00:00:00')
+				data['date'][1]>data['date'][0]
+					True
