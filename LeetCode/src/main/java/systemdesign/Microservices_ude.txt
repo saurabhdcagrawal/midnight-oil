@@ -1,0 +1,1045 @@
+Microservices
+	Small autonomous services that work together
+	Single responsibility principle--> Gather together things that change for the same reason and seperate those things that change for different reasons
+	Focus service boundaries based on business boundaries
+	Smaller the service more you maximize the benefits and downsides of microservice architecture
+	The complexity emerges from having more and more moving parts
+	All communication between services are via network calls to enforce seperation between services and avoid the perils of tight coupling
+	Microservice may be deployed on a PaaS or may have its own operating system process
+	These services need to be able to change independently of each other and be deployed by themselves without requiring consumers to change
+	Think about what needs to be shown and what needs to be exposed,If there is too much sharing, our consuming services become coupled to our internal representations. This
+    decreases our autonomy, as it requires additional coordination with consumers when making changes.
+	Our service exposes an application programming interface (API), and collaborating services communicate with us via those APIs. We also need to think about what
+    technology is appropriate to ensure that this itself doesn’t couple consumers. This may mean picking technology-agnostic APIs to ensure that we don’t constrain technology
+    choices. 
+	To do decoupling well, you’ll need to model your services right and get the APIs right
+	With microservices adopt technology more quickly and understand how new adoptions may help us 
+	Technological heterogeniety
+		With a system composed of multiple collaborating services, we can decide to use different technologies inside each one
+		This allows us to pick the right tech stack for the right job rather than to having a standardized one size fits all approach
+		If one part of our system needs to improve its performance, we might decide to use a
+		different technology stack that is better able to achieve the performance levels required.We may also decide that how we store our data needs to change for different 
+		parts of our system. For example, for a social network, we might store our users’ interactions in a graph-oriented database to reflect the highly interconnected nature of a social graph, but perhaps the posts the users make could be stored in a document-oriented data store, giving rise to a heterogeneous architecture
+		
+		With microservices, we are also able to adopt technology more quickly, and understand how new advancements may help us. One of the biggest barriers to trying out and
+		adopting new technology is the risks associated with it. With a monolithic application, if I want to try a new programming language, database, or framework, any change will impact a large amount of my system. With a system consisting of multiple s	ervices, I have multiple new places in which to try out a new piece of technology. I can pick a service that is perhaps lowest risk and use the technology there, knowing that I can limit any potential negative impact. Many organizations find this ability to more quickly absorb new technologies to be a real advantage for them.
+		If you can rewrite your microservice in 2 weeks you may mitigate the risks of embracing new technology
+	Resilence:
+		if one system fails and doesnt cascade, you can isolate the problem and rest of the system can carry on working
+		With a monolithic service, if 
+	Scaling on demand for those pieces who need it	
+
+	
+Spring Microservices (Spring boot version 3.0.6)
+	
+Web service
+	Service delivered over the web
+	Interoperability
+	Without web service we need to use Jar (to provide business logic to another application)
+	Software system designed to support interoperable machine to machine interaction over a network
+		Designed for application to application interaction(machine to machine)
+		Should be platform independent(interoperable).. Other applications installed using Java, Dotnet or PHP
+		Should allow communication over a network
+	Popular formats for request and response
+		XML(Extensible markup language)
+		Json	
+	Every web service offers a service definition that the applications who are going to use web service are provided with. Service definition is the contract 
+	(Service provide provides WSDL to Service consumer)
+		a) request and response format (JSON/XML)
+		b) Structure of the request and Response
+		c) endpoint of the service
+		
+	Transport defines how a service is called. It can be exposed over rt
+			- HTTP and MQ (service exposed over internet- HTTP or over a queue-MQ)
+			- Just how you type the URL in browser, same way an application will call the web service
+			- Service requestor will place the message on queue, Service provider will be listening on the queue, do the processing, create the response and put it back
+			  on the queue
+			  
+	
+SOAP web services (Simple Object Access Protocol) 
+	Defines a specific way of building services
+	XML is used as the request and response exchange format
+	SOAP defines a specific request and response structure	
+	SOAP envelope (header(optional)->authentication, authorisation) +body
+	You have to adhere to the above format SOAP XML structure
+	
+SOAP does not pose any restrictions on your transport	
+	Use HTTP or MQ
+	Service definition is done using WSDL
+	
+REST( Representational state transfer)- Architectural approach
+	HTTP is a protocol which is used to browse and access the web
+	Rest is Based on HTTP, Make best use of HTTP to develop web services as well
+	Most important abstraction in REST is called Resource, a resource is anything that you want to expose to the outside world through your application
+	A resource is a URI	user/saurabh/todos/1 -> a resource can have different representations XML,HTTP,JSON
+		create a user do a POST /users
+		delete user 1 do a delete /user/1
+		get all users do a get /users
+		Get one user do a get/user/one	
+	When you type URL in browser, sends a get request to the webserver, server sends the HTTP response containing the HTML which is rendered on your browser
+	HTTP defines the header and the body of the request
+	HTTP also defines something called request methods.
+	You can indicate what action you are doing by using the HTTP request methods.
+	Get, I'm trying to get the details of something, Post, I'm trying to create something, Put, I'm trying to update something.
+	A HTTP response will also include a HTTP status code
+	Rest has no restriction on data format(Json is popular)...transport is always over HTTP.. there is no standard service definition or service definition language
+	WADL/Swagger.. (one of the formats to specify)
+	RESTful services are easier to implement than SOAP
+	
+Soap VS REST
+	Not an apple to apple comparison, SOAP is restrictions, REST is architectural approach
+		
+
+Spring boot vs Spring MVC vs Spring
+	Conventional Spring
+		1)Dependency Management - for rest API you would need spring framework, spring MVC framework, JSON binding framework.. For spring- Spring test, Mockito, JUnit
+			Create a pom.xml with all dependencies and versions
+		2) web.xml (Web app configuration)
+			Configure Dispatcher Servlet for Spring MVC
+		3)Component scan and view resolver , define a data source  manage spring beans..context.xml
+		4) NFR's logging, error handling, monitoring
+	Repeat this for every project
+	Spring Boot makes it easy
+		
+Spring Boot--Spring Initializr Create RestAPI
+	Spring initializr: start.spring.io
+	Snapshots are the developing versions
+	Add dependency, group, artifact name, download zip, import intellij and start	
+	@RestController for controller class
+	@RequestMapping("/courses")
+	@RequestMapping(method= RequestMethod.GET,path="/courses")
+
+	http://localhost:8080/courses
+	
+	One class has @SpringBootApplication annotation..that class has to be outside//other classes can be in subpackages
+	RestfulWebServiceApplication
+	SpringApplication.run(RestfulWebServiceApplication.class, args);
+	Instead of @RequestMapping(method= RequestMethod.GET) you can use @GetMapping(path="/courses")
+	Maven use Bundled Maven 3
+
+
+Help you build production ready apps quickly-- Goal of Spring boot
+
+Spring Boot- Starter projects
+	Group dependencies and make it easy to build applications
+	Starters->Convenient dependency descriptors for different features
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		
+		Spring Boot Starter Data JPA
+		Spring Boot Starter JDBC
+		Spring Boot Starter Security
+	Spring boot provides a variety of starter projects depending on what kind of application you are designing	
+	
+Spring Boot- Auto configuration	
+	Automated configuration for your app
+		Decided based on 
+			1) What frameworks are in your class path
+			2) What is the existing configuration (annotations) ?
+		Spring boot autoconfigure jar does the magic
+		Go to application.properties and put 	
+		See Positive matches and negative matches 
+		For Spring boot Starter web
+			Dispatcher servlet
+			Embedded Servlet container
+			Default error pages
+			Bean Json convertor( jackson)
+		Eliminate Configuration to setup Spring, Spring MVC and other frameworks	
+			
+Spring Boot Dev Tools
+	Setup for IntelliJ
+	https://stackoverflow.com/questions/33869606/intellij-15-springboot-devtools-livereload-not-working			
+	Increased developer productivity
+	Why do you need to restart manually for every code change?
+		<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-devtools</artifactId>
+		</dependency>	
+	
+	If you are making changes to pom.xml, then you have to restart the application manually	
+	
+Spring Boot-Profiles
+	Enables you to specify environment specific configuration
+	Create a specific profile for each different environment(configuration)
+	application.properties..create seperate file for each environment application-dev.properties
+	Go to application.properties and set active profiles
+		spring.profiles.active=dev
+	The dev profile will now supersede the property in the default profile for the application
+	
+Spring Boot- Configuration Profiles
+	See demo 
+	Centralized class for the application related configuration
+	A combination of configuration properties and profiles in spring boot is powerful, externalize all configuration needed for your application
+
+Spring Boot embedded server
+	Old ways of deploy 1) Install Java 2) Install tomcat 3)Deploy War(Web archive)
+	Embedded server is simpler alternative, the server(tomcat) is already part of your jar file
+	Install java and run your jar file
+	C:\Users\saura\repo\learn-spring-boot\target\learn-spring-boot-0.0.1-SNAPSHOT.jar
+	Just run the jar (tomcat is part of our jar)
+	It simplifies the deployment process
+	Default is starter-tomcat(jetty,undertow is also supported)
+	
+Spring Boot Actuator
+	Monitor and manage your application in production
+	Provides a number of endpoints
+		beans-complete list of spring beans in your app
+		health- Application health information
+		metrics- Application metrics
+		mappings - Details around request mappings
+		<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>		
+	In application.properties, management.endpoints.web.exposure.include=* or you can specify health,metrics
+	http.server.requests
+	http://localhost:8080/actuator/metrics/http.server.requests
+	Provides a lot of information about the application and the environment in which your application is running
+
+
+Spring boot vs spring mvs vs Spring
+
+		Spring framework is about dependency injection, Identifying the dependencies @Component,@Service, @Autowired, Component scan-- identify all components
+			Spring modules and spring projects extend the spring eco system ..provide good integration with other frameworks (Hibernate/JPA, Junit, Mockito	)
+		Spring MVC is a spring module ->Only focus on Simplify building wep apps and rest api
+			@Controller, @RequestMapping, @RestController
+		SpringBoot (Wrapper that makes it easy to use Spring MVC and Spring)
+			To build production ready apps quickly
+				Starter projects easy to build wide variety of applications
+				Eliminate Configuration to setup Spring, Spring MVC and other frameworks. Default conf based on what is in your classpath
+				Enable non functional requirements
+					Actuator-> enables advanced monitoring of application
+					Embedded Server-> No need for seperate application servers
+					Logging and error handling
+					Profiles and Configuration properties
+					
+Section 3 -Advanced rest services
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>runtime</scope>
+		</dependency>				
+		
+	All requests are handled by dispatcher servlet in Spring MVC
+	Mapped to the root URL
+	All respects irrespective of URL first come her
+	Dispatches to the right controller
+	Spring AutoConfiguration configures dispatcher servlet	
+	How the return object is converted to Json?
+		@ResponseBody+JacksonHttpMessageConverters
+		@RestController has @response body and is saying return the bean as is and there will be conversion happening
+		Default conversion is using JacksonHttpMessageConvertersConfiguration auto configured by SpringAutoConfiguration
+	Configuring error mapping-> If you try to access a resource that does not exist (ErrorMVCAutoConfiguration)
+	How are all jars available? Because of starter projects..they come in your classpath and then SpringBeanAutoConfiguration does rest of the magic
+		
+		
+		
+		
+		
+		
+		
+Microservices
+	Its an architectural style to develop single application as a suite of small services, each running its own process
+	Small autonomous services that work together
+	Microservices are services exposed by REST
+	Small well chosen deployed units with very well thought out boundaries
+	Which are cloud enabled	Meaning -There can multiple instances for each of these microservices..using a container orchestration you can bring them up or down
+	
+Challenges with microservices
+	Deciding the boundary of the microservice is an evolutionary process-->Need to have proper business knowledge
+	Configuration management--> multiple instances of multiple microservices with multiple environments.. how to manage the several configurations?
+	Dynamic scale up and scale down
+	Visiblity->Identify where the bug is.. centralized log..which microservice is problem..Also need monitoring to see micro-services are up or down
+			   All monitoring needs to be automated
+	Microservices communicate with each other// if one goes down other shouldnt..so we need fault tolerance	->How do we build fault tolerance in microservices
+	
+SpringCloud
+	
+	SpringCloudConfigurationServer(Configuration management)
+		Provides an approach where you can store all configuration of all different env of all different microservices in a centralized location (gi repository)
+		SpringCloudConfigServer exposes that configuration to all microservices, keep all configuration in one place, makes it easy to manage
+	Naming Server(Eureka)
+	Service Registration and Discovery->	All instances of microservices will be registered against Eureka (naming Server )
+		Currency calculation service should ask the naming server, give me all the instances who are running the currency exchange service
+			and the naming server will provide that informations
+	Ribbon(Dynamic scale up and scale down)
+		Dynamically adjust as per load (distribute the load as per instances)
+		Load is evenly distributed for the existing instances it gets from the naming server		
+	Feign
+		Write simple restful clients
+	Zipkin Distributed Tracing (visibility and monitoring)
+		We would use Spring Cloud Sleuth to assign a ID to a request across multiple components and we would use Zipkin Distributed Tracing
+		to trace a request across multiple components.
+	API gateways (Netflix Zuul API gateway)
+		Logging, Security, Analytics and things like that (for all microservices)
+	Fault Tolerance (Hystrix)	
+		if a service is down, Hystrix helps to configure a default response
+		
+Advantages
+	It allows you to adapt new technology and processes very easily
+		Each microservices can be built in different technologies
+		In Monolith applications we would not have that flexibility
+		Microservice 1 may be java, microservice 2 may be NodeJs
+	Dynamic Scaling
+		If your microservices are cloud enabled they can scale dynamically and you can procure hardware and release it dynamically as well
+		Scale them up and down as per your load
+	Faster release cycles	
+		Because you are developing smaller components easier to release microservices as compared to monolith applications
+		Faster release cycles..bring new features faster to market
+
+Standardizing Ports & URL
+	Set up at least 7 projects
+		Limits service 8080,8081
+		Spring cloud config server 8888
+		Currency exchange service 8000,8001,8002
+		Netflix Eureka Naming Server 8761
+		Netfliz Zuul API gateway server 8765
+		Zipkin Distributing Tracing Server 9411
+		https://github.com/in28minutes/spring-microservices/tree/master/03.microservices
+		All URL's that are used in this course
+		
+V2
+	SpringCloudLoadBalancer(instead of ribbon)
+	SpringCloudGateway instead of Zuul
+	Resilience4j instead of Hystrix
+
+# Architecture
+Limits microservice  Microservice X   Microservice Y
+		\					/			/
+		Spring Cloud Config Server
+				\	
+				Git Repo
+
+	
+#Create a LimitsMicroService		
+	Config client -> Client that connects to spring cloud config server
+	<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-config</artifactId>
+	</dependency>
+	Configure how spring cloud starter config needs to connect to spring cloud server..
+	In application.properties
+	spring.config.import=configserver:http://localhost:8888
+	spring.config.import=optional:configserver:http://localhost:8888
+	If you want to make the connection to config server mandatory, you can remove the optional
+	limits-service.minimum=2
+	limits-service.maximum=999
+	
+https://github.com/in28minutes/spring-microservices-v3/blob/main/03.microservices/01-step-by-step-changes/readme.md#spring-cloud-config-server---steps-01-to-08
+	Step 04 - Setting up Spring Cloud Config Server
+
+
+	
+	
+#Create a Git repository	
+	Step 05 - Installing Git and Creating Local Git Repository
+	/git-spring-boot-localconfig-repo
+git-localconfig-repo/limits-service.properties New
+	limits-service.minimum=4
+	limits-service.maximum=996
+	
+
+
+#Create a config server	(Spring cloud config server connected to git repository)
+On Spring Initializr, choose:
+	Group Id: com.in28minutes.microservices
+	Artifact Id: spring-cloud-config-server
+	Dependencies
+	DevTools
+	Config Server
+	
+	<dependency>
+		<groupId>org.springframework.cloud</groupId>
+		<artifactId>spring-cloud-config-server</artifactId>
+	</dependency>	
+	
+	@EnableConfigServer
+	Also in application.properties
+	spring.application.name=spring-cloud-config-server
+	server.port=8888	
+	spring.cloud.config.server.git.uri=file:///C:/Users/saura/repo/git-spring-boot-localconfig-repo
+	spring.cloud.config.server.git.default-label=main (otherwise it looks in master)
+
+Run the URL
+	http://localhost:8888/limits-service/default
+	
+#Connect limits microservice to Spring Cloud Config Server
+	spring.config.import=optional:configserver:http://localhost:8888	
+	spring.application.name=limits-service (from git repo)
+	http://localhost:8080/limits will give values from git repo
+	When limits service start it executes the URL on cloud config server  http://localhost:8088/limits-service/default 	and get the config back
+
+	Starting LearnSpringBootApplication using Java 17.0.1 with PID 46580 (C:\Users\saura\repo\learn-spring-boot\target\classes started by saura in C:\Users\saura\repo\learn-spring-boot)
+	The following 1 profile is active: "prod"
+	Fetching config from server at : http://localhost:8888
+
+	http://localhost:8888/limits-service/qa
+	http://localhost:8888/limits-service/default
+
+	{"name":"limits-service","profiles":["qa"],"label":null,"version":"6dc2bf5235c3838010ef66a1d7028e6ab0f2618b","state":null,"propertySources":[{"name":"file:///C:/Users/saura/repo/git-spring-boot-localconfig-repo/limits-service-qa.properties","source":{"limits-service.minimum":"8","limits-service.maximum":"992"}},{"name":"file:///C:/Users/saura/repo/git-spring-boot-localconfig-repo/limits-service.properties","source":{"limits-service.minimum":"4","limits-service.maximum":"996"}}]}
+
+	Priority with environment and second value is default
+
+	Use this spring.profiles.active=prod
+	OR
+	spring.cloud.config.profile=dev
+	spring.cloud.config.name?
+
+	For another microservice.. create properties file such as microservice-x-dev.properties and so on and so forth
+	So all configuration related to your application is centralized at one place..is centralized
+	By seperating out your configuration from your application, you are making operations easier.. 
+	Control All configurations for all microservices in all environments in a single location (git repository)		
+
+#Debugging guide
+	https://github.com/in28minutes/spring-microservices-v3/blob/main/03.microservices/01-step-by-step-changes/readme.md#spring-cloud-config-server---steps-01-to-08
+	
+#CurrencyExchangeServiceApplication
+	spring.application.name=currency-exchange
+	server.port=8000
+	spring.config.import=optional:configserver:
+	http://localhost:8000/currency-exchange/from/USD/to/INR
+	
+#Having 2 instances of the same application 
+	Copy run configuration, provide VM arguments
+	-Dserver.port=8001
+	Whatever you provide in VM properties will override whatever is configured in application.properties
+	Will launch up a new instance
+	http://localhost:8001/currency-exchange/from/USD/to/INR
+	You can identify which instance is being called
+		
+#JPA
+	<dependency>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-data-jpa</artifactId>
+	</dependency>	
+
+	<dependency>
+		<groupId>com.h2database</groupId>
+		<artifactId>h2</artifactId>
+	</dependency>
+	h2 in memory database
+	
+	in application.properties
+		spring.jpa.show-sql=true   				 (to see all SQL statements that are generated)
+		spring.datasource.url=jdbc:h2:mem:testdb (otherwise you get a random database url)
+		spring.h2.console.enabled=true			 (see details present in the database)
+		
+	When you run you see h2 console
+		http://localhost:8000/h2-console/
+		
+	#Spring Data JPA	
+		In your bean add @Entity and @Id for your primary key...h2 will automatically create tables
+		If you want to have different column names than the bean use @Column(name="currency_from")	
+		tables and columns are automatically created with the _ wherever there is space
+		@Table if you want a different table name
+		@Id,@SequenceGenerator if you want to generate sequences
+		@Transient for columns you do not want to be a part of database
+		Fields marked with @Transient are ignored and not mapped to any database column (in RDBMS)		
+	#JPARepository
+	#How to connect Service to in memory database
+		public interface StudentRepository extends JpaRepository<Student,Long> {
+		Student findById(int id);
+		Student findByName(String name);
+		}
+		 //jpql
+		//@Query("SELECT s from Student s where s.email=?1")
+		 Student findByEmail(String email);
+		 Question#: When would we need JPQL?
+	#LoadData
+		Create data.sql file parallel to application.properties with the insert queries
+			INSERT INTO STUDENT (ID,NAME,EMAIL,DATE_OF_BIRTH,AGE) values (2,'Shyam','shyam@infy.com','1990-12-22',33)
+		It gets loaded automatically before the tables are created..to prevent this use defer property in application.properties
+		spring.jpa.defer-datasource-initialization=true
+	#Another way	
+	@Configuration
+	public class StudentConfig {
+		@Bean
+		CommandLineRunner commandLineRunner(StudentRepository studentRepository){
+			return args -> {
+				Student alex=new Student(1L,"Alex","alex@gmail.com", LocalDate.of(2001, Month.JULY,23));
+				Student ronya=new Student(3L,"Ronya","ronya@gmail.com",LocalDate.of(1995, Month.JULY,02));
+				studentRepository.saveAll(List.of(alex,ronya));
+			};
+
+		}
+		#to avoid multiple loads everytime you run
+			spring.jpa.hibernate.ddl-auto=create-drop
+		In production use none	
+			spring.jpa.hibernate.ddl-auto=none
+	#How the controller will call the data
+		@GetMapping("/api/v1/student/{id}") (connects to service..business logic layer)
+		public Student getStudent(@PathVariable int id){
+        return studentService.getStudent(id);
+    }
+	Inside service (connects to data access layer)
+		@GetMapping("/api/v1/student/{id}")
+    public Student getStudent(@PathVariable int id){
+        return studentService.getStudent(id);
+    }
+		
+ #Post is used when you want to add new resources
+	Controller:
+	  @PostMapping("/api/v1/register")
+		public void registerNewStudent(@RequestBody Student student){
+        studentService.addNewStudent(student);
+		}
+	Service
+		public void addNewStudent(Student student) {
+        Optional<Student> studentOptional=studentRepository.findByEmail(student.getEmail());
+        if(studentOptional.isPresent())
+            throw new IllegalStateException("email taken");
+        studentRepository.save(student);
+        System.out.println(student);
+    }
+POST:http://localhost:8080/api/v1/register			
+		{
+		"id": 5,
+		"name": "Prakash",
+		"email": "prakash@gmail.com",
+		"dateOfBirth": "2011-07-23"
+		}
+First time succeeds
+Second time
+{
+    "timestamp": "2023-06-29T14:47:34.916+00:00",
+    "status": 500,
+    "error": "Internal Server Error",
+    "message": "email taken",
+    "path": "/api/v1/register"
+}		
+
+For message to be displayed use property: server.error.include-message=always in application.properties
+
+Delete: http://localhost:8080/api/v1/delete/5
+Controller
+@DeleteMapping("/api/v1/delete/{id}")
+    public void deleteStudent(@PathVariable Long id){
+        studentService.deleteStudent(id);
+    }
+Service
+ public void deleteStudent(Long id) {
+        boolean exists=studentRepository.existsById(id);
+        if(!exists)
+            throw new IllegalStateException("Student does not exist");
+        studentRepository.deleteById(id);
+    }
+	
+PUT
+Update name/email
+    @PutMapping("/api/v1/update/{id}")
+
+@Transactional means you dont have to implement any jpql query		
+public void updateStudent(@PathVariable Long id,
+                          @RequestParam(required = false) String name,
+                          @RequestParam (required=false) String email){
+        studentService.updateStudent(id,name,email);
+    }
+
+#mvn clean then install will create demo snapshot jar
+java -jar (name of jar) --server.port=8081
+To run into another port
+
+
+
+Youtube video		
+@GetMapping for method
+@RequestMapping for controller
+create a final instance of service with constructor
+@Autowire it
+
+@Service in the service layer
+
+--------------------------------------Complete Spring boot app-----------------------------------------
+#SpringCloud 
+	Spring cloud is a project under the spring project ecosystem
+	Help to build reliable and robust microservices(develop microservices)
+	Spring Cloud provides tools for developers to quickly build some of the common patterns(design patterns) in distributed systems
+	(eg configuration management, service discovery, circuit breaker, intelligent routing) 
+
+#SpringWeb
+	Build web including RESTful services/applications using spring MVC..Use apache tomcat as the default embedded container 
+#Lombok
+	To remove boilerplate code
+	
+#SpringDataMongoDB
+	
+
+#Api gateway
+		Acts as a gatekeeper/entry point to send out requests to different services from users
+		dont want to give the hostname/ip address services of microservice
+
+#Logical architecture of each microservice		
+Http request from clients->Controller->Service(Business logic...sometimes talk to MQ)->Repository(DataAcessLayer)->Database		
+
+#application.properties
+spring.data.mongodb.uri=mongodb://localhost:27017/product-service
+
+http://localhost:8080/api/product
+{
+    "name": "Iphone 13",
+	"description": "prakash@gmail.com",
+	"price": 1200
+}
+
+
+Controller->Service->Repository
+It is a good practice to sepeare dto from model..expose only what is needed
+DTO objects are different, model is different
+	For Repository
+	Student findById(int id);
+		Student findByName(String name);
+		//jpql
+		//@Query("SELECT s from Student s where s.email=?1")
+		Optional<Student> findByEmail(String email);
+	For Controller
+		@PostMapping
+		@ResponseStatus(HttpStatus.CREATED)
+		@RequiredArgsConstructor instead of @Autowired?
+		private final ProductService productService;
+	For Service	
+		@Service inject repository@Autowired
+		
+		 Product product=Product.builder()
+                .name(productRequest.getName())
+                .description(productRequest.getDescription())
+                .price(productRequest.getPrice())
+                .build();
+
+        productRepository.save(product);
+		//log4jfeature{}
+		@Slf4j
+        log.info("Product {} is saved",product.getId());
+	For model
+		@Document annotation for mongo db
+		@Lombok annotation for getter setter and constructors
+		@AllArgsConstructor
+		@NoArgsConstructor
+		@Builder
+		@Data
+			Shortcut for @ToString , @EqualsAndHashCode , @Getter / @Setter and @RequiredArgsConstructor
+		@Entity
+		@Table(name='') if you want to rename
+		@OneToMany(cascade = CascadeType.ALL)
+	For Repository
+		public interface StudentRepository extends JpaRepository<Student,Long> {
+
+		
+
+
+201Created response
+Integration Tests
+#tests products service -- 
+#testcontainers..use docker container instances of
+#IntegrationTests
+#mongodbcontainer
+https://java.testcontainers.org/
+Define versions for all test containers.. so individual dependency doesnt need mention of containers
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-bom</artifactId>
+            <version>1.18.3</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement> 
+
+Now
+<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>mongodb</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+		
+23:47 43:		
+@SpringBootTest
+@Testcontainers
+class ProductServiceApplicationTests {
+	@Container
+	static MongoDBContainer mongoDBContainer= new MongoDBContainer("mongo:4.4.2");
+//from the container.. adds replica
+	static void setProperties(DynamicPropertyRegistry dynamicPropertyRegistry){
+		dynamicPropertyRegistry.add("spring.data.mongodb.uri",mongoDBContainer::getReplicaSetUrl);
+	}
+		@Test
+		void contextLoads() {
+	}
+
+}	
+//    @OneToMany(cascade = CascadeType.ALL)
+For what?
+git remote add origin https://github.com/saurabhdcagrawal/shopping-app-spring-boot.git	
+
+@Transactional
+	Why?
+
+#Synchronous communication
+#WebClient
+After you build your docker images in local push to docker hub
+Image is downloaded from hub.docker.com (Docker registry)
+
+//Dependencies add individual pom
+//Dependencies main pom..add dependency management
+//add parent as spring boot starter
+
+# spring.jpa.hibernate.ddl-auto=create-drop
+
+# Inter Process Communication
+	#RestTemplate
+		import org.springframework.web.reactive.function.client.WebClient;
+		<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-starter-webflux</artifactId>
+			</dependency>
+	#Inside order service class		
+		//check if product exists in inventory
+        Boolean result=webClient.get().uri("http://localhost:8082/api/inventory").retrieve().bodyToMono(Boolean.class).block();
+        if(result)
+            orderRepository.save(order);
+        else
+            throw new IllegalArgumentException("Product is not in stock, please try again later");
+
+	block will make a synchronous request
+	    @GetMapping
+		#@RequestParameter instead of path variable
+		    public List<InventoryResponse> isInStock(@RequestParam List<String> skuCode){
+		From
+		@GetMapping("/{sku-code}")
+		@ResponseStatus(HttpStatus.OK)
+		public boolean isInStock(@PathVariable String skuCode)
+	#After Changes
+		order.setOrderLineItemsList(orderRequest.getOrderLineItemsDtoList().stream().map(this::mapToModel).collect(Collectors.toList()));
+        List<String> skuCodes=order.getOrderLineItemsList().stream().map(OrderLineItems::getSkuCode).collect(Collectors.toList());
+        //check if product exists in inventory
+        InventoryResponse[] inventoryResponses=webClient.get().uri("http://localhost:8082/api/inventory",
+                uriBuilder -> uriBuilder.queryParam("skuCode",skuCodes).build())
+                .retrieve().bodyToMono(InventoryResponse[].class)
+                .block();
+        boolean allProductsInStock=Arrays.stream(inventoryResponses).allMatch(InventoryResponse::isInStock);
+        if(allProductsInStock)
+            orderRepository.save(order);
+    #order
+	{
+	   "orderLineItemsDtoList":[
+		   {
+			   "skuCode":"iphone_13",
+			   "price":1200,
+			   "quantity":1
+		   },
+           {
+			   "skuCode":"iphone_13_red",
+			   "price":1200,
+			   "quantity":1
+		   }
+	   ] 
+	}	
+	In cloud ennviroment, dynamic ip adress and different ports
+	Also there can be multiple instances of inventory service microservice..
+	How our order service which instance of order service to call?
+#Service Discovery
+	Microservices at the time of starting will register themselves to discovery server by making a request	
+	Discovery service will add this information to its local copy also called as its service registry
+	Discovery server.. will give a local copy also to the microservice server..(in case discovery service is not available)
+	#Netflix Eureka		
+		Comes from different group id
+		For the client pom
+		<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+        </dependency>
+	@SpringBootApplication
+	@EnableEurekaServer
+	public class DiscoveryServerApplication {
+		public static void main(String[] args) {
+			SpringApplication.run(DiscoveryServerApplication.class, args);
+		}
+
+	}
+	In app.properties for discovery service (We dont want server to register as a client)
+	eureka.instance.hostname=localhost
+	eureka.client.register-with-eureka=false
+	eureka.client.fetch-registry=false
+	server.port=8761
+	
+	For the client pom
+		<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+		
+	In client app properties
+		eureka.client.serviceUrl.defaultZone=http://localhost:8761/eureka
+		spring.application.name=order-service
+	EnableEurekaClient is deprecated, no need to annotate the main class.
+	It is enough to add the spring-cloud-starter-netflix-eureka-client dependency to pom.xml and if we have the application name in yml or properties file it will be registered to Eureka Server.	
+	See all services
+		http://localhost:8761/
+		Application	AMIs	Availability Zones	Status
+		INVENTORY-SERVICE	n/a (1)	(1)	UP (1) - LAPTOP-KQ6C3UTQ:inventory-service:8082
+		ORDER-SERVICE	n/a (1)	(1)	UP (1) - LAPTOP-KQ6C3UTQ:order-service:8081
+		PRODUCT-SERVICE	n/a (1)	(1)	UP (1) - LAPTOP-KQ6C3UTQ:product-service
+	To be assigned random port
+		Provide port as 0 for inventory service..
+		Spring Boot will assign random free port in the machine and will run inventory service application in that port 
+		server.port=0	
+		Allow multiple instances in Eclipse Run Configurations
+		See 2 availability zones
+		Console log
+		2023-07-12T19:33:59.099-04:00  INFO 15052 --- [main] .s.c.n.e.s.EurekaAutoServiceRegistration : Updating port to 58875
+		Discovery server
+		Application	AMIs	Availability Zones	Status
+		INVENTORY-SERVICE	n/a (2)	(2)	UP (2) - LAPTOP-KQ6C3UTQ:inventory-service:8082 , LAPTOP-KQ6C3UTQ:inventory-service:0
+		ORDER-SERVICE	n/a (1)	(1)	UP (1) - LAPTOP-KQ6C3UTQ:order-service:8081
+		PRODUCT-SERVICE	n/a (1)	(1)	UP (1) - LAPTOP-KQ6C3UTQ:product-service
+	#Now replace hardcoded inventory service port and ip in order service
+		  InventoryResponse[] inventoryResponses=webClient.get().uri("http://inventory-service/api/inventory",
+                uriBuilder -> uriBuilder.queryParam("skuCode",skuCodes).build())
+                .retrieve().bodyToMono(InventoryResponse[].class)
+                .block();
+	#Now test order API 
+		Error
+		{
+			"timestamp": "2023-07-12T23:43:40.855+00:00",
+			"status": 500,
+			"error": "Internal Server Error",
+			"message": "Failed to resolve 'inventory-service' [A(1)] after 2 queries ",
+			"path": "/api/order"
+		}
+	#Client side load balancing should be enabled and order service should try inventory service to try one by one	
+		whenever you are creating an instance of your client, you will automatically create the client side load balancer 
+		and use the client side load balancing to create the order service
+		public class WebClientConfig {
+		@Bean
+		@LoadBalanced
+		public WebClient.Builder webClient(){
+			return WebClient.builder();
+		}
+		}
+	#OrderService
+	   private final WebClient.Builder webClientBuilder;
+	   InventoryResponse[] inventoryResponses=webClientBuilder.build().get().uri("http://inventory-service/api/inventory",
+                uriBuilder -> uriBuilder.queryParam("skuCode",skuCodes).build())
+                .retrieve().bodyToMono(InventoryResponse[].class)
+                .block();
+	 #Go To postman and run this on Json	
+		{
+	   "orderLineItemsDtoList":[
+		   {
+			   "skuCode":"iphone_13",
+			   "price":1200,
+			   "quantity":1
+		   }
+	   ]    
+	}		
+	After this order placed successfully			
+		#Now put discovery Server down and try again
+			It succeeds because when client makes a call to discovery server, it gets a local copy of service registry
+			Hence it is still able to make that connection (until those local copies are still working)..if they are down, then it will contact discovery server and go down
+#ApiGateway
+	Microservice environment can have multiple instances and an app can run on different ports
+	We cannot rely on harcordedip:port to call the service
+	Use a component at the start of architectural landscape called API gateway which is responsible for routing the request from users to corresponding services
+	onlineshop.com ../.api/product-->then route it to product service /api/order-->go to order server
+	Can also help with
+	--Authentication
+	--Security
+	--LoadBalancing
+	--SSL Termination
+	#SpringCloudGateway
+	Create a module with
+	<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+     </dependency>
+		
+	 In app.properties for api-gateway enable more logging
+		logging.level.root=INFO
+		logging.level.org.springframework.cloud.gateway.route.RouteDefinitionLocation=INFO
+		logging.level.org.springframework.cloud.gateway= TRACE
+	#Product Service Route
+	spring.cloud.gateway.routes[0].id=product-service
+	spring.cloud.gateway.routes[0].uri=lb://product-service
+	spring.cloud.gateway.routes[0].predicates[0]=Path=/api/product
+	#Order Service Route
+	spring.cloud.gateway.routes[1].id=order-service
+	spring.cloud.gateway.routes[1].uri=lb://order-service
+	spring.cloud.gateway.routes[1].predicates[0]=Path=/api/order
+	#Inventory Service Route
+ By default it runs on port 8080
+	#Test with product service
+	http://localhost:8080/api/product
+	Response
+	[
+    {
+        "id": "649df993b76b9a7e7b956045",
+        "name": "Iphone 13",
+        "description": "prakash@gmail.com",
+        "price": 1200
+    }
+	]
+#See log in API gateway
+	2023-07-12T20:45:18.110-04:00 DEBUG 23740 --- [ctor-http-nio-3] o.s.c.g.h.RoutePredicateHandlerMapping   : Mapping [Exchange: GET http://localhost:8080/api/product] to Route{id='product-service', uri=lb://product-service, order=0, predicate=Paths: [/api/product], match trailing slash: true, gatewayFilters=[], metadata={}}
+
+	2023-07-12T20:47:07.188-04:00 DEBUG 23740 --- [ctor-http-nio-3] o.s.c.g.h.RoutePredicateHandlerMapping   : Mapping [Exchange: POST http://localhost:8080/api/order] to Route{id='order-service', uri=lb://order-service, order=0, predicate=Paths: [/api/order], match trailing slash: true, gatewayFilters=[], metadata={}}
+	2023-07-12T20:47:07.188-04:00 DEBUG 23740 --- [ctor-http-nio-3] o.s.c.g.h.RoutePredicateHandlerMapping   : [9418209a-2] Mapped to org.springframework.cloud.gateway.handler.FilteringWebHandler@2067b9d1
+
+#Also have eureka server pointed by Api gateway
+	#Discovery Service Route
+	spring.cloud.gateway.routes[2].id=discovery-server
+	spring.cloud.gateway.routes[2].uri=http://localhost:8761
+	spring.cloud.gateway.routes[2].predicates[0]=Path=/eureka/web
+	spring.cloud.gateway.routes[2].filters[0]=SetPath=/
+	localhost:8080/eureka/web should give us discovery information.. however.. because of routing it takes you to 871/eureka/web when you really just need 8761
+	So use a filter	
+	Remove lb in routes
+	#Now opens up
+		http://localhost:8080/eureka/web
+		Comes up without css
+	#Only dynamic resources are loaded, for static resources we need more
+	#Discovery Service Static Resources Route
+	spring.cloud.gateway.routes[3].id=discovery-server-static
+	spring.cloud.gateway.routes[3].uri=http://localhost:8761
+	spring.cloud.gateway.routes[3].predicates[0]=Path=/eureka/**	
+	Now it comes up properly
+	
+	
+#Secure microservices using keycloak	
+#Circuit breaker
+	Resilient communication between webclient sync communication
+	Fallback mechanism
+#Implement Distributed Tracing
+4:21:00
+#Event driven architecture in microservice	
+	Asynchronous communication in form of events
+	
+docker-compose.yml
+		---
+		version: '3.7'
+		services:
+		  ## MySQL Docker Compose Config
+		  zookeeper:
+			image: confluentinc/cp-zookeeper:7.0.1
+			container_name: zookeeper
+			ports:
+			  - "2181:2181"
+			environment:
+			  ZOOKEEPER_CLIENT_PORT: 2181
+			  ZOOKEEPER_TICK_TIME: 2000
+
+		  broker:
+			image: confluentinc/cp-kafka:7.0.1
+			container_name: broker
+			ports:
+			  - "9092:9092"
+			depends_on:
+			  - zookeeper
+			environment:
+			  KAFKA_BROKER_ID: 1
+			  KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+			  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+			  KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://broker:29092
+			  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+			  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+			  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1	
+	
+	#Docker
+		docker compose up -d
+		docker logs -f broker
+		docker compose down
+	
+	#Spring-Boot with Kafka
+		 <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+	#In orderservice application.properties
+		spring.kafka.bootstrap-servers=localhost:9092
+	#OrderService
+		private final KafkaTemplate<String,OrderPlacedEvent> kafkaTemplate;
+		kafkaTemplate.send("notificationTopic",new OrderPlacedEvent(order.getOrderNumber()));
+	#CreatedAnOrderPlacedEvent pojo for putting that object in queue rather than simply orderNumber
+		For setting default Kafka topic ..put below in app.properties
+		spring.kafka.template.default-topic=notificationTopic
+	#Value Serializer
+		spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer
+		spring.kafka.producer.value-serializer=org.apache.kafka.common.serialization.JsonSerializer	
+		Accept bytes as input from producers and sends bytes as outputs to consumers
+		We perform serialization-transform object/data into bytes
+		They are used into value and key
+		Key=123; Value="Hello World" KeySerializer=IntegerSerializer and Value serializer= StringSerializer
+		Common serializer->Int,Float String, Avro,ProtoBuf
+	#CombiningAllProperties
+		#KafkaProperties
+		spring.kafka.bootstrap-servers=localhost:9092
+		spring.kafka.template.default-topic=notificationTopic
+		spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer
+		spring.kafka.producer.value-serializer=org.springframework.kafka.support.serializer.JsonSerializer		spring.kafka.producer.properties.spring.json.type.mapping=event:com.shopping.orderservice.event.OrderPlacedEvent
+	#NotificationService
+		@SpringBootApplication
+		@Slf4j
+		public class NotificationServiceApplication {
+			public static void main(String[] args) {
+				SpringApplication.run(NotificationServiceApplication.class, args);
+			}
+
+			@KafkaListener(topics="notificationTopic")
+			public void handleNotification(OrderPlacedEvent orderPlacedEvent){
+				//send out email Notification
+				log.info("Received notification for order "+orderPlacedEvent.getOrderNumber());
+			}
+		}
+		#application.properties
+			server.port=0
+			eureka.client.serviceUrl.defaultZone=http://localhost:8761/eureka
+			spring.application.name=notification-service
+			#Kafka
+			spring.kafka.bootstrap-servers=localhost:9092
+			spring.kafka.template.default-topic=notificationTopic
+			spring.kafka.consumer.group-id=notificationId
+			spring.kafka.consumer.key-deserializer=org.apache.kafka.common.serialization.StringDeserializer
+			spring.kafka.consumer.value-deserializer=org.springframework.kafka.support.serializer.JsonDeserializer
+			spring.kafka.producer.properties.spring.json.type.mapping=event:com.shopping.notificationservice.event.OrderPlacedEvent
+		SpringBoot will understand what is the jsonType mapping by providing the fully classified class name
+	#TrustIssue
+		spring.kafka.consumer.properties.spring.json.trusted.packages=*
+	#
+	2023-07-13T00:53:12.214-04:00  INFO 28896 --- [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : notificationId: partitions assigned: [notificationTopic-0]
+	2023-07-13T00:53:47.300-04:00  INFO 28896 --- [ntainer#0-0-C-1] c.s.n.NotificationServiceApplication     : Received notification for order efb6fb46-c9f0-4ec7-a973-fb4c94a59210
+
+#Dockerize the project
+		DockerHub where you will push your docker images
+		Create a Dockerfile
+			FROM openjdk:17
+
+			COPY target/*.jar app.jar
+
+			ENTRYPOINT ["java","-jar","/app.jar"]
+		#commands
+		Go to module.. give a tag and give the location of folder of dockerfile
+			 C:\Users\saura\repo\parent-microservices\microservices-new> cd .\api-gateway\
+			 C:\Users\saura\repo\parent-microservices\microservices-new\api-gateway> docker build -t apigateway-dockerfile .
+		layeredDocker
+		Containers from java application without docker files
+			Jib
+
+			

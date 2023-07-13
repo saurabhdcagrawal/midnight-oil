@@ -506,34 +506,6 @@ listeners=PLAINTEXT://0.0.0.0:9092
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 Data is needed to be moved between applications and data stores
 Apache Kafka--provides messaging infrastructure.. 1.4 trillion messages every day
 Data movement/logistics:Get lots of messages from one system to another, rapidly, scalably and reliably

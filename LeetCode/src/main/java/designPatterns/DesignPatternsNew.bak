@@ -1649,16 +1649,6 @@ Exploratory Data Analysis
 				The code will replace the NaN values, present in the specified column with the value x
 				The transform function present in Pandas library works on each value of a dataframe and allows to execute a specified function on each value
 				housing['Bedroom']=housing['Bedroom'].fillna(value=housing.groupby(['Regionname','Type'])['Bedroom'].transform('mean'))		
-		Cheats
-			# dropping a column with too many missing values
-				df.drop(columns=["Column With many Missing values"], inplace=True)
-			# Replace missing values by 5.0
-				df["Column name"] = df["Column name"].fillna(5.0)
-			# Replace missing values by the median
-				df["Column name"] = df["Column name"].transform(lambda x: x.fillna(x.median()))
-			# Replace missing values by the average
-				df["Column name"] = df["Column name"].transform(lambda x: x.fillna(x.mean()))
-
 	Outlier Detection and Treatment
 		Replacement will null values
 		Replace with upper whisker value or lower whisker value

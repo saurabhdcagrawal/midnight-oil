@@ -9,8 +9,13 @@ private int count=0;
    app.doWork();
 
     }
-//monitor lock mutex ,calling synchronized method ,acquire lock before can call it
+    //every object(app) has one intrinsic/monitor/mutex lock
+    //monitor lock mutex ,every thread calling a synchronized method will have to acquire lock before can call it
     //to call synchronized method need lock
+    //only one thread can acquire the lock at a time and release when the operation(execution) is done
+    //if one thread has acquired the lock, other thread will have to wait
+    //threads access shared resouces..read and write.. they should acquire a lock
+    //otherwise there are problems with thread interleaving
     public synchronized void increment(){
         count++;
     }
@@ -30,7 +35,7 @@ private int count=0;
             public void run() {
                 for(int i=0;i<10000;i++)
                    // count++;
-                    increment();
+                        increment();
                 //reading ,incrementing and storing it back 3 steps
                 ///atomic class will do all this operation in 1 step
             }

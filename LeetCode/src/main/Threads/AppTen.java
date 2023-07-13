@@ -1,4 +1,4 @@
-package main.java.thread;
+
 /*
 Re-entrant locking
 A reentrant lock is one where a process can claim the lock multiple times without blocking on itself.
@@ -6,12 +6,14 @@ It's useful in situations where it's not easy to keep track of whether you've al
 If a lock is non re-entrant you could grab the lock, then block when you go to grab it again,
 effectively deadlocking your own process.
 */
+package main.Threads;
+
 import java.util.Scanner;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class ThreadSeries10RentrantLock {
+public class AppTen {
     private int count=0;
     //lock any number of times.. and unlock it same number of times
     private Lock lock= new ReentrantLock();
@@ -87,7 +89,7 @@ public class ThreadSeries10RentrantLock {
         finished();
     }
     public static void main(String args[]){
-        ThreadSeries10RentrantLock app= new ThreadSeries10RentrantLock();
+        AppTen app= new AppTen();
         app.work();
     }
 }

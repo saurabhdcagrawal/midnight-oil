@@ -17,7 +17,7 @@ class ProcessorAppSix implements Runnable{
     @Override
     public void run(){
 
-        System.out.println("Started");
+        System.out.println("Started by "+Thread.currentThread().getName());
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {
@@ -40,6 +40,9 @@ public class AppSix {
 
         }
         try {
+          //Any thread, usually the main thread of application,
+            // which calls CountDownLatch.await() will wait until count reaches zero
+            //once they are completed or ready to the job. as soon as count reaches zero, Thread awaiting starts running
             latch.await();
         } catch (InterruptedException e) {
             e.printStackTrace();

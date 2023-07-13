@@ -1,16 +1,17 @@
+//Thread Pool
+//Managing lots of Threads at the same time
+//for 10 threads ,can create 10 different instances
+//instead use Threadpool
+//There's a lot of overhead of starting threads and by recycling that threads in threadpool you avoid that overhead
 package main.Threads;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-//Thread Pool
-//Managing lots of Threads at the same time
-//for 10 threads ,can create 10 different instances
-//instead use Threadpool
+
 class ProcessorApp implements Runnable{
     private int id;
-
     public ProcessorApp(int id){
         this.id=id;
     }

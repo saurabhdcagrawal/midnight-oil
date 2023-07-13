@@ -135,7 +135,7 @@ public class ThreadSeries1Intro {
                 System.out.println("");
             }
         });
-
+        Thread t4= new Thread(()->System.out.println("Lambda thread"));
         // t1.run();
         /*However, it is NOT executed by the new thread you just created.
                 Instead the run() method is executed by the thread that created the thread
@@ -154,10 +154,11 @@ public class ThreadSeries1Intro {
     Deadlock and race condition
 
     Race condition
-
-A "race condition" exists when multithreaded (or otherwise parallel) code that would access a shared resource could
-        do so in such a way as to cause unexpected results.
-
+A race condition occurs when two threads access a shared variable at the same time. The first thread reads the variable,
+and the second thread reads the same value from the variable. Then the first thread and second thread perform their
+operations on the value, and they race to see which thread can write the value last to the shared variable.
+The value of the thread that writes its value last is preserved,
+because the thread is writing over the value that the previous thread wrote.
         Take this example:
 
         for ( int i = 0; i < 100; i++ )
@@ -226,7 +227,8 @@ A "race condition" exists when multithreaded (or otherwise parallel) code that w
         will be the exact same as some serial schedule (meaning you run them one after the other with no interleaving) of the
         same transactions. The solution, again, is to introduce locking; however incorrect locking can lead to dead lock.
 
-        Deadlock occurs when there is a conflict of a shared resource. It's sort of like a Catch-22
+        Deadlock occurs when there is a conflict of a shared resource.
+        It's sort of like a Catch-22
         and when two (or more) threads are blocking each other.
 
         Usually this has something to do with threads trying to acquire shared resources.
@@ -261,4 +263,24 @@ A "race condition" exists when multithreaded (or otherwise parallel) code that w
         If both transactions adhered here to some ordering rule that says "x shall always be locked before y" then
         this problem will not occur. (You can change the previous example with this rule in mind and see no deadlock occurs).
 
-        Difference between executor and executor service-----------*/
+        In order to get rid of deadlocks the operating system periodically checks the system for any deadlock.
+         After Finding the deadlock the operating system will recover from it using recovery techniques.
+        Abort one process at a time until the elimination of the deadlock cycle
+        Aborting all deadlocked Processes
+it is done with the help of Resource Allocation Graph.
+        How to
+
+        Difference between executor and executor service-----------*//*
+The ConcurrentHashMap class is introduced in JDK 1.5 belongs to java.util.concurrent package,
+which implements ConcurrentMap as well as to Serializable interface also.
+ConcurrentHashMap is an enhancement of HashMap as we know that while dealing with Threads in our application
+HashMap is not a good choice because performance-wise HashMap is not up to the mark.
+ConcurrentHashMap is a thread-safe implementation of the Map interface in Java,
+which means multiple threads can access it simultaneously without any synchronization issues.
+It’s part of the java.util.concurrent package and was introduced in Java 5 as a scalable alternative to the
+ traditional HashMap class.
+One of the key features of the ConcurrentHashMap is that it provides fine-grained locking,
+meaning that it locks only the portion of the map being modified, rather than the entire map.
+This makes it highly scalable and efficient for concurrent operations.
+Additionally, the ConcurrentHashMap provides various methods for atomic operations
+such as putIfAbsent(), replace(), and remove().*/

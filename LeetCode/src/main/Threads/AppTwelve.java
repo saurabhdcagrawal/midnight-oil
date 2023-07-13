@@ -1,21 +1,9 @@
-    /*
+/*
 java.util.concurrent.Semaphore.
  We can use semaphores to limit the number of concurrent threads accessing a specific resource.
 */
-/*A mutex is a locking and unlocking mechanism, and a semaphore is a signaling mechanism.
-        Both are used for critical section and mutual exclusion problems.
-        Mutex uses a locking mechanism. When a process uses a resource, it locks the resource, uses it, then releases it.
-        On the other hand, a semaphore uses a signaling mechanism using the wait() and signal() methods to indicate
-        whether a process is releasing or acquiring a resource.
-        A mutex is an object while a semaphore is an integer variable. Semaphores have wait() and signal() functions.
-        However, Mutex has no such functionality.
-        A Mutex object allows multiple process threads to access a shared resource, but only one at a time.
-        On the other hand, Semaphores allow multiple process threads to access a finite instance of a resource
-        until a finite instance of the resource becomes available.
-        A mutex allows the same process to acquire and release the lock simultaneously.
-        However, the value of a semaphore variable can be changed by any process that needs some resources,
-        but only one process at a time can change the value*/
-package main.java.thread;
+package main.Threads;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -58,7 +46,7 @@ class Connection{
     }
 }
 
-public class ThreadSeries12Semaphores {
+public class AppTwelve {
 
     public static void main(String args[]) throws InterruptedException {
 
@@ -75,7 +63,6 @@ public class ThreadSeries12Semaphores {
         executor.awaitTermination(1, TimeUnit.DAYS);
 
         /*Semaphore sem= new Semaphore(1);
-        //used to control the number of concurrent threads accessing a shared resource
         //decrements the count of available permits
         sem.acquire();
         //increments the count of available permits
@@ -88,5 +75,3 @@ public class ThreadSeries12Semaphores {
         System.out.println("Available permits "+sem.availablePermits());*/
     }
 }
-
-

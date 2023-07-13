@@ -4,8 +4,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 //Not that important
-//Countdown latch-->Thread safe class, not to worry about thread synchronization, access from multiple threads
+//Countdown latch-->Thread safe class
 //lets you countdown from a number you specify
+//CountDownLatch has a counter field, which you can decrement as we require.
+ //       We can then use it to block a calling thread until it's been counted down to zero
+/*If we were doing some parallel processing, we could instantiate the CountDownLatch with the same value
+        for the counter as a number of threads we want to work across. Then, we could just call countdown()
+        after each thread finishes, guaranteeing that a dependent thread calling await() will block until
+        the worker threads are finished.*/
 //it lets one or more threads wait until latch reaches count of 0, then the thread waiting on latch will proceed
 //Three threads each call countdown..it decrements and when it finally reaches 0
 //it prints completed
@@ -24,6 +30,8 @@ class ProcessorNew implements Runnable{
             e.printStackTrace();
         }
         latch.countDown();
+        System.out.println("Countdown called by "+Thread.currentThread().getName()+" "+latch.getCount());
+
     }
 }
 public class ThreadSeries6CountDownLatch {

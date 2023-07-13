@@ -111,7 +111,7 @@ To write and read more reusable code and reuse API's very easily and effectively
 Desc:
 lambda expression is a function which is not having name, not having any modifiers, not having any return type
 1)
-()->sop{("Hello")}
+()->{sop("Hello")}
 can remove curly brace..only one statement then curly brace is optional
 ()->sop("Hello")
 ----
@@ -124,7 +124,7 @@ can remove curly brace..only one statement then curly brace is optional
 //no need to write return... for single argument remove parentheses for input
 s->s.length();
 
-So remove curly braces for single statement, remove return type , remove type if type can be determined
+So remove curly braces for single statement, remove return statement , remove type if type can be determined
 and remove parentheses if only one i/p argument
 When you mention return use curly braces
 parentheses on left, curly brace on right--
@@ -319,6 +319,7 @@ to have 'Backward Compatibility in case JDK modifies any interfaces(adds new fea
  Function: To transform arguments in returnable value.
 
  Predicate: To perform a test and return a Boolean value.
+ //Streams use it
 
  Consumer: Accept arguments but do not return any values.
 
@@ -330,9 +331,19 @@ to have 'Backward Compatibility in case JDK modifies any interfaces(adds new fea
  We have used consumer functional interface in 3 ways.
  For each uses consumer
 
+public static void main(String[] args) {
+
+        Consumer<String> consumerString = s -> System.out.println(s);
+
+        consumerString.accept("HelloWorld");
+
+    }
 
  Optional
- The ifPresent() method enables us to run some code on the wrapped value if it's found to be non-null. Before Optional, we'd do:
+The optional keyword is used in Java 8 to avoid the occurrence of the NullPointerException.
+
+ The ifPresent() method enables us to run some code on the wrapped value if it's found to be non-null.
+  Before Optional, we'd do:
 
  if(name != null) {
      System.out.println(name.length());

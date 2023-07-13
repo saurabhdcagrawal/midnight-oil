@@ -143,6 +143,23 @@ BEGIN
   );
 END
 
+
+3) Employee third highest salary
+
+SELECT EmpName from Employee where salary< (select max(salary) from Employee
+where salary < (SELECT max(salary) from employee where salary<(select max(salary) from Employee)))
+
+Select EmpName from (SELECT EmpName,ROW_NUMBER() OVER (ORDER BY SALARY DESC) RANK FROM Employee) d
+where d.rank=3
+
+Limit is limit the number the rows.. select distinct salary from emp table order by salary desc limit 5
+offset leaving the number of rows at top..offset 2 will start from 3 row
+
+select distinct salary from emp table order by salary desc offset 2 limit 1
+
+
+
+
 Employee
 
 +-------------+---------+

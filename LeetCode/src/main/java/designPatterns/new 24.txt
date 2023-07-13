@@ -1,0 +1,332 @@
+Design pattern and Thread
+
+Strategy pattern
+	Defines a family of algorithms (interchangeable), encapsulates each one and make them interchangeable.
+	Strategy let the algorithm vary independently from the client that use them
+	Client---> has ibehaviours as class members that are instantiated during object creation eg iFlyBehaviour---
+	 ibheaviours are interface..
+				.. behaviours implement the interface and define the behaviour (run method)
+				execute method
+Observer pattern
+			The observer pattern defines a one to many relationship so that when one object changes state , all of its dependent objects are notified and updated accordingly
+			IObservable==> one to many IObservers
+			it has methods add(iobserver), remove(iobserver) and notify, getState
+			IObserver==>update.. called by notify of observerable
+			When we instantitatite the observer, in the constructor we pass the reference of the concrete implementation of iObservable(Bidirectional) 
+			So that the observer knows what changed or what the current state of observable is..(get the new data)
+Decorator pattern
+			Attached added responsibilities to an object dynamically. 
+			Decorators provide a flexible alternative to sub-classing for extending functionality
+			Adding additional behavior to the object without opening up and changing that object
+		
+			Abstract class
+		 Component                 has a 
+				Method A--------------|
+				Method B 			  |	
+			/ \          \	is a 	  |	
+			 |	is a      \	          |	
+			 |             \		  |	
+		ConcreteComponent   Decorator
+			MethodA				MethodA
+			MethodB             MethodB
+			                     |      \
+								 |       \
+								 |        \
+					ConcreteDecorator1     ConcreteDecorator2	
+	
+Factory
+	Responsible for creating 
+	
+Singleton pattern
+	Ensures a class has only one instance and provides a global point of access to it
+	Things should not be leaking in global namespace..important to scope it..
+	It can change without you knowing it..
+	Make unit testing very difficult..	
+	Constructor of the singleton class is private
+	Static methods.. to create first instance
+	private static Singleton instance
+	public static Singleton getInstance(){
+		if (instance==null)
+			instance = new Singleton();
+		return instance;	
+	}
+	
+Adapter pattern
+	Allows 2 incompatible interfaces to work together
+	Client(wall socket) expects a target interface( 2 plug), however you have a 3 point plug (available interface..or adaptee)
+	Adapter has a composition of adaptee and implements the methods of the target// it will expose methods of target and in turn calls the method of adaptee
+	All classes must implement every method defined by the shared interface
+	Not add additional behaviour
+	
+	
+	Client                  interface Itarget
+							request
+								/		
+								|
+								|
+								|
+							(concrete)Adapter-----------------------Adaptee
+															specific_request()
+				Itarget target = new Adapter(new Adaptee())
+				target.request()
+				//Adapter implements Itarget
+				
+				Adapter has adaptee.
+				public void request(){
+					adaptee.specific_request()
+				}
+					
+									
+Facade Pattern
+	Provides a unified interface to a set of interfaces	in a sub system
+	Facade defines a high level interface that makes the sub system easier to use
+	
+Proxy design pattern
+	Indirection.....
+	Remote proxy
+	Virtual Proxy (Controls access to a resource that is expensive to create)
+	Protection Proxy
+	Add additional behaviour with the intent of controlling access to a resource/underlying object
+
+
+A bank’s credit card is a proxy for what is in our bank account.
+It can be used in place of cash and provides a means of accessing that cash when required.
+And that’s exactly what the Proxy pattern does: “Controls and manage access to the object they are protecting”.
+
+Subject..
+(operation) ----------|
+ /|\                  |
+ |                    |
+RealSubject<===========Proxy
+Assume we wanna run some statements on the command line and need to check permission before do it.
+public interface Icommand(){
+     void run Command(String command);
+}
+public interface OriginalCommand implements Icommand(){
+     @Override
+     public void run Command(String command){
+        Syso("Command executed");
+     }
+}
+public interface ProxyCommand implements Icommand(){
+     private boolean isRoot=false;
+     private OriginalCommand originalCommand;
+     public ProxyCommand(String user){
+         if (user.equals("root")
+            isRoot=true;
+         originalCommand= new originalCommand;
+     }
+     @Override
+     public void runCommand(String input){
+     if(command.equals"rm" && !isRoot){
+         Sop("not allowed")
+          }
+      else{
+            originalCommand.run(input);
+      }
+     }
+
+
+     @Override
+     public void run Command(String command){
+        Syso("Command executed");
+     }
+}
+
+Factory Design pattern
+
+The factory design pattern is used when we have a superclass with multiple sub-classes and based on input,
+we need to return one of the sub-class.
+This pattern takes out the responsibility of the instantiation of a class from the client program to the factory class
+
+
+public interface Shape{
+    void draw();
+}
+public Rectangle implements Shape{
+    public void draw(){
+        System.out.println("Inside Rectangle draw method");
+    }
+}
+public Square implements Shape{
+    public void draw(){
+      System.out.println("Inside Square draw method");
+    }
+}
+public Circle implements Shape{
+    public void draw(){
+        System.out.println("Inside Square draw method");
+    }
+}
+
+public class ShapeFactory{
+    public Shape getShape(String shape){
+        if(SHAPE.equals("RECTANGLE")
+            return new Rectangle();
+        else if(SHAPE.equals("Square")
+            return new Square();
+        else if(SHAPE.equals("CIRCLE")
+            return new Circle();
+        else
+            return null;
+    }
+}
+    Main
+    ShapeFactory shapeFactory = new ShapeFactory();
+    //get an object of Circle and call its draw method.
+       Shape shape1 = shapeFactory.getShape("CIRCLE");
+    //call draw method of Circle
+          shape1.draw();
+----Adapter---
+public interface EnemyAttacker{
+	public void fireWeapon();
+	public void driveForward();
+	public void assignDriver(String driverName)	;
+}
+
+public class EnemyTank implement EnemyAttacker{
+	public void fireWeapon;
+	public void driveForward;
+	public void assignDriver;
+}
+
+
+public class EnemyRobot{
+	public void smashWithHands();
+	public void walkForward();
+	public void reactToHuman();
+
+}
+
+public class EnemyRobotAdapter implements EnemyAttacker{
+	EnemyRobot theRobot;
+	public EnemyRobotAdapter(EnemyRobot theRobot){
+		theRobot=newRobot;
+	}
+	@Override
+	public void fireWeapon(){
+		theRobot.smashWithHands();
+	}
+}
+
+EnemyRobotAdapter ap= new EnemyRobotAdapter(new Robot())
+ap.fireWeapon();
+
+	
+	public interface Pizza {
+		public String getDescription();
+		public double getCost();
+	}
+public abstract class Pizza{
+    public abstract void setDescription(String newDescription);
+	public abstract String getDescription();
+    public abstract void setCost(double newCost);
+	public abstract double getCost();
+
+    // I could use getter and setter methods for every
+    // potential Pizza topping
+	}
+
+THREECHEESEPIZZA.JAVA
+
+
+// By going this route I'll have to create a new subclass
+// for an infinite number of pizza.
+// I'd also have to change prices in many classes
+// when just 1 Pizza topping cost changes
+// Inheritance is static while composition is dynamic
+// Through composition I'll be able to add new functionality
+// by writing new code rather than by changing current code
+public class ThreeCheesePizza extends Pizza{
+    private String description = "Mozzarella, Fontina, Parmesan Cheese Pizza";
+    private double cost = 10.50;
+    public void setDescription(String newDescription) {
+        description = newDescription;
+	}
+    public String getDescription() {
+        return description;
+    }
+    public void setCost(double newCost) {
+        cost = newCost;
+    }
+    public double getCost() {
+        return cost;
+    }
+}
+PLAINPIZZA.JAVA
+// Implements the Pizza interface with only the required
+// methods from the interface
+// Every Pizza made will start as a PlainPizza
+public class PlainPizza implements Pizza {
+    public String getDescription() {
+        return "Thin dough";
+    }
+    public double getCost() {
+        System.out.println("Cost of Dough: " + 4.00);
+        return 4.00;
+    }
+}
+TOPPINGDECORATOR.JAVA
+// Has a "Has a" relationship with Pizza. This is an
+// Aggregation Relationship
+abstract class ToppingDecorator implements Pizza {
+    protected Pizza tempPizza;
+    // Assigns the type instance to this attribute
+    // of a Pizza
+    // All decorators can dynamically customize the Pizza
+    // instance PlainPizza because of this
+    public ToppingDecorator(Pizza newPizza){
+        tempPizza = newPizza;
+    }
+    public String getDescription() {
+        return tempPizza.getDescription();
+    }
+    public double getCost() {
+        return tempPizza.getCost();
+    }
+}
+MOZZARELLA.JAVA
+public class Mozzarella extends ToppingDecorator {
+    public Mozzarella(Pizza newPizza) {
+        super(newPizza);
+        System.out.println("Adding Dough");
+        System.out.println("Adding Moz");
+    }
+    // Returns the result of calling getDescription() for
+    // PlainPizza and adds " mozzarella" to it
+    public String getDescription(){
+        return tempPizza.getDescription() + ", mozzarella";
+    }
+    public double getCost(){
+        System.out.println("Cost of Moz: " + .50);
+        return tempPizza.getCost() + .50;
+    }
+}
+TOMATOSAUCE.JAVA
+public class TomatoSauce extends ToppingDecorator {
+    public TomatoSauce(Pizza newPizza) {
+        super(newPizza);
+        System.out.println("Adding Sauce");
+    }
+    // Returns the result of calling getDescription() for
+    // PlainPizza, Mozzarella and then TomatoSauce
+    public String getDescription(){
+        return tempPizza.getDescription() + ", tomato sauce";
+    }
+    public double getCost(){
+        System.out.println("Cost of Sauce: " + .35);
+        return tempPizza.getCost() + .35;
+    }
+}
+PIZZAMAKER.JAVA
+public class PizzaMaker {
+    public static void main(String[] args){
+        // The PlainPizza object is sent to the Mozzarella constructor
+        // and then to the TomatoSauce constructor
+        Pizza basicPizza = new TomatoSauce(new Mozzarella(new PlainPizza()));
+        System.out.println("Ingredients: " + basicPizza.getDescription());
+        System.out.println("Price: " + basicPizza.getCost());
+    }
+}
+
+				
