@@ -2,11 +2,13 @@ Design pattern and Thread
 
 Strategy pattern
 	Defines a family of algorithms (interchangeable), encapsulates each one and make them interchangeable.
-	Strategy let the algorithm vary independently from the client that use them
-	Client---> has ibehaviours as class members that are instantiated during object creation eg iFlyBehaviour---
-	 ibheaviours are interface..
-				.. behaviours implement the interface and define the behaviour (run method)
-				execute method
+
+	In simpler terms, the Strategy Design Pattern provides a way to extract the behavior of an object into separate classes that can be swapped in and out at runtime. 
+        This enables code  to be more flexible and reusable, as different strategies can be easily added or modified without changing the object's core code.
+
+	A shopping cart application may use the Strategy Design Pattern to encapsulate credit card, PayPal, and cryptocurrency payment methods into separate strategies that can be swapped at runtime. The application's payment processing system would delegate the payment processing logic to the current payment method's strategy, allowing for easy modification and extension of the payment processing logic.
+
+
 Observer pattern
 			The observer pattern defines a one to many relationship so that when one object changes state , all of its dependent objects are notified and updated accordingly
 			IObservable==> one to many IObservers
