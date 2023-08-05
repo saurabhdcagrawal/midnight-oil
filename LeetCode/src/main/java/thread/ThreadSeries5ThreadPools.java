@@ -11,11 +11,11 @@ Executor is an interface and it is abstraction for parallel execution
 It allows concrete code to run in a managed way
 It decouples task (code that needs to be run in parallel) from execution
 Thread is a class..both task and execution are tightly coupled
+Executor just executes stuff you give it.
 The Executor concept allows your task is to be executed by a worker thread from the thread pool, while
 Thread itself execute your task.
 
 Executor service extends executor
-Executor just executes stuff you give it.
 The fourth difference between ExecutorService and Executor interface is that apart from allowing a client
 to submit a task, ExecutorService also provides methods to control the thread pool
 It adds startup, shutdown, and the ability to wait for and look at the status of jobs you've submitted for execution

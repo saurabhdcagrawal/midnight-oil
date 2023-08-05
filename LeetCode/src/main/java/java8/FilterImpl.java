@@ -1,10 +1,7 @@
 package main.java.java8;
 
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -35,7 +32,6 @@ public class FilterImpl {
 //A_filter
         //List<String> DishNames= menu.stream().filter(d->d.getCalories()>300).map(d->d.getName()).collect(Collectors.toList());
 
-
         List<String> dishList= menu.stream().filter(d->d.getCalories()>300).
                 map(Dish::getName).collect(Collectors.toList());
         System.out.println("part 1");
@@ -53,9 +49,13 @@ public class FilterImpl {
         System.out.println("Now printing filtered sorted list");
         System.out.println(filteredList1);
 
+        System.out.println("Dhinchak");
 
+        menu.stream().filter(d->d.getCalories()>300).map(Dish::getName).sorted().forEach(System.out::println);
 //Sort integers in ascending and descending order
         List<Integer> numbersList= Arrays.asList(34,6,3,12,65,1,8);
+        numbersList.stream().sorted((a,b)->Integer.compare(b,a)).forEach(System.out::println);
+
         //numbersList.stream().sorted((a,b)->Integer.compare(b,a)).forEach(System.out::print);
         numbersList.stream().sorted().forEach(System.out::println);
         numbersList.stream().sorted(Comparator.reverseOrder()).forEach(System.out::print);
@@ -65,7 +65,6 @@ public class FilterImpl {
         numbers.stream().filter(i->i%2==0).distinct().forEach(System.out::println);
 
         List<Integer> numbersNew= Arrays.asList(34,6,3,12,65,1,8);
-
 
       List<Dish> meatDishes= menu.stream().filter(d->d.getType()==Dish.Type.MEAT).limit(2).collect(Collectors.toList());
       System.out.println(meatDishes);
@@ -117,8 +116,11 @@ public class FilterImpl {
         Optional<String> optEg=Optional.of("Saurabh");
         optEg.ifPresent(s->System.out.println(s.length()));
 
+
+
         System.out.println("Usage of findFirst");
         List<Integer> someNumbers = Arrays.asList(1, 2, 3, 4, 5);
+        someNumbers.stream().map(i->i*i).filter(i->i%3==0).findFirst();
         Optional<Integer> firstSquareDivisibleByThree = someNumbers.stream().map(i->i*i).filter(i->i%3==0).findFirst();
         System.out.println(firstSquareDivisibleByThree.orElse(0));
 
@@ -150,11 +152,11 @@ public class FilterImpl {
 
 
     }
+    }
 
 
 
 
-}
 //git add src/main/java/java8/FilterImpl.java
 //git push -u origin master
 

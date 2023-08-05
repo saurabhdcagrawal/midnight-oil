@@ -1,5 +1,9 @@
 package main.java.thread;
 
+/*When the
+
+
+
 /*
 //Thread creation ,create a new class by extending the thread class ,
 override the public void run method
@@ -35,6 +39,20 @@ public class MyRunnable implements Runnable {
 
   The JVM and/or operating system determines the order in which the threads are executed.
     This order does not have to be the same order in which they were started.*/
+
+/*When a new thread is created it is in the new state.
+when the start method of the thread is called it goes to runnable start
+When the thread gets a CPU cycle it is in the running state
+A running thread may give up its control in any one of the following situations and can enter into the blocked state.
+
+When sleep() method is invoked on a thread to sleep for specified time period, the thread is out of queue during
+ this time period.
+ The thread again reenters into the runnable state as soon as this time period is elapsed.
+When wait() method is called on a thread to wait for some time.
+ The thread in wait state can be run again using notify() or notifyAll() method.
+ terminated state
+ terminated state when thread finishes execution
+ */
 
 /*
 A race condition is a special condition that may occur inside a critical section.
@@ -230,6 +248,9 @@ because the thread is writing over the value that the previous thread wrote.
         Deadlock occurs when there is a conflict of a shared resource.
         It's sort of like a Catch-22
         and when two (or more) threads are blocking each other.
+          Deadlock : Deadlock is a situation or condition when two or more processes are
+        holding some resources and trying to acquire some more resources,
+        and they can not release the resources until they finish there execution.
 
         Usually this has something to do with threads trying to acquire shared resources.
         For example if threads T1 and T2 need to acquire both resources A and B in order to do their work.
@@ -270,7 +291,6 @@ because the thread is writing over the value that the previous thread wrote.
 it is done with the help of Resource Allocation Graph.
         How to
 
-        Difference between executor and executor service-----------*//*
 The ConcurrentHashMap class is introduced in JDK 1.5 belongs to java.util.concurrent package,
 which implements ConcurrentMap as well as to Serializable interface also.
 ConcurrentHashMap is an enhancement of HashMap as we know that while dealing with Threads in our application

@@ -2,7 +2,13 @@
 package main.java.thread;
 /*The wait() method causes the current thread to wait until another thread invokes the notify() or notifyAll() methods
 for that object.
+//one thread ..acquires object monitor..(this) or lock object
+//does something.. reqlizes its need something else to proceed..
+//releases the monitor(relinquishes) goes into a blocked state.. it is now waiting again for the objects monitor
+//another thread acquires monitor starts execution.. finishes .. calls notify and relinquieshes its lock
+//notify all wakes up all threads waiting on objects monitor
 The notify() method wakes up a single thread that is waiting on that object's monitor.*/
+//Question..how do we know which we are giving notify
 import java.util.Scanner;
 
 public class AppEight {

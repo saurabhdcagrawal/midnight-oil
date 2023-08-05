@@ -1649,6 +1649,16 @@ Exploratory Data Analysis
 				The code will replace the NaN values, present in the specified column with the value x
 				The transform function present in Pandas library works on each value of a dataframe and allows to execute a specified function on each value
 				housing['Bedroom']=housing['Bedroom'].fillna(value=housing.groupby(['Regionname','Type'])['Bedroom'].transform('mean'))		
+		Cheats
+			# dropping a column with too many missing values
+				df.drop(columns=["Column With many Missing values"], inplace=True)
+			# Replace missing values by 5.0
+				df["Column name"] = df["Column name"].fillna(5.0)
+			# Replace missing values by the median
+				df["Column name"] = df["Column name"].transform(lambda x: x.fillna(x.median()))
+			# Replace missing values by the average
+				df["Column name"] = df["Column name"].transform(lambda x: x.fillna(x.mean()))
+
 	Outlier Detection and Treatment
 		Replacement will null values
 		Replace with upper whisker value or lower whisker value
@@ -1658,3 +1668,210 @@ Exploratory Data Analysis
 		IQR=Q3-Q1
 		lower_whisker=Q1-1.5IQR
 		np.clip(housing['col'],lower_whisker,higher_whisker)
+		
+		
+		
+		###
+		Box plot categorical vs numerical?
+		###
+		unfiform vs normal distribution?
+		confidence interval bars
+		.apply will apply to every data point in df
+		
+	Inferential Statistics
+		General probability
+			Outcome of an experiment- event
+			Set of all outcomes of an experiment->Sample space
+			Mutually exclusive events
+			Independent events
+			Mutually exclusive events are not independent 
+			P(AUB)=P(A)+P(B)-P(A intersection B) {0 for mutually exclusive events}
+			Probability that a selected card is a King or a Diamond
+			P(A intersection B) = P(A) * P(B) for independent events
+			P(A intersection B)= P(A) * P(B/A) .. probability of B given A
+
+		Inferential Statistics 
+			Helps to draw the conclusion from data which can be turned into business values.
+			It enables us to draw the conclusion about the population using the sample
+		Descriptive Statistics:
+			It lets us describe and summarize the data
+			It deals with the sample set
+		Descriptive statistics help in describing the data. Whereas, Inferential Statistics helps us to draw conclusions about a population by analyzing a representative sample from the population.
+		Discrete Random Variable
+			The number of customers visiting a shop daily is a discrete random variable as it can take countable discrete values like 1, 4, 10, 50, etc.
+		Continuous Random Variable
+			While, the height of an individual, time-taken to complete a quiz, and amount of water in a jug can take continuous decimal values, and hence are continuous random variables
+		A probability distribution 
+			It consists of all the possible outcomes of a trial and their corresponding probabilities of occurrences. In a continuous probability distribution, the random variable can take any continuous value between the provided range. The distribution plot of a continuous random variable consists of the density plot where the area under a section of the graph denotes the probability of a value occurring within that section. The function used to plot the distribution is called the probability density function.	
+		Types of probability distributions
+			Bernoulli Distribution: 
+				It has only 2 possible outcomes, namely success and failure of 1 single trial
+		Binomial Distribution : 
+			An example of discrete distribution is Binomial Distribution.
+			Sum of bernoulli random variables.. it constitutes many bernoulli trials..every observation represents one of 2 outcomes
+			Number of trials is fixed
+			Each trial is independent of other trials
+			Probability of success is the same for each trial
+			There are only 2 possible outcomes of each trial
+			The random variable X is concerned about the outcome of one trial (only one student). Hence, X is Bernoulli.
+			The random variable X1 is concerned about the outcome of the sum of n trials where n is 10 randomly selected students. Hence, X1 is Binomial.
+			Suppose X is a discrete random variable that follows a certain distribution, for example, Binomial Distribution. Then, the probability that X takes the value k, that is P(X=k) is an absolute probability, while the probability that X takes any value less than or equal to k, that is P(X<=k) is a cumulative probability. 
+			PMF function calculates the absolute probabilities while the CDF function calculates the cumulative probabilities
+			scipy kit
+				from scipy.stats import binom
+				binom.pmf(k = 7,n = 10, p = 0.6)
+				n= sample sizes, k is what we are looking for, p is probability of each success
+				Probability that there are k successes
+				from scipy.stats import binom
+				binom.cdf(k = 7,n = 10, p = 0.6)
+				Probability that there are at the most k successes (less than <=k successes)
+		Uniform Distribution : 
+			Number of microwave ovens sold daily at a consumer goods store
+		Normal Distribution(cdf and ppf)
+			Most commonly used continuous distribution
+			It is characterized by symmetric bell shaped curve
+			They are commonly found everywhere from nature to industry
+			Around
+				68% of data falls within one standard deviation
+				95% of data falls within two standard deviation
+				99.7% of data falls within three standard deviations
+	    Standard normal distribution 
+			It is obtained by standardizing a normal distribution. Suppose X follows a normal distribution with mean μ and standard deviation σ, then Z = (X-μ)/σ is a transformation that standardizes the normal distribution and is called a standard normal distribution. The mean and variance of the standard normal distribution are always 0 and 1 respectively.
+			Probability Distribution Function
+				The pdf function is similar to the pmf function except for the fact that it is used for continuous distributions.If X is a continuous random variable, we calculate the probability that X takes the value x, P(X=x) using the pdf function.
+			Percent Point Function
+				The ppf function is an inverse form of the cdf function. Suppose P(X<=x) = alpha, where we are provided the alpha (probability) value, then we can calculate the value of x using the ppf function. This is the Percent Point Function and is applicable in both discrete and continuous cases.
+				For example, if the percentage p is equal to 0.92, you will get the point below which 92% of data falls. This also means that 8% of data falls above that point.
+					Percentile 
+					Calculate the minimum marks a student must score in order to secure 95th percentile in SAT 2020
+						from scipy.stats import norm
+						norm.ppf(0.95,1007.46, 204.43)
+			Cumulative distribution function		
+				Probability that the score is greater than 750
+					from scipy.stats import norm
+					1-norm.cdf(x = 750, loc = 1007.46, scale = 204.43)
+					When we evaluate the probability to the right of a binomial distribution using 1-binom.cdf(), we subtract 1 from the k. But, in a normal distribution, we do not subtract 1 from x while we calculate the probability to the right of the distribution using 1-norm.cdf(). Why there is such a difference?
+						This is due to the fact that binomial distribution is a discrete distribution; whereas normal distribution is a continuous one. The cdf() function behaves differently for a continuous distribution and a discrete distribution. In the case of a continuous distribution, the cdf is a strictly monotonic increasing continuous function; whereas the cdf of a discrete distribution is a step function.
+							What is the probability that three or more of the LED bulbs are defective?**
+								We need to subtract the cumulative probability of up to 2 defective LED bulbs from 1.
+									1-binom.cdf(k = 2,n = 10, p = 0.05)
+			Percentage of data between 2 points	
+				import scipy.stats as stats
+				stats.norm.cdf(67000,loc=55000,scale=6200)- stats.norm.cdf(59000,loc=55000,scale=6200)
+		Z score
+			How many standard deviations above or below the mean that the data point falls
+			The z-score is very useful as it enables us to compare two scores coming from two different normal populations. The two scores might be on two different scales however we can compare them using the z-score.
+			Real-life application – Suppose you have appeared for two different competitive exams having different scoring systems. How will you compare your scores’ in two exams
+	at the most
+		is on left
+	at least
+	
+	Estimation and Hypothesis Testing
+		Why do we need sampling?
+			In most practical scenarios, we cannot have access to the entire population, so sampling helps us to draw conclusions about a population. It saves time, reduces the cost 
+			of the experiment
+		According to the theory of sampling distribution, suppose we are drawing samples of size  n from a population with mean mu and standard deviation sigma and let X be the random variable representing the sample mean. Then, the distribution of X bar is called the sampling distribution and it follows a normal distribution where:
+			The mean of X bar is mu
+			The standard deviation of X bar is equal to sigma/sqrt{n}.. Also called standard error
+		Parameter/Statistic
+			A parameter is an aggregate measure about a population, while a statistic is an aggregate measure calculated from a sample drawn from the population. 
+		Central limit theorem
+			No matter what the shape of population distribution is the sample distribution of sample means will approach normal distribution as sample size gets bigger
+			 (discrete or continuous) 
+			Averaging something makes it more normally distribution irrespective of the shape of the original distribution
+		Confidence interval
+			A point estimate varies from sample to sample. Therefore, it is not a good and reliable method of estimating population parameters.
+			Hence we use confidence intervals for mu to account for uncertainty due to sampling
+			A point estimate is a single value estimate of a parameter. For instance, a sample mean is a point estimate of a population mean. An interval estimate gives you a range of values where the parameter is expected to lie. A confidence interval is the most common type of interval estimate.
+			Point Estimation is a single point estimate of the population parameter. Interval Estimation is a range of values within which the population parameter is expected to lie with a certain level of confidence (x%)
+		Normal, interval t	
+			The distribution that will be used for the calculation of confidence interval depends on whether the population standard deviation is known or unknown. When the population standard deviation is known, the normal distribution is used. On the other hand, when the population standard deviation is unknown, we estimate it using the sample standard deviation and calculate the confidence interval using the t-distribution.
+		Hypothesis Testing	
+			Is this true or not? Does it work or not etc
+			The objective of the hypothesis testing procedure is to SET a value for the parameter(s) and perform a statistical TEST to see whether that value is tenable in the light of the evidence gathered from the sample or the test statistic calculated from the sample.
+			As the parameter is a summary measure about the population, hypothesis testing helps us to infer about the characteristics of a population.
+		Null Hypothesis has equality sign(H0)
+			The null hypothesis is the presumed current state of the matter. It is assumed to be true while we perform a hypothesis test, where we try to find evidence against the null hypothesis.
+		Alternative hypothesis doesnt contain equality
+			An alternative hypothesis is a claim that is against the null hypothesis. It is the research hypothesis that we want to test.
+			For example, in a hypothesis test concerning the delivery time of an online food delivery service, the null hypothesis can be written as:
+				The mean delivery time of the online food delivery service is 30 minutes.
+				For the above null hypothesis, the possible alternative hypotheses are:
+				The mean delivery time of the online food delivery service is not equal to 30 minutes.
+				The mean delivery time of the online food delivery service is greater than 30 minutes.
+				The mean delivery time of the online food delivery service is less than 30 minutes.
+				The alternative hypothesis decides the type of test (one-tailed or two-tailed) based on whether it is a two-tailed hypothesis or a one-tailed (a greater than type or a less than type).
+			Reject the null hypotheses if its  true (type 1 error) Prob - alpha Fixed before the hypothesis test
+				It is basically a small chance that our test result is by chance. 5% and 1% are standard values of alpha taken for most practical problems
+				 For example, a significance level of 0.05 indicates a 5% risk of concluding that a significant difference exists when there is no actual difference. The level of significance is pre-decided before conducting a test.
+				 The : (100 - alpha) confidence interval contains all values of the population parameter for which the null hypothesis will not be rejected.
+				 
+			Fail to reject the null hypotheses when its is false.. (type 2 error ) Beta 	
+			The power of a test is calculated as 1-beta . In simple words, power of a test is the probability of not making a Type II error.	
+		Hypothesting testing template
+			Identify the key statement
+			Establish the hypothesis
+			Understand and prepare the data
+			Identify the right test
+			Check assumptions
+		What are the steps of conducting a hypothesis test?
+			The following are the steps of conducting a hypothesis test
+			Formulate the null and the alternative hypotheses appropriately for the problem in question. 
+			Based on the nature of the data under the hypothesis, select the appropriate test.
+			Decide the significance level prior to conducting the test.
+			Collect the appropriate data for the test.
+			Calculate the p-value by conducting the test.
+			Compare the p-value with alpha and make a conclusion based on the p-value 	
+			Perform the test and get a conclusion
+				Null hypothese U=5
+				Alternate u>5
+			p-value 
+				The p-value is a measure of the probability that an observed difference could have occurred just by random chance. The lower the p-value, the greater the statistical significance of the observed difference.
+				Assuming the null hypothesis to be true, the p-value is the probability of observing the test statistic or more extreme results from the sample data. 
+					from scipy.stats import norm
+					# provided value of the test statistic is +2.00
+					z_stat = 2
+					# calculating the p-value for a one-tailed test
+					p_val = 1 - stats.norm.cdf(2)
+					# calculating the p-value for a two-tailed test
+					print(p_val*2)
+			one-sample z-test
+				For comparing a sample mean bar{x} with a hypothesized population mean mu where the sample size is n and the population standard deviation is known to be sigma, the one-sample z-test is used. The test-statistic follows a standard normal distribution (mean =0, standard deviation =1)
+				Formula bar (x- mu)/sqrt(sigma)
+				The z-test for one mean is a test to compare the sample mean with a population mean. The following are assumptions for a z-test:
+					The collected data is continuous
+					The population is normally distributed or the sample size is greater than 30
+					The population standard deviation is known
+					The collected data is a random sample from the population
+				The values used in the above formula do not change when we switch from a two-tailed to a one-tailed test. Hence, the test statistic also does not change. However, the critical values(s)/p-value associated with the test do change.
+				In a two-tailed test, the level of significance is equally allocated to both sides of the distribution of the test statistic.
+				In a two-tailed hypothesis test, the rejection region lies on both sides of the distribution of the test statistic.	
+			Confidence interval and hypothesis testing
+				The confidence interval contains all values of mu 0 for which the null hypotheses wont be rejected (in a 2 sided sense)
+				For a two-tailed test, the level of significance is equally allocated to both sides of the distribution of the test statistic.
+			Which Python function is used to compute a confidence interval for the population mean? 
+				Calculate a sampling distribution using one sample when standared deviation of population is given
+				import numpy as np
+				from scipy.stats import norm
+				np.round(norm.interval(0.95, loc = 500, scale = 25/np.sqrt(100)), 2)	
+				interval given
+				t distribution
+					Now, for the same example as above, consider that the population standard deviation is not known to us. In that case, the 95% confidence interval for the population mean can be calculated by using the interval() function of the t class of scipy.stats as shown below:
+						import numpy as np
+						from scipy.stats import t
+						np.round(t.interval(0.95, df = 100-1, loc = 500, scale = 25/np.sqrt(100)), 2)
+						where the df argument denotes the degrees of freedom of the t-distribution. It is calculated as (n-1), n being the sample size.	
+						s is estimate from the sample and corrected from it
+					p value is less than alpha.. null hypothesis can be rejected	
+			left tail test==> area to left of z test statistic (test statistic represents your sample data, to the left of it are data points that are more extreme than the ones in your dataset) is Probability of getting a sample more extreme than the n\ones in your data and it is called p value
+			right tail test: area to the right of z test statistic is the p value..likelihood of getting data points(mean points) more extreme than the z statistic which is 
+				standard of the set
+			value of z is representative of data set 
+			in left tail test from z value you can get norm.cdf directly since its area to the left
+			for right tail test p value is p> lets say 2.8 but norm gives values to left so you can get prob of p<-2.8
+			for left tail test.. rejection region is to left of level of significance value...if z statistic falls in this region.. p value would be value that datapoints lie to left of z statistic and that would be less than level of significance value.. which means reject the null hypotheses
+			for right tail test, rejection is to the right of alpha level of significance, so if the z statistic falls to the right of level of signifincance, p value
+			is probability of data points to the right of z statistic and it will be less than the level of significance...so reject the null hypotheses
+			in otherwords for both left tail and right tail test p<=alpha then reject the null hypotheses else if p>alpha then fail to reject the null hypotheses\
+			Advantages of z statistic,, you can get level of condifence directly to reject the null hypotheses
+				1-pvalue

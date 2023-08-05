@@ -1,8 +1,8 @@
 package main.java.customDS;
-//Hashmap or a hashing is a technique for retreiving and storing information
-//as fast as possible
-//should not be used when ordering of data elements is required
-//does not have unique keys
+//Hashmap or a hashing is a technique for retrieving and storing information as fast as possible
+//should not be used when
+// (1)ordering of data elements is required
+//(2) or our data does not have unique keys
 //searching is more than insertion and deletion
 //One data structure which provides o(1) access is array and used when we are dealing when
 //universe of keys is small like a character set
@@ -21,6 +21,7 @@ package main.java.customDS;
 //
 // ,collisions ,collision resolution technique
 //array is a specialization of hashtable ,in array we store the key at the kth location,
+//every key has its own location so there is no need of chaining
 // so we get it back by just looking at the kth position
 /*
 hash table is traditionally implemented with an array of linked lists. When we want to insert a key/va,lue
@@ -77,7 +78,7 @@ Essentially any hash table can have collisions. There are a number of ways of ha
 
 HashMap  works on principle of hashing, we have put() and get() method for storing and
         retrieving object from HashMap .When we pass an both key and value to put() method to
-        store on HashMap , it uses key object hashcode() method to calculate hashcode
+        store on HashMap , it uses hashcode() method of key object key to calculate hashcode
         and they by applying hashing on that hashcode it identifies bucket location for
         storing value object. While retrieving it uses key object equals method to find out
         correct key value pair and return value object associated with that key. HashMap

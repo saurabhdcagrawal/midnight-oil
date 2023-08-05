@@ -42,7 +42,8 @@ Streams are an update to the Java API that lets you manipulate collections of da
 (you express a query rather than code an ad hoc implementation for it). In addition, streams can be processed in parallel
  transparently, without you having to write any multithreaded code!
 You chain together several building-block operations to express a complicated data processing pipeline
-(you chain the filter by linking sorted, map, and collect operations, as illustrated in figure 4.1) while keeping your code readable and its intent clear. The result of the filter is passed to the sorted method, which is then passed to the map method and then to the collect method.
+(you chain the filter by linking sorted, map, and collect operations, as illustrated in figure 4.1) while keeping your code
+readable and its intent clear. The result of the filter is passed to the sorted method, which is then passed to the map method and then to the collect method.
 
 Collections in Java 8 support a new stream method that returns a stream. You’ll later see that you can also get streams
 in various other ways (for example, generating stream elements from a numeric range or from I/O resources).
@@ -90,19 +91,18 @@ New.................... Durgasoft
 (4)Static methods defined(inside interface)
 (5)Predefined functional interfaces: predicate, function, consumer
 (6) Double colon operator used for method reference and constructor reference
+Method references are special types of lambda expressions that execute only one method.
+General syntax of method reference:
+object::methodName
 (7) Streams API
 (8) Joda API (Date and time API)
 (9) Optional
-(10)Method reference
-Method references are special types of lambda expressions that execute only one method.
-General syntax of method reference:
 
-object::methodName
 https://medium.com/javarevisited/a-comprehensive-guide-to-java-8-method-reference-f0bf5457b72d
 Intention---
 -
 First objective to simplify programming (concise code) (do away with boilerpate code)
-To enable functional programming in forms of lamda expressions(behaviour parameterization)
+To enable functional programming in forms of lambda expressions(behaviour parameterization)
 To enable parallel processing and be able to write compatible code which runs on multicore processors
 A)
 Lambda expressions
@@ -130,6 +130,8 @@ When you mention return use curly braces
 parentheses on left, curly brace on right--
 
 B) we use functional interface To invoke lambda expression
+Lambda expression can be passed to a function that is expecting a functional interface
+
 You can use a lambda expression in the context of a functional interface
 if an interface contains single abstract method then its called a functional interface
 (it can have any number of static or default methods)
@@ -217,13 +219,6 @@ public static String processFile() throws IOException{
 
 //what if you want to read 2 lines
 
-public static String processFile() throws IOException{
-    try{
-    BufferedReader br = new BufferedReader(new FileReader("data.text"));
-    }
-    return br.readLine;
-}
-
 @FunctionalInterface
 public interface BufferedReaderInterface{
     public String process(BufferedReader br);
@@ -306,9 +301,12 @@ if you redefine normal base class with private static, compiler wont give a comp
 
 https://www.interviewbit.com/java-8-interview-questions/#what-is-default-method-and-why-is-it-needed
 
-A method in the interface that has a predefined body is known as the default method. It uses the keyword default. default methods were introduced in Java 8
-to have 'Backward Compatibility in case JDK modifies any interfaces(adds new features). In case a new abstract method is added to the interface, all classes implementing
- the interface will break and will have to implement the new method. With default methods, there will not be any impact on the interface implementing classes.
+A method in the interface that has a predefined body is known as the default method.
+It uses the keyword default. default methods were introduced in Java 8
+to have 'Backward Compatibility in case JDK modifies any interfaces(adds new features).
+In case a new abstract method is added to the interface, all classes implementing
+ the interface will break and will have to implement the new method. With default methods, there will not be any
+ impact on the interface implementing classes.
   default methods can be overridden if needed in the implementation. Also, it does not qualify as synchronized or final.
   So, if a developer wanted to add a new method to an interface, then the implementation code must be provided in the class that is implementing the interface.
   To cater to this issue, default methods allow the interfaces to have methods with implementation without affecting the classes that implement the interface.
@@ -344,30 +342,17 @@ The optional keyword is used in Java 8 to avoid the occurrence of the NullPointe
 
  The ifPresent() method enables us to run some code on the wrapped value if it's found to be non-null.
   Before Optional, we'd do:
-
- if(name != null) {
-     System.out.println(name.length());
- }
- Copy
- This code checks if the name variable is null or not before going ahead to execute some code on it. This approach is lengthy, and that's not the only problem — it's also prone to error.
-
-
- AD
-
- Indeed, what guarantees that after printing that variable, we won't use it again and then forget to perform the null check?
-
- This can result in a NullPointerException at runtime if a null value finds its way into that code. When a program fails due to input issues, it's often a result of poor programming practices.
-
- Optional makes us deal with nullable values explicitly as a way of enforcing good programming practices.
+   Optional makes us deal with nullable values explicitly as a way of enforcing good programming practices.
 
  Let's now look at how the above code could be refactored in Java 8.
 
  In typical functional programming style, we can execute perform an action on an object that is actually present:
+ Optional makes us deal with nullable values explicitly as a way of enforcing good programming practices.
 
  @Test
  public void givenOptional_whenIfPresentWorks_thenCorrect() {
      Optional<String> opt = Optional.of("baeldung");
-     opt.ifPresent(name -> System.out.println(name.length()));
+     opt.ifPresent(str -> System.out.println(str.length()));
  }
  Copy
  In the above example, we use only two lines of code to replace the five that worked in the first example:
@@ -385,3 +370,136 @@ The optional keyword is used in Java 8 to avoid the occurrence of the NullPointe
   //deadlock and race around condition
   //web services spring
   //speak on parallelization
+
+  Reflection is an API that is used to examine or modify the behavior of methods,
+  classes, and interfaces at runtime.
+  The required classes for reflection are provided under java.lang.reflect package which
+  is essential in order to understand reflection
+
+Reflection gives us information about the class to which an object belongs and also the methods of that class that
+can be executed by using the object.
+Through reflection, we can invoke methods at runtime irrespective of the access specifier used with them.
+
+    Class c = Class.forName("org.geeksforgeeks.write.Emp");
+    //Constructor array
+    Constructor[] constructors = c.getDeclaredConstructors();
+    c.getDeclaredMethods();
+    c.getDeclaredAnnotations();
+    constructor.getParameters();
+    method.getReturnType()
+    method.getParameterCount()
+
+    Inner classes are a security mechanism in Java.
+     We know a class cannot be associated with the access modifier private,
+     but if we have the class as a member of other class, then the inner class can be made private.
+     We can not have a static method in a nested inner class because an inner class is implicitly associated with an object of its
+     outer class so it cannot define any static method for itself. For example, the following program doesn’t compile.
+     But Since JAVA Version 16 we can have static members in our inner class also.
+     //Outer class can access inner private class by instantiating
+     //Inner class has access to members of outer class
+     class Outer_Demo {
+        int num;
+
+        // inner class
+        private class Inner_Demo {
+           public void print() {
+              System.out.println("This is an inner class");
+           }
+        }
+
+        // Accessing he inner class from the method within
+        void display_Inner() {
+           Inner_Demo inner = new Inner_Demo();
+           inner.print();
+        }
+     }
+
+     public class My_class {
+
+        public static void main(String args[]) {
+           // Instantiating the outer class
+           Outer_Demo outer = new Outer_Demo();
+
+           // Accessing the display_Inner() method.
+           outer.display_Inner();
+        }
+     }
+
+
+     And this is also used to access the private members of a class.?
+     #inner class public accessing the
+     class Outer_Demo {
+        // private variable of the outer class
+        private int num = 175;
+
+        // inner class
+        public class Inner_Demo {
+           public int getNum() {
+              System.out.println("This is the getnum method of the inner class");
+              return num;
+           }
+        }
+     }
+
+     public class My_class2 {
+
+        public static void main(String args[]) {
+           // Instantiating the outer class
+           Outer_Demo outer = new Outer_Demo();
+
+           // Instantiating the inner class
+           Outer_Demo.Inner_Demo inner = outer.new Inner_Demo();
+           System.out.println(inner.getNum());
+        }
+     }
+     Method-local Inner Class
+     In Java, we can write a class within a method and this will be a local type.
+      Like local variables, the scope of the inner class is restricted within the method.
+      public class Outerclass {
+         // instance method of the outer class
+         void my_Method() {
+            int num = 23;
+
+            // method-local inner class
+            class MethodInner_Demo {
+               public void print() {
+                  System.out.println("This is method inner class "+num);
+               }
+            } // end of inner class
+
+            // Accessing the inner class
+            MethodInner_Demo inner = new MethodInner_Demo();
+            inner.print();
+         }
+        A static inner class is a nested class which is a static member of the outer class.
+         It can be accessed without instantiating the outer class, using other static members.
+         Just like static members, a static nested class does not have access to the instance variables and
+         methods of the outer class. The syntax of static nested class is as follows −
+
+        Syntax
+
+        class MyOuter {
+           static class Nested_Demo {
+           }
+        }
+        Instantiating a static nested class is a bit different from instantiating an inner class.
+        The following program shows how to use a static nested class.
+
+        Example
+
+         Live Demo
+        public class Outer {
+           static class Nested_Demo {
+              public void my_method() {
+                 System.out.println("This is my nested class");
+              }
+           }
+
+           public static void main(String args[]) {
+              Outer.Nested_Demo nested = new Outer.Nested_Demo();
+              nested.my_method();
+           }
+        }
+    Inner Class
+    Method-local Inner Class
+    Anonymous Inner Class
