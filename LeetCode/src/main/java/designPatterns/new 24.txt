@@ -1,43 +1,40 @@
-Design pattern and Thread
+1. Creational: These patterns are designed for class instantiation. They can be either class-creation patterns or object-creational patterns.
 
-Strategy pattern
+2. Structural: These patterns are designed with regard to a class's structure and composition. 
+The main goal of most of these patterns is to increase the functionality of the class(es) involved, without changing much of its composition.
+
+3. Behavioral: These patterns are designed depending on how one class communicates with others
+
+Strategy pattern(behavioural)
 	Defines a family of algorithms (interchangeable), encapsulates each one and make them interchangeable.
+In simpler terms, the Strategy Design Pattern provides a way to extract the behavior of an object into separate classes that can be swapped in and out at runtime. 
+        This enables code  to be more flexible and reusable, as different strategies can be easily added or modified without changing 
+		the object's core code.
 
-	In simpler terms, the Strategy Design Pattern provides a way to extract the behavior of an object into separate classes that can be swapped in and out at runtime. 
-        This enables code  to be more flexible and reusable, as different strategies can be easily added or modified without changing the object's core code.
+	A shopping cart application may use the Strategy Design Pattern to encapsulate credit card, PayPal, and cryptocurrency payment 
+	methods into separate strategies that can be swapped at runtime. The application's payment processing system would delegate
+	the payment processing logic to the current payment method's strategy, allowing for easy modification and extension of the
+	payment processing logic.
 
-	A shopping cart application may use the Strategy Design Pattern to encapsulate credit card, PayPal, and cryptocurrency payment methods into separate strategies that can be swapped at runtime. The application's payment processing system would delegate the payment processing logic to the current payment method's strategy, allowing for easy modification and extension of the payment processing logic.
 
-
-Observer pattern
-			The observer pattern defines a one to many relationship so that when one object changes state , all of its dependent objects are notified and updated accordingly
+Observer pattern(behaviourial)
+			The observer pattern defines a one to many relationship so that when one object changes state , all of its dependent objects
+			are notified and updated accordingly
 			IObservable==> one to many IObservers
 			it has methods add(iobserver), remove(iobserver) and notify, getState
 			IObserver==>update.. called by notify of observerable
 			When we instantitatite the observer, in the constructor we pass the reference of the concrete implementation of iObservable(Bidirectional) 
 			So that the observer knows what changed or what the current state of observable is..(get the new data)
-Decorator pattern
-			Attached added responsibilities to an object dynamically. 
-			Decorators provide a flexible alternative to sub-classing for extending functionality
-			Adding additional behavior to the object without opening up and changing that object
-		
-			Abstract class
-		 Component                 has a 
-				Method A--------------|
-				Method B 			  |	
-			/ \          \	is a 	  |	
-			 |	is a      \	          |	
-			 |             \		  |	
-		ConcreteComponent   Decorator
-			MethodA				MethodA
-			MethodB             MethodB
-			                     |      \
-								 |       \
-								 |        \
-					ConcreteDecorator1     ConcreteDecorator2	
-	
-Factory
-	Responsible for creating 
+
+Iterator Design Pattern ( behaviourial)
+ provides a way to access the elements of a collection (aggregate object) sequentially without exposing its underlying 
+ representation . 	
+ The Iterator pattern consists of two main components: an Iterator and an Aggregate. 
+ The Iterator defines a uniform interface for accessing the elements of the collection, 
+ and the Aggregate provides a method for creating an Iterator that can traverse the collection. 
+ The Iterator interface typically includes methods like next, hasNext, remove, and current. 
+ The Iterator and Aggregate interfaces work together to provide a seamless and standardized way of iterating over a collection.
+
 	
 Singleton pattern
 	Ensures a class has only one instance and provides a global point of access to it
@@ -52,90 +49,9 @@ Singleton pattern
 			instance = new Singleton();
 		return instance;	
 	}
-	
-Adapter pattern
-	Allows 2 incompatible interfaces to work together
-	Client(wall socket) expects a target interface( 2 plug), however you have a 3 point plug (available interface..or adaptee)
-	Adapter has a composition of adaptee and implements the methods of the target// it will expose methods of target and in turn calls the method of adaptee
-	All classes must implement every method defined by the shared interface
-	Not add additional behaviour
-	
-	
-	Client                  interface Itarget
-							request
-								/		
-								|
-								|
-								|
-							(concrete)Adapter-----------------------Adaptee
-															specific_request()
-				Itarget target = new Adapter(new Adaptee())
-				target.request()
-				//Adapter implements Itarget
-				
-				Adapter has adaptee.
-				public void request(){
-					adaptee.specific_request()
-				}
-					
-									
-Facade Pattern
-	Provides a unified interface to a set of interfaces	in a sub system
-	Facade defines a high level interface that makes the sub system easier to use
-	
-Proxy design pattern
-	Indirection.....
-	Remote proxy
-	Virtual Proxy (Controls access to a resource that is expensive to create)
-	Protection Proxy
-	Add additional behaviour with the intent of controlling access to a resource/underlying object
 
 
-A bank’s credit card is a proxy for what is in our bank account.
-It can be used in place of cash and provides a means of accessing that cash when required.
-And that’s exactly what the Proxy pattern does: “Controls and manage access to the object they are protecting”.
-
-Subject..
-(operation) ----------|
- /|\                  |
- |                    |
-RealSubject<===========Proxy
-Assume we wanna run some statements on the command line and need to check permission before do it.
-public interface Icommand(){
-     void run Command(String command);
-}
-public interface OriginalCommand implements Icommand(){
-     @Override
-     public void run Command(String command){
-        Syso("Command executed");
-     }
-}
-public interface ProxyCommand implements Icommand(){
-     private boolean isRoot=false;
-     private OriginalCommand originalCommand;
-     public ProxyCommand(String user){
-         if (user.equals("root")
-            isRoot=true;
-         originalCommand= new originalCommand;
-     }
-     @Override
-     public void runCommand(String input){
-     if(command.equals"rm" && !isRoot){
-         Sop("not allowed")
-          }
-      else{
-            originalCommand.run(input);
-      }
-     }
-
-
-     @Override
-     public void run Command(String command){
-        Syso("Command executed");
-     }
-}
-
-Factory Design pattern
+Factory Design pattern (Creational design pattern)
 
 The factory design pattern is used when we have a superclass with multiple sub-classes and based on input,
 we need to return one of the sub-class.
@@ -179,6 +95,211 @@ public class ShapeFactory{
        Shape shape1 = shapeFactory.getShape("CIRCLE");
     //call draw method of Circle
           shape1.draw();
+	
+BuilderDesignPattern(Creational)
+It can be used to streamline the creation of complex objects making your code more readable and 
+less prone to developer error by removing the need to call a long constructor or call multiple setter methods to create an object.
+	
+Implement a separate, concrete Builder class to delegating object creation to rather than trying to build directly through a convoluted constructor.	
+public class BankAccount {
+
+    public static class Builder {
+
+        private long accountNumber; //This is important, so we'll pass it to the constructor.
+        private String owner;
+        private String branch;
+        private double balance;
+        private double interestRate;
+
+        public Builder(long accountNumber) {
+            this.accountNumber = accountNumber;
+        }
+
+        public Builder withOwner(String owner){
+            this.owner = owner;
+
+            return this;  //By returning the builder each time, we can create a fluent interface.
+        }
+
+        public Builder atBranch(String branch){
+            this.branch = branch;
+
+            return this;
+        }
+
+        public Builder openingBalance(double balance){
+            this.balance = balance;
+
+            return this;
+        }
+
+        public Builder atRate(double interestRate){
+            this.interestRate = interestRate;
+
+            return this;
+        }
+
+        public BankAccount build(){
+            //Here we create the actual bank account object, which is always in a fully initialised state when it's returned.
+            BankAccount account = new BankAccount();  //Since the builder is in the BankAccount class, we can invoke its private constructor.
+            account.accountNumber = this.accountNumber;
+            account.owner = this.owner;
+            account.branch = this.branch;
+            account.balance = this.balance;
+            account.interestRate = this.interestRate;
+
+            return account;
+        }
+    }
+
+    //Fields omitted for brevity.
+    private BankAccount() {
+        //Constructor is now private.
+    }
+
+    //Getters and setters omitted for brevity.
+
+}
+	BankAccount account = new BankAccount.Builder(1234L)
+            .withOwner("Marge")
+            .atBranch("Springfield")
+            .openingBalance(100)
+            .atRate(2.5)
+            .build();
+	
+Adapter pattern (Structural)
+	Allows 2 incompatible interfaces to work together
+	Client(wall socket) expects a target interface with a target method(request)( 2 plug), however you have a 3 point plug (available interface..or adaptee)
+	Adapter has a composition of adaptee and implements the methods of the target// it will expose methods of target and in turn calls the method of adaptee
+	All classes must implement every method defined by the shared interface
+	Not add additional behaviour
+	
+	
+	Client                  interface Itarget
+							request
+								/		
+								|
+								|
+								|
+							(concrete)Adapter-----------------------Adaptee
+															specific_request()
+				Itarget target = new Adapter(new Adaptee())
+				target.request()
+				//Adapter implements Itarget
+				
+				Adapter has adaptee.
+				public void request(){
+					adaptee.specific_request()
+				}
+					
+Decorator pattern
+			Attached added responsibilities to an object dynamically. 
+			Decorators provide a flexible alternative to sub-classing for extending functionality
+			Adding additional behavior to the object without opening up and changing that object
+		
+			Abstract class
+		 Component                 has a 
+				Method A--------------|
+				Method B 			  |	
+			/ \          \	is a 	  |	
+			 |	is a      \	          |	
+			 |             \		  |	
+		ConcreteComponent   Decorator
+			MethodA				MethodA
+			MethodB             MethodB
+			                     |      \
+								 |       \
+								 |        \
+					ConcreteDecorator1     ConcreteDecorator2	
+	
+	
+									
+Facade Pattern (Structural)
+	Provides a unified interface to a set of interfaces	in a sub system
+	Facade defines a high level interface that makes the sub system easier to use
+	
+	
+Proxy design pattern(Structural design pattern)
+Proxy Design Pattern is a type of structural design pattern which is used whenever we need a placeholder or representational object
+that can work in place of the real object. The proxy acts as an intermediatory layer between the client and the real object and 
+hence can control the access to the real object, add additional functionality, and even restrict client access. 
+It is also known as Surrogate Pattern.
+
+A proxy is basically a substitute for an intended object which we create due to many reasons e.g. security reasons or
+cost associated with creating fully initialized original object.
+Proxy is heavily used to implement lazy loading related usecases where we do not want to create full object until it is actually needed.
+
+Subject – is an interface which expose the functionality available to be used by the clients.
+Real Subject – is a class implementing Subject and it is concrete implementation which needs to be hidden behind a proxy.
+Proxy – hides the real object by extending it and clients communicate to real object via this proxy object. 
+Usually frameworks create this proxy object when client request for real object
+
+
+
+public interface RealObject 
+{
+  public void doSomething();
+}
+public class RealObjectImpl implements RealObject {
+ 
+  @Override
+  public void doSomething() {
+    System.out.println("Performing work in real object");
+  }
+ 
+}
+public class RealObjectProxy extends RealObjectImpl 
+{
+  @Override
+  public void doSomething() 
+  {
+    //Perform additional logic and security
+    //Even we can block the operation execution
+    System.out.println("Delegating work on real object");
+    super.doSomething();
+  }
+}
+
+
+Subject..
+(operation) ----------|
+ /|\                  |
+ |                    |
+RealSubject<===========Proxy
+Assume we wanna run some statements on the command line and need to check permission before do it.
+public interface Icommand(){
+     void run Command(String command);
+}
+public interface OriginalCommand implements Icommand(){
+     @Override
+     public void run Command(String command){
+        Syso("Command executed");
+     }
+}
+public interface ProxyCommand implements Icommand(){
+     private boolean isRoot=false;
+     private OriginalCommand originalCommand;
+     public ProxyCommand(String user){
+         if (user.equals("root")
+            isRoot=true;
+         originalCommand= new originalCommand;
+     }
+     @Override
+     public void runCommand(String input){
+     if(command.equals"rm" && !isRoot){
+         Sop("not allowed")
+          }
+      else{
+            originalCommand.run(input);
+      }
+     }
+
+
+     @Override
+     public void run Command(String command){
+        Syso("Command executed");
+     }
+}
 ----Adapter---
 public interface EnemyAttacker{
 	public void fireWeapon();
