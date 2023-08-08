@@ -481,6 +481,8 @@ Run the URL
 		}
 		#to avoid multiple loads everytime you run
 			spring.jpa.hibernate.ddl-auto=create-drop
+		# 	spring.jpa.hibernate.ddl-auto=update (whenever there is change in entities it will be reflected in the database)
+		#	spring.jpa.show-sql=true (always show the sql)
 		In production use none	
 			spring.jpa.hibernate.ddl-auto=none
 	#How the controller will call the data
@@ -675,6 +677,7 @@ DTO objects are different and model is different
 		@GeneratedValue(strategy = GenerationType.IDENTITY)
 			private Long id;
 		@OneToMany(cascade = CascadeType.ALL)
+		@Column(length=60)
 	For Repository
 		public interface StudentRepository extends JpaRepository<Student,Long> {}
 		
@@ -1177,6 +1180,13 @@ Image is downloaded from hub.docker.com (Docker registry)
 						Now if you hit product service , you get response 200 OK
 		#For Eureka server
 			Cannot use authentication mechanism for connecting eureka service through the browser
+		#SpringSecurity
+			@EnableWebSecurity
+			public PasswordEncoder passwordEncoder(){
+				return new BCryptPasswordEncoder(strength=11)
+			}
+			ApplicationEventPublisher	
+			ApplicationListener
 #Circuit breaker
 	Resilient communication between our services in a webclient sync communication
 	Synchronous communication.. inventory service maybe down... inventory service may respond slowly.. to the order issue..

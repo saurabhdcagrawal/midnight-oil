@@ -1877,3 +1877,89 @@ Exploratory Data Analysis
 				1-pvalue
 			Determine p value compare with alpha is same as get critical value compare with test statistic
 			
+			
+			
+	Week 3	
+		To conclude whether the evidence is significant enough to reject the null hypothesis in favor of the alternative hypothesis or not, 
+		we can use either one of the following approaches:
+		Rejection region approach: In this approach, we look at the distribution of the test statistic and observe 
+			whether the test statistic value falls within or outside the rejection region. The rejection region is formed using the critical values 
+			based on the level of significance. The decision about the test is made based on whether the test statistic falls within the rejection
+			region or outside the rejection region.
+		P-value approach: In this approach, we calculate the probability of obtaining a test statistic value as the computed test statistic 
+		under the assumption that the null hypothesis is true. The probability value is then compared with the significance level 
+		to make a decision from the test.
+	
+		1 sample z-test
+			Compare the sample mean to the population mean when population std dev is known -->
+			Compare the sample proportion (24/90 or 20/450) with the population proportion
+				proportions_ztest if np, n(1-p)>=10 then central limit theorem holds
+				from statsmodels.stats.proportion import proportions_ztest
+					proportions_ztest(count, nobs, value = 0.7, alternative='two-sided')
+		1 sample t-test	
+			Compare the sample mean to the population mean when population std dev is unknown -->ttest_1samp
+				t, p = stats.ttest_1samp(x, popmean = mu)
+		2 sample z-test
+			Compare the sample mean from 2 independent populations when std devs are known 2 sample z-test
+			Compare the sample proportion from 2 populations
+				test_stat,p_value=proportions_ztest(defect_count,nobs)
+				from statsmodels.stats.proportion import proportions_ztest 
+				proportions_ztest(count = [20, 40], nobs = [100, 150], value = 0, alternative = 'smaller')
+
+			
+		2 sample t-test	
+			Compare the sample mean from 2 independent populations when std devs are unknown-->ttest_ind
+				stats.ttest_ind(group1, group2, equal_var = True) 	 # T-test to check if the energy expenditure of both groups is indeed different.
+												equal_var=False, alternative= greater.. when do we use false?	When std dev are unequal	
+		paired t-test	
+			Compare the sample mean from 2 related populations when std devs are unknown 
+		ANOVA	
+			ANOVA is a statistical test used for comparing the means of several populations by analyzing the variance
+			between and within the samples from each population
+			For such cases, statisticians have developed hypothesis tests that compare the averages between more than two groups.
+			The group of tests is broadly called Analysis of Variance, or commonly, ANOVA. 
+			There are two main types of ANOVA tests - One-way ANOVA and Two-way ANOVA - based on the number of independent or
+			explanatory variables involved in the test. The example below will provide more clarity on the two scenarios:
+			One-way ANOVA: 
+				Testing the relationship between shoe brands (Nike, Adidas, Puma) and race finish times in a marath
+			Two-way ANOVA: 
+				Testing the relationship between shoe brands (Nike, Adidas, Puma), runner's age group (Junior, Senior), 
+				and race finishing times in a marathon
+			Just like many other statistical tests, the one-way ANOVA has a set of assumptions. Following are the assumptions of the one-way ANOVA test
+			Samples are independent simple random samples
+			The group populations are normally distributed 
+			The group populations have a common variance
+			The normality assumption can be validated using a test called Shapiro-Wilk’s test, 
+					while the common variance assumption can be validated using a test called Levene’s test. 	
+			Compare the sample means from 2 or more independent populations.. ANOVA' (analyis of variance)
+			between group or within group?
+			Shapiro wilk's test
+			Leven's test: equality of variance
+			tukeyhsd
+			
+			# marks of students in section A
+				A = np.array([51, 45, 33, 45, 67])
+
+				# marks of students in section B
+				B = np.array([23,43,23,43,45])
+
+				# marks of students in section C
+				C = np.array([56, 76, 74, 87, 56])
+
+				# performing a one-way ANOVA test
+				t, p = stats.f_oneway(A, B, C)
+				print("tstat = ", t, ", p-value = ", p)
+			
+		Chi square test	
+			Compare the sample variance to the population variance
+		F-Test
+			Compare the sample variances from 2 populations
+		Chi-square test of independence
+			Check whether categorical variables from population are independent
+			A chi-square test of independence requires the data to be categorical.
+
+			The chi2_contingency() function is used to perform a chi-square test 
+			for independence between two categorical variables. It takes the input in the form of a crosstab or a contingency table.
+			chi2_contingency(beverage.drop)
+
+		test_stat, p_value = ttest_1samp(sample, popmean = 50, alternative = 'less')
