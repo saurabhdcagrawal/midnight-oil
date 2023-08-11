@@ -118,6 +118,7 @@ Spring Boot--
 	http://localhost:8080/courses
 	One class has @SpringBootApplication annotation..that class has to be outside//other classes can be in subpackages
 	RestfulWebServiceApplication
+	//SpringBootApplication
 	SpringApplication.run(RestfulWebServiceApplication.class, args);
 	Instead of @RequestMapping(method= RequestMethod.GET) you can use @GetMapping(path="/courses")
 	Maven use Bundled Maven 3
@@ -215,6 +216,7 @@ Spring boot vs spring mvs vs Spring
 			Spring modules and spring projects extend the spring eco system ..provide good integration with other frameworks (Hibernate/JPA, Junit, Mockito	)
 		Spring MVC is a spring module ->Only focus on Simplify building wep apps and rest api
 			@Controller, @RequestMapping, @RestController
+			@RestController returns @ResponseBody (return data instead of jsp pages)
 		SpringBoot (Wrapper that makes it easy to use Spring MVC and Spring)
 			To build production ready apps quickly
 				Starter projects easy to build wide variety of applications
@@ -570,6 +572,9 @@ create a final instance of service with constructor
 
 Spring-----------------
 	Inversion of control --> give control to framework itself, no need to create objects yourself.. Spring allows dependency injection
+	Constructor-based Dependency Injection
+	Setter-based Dependency Injection
+	Field or Property-based Dependency Injectio
 	 (define spring.xml and load it in main method using ClassPathXMLApplicationContext)
 		XML based injection
 			Constructor based injection (define constructor arg in xml)
@@ -578,6 +583,8 @@ Spring-----------------
 		Annotation based injection	
 			Give context component scan base package in context.xml
 			Use @Component for classes that need to be injected (its a stereotype Component)
+			@ComponentScan will scan all components in your application and all those components will be added to Spring Container 
+			when spring boot starts
 		Java Configuration Way
 			Application context= new AnnotationConfigApplicationContext(BeanConfig.class)
 			BeanConfig class have @Configuration, @ComponentScan(basePackage="demo"))
@@ -595,7 +602,26 @@ Spring-----------------
 			Session,
 			Global Session
 			Paused at 47:00
-	Aspect Oriented Programming--> Logging user data, securities, Cross cutting concerns seperate out using AOP.. invoke those particular methods for every request
+	Aspect Oriented Programming--> Logging user data, authentication and authorization.. All of this is an aspect
+			remove Cross cutting concerns and seperate it out from main business logic and Run it seperately
+			invoke those particular methods for every request
+			aspectjrt			
+			spring context
+			aspectjweaver	
+			@Aspect
+			@Component
+			public class LoggingAspect{
+				@Before("execution(* demo.ShoppingCart.checkout())")
+				public void logger(){
+					System.out.println("loggers")
+				}
+			}
+			
+			Before the checkout method is called ..the logger will be called
+			@Before, @After, pointcuts
+			@Before("execution(* *.*.checkout(..))")
+				All checkout methods with any number of arguments
+			
 	Spring provides data libraries/projects for every type of data source
 #SpringBoot
 	Build production ready apps quickly
@@ -875,7 +901,7 @@ Image is downloaded from hub.docker.com (Docker registry)
                 .retrieve().bodyToMono(InventoryResponse[].class)
                 .block();
         boolean allProductsInStock=Arrays.stream(inventoryResponses).allMatch(InventoryResponse::isInStock);
-        if(allProductsInStock)
+        if(allProductsInStock)	
             orderRepository.save(order);
     #order
 	{
@@ -1076,8 +1102,7 @@ Image is downloaded from hub.docker.com (Docker registry)
 		Dont need to implement authentication mechanism by hand in our microservices
 		Access google or facebook images (connect) from lets says bumble..cannot just give username and password because the app may store this information
 		and if a hacker gets access to app db , the accounts will be compromised
-	#OAuth.. A stands for authorization	
-		Create authentication for our API gateway
+	#OAuth.. A stands for authorization	Open Authorization
 		Standard way of providing authorization from service 1 to access another service 2
 		It will asked to login into google account.. once you login google will ask you what you want to share..after selecting
 		google will store it and send token to service 1..
@@ -1088,17 +1113,21 @@ Image is downloaded from hub.docker.com (Docker registry)
 			Client uses this to make request	
 		Resource
 			Things that need to be accessed( google pics)
-		Resource Owner
+		(1)Resource Owner
 			Person who owns the resource
-		Resource Server
+		(3)Resource Server
 			Stores /host resource( google drive server)
-		Client
+			
+		(4)Client
 			Image gallery application.. that needs access to resource in a resource server
 			Public Client
 			Confidential Client
-		Authorization Server
+			Client must hold the appropriate access token
+		(2)Authorization Server
+			Receives token requests  from client and upon succesful authentication and consent by resource owner
 			Generates access token for clients(AWS Cognita, Okta, Key Cloak--open source, Spring working on its Auth Service offering)
 		OIDC
+			Open Id connect provides authentication
 			Build on top of OAuth2.. email firstname, lastname//2 tokens...Id token --verify user information and identity of user & access token
 		Key Cloak
 			Docker can be used.. it will run as a container and you can access the port
@@ -1182,11 +1211,47 @@ Image is downloaded from hub.docker.com (Docker registry)
 			Cannot use authentication mechanism for connecting eureka service through the browser
 		#SpringSecurity
 			@EnableWebSecurity
-			public PasswordEncoder passwordEncoder(){
-				return new BCryptPasswordEncoder(strength=11)
+			public class WebSecurityConfig{
+				@Bean
+				public PasswordEncoder passwordEncoder(){
+					return new BCryptPasswordEncoder(strength=11)
+				}
 			}
-			ApplicationEventPublisher	
-			ApplicationListener
+			In your user bean	
+					passwordEncoder.encode(userModel.getPassword())
+			
+			User Entity
+			Verification Token Entity
+			ApplicationEventPublisher(publisher.publishEvent())
+			ApplicationListener (onApplicationEvent)
+			ApplicationEvent
+				Why do we need token?
+					When user event application event publisher will pubblish event,, user & appUrl
+					Listener will listen, get user, create a token and save it in the db
+					same token will be sent by the controller to the user in the email appended to the app url	
+					This is to authenticate the email
+					
+				Create a verify Token with @RequestParam(token).. this is when the user clicks the app url with token
+					extract the token ... from the token get the VerificationToken Bean & get user.. get the expiration timestamp 
+					and authenticate the user
+				Resend email	
+					
+			Whitelist API for eg login page	
+				SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
+				http
+				.cors()
+				.and()
+				.csrf()
+				.disable()
+				.authorizeHttpRequests()
+				.antMatchers(WHITE_LIST_URL)
+				.permitAll()
+			return http.build()
+			}
+			
+					
+					
+				
 #Circuit breaker
 	Resilient communication between our services in a webclient sync communication
 	Synchronous communication.. inventory service maybe down... inventory service may respond slowly.. to the order issue..
@@ -1557,3 +1622,36 @@ Take existing dashboard configuration
 		Import via panel json
 		Choose your data source
 Import existing configuration--›find a json file Grafana.Json..dashboard..-›import Via panel json test. and your pitotheus dataservices. Switch between services using instance (no hikar1 CP pool for non mysq1 db	
+
+Hibernate
+spring.jpa.hibernate.ddl-auto
+Hibernate property values are: create, update, create-drop, validate and none:
+create – 
+	Hibernate first drops existing tables, then creates new tables
+update – 
+	the object model created based on the mappings (annotations or XML) is compared with the existing schema, 
+    and then Hibernate updates the schema according to the diff. It never deletes the existing tables or columns even 
+	if they are no more required by the application
+create-drop – 
+	similar to create, with the addition that Hibernate will drop the database after all operations are completed.
+	Typically used for unit testing
+validate – 
+	Hibernate only validates whether the tables and columns exist, otherwise it throws an exception
+none – 
+	this value effectively turns off the DDL generation
+	
+	
+@OneToOne(fetch=FetchType.EAGER)
+@JoinColumn(name="user_id",
+nullable=false,
+foreignKey=@ForeignKey(name=))	
+Create and load
+		FetchType.EAGER and FetchType.LAZY
+get returns the object by fetching it from database or from hibernate cache whereas 
+load() just returns the reference of an object that might not actually exists, 
+it loads the data from database or cache only when you access other properties of the object.
+
+get() loads the data as soon as it’s called whereas load() returns a proxy object and loads data only when 
+it’s actually required, so load() is better because it support lazy loading.
+Since load() throws exception when data is not found, we should use it only when we know data exists.
+We should use get() when we want to make sure data exists in the database.		
