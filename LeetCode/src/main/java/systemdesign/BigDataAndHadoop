@@ -1,0 +1,114 @@
+Divide and conquer problems can be done using Parallel machines	
+Initially we had super computers
+	Super computer=cluster of computer(weather forecasting, defense related work required computational work on large datasets)
+	Locked to specific vendors for hardware support	
+	High initial cost of hardware
+	No readily available off the shelf operating system for parallel computing needs 	
+	Army of network engineers to keep cluster up and running and team of software engineers to keep applying patches
+
+These challenges were addressed by Hadoop
+	Hadoop comes with 2 components HDFS and Map reduce parallel processing framework
+
+	A general purpose operating system like framework for parallel computing needs	
+	Gives you an environment for parallel processing 
+	Sits on host O/S(windows or linux) on every machine inside a cluster.. gives you a feel of distributed o/s
+	A hadoop is a software that you install on multiple systems(cluster) that are interconnected via a computer network	
+	Build your own hardware from multiple vendors
+
+Originated from internet search engines 
+		Hadoop comes to the rescue in terms of both hardware infrastructure as well as software that is free of cost to address the
+		parallel computing needs
+		Yahoo.. altavista
+		2006 yahoo rolled out apache
+		
+		Hadoop 3.0 but most stable is hadoop 2.0 or YARN
+		
+Hadoop architecture ->Client, Name Node, Data Node(hard drive where data blocks are stored), Job tracker (Resource manager in hadoop version 2)	
+		and task tracker (node manager in hadoop version 2)
+	Each block gets an identifier and it is replicated 3 times for fault tolerance
+	By contacting(client machine) the name node, you push a file in the Hadoop cluster'
+	200 MB is not going to be saved as is ..break your file and distribute it across data nodes in the cluster
+	While file storage in HDFS, breaking up the original file into multiple blocks happens in the client machine
+	Default size is 64 MB.. can be increased by admin in multiples of 64 MB	(input split size)
+	Name node (FS image -> table which remembers where block of original files are going to be stored) 
+	Backup of the FS image in a secondary name node	
+	Name node, secondary name node, Job tracker (centralized job scheduler: split job into tasks and these tasks will be distributed onto
+	multiple data nodes, each task monitored by task tracker report back to job tracker)
+	Each task is a java program runs on JVM program
+	All services run on the same machine but on a different JVM ,Pseudo distributed mode (for learning and development)
+
+
+	In hadoop version 1
+		Job tracker takes the responsbility of resource negotiator with the help of data nodes and scheduling into a single component
+		Cannot have more than 4000 data nodes
+		Resource manager supports only YARN
+	In hadoop version 2
+		Job tracker replaced by YARN.. resource manager and the scheduler
+		Yarn other than map reduce also supports sime kind of parallel processing frameworks to be integrated for eg Spark
+		2 components .. Divided into 2 parts
+			Scheduler
+			applications manager communicates with the node manager to allocate container (JVM) on ther fly
+			app master for each job
+		Active name node, hot standby name node and secondary name node
+			
+	Every data node sends a heartbeat signal to the name node(name node restores)
+	If DN fails detected through no heartbeat, name node copies the block from to another DN
+	if replication factor>N then name node will delete extra blocks
+	in hadoop 1.0 there is just a copy of the fs image in secondary name node but in case of name node failure	it does not work in hot
+	standby mode. In other words if it fails cluster becomes inaccesible
+	In hadoop 2.0 the secondary will act as primary in case of failure
+	Replica placement strategy
+		Placements are rack aware take the network topology into account
+		More on this
+		1 block is kept on rack 1, 2 other blocks are kept in the same adjacent rack
+	
+	HDFS is excellent for Streaming data
+		When hadoop is installled over a host o/s Hadoop has its own file system called Hadoop distributed file system
+		it negotiates with the Hadoop O/S HDFS negotiates with local file system to get some space in the hard drive
+		HDFS is going to create a folder in the Ubuntu O/S and use that folder space to put all the HDFS data
+		If you have to store large amounts of big files 
+		but bad when storing large quantities of small files	
+			Occupies too many indexes..
+		Write once read many times		
+			HDFS will not let you edit the data 
+			Hadoop 2.0 you can append a file but not edit the file
+			In parallel programming, Race condition and synchronization issues which hadoop has avoided by keeping data immutable
+			
+			
+	Working on HDFS	
+		VMWare Workstation Player
+		Emulator is a piece of software which mimics the underlying hardware
+		Linux hard drive has one partition called the root partition denoted by /
+		Under this / you have many directories
+		/home/hduser.. 
+		ls -l
+		d directory - file l symbolic link
+		rm -r for folder, rm for file
+		start-all.sh (hadoop services will start..both map reduce and hdfs services start)
+		jps shows all java process in your system
+		hadoop fs -ls (Shows what is in your hdfs)	..there will be a folder /user
+		hadoop fs -ls /user
+			/user/hduser inside HDFS just like in Linux
+		hadoop fs -mkdir sample_new 
+			/user/hduser/sample_new
+		hadoop fs -put samplefile.txt sample_new
+		hadoop fs -rm -skipTrash sample_new/samplefile.txt
+		hadoop fs -rmr -skipTrash sample_new	
+		
+	Hadoop version 2 MR2 Yarn(yet another resource negotiator)	
+		
+Spark
+	A parallel processing framework
+	Hadoop had shortcomings in area of ML
+	Developed at University of California, Berkeley 2012.. databricks 2013
+	Developed predominantly using scala which stands for scalability		
+	High throughput applications are developed using Scala.. but can also right code in Python and R
+	Sparks outperforms Hadoop by at least 3x-10x times
+	it outperforms Hadoop in iterative workloads
+Functional style of programming		
+	Value of variable does not changr throughout the program execution, then its called a functional style of programming
+	Inherently supports parallelism
+	Not restricted to a particular programming language
+	
+		
+	

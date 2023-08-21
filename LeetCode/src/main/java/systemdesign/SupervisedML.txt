@@ -1,0 +1,171 @@
+Supervised Learning Foundations aims to help learners understand how to build models to 
+capture the relationships between variables and a known outcome(historical data) that is continuous in nature,
+ how to check the statistical validity of the model, and how to gain business insights from the model.
+ 
+For eg
+	the relationship between the sales of a company and the amount spent on advertising?
+	Machine Learning
+		Learning about the world from the data
+		The past is a good representation (information+noise) about the future
+		Looking at the past, making an assumption that at least a part of the past(information) will repeat itself
+		How can we create a mathematical model out of this that captures only the information leaving out the noise
+		The challenge is to identify the information content and distill away the noise
+		Underfitting
+			Capture much lesser information as given as it should have for prediction
+		Overfitting
+			Capture all information+ also end up capturing noise
+			Does well on training data(because it tries to fit everything including noise) but poor with testing data
+		Making fine balance between overusing the past data and overfitting and under using the past data and underfitting it
+	
+	Data Science
+		Learning from data	
+		What is data?
+			Observations from real world that are very precise
+		If we start from precise observations/data and we finish with what we understand of the real world from the data
+			A summary of how we believe the world works like starting from the data
+			Describe in very very precise terms--mathematical model
+		All tools that go to generate the summary: statistics, data mining & ML is called data science
+		ML says I am going to try various different models ..try each model on same data is ML and differentiates from standard statistical techniques
+		Overlap between ML techniques and statistical techniques
+		Split into 2 sets
+			Training Set
+			Testing Set
+	Types of ML tools	
+		Supervised Learning	: Building a model using data that contains both inputs and desired outputs(ground truth/labels)
+			We have a desired o/p.. everytime we come up a model and compare predicted salary vs desired salary
+			Being able to recisely evaluate how good or bad your algorithm is using prediction errors
+				Determine if a client will default on a a loan
+				Semi Supervised : Some images have labels
+			Some supervised learning problems	
+				Classification: desired o/p is category	
+				Regression: desired o/p is a continuos number
+		Unsupervised Learning: We do not have a specific desired o/p-- create segments of customer base to target ads..market segmentation
+			We have a set of columns and we group these rows into segments
+			No set way to evaluate model performance(no ground truth ..you dont have established customer segmentations)
+			Find structure in data like grouping or clustering of points
+			Some Unsupervised Learning problems	
+				Clustering
+				Dimensionality Reduction(reduce size of file without throwing information)
+				Association Rule Learning
+	Linear Regression				
+		Linear relation between 2 variables
+		Association is strength of relationship between 2 variables
+		Covariance for 2 variables divide by (n-1) for correction
+		Var(x)=Cov(X,X);Cov(X,Y)=Cov(Y,X)
+				Depends on units so difficult to determine strong or weak covariance
+		Correlation
+			Measures a linear relation(quantify or measure the defree of association)
+			Scale invariant
+			Cov(X,Y)/Std(X)*Std(Y)
+			Highest positive correlation =+1
+			Corr(X,X)=1, Corr(X,-X)=-1.. Therefore correlation is always between +1 and -1
+			Makes comparison easy because it is independent of unit(scale invariant)
+			If corr(x,y)=0 meaning there is no linear relationship..but there can be other relationships
+			Covariance does not imply causation
+		Variance and Standard Deviation summarize how close each observed data value is to the mean value. 
+		Therefore, if all values of a dataset are the same, the standard deviation and variance are zero.	
+	Standard Error
+		Standard deviation of residuals
+		R2 
+			Fraction of variance in y explained by variance
+			Between 0 and 1
+		Correlation helps us realize the strength of the linear relationship between two variables.
+		And, the R-squared value is calculated by squaring the coefficient of correlation.	
+		The R-squared value tells us the proportion of variance of the dependent variable explained by the model. 
+		For an R-squared value of k, 100 times k percent of the variance is explained. So, for an R-squared value of 
+		0.85, 85% of the variance is explained by the model.
+	Multiple Regression
+		Many independent features
+		The decrease in adjusted R-squared value signifies that the newly added variable 
+			does not add value to the model performance. And hence should not be included.
+		The R-squared value increases with the addition of features, but the adjusted R-squared value might increase/decrease 
+		with the addition of features to generate the best fit line.	
+	One hot encoding
+		Categorical variables can't be used directly in a linear regression because
+			the best fit lines needs to be fit on numerical values and categorical values represent categories
+		Include n-1 coefficients for categorical variables
+		# drop_first=True will drop one of the three origin columns
+		drop_first=True instructs pd.get_dummies() to drop the first variable after arranging the dummy variables in increasing alphabetical order.
+			cData = pd.get_dummies(cData, columns=["origin"], drop_first=True)
+			cData.head()
+	RMSE and MAE
+		Absolute values are very hard to differentiate thats why RMSE is popular for mathematical convenience
+	Performance measures should be compared on testing data
+	Cross Validation->Automatic way of creating test data
+	Cons of Linear Regression	
+		Sometimes its too simple to capture real world complexities
+		It assumes independence of attributes
+		Values like 'america' cannot be read into an equation.
+		Using substitutes like 1 for america, 2 for europe and 3 for asia would end up implying that European cars 
+		fall exactly half way between American and Asian cars! We don't want to impose such a baseless assumption!
+	
+	cData["CHAS"] = cData["CHAS"].replace({1: "yes", 0: "no"})
+	# For randomized data splitting
+		from sklearn.model_selection import train_test_split
+	# To build linear regression_model
+		import statsmodels.api as sm
+	
+	# independent variables
+		X = cData.drop(["mpg"], axis=1)
+	# dependent variable
+		y = cData[["mpg"]]
+
+	# let's add the intercept to data
+		X = sm.add_constant(X)	
+	#Scikit-Learn	
+		X_train, X_test, y_train, y_test = train_test_split(
+		X, y, test_size=0.30, random_state=1)	
+
+	We will use the OLS function of the statsmodels library to fit the linear model.
+		olsmod = sm.OLS(y_train, X_train)
+		model = olsmod.fit()	
+		print(model.summary())				
+	#Coefficient of Determination
+		print("The coefficient of determination (R-squared) is ", model.rsquared)
+	#Get the predictions on test set
+		y_pred = model.predict(X_test)
+		y_pred.head()
+	#Calculate MSE for training set
+		# To check model performance
+			from sklearn.metrics import mean_absolute_error, mean_squared_error
+		print("The Mean Square Error (MSE) of the model for the training set is ",
+		mean_squared_error(y_train, model.predict(X_train)),
+		)	
+	# we can also get the MSE by the mse_resid parameter of model
+	# note that the value will differ slightly due to the consideration of degrees of freedom
+		print(
+		"The Mean Square Error (MSE) of the model for the training set is ", model.mse_resid
+		)
+	#Calculate RMSE for training set
+		print("The Root Mean Square Error (MSE) of the model for the training set is ",np.sqrt(mean_squared_error(y_test, model.predict(X_test))),
+		)
+	# Let us write the equation of linear regression: Automate the equation of fit
+		Equation = "Price ="
+		print(Equation, end=" ")
+		for i in range(len(X_train.columns)):
+			if i == 0:
+				print(model.params[i], "+", end=" ")
+			elif i != len(X_train.columns) - 1:
+				print(
+					"(",
+					model.params[i],
+					")*(",
+					X_train.columns[i],
+					")",
+					"+",
+					end=" ",
+				)
+			else:
+				print("(", model.params[i], ")*(", X_train.columns[i], ")")
+			
+
+	
+
+	
+	The statsmodels OLS summary includes the R-squared, adjusted R-squared, and model coefficient values. It does not include the RMSE.
+	Consider the linear regression equation y = a1x1 + a2x2 + a3x3, where x1, x2, and x3 are three different features. 
+	When we use .fit(), the values of the coefficients a1, a2, and a3 are calculated, and when we use .predict(), 
+	the feature values for every particular row is used to calculate y for that row. So .predict() gives y value as output for each row.
+	
+	SST=SSR(sum of squares due to regression,	explained variability)+SSE(sum of squares of error) (unexplained variability)
+	
