@@ -76,7 +76,7 @@ For eg
 		0.85, 85% of the variance is explained by the model.
 	Multiple Regression
 		Many independent features
-		The decrease in adjusted R-squared value signifies that the newly added variable 
+		The decrease in 	 R-squared value signifies that the newly added variable 
 			does not add value to the model performance. And hence should not be included.
 		The R-squared value increases with the addition of features, but the adjusted R-squared value might increase/decrease 
 		with the addition of features to generate the best fit line.	
@@ -169,3 +169,74 @@ For eg
 	
 	SST=SSR(sum of squares due to regression,	explained variability)+SSE(sum of squares of error) (unexplained variability)
 	
+Week 2	
+	Statistician vs Machine learning
+		y is observed and y hat is what our regression line predicts
+		Entire linear regression problem: minimize sum(yi-yhati)^2	yi=>actual , yhati=predicted
+		Both Stat'icians are ML'earners are interested in understanding the world from the data
+		Stats: A statistician assumes a data-generating model before beginning the analysis.... ML:no data generating model
+		Statisticians are mostly interested in determining the performance of a model on the in-sample data, 
+		while machine learners have to check the model performance on the out-of-sample data too to compare 
+		multiple models and check for overfitting.
+		Stats: Can do stats inference ( alpha and beta; y=alpha+beta*x+epsilon) ML:None
+		Stats:Field of math ML: Field of CS
+		Fit a model->learn, parameter->weight, covariable->feature
+		Statisticians are more interested in interpretation*they tend to gravitate towards simpler models),
+		Machine learners are more interested in prediction
+	Assumptions: Linearity, Independence, Normality, Homoscedasticity
+		Linearity: Independent and dependent variables are linearly related
+		Independence: Residuals are independent ..epsilon= yi-yhati
+		Homoscedasticity: Equal variances of residuals
+		Normality: Residuals are normally distributed
+	Check for linearity:After finding best linear fit, plot of residuals will provide a good insight
+		Lack of pattern of residuals is evidence that the model is linear
+	Check for independence: Lack of pattern in residuals meaning one doesnt influence the other
+		The assumption of independence is said to be satisfied if the plot of residuals against the predicted values 
+		shows no pattern and the points are randomly scattered.
+	Check for Normality: Plot histogram of epsilon
+		Q Q plot Residuals against perfectly normal curve
+			Two distributions are said to be close to each other if their respective percentiles when drawn on a Q-Q plot, lie on a 
+			diagonal 45 degree straight line
+		Run a hypothesis test like the Shapiro's test
+	Check for homoscedasticity
+		In case the residuals of linear regression form a funnel-shaped pattern(or others), they are said to be Heteroscadistic
+		Identify the cause of Heteroscadisticity
+		GQ test( Goldfeld-quandt test)
+	No or little multicollinearity-> Two or more independent variables have little to none correlation
+		Bad for purpose of interpretation if there is multicollinearity
+		Pair correlation matrix for all x values
+		Use variance inflation factor for every column.. if value is high then drop, if 0 then independent column
+			Use R squared for computing the variance inflation factor of the kth predictor using the remaining k-1 predictors
+			Suppose the VIF of a predictor variable is 1.8. Then the variance of the coefficient corresponding to that predictor variable 
+			is 80% greater than what it would be if there was no multicollinearity.
+			1 then there is no correlation between variables, if exceeds 5 then there is moderate VIF and high if its exceeding 10
+			shows signs of multi-collinearity
+		Dimensionality reduction(like PCA) help reduce multicollinearity
+	Statistical inference from Linear regression
+		if B2 was 0 what would be the probability that you see the coefficient is the p value
+		null hypothesis is B2 is 0..i.e the independent variable does not affect the outcome or dependent variable
+		if p-value<alpha cant be dropped.. (reject the null hypotheses)
+		if p-value>alpha we can drop it.. (accept the null hypotheses)
+	Hands on
+		Calculate VIF for each variable..find ones with high values
+		When two or more variables have high VIF, a good approach is to check the effect of dropping each variable individually 
+		on model performance and then choose which one to drop. Generally, the one having the least impact on model performance is dropped.
+		Drop them one by one and see the effect on R square and adjusted Rsquared
+		if Rsquare remains unaffected or increases and adjusred Rsquared increases then drop the column
+		After this find p value..drop high p values
+		For linearity find residuals and plot them
+			Normal distribution->Shapiro Wilk.. observations and qq plot...
+			Since p value less than 0.05
+			If the assumption of linearity is not satisfied, we can transform one or more variables and 
+			check if the transformed variable(s) have a linear relationship with the target or not. 
+			We can also transform the target variables if needed.(For eg we made a square of the weight)
+			The idea behind keeping both the original and the transformed variables is to let the model decide which variable is significant 
+			in making predictions.
+			As for correlation, the correlation between the original variable and its transformed version will depend on values and the 
+			transformation applied. When a variable is transformed, a multicollinearity check can be performed (if needed) to see 
+			whether the original and transformed variables are correlated or not and which one has a larger effect on the target variable. 
+			Based on these observations, one can decide on the next steps to take
+		Homeschedastic 
+			Null hypothesis is they are homeschedastic
+			If the p-value of the Godlfeldquandt test is greater than 0.05, we conclude that the residuals are homoscedastic.
+

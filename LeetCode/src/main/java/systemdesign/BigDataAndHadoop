@@ -96,6 +96,12 @@ Hadoop architecture ->Client, Name Node, Data Node(hard drive where data blocks 
 		hadoop fs -rmr -skipTrash sample_new	
 		
 	Hadoop version 2 MR2 Yarn(yet another resource negotiator)	
+	
+	Map reduce: A programming paradigm
+		Map Reduce 2 stage approach
+		Within each stage we have 3 sub stages
+		Map Stage
+			Record reader
 		
 Spark
 	A parallel processing framework
