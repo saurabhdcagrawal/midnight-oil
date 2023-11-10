@@ -238,5 +238,465 @@ Week 2
 			Based on these observations, one can decide on the next steps to take
 		Homeschedastic 
 			Null hypothesis is they are homeschedastic
-			If the p-value of the Godlfeldquandt test is greater than 0.05, we conclude that the residuals are homoscedastic.
+			If the p-value of the Godlfeldquandt test is greater than 0.05, we conclude that the residuals are homoscedastic.''
+			
+Classification	
+	S looking curve fits a classification model -> logits (Sigmoid) y=1/(1+e^-(a+bx)) y between 0 and 1
+	Logistic regression is a misnomer for classification (We use regression for classification)
+	
+	Logistic Regression is a classification algorithm that calculates the probabilities of the target variable using a sigmoid function 
+	and then converts the probabilities into labels based on a threshold value.
+	Logistic Regression model is used for classification problems, so precision is used as the evaluation metric.
+	R Square, RMSE, and MAPE are used as metrics for regression problems. 
+	
+	The output of the sigmoid function is between 0 and 1 which can be interpreted as the probability of target being equal to 1
+	Domain of sigmoid function (values that x can take) ->    - infinity to + infinity
+	Range of sigmoid function (values that y can take)   ->    0 to 1    
+	Misclassified points add to log loss(cross entropy)
+	The log of the odds ratio is a linear function.
+	Odds Ratio= P/(1-P)
+
+	y = 1/[1 + e^-(a + b*x)] can also be written as   
+	log(y/(1 - y)) = a + b*x   
+	(Here y/(1-y) is the odds ratio) 
+	Odds Ratio = P/(1-P)
+	Here, P is the probability of an event occurring while (1-P) is the probability of the event not occurring. 
+	The odds ratio is defined as the ratio of these two values. 
+	For different values of thresholds, you will get different confusion matrices. 
+	Changing the threshold value will change the values of TP, FP, FN, TN and thereby the confusion matrix will change. 
+	
+	Accuracy = (TP+TN) / (TP+TN+FN+FP)
+	Recall = TP/(TP+FN)
+	Precision = TP/(TP+FP) 
+	No, we would want all our models to have decent scores of accuracy, recall, and precision.
+	Accuracy is not a suitable metric to measure the performance of a dataset that has imbalanced classes 
+		i.e one class has a very high number of observations than the other class.
+	Recall, Sensitivity, and True Positive Rate are different names for the same thing.
+	If we want to higher precision, increase the threshold (fraud detection-- remove false positives)
+	higher recall, decrease the threshold (reduce false negatives for cancer)
+	For imbalanced classes use precision/recall
+	
+	
+	Precision should be used when you want to minimize False Positives i.e. one wants at least negatives should not be 
+	predicted as positives. Also, in cases where the loss of resources is high.
+
+	Recall should be used when you want to minimize False Negatives, i.e. one wants at least positives should not be 
+	predicted as negatives. Also, in cases where the loss of opportunity is high.
+	
+	Different models will have different ROCs and the model which has the highest Area Under the Curve (AUC) will be chosen as the best model.
+	After the best model is chosen, we can find out the best threshold for the model which will be at a point where the difference between 
+	TPR and FPR is maximum
+	
+	Classification error rate = (FP + FN)/(TP + TN + FP + FN) 
+	
+	ROC curve is made for the model where the probability of the dependent variable is predicted. 
+	A confusion matrix is made for the model where the class of the dependent variable is predicted.  
+	
+	Odds Ratio (OR):
+	Odds Ratio (OR) is the odds in favor of a particular event.
+	Let P be the probability of subjects affected, thenOdds = P/(1-P)Logit Function:
+	Logit function is the logarithm of the Odds Ratio (log-odds). 
+	It takes input values in the range 0 to 1 and then transforms them to value over the entire real number range
+	If P is the probability, thenLogit(P) =  Log(P/(1-P))Sigmoid function
+	The inverse of the logit function is the sigmoid function
+	The Sigmoid Function can take any real value and map it to a value between 0 and 1.
+	It is also called Logistic Function and gives an S shaped curve.Sigmoid(x) = 1 / (1 + e^(-x))10
+
+Decision Trees
+	A Decision Tree can be used for both classification and regression problems. 
+	Classifying tumors and spam mail classification are examples of classification problems since the target variable is a discrete value
+	while stock price prediction is a regression problem since the target variable is a continuous value.
+	
+	Pros
+		Easy to understand and interpret
+	Cons	
+		Tends to overfit
+		Small change in data can result in large change of dataset and therefore the interpretations from the model will change.
+	
+	GINI impurity
+		(G(k)) = 1 - Σ Pi2, where Pi = Probability of choosing a particular class  
+		Probability of choosing p2 and p3 when p1
+		p1p2+p1p3
+	What is the highest value that GINI impurity can take when we have a binary(0 and 1) classification problem?
+		0.5
+	Calculate gini impurity at each node.. if there is an improvement do branching, if not dont do branching
+	The CART algorithm simply chooses the right split by finding the split that maximizes the Gini gain. 
+	One of the main problems of the decision tree is that unless the tree is restricted, it will grow to its full length to achieve complete homogeneity 
+	and in this process will overfit the training data. 
+	
+	Pruning
+		The problem with an overfitted decision tree is that it performs well on the training set but poorly on the test set i.e it is not able 
+		to generalize well on new data samples. In the process of overfitting the training data, the tree forms complex rules for prediction 
+		and captures noise too.
+		
+		Pruning reduces the depth of the tree and helps in creating a generalized model by avoiding overfitting the training data. 
+		It makes the tree simpler and easier to interpret. There are two types of pruning - pre and post.
+		
+	Hyper parameters in decision trees
+		max_depth
+		min_sample_split
+		min_samples_leaf
+	Grid search combination of hyper parameters that does well on testing data
+	
+	Grid search CV
+	
+		Parameters are learned from the data while hyperparameters are defined by the practitioner. For example, 
+		the coefficients in linear regression or logistic regression are model parameters while max_depth is a model hyperparameter.
+		If the max_depth of a tree is set to ‘None’, that means the tree is not restricted and it will continue to grow until all nodes of the tree 
+		are pure or complete homogeneity is achieved. 
+		GridSearchCV() helps in finding the optimal hyperparameters for a machine learning model by tuning the model across different 
+		sets of hyperparameters and then choosing the optimal hyperparameters based on model performance. 
+	
+	In the Cross-Validation technique, the data is split into n groups and n experiments are run.
+	In each experiment, (n-1) groups are used to train a model and the model is tested on the left-out group.
+	
+	Complexity Parameter
+		If the complexity parameter i.e alpha is low, it means that the difference between the errors of the pruned tree and the original tree is low. 
+		This means that the pruned tree is almost similar to the original tree. Therefore the model is still very complex. 
+		So, the lower the complexity parameter, the more complex is the model.
+		
+		If the complexity parameter i.e alpha is maximum, it means that the difference between the errors of the pruned tree and the original tree is maximum.
+		This means that the pruned tree is just the root node.
+		
+	Variance is used as the impurity measure for a regression decision tree where the target variable is a continuous value.	
+	The entropy value of 0 for a node represents that it is the purest node containing observations of one particular class only.
+
+	The regression decision tree model is used when the target variable is a continuous value.
+
+	Criterion is the hyperparameter that will be used to change the splitting of a decision tree from ‘gini’ to ‘entropy’.
+
+	The score() function that is used on a decision tree model will return the accuracy of the model.
+
+	# Decision_model is a decision tree model fitted on data.
+		The above code will return an array with the magnitude of feature importances based on which 
+		we can decide what importance the decision tree has given to each feature.
+	
+	Parameters are learned from the data whereas hyperparameters are values that are given by the practitioner and can be changed.
+	The ccp_alpha hyperparameter helps to perform post-pruning in the sklearn decision tree classifier.
+
+Ensemble techniques
+	machine learning methods for combining predictions from multiple seperate models
+	Multiple models ..n different models created using training data different from each other 
+	Test data used to evaluate -- voting for classification, averaging for regression or weighted voting.. some models are weighted more
+	Build models in parallel(bagging..random forests) or sequence(boosting)
+	ensemble techniques: Its ok to have weak learners as long as we can combine
+	extra compensation time is used to improve weak learners... people dont spend time to combine strong learners
+	but it increases computational time
+	Ensemble techniques generally use weak learners, where each of them has a high error rate and low computational 
+	time but combine them together to create a computationally complex model with a lower error rate. 
+	In ensemble methods, the individual models should be independent of each other so that the output of one model is not affected by another model
+	and the final prediction of the model is based on results that have come from diverse models.
+	
+	Bagging (bootstrap ? sampling of data and aggregation of models)
+		Data sampled (can repeat) and models are creation..if each of the models is decision tree, the o/p model is random forest
+		Bagging refers to bootstrap sampling and aggregation. This means that in bagging at the beginning samples are chosen randomly with replacement
+		to train the individual models and then model predictions undergo aggregation to combine them for the final prediction to consider
+		all the possible outcomes.
+		In bootstrap sampling, the same observation can be picked up more than once since in this process we carry out sampling with replacement.
+		Bagging makes the model more robust since the final prediction is made on the basis of a number of outputs that have been given by a 
+		large number of independent models. It prevents overfitting the model to the original data since the individual models do not have 
+		access to the original dataand are only built on samples that have been randomly chosen from the original data with replacement. 
+		Bagging follows the parallel model building i.e the output of individual models is independent of each other.   
+	Sampling with replacement	(same sample can be used ..you replace the sample again in the lot)
+		Roughly 63% of rows in original dataset are expected to be presented in any of samples(i/p to models?)
+		Sampling with replacement makes estimators more and more independent from each other since the samples on which the estimators/models are trained 
+		are different from one another.
+		If p is the probability of choosing an observation in sampling with replacement, then p remains the same at each stage for all observations.
+		For example, let's say, there are 4 samples, 
+		A, B, C, and D. Now, the probability of picking any one of the samples is 1/4 or 0.25. 
+		Let's say we pick A in our first stage and the samples remaining are B, C, and D. 
+		Since it is sampling with replacement, we need to again put back A before we do our next picking. 
+		So now the total number of samples comes back to A, B, C, and D and the probability of picking any one of the samples 
+		at the second stage also remains the same i.e 1/4 or 0.25.
+		
+		On average, approximately 63% of samples get selected in sampling with replacement. 
+		Let’s say we have n observations and we are creating a dataset of size n by sampling with replacement. 
+		In this scenario, the probability of a random element/observation getting selected in the dataset in n trials 
+		(where n is very large) is 0.6322 ~ 0.63 or 63%.
+		
+		Built by specific subset of data?
+			The problem of overfitting in a decision tree can be overcome by random forest since the individual trees in a random forest 
+			do not have access to the original dataset and are only built on observations that have been sampled with replacement from the 
+			original dataset. Since the random forest uses multiple tree models to reach a final prediction, it is more robust than a single
+			decision tree model and prevents instabilities due to changes in data. Random forest is less interpretable and has higher
+			computational complexity than decision trees as it utilizes multiple tree models to reach a prediction.
+			
+		Random forest randomly picks a subset of independent variables for each node's split, where m is the size of the subset and 
+		M is the total number of independent variables, where m is generally less than M. This is done to make the individual trees 
+		even more independent/different from each other and incorporate more diversity in our final prediction thereby, making the 
+		entire model more robust.	
+		
+		Random forest prevents overfitting since the individual trees in a random forest do not have access to the original dataset 
+		and are only built on observations that have been sampled with replacement from the original dataset. Moreover, aggregation of results from 
+		different trees in a random forest reduces the chances of overfitting and so there is no need to prune a random forest.
+		
+		In a classification setting, for a new test data point, the final prediction by a random forest is done by taking the mode of the individual 
+		predictions while in a regression setting, for a new test data point, the final prediction by a random forest is done by taking the 
+		average of individual predictions.
+		
+		The ‘stratify’ parameter of train_test_split() function in sklearn is used when the data is imbalanced to achieve stratified sampling which ensures that
+		relative class frequencies are approximately preserved in train and test sets. For example, if we have 70% of our observations belonging
+		to a certain class and the other 30% of our observations belonging to the other class in our original dataset, then using the ‘stratify’ 
+		parameter will ensure that while spitting the data, approximately this same distribution/ratio is present in the observations of the 
+		training and testing data sets.   
+		
+		The class_weight is the hyperparameter of Random Forest which is useful in dealing with imbalanced data by giving more importance 
+		to the minority class. By giving more class_weight to a certain class than the other class, we tell the model that it is more 
+		important to correctly predict a certain class than the other class.
+		
+		Bagging classifier can have other base estimators as well other than decision tree,
+		for example, logistic regression model.
+		
+		A) max_features B) min_samples_split C) min_samples_leaf  : All the above 3 hyperparameters can be tuned in random forest
+		
+		All the algorithms used in one bagging model have to be the same. 5 Decision Tree and 5 Logistic Regression algorithms won't work, 
+		all 10 have to be Decision Tree or all 10 have to be Logistic Regression.
+		
+		OOB error rate is the mean prediction error of each training sample xᵢ by using only the trees that did not have xᵢ in their bootstrap sample.
+		
+		In bagging, if n is the number of rows sampled and N is the total number of rows, then n<=N since n is the subset of N.
+		Bagging considers all the features to decide the best split while Random Forest generally selects only a subset of features. Bagging can take
+		Logistic Regression or any other algorithm as its base estimator while Random Forest can only have a decision tree as its base estimator.
+		
+Boosting
+	Eventually combine a bunch of weak learners to give a strong learner
+	Creates one weak learner--> create model sequentially (Using information at each stage which part of the data is well predicted, data set is modified a little bit)
+	Is very expensive as it is sequential (Not parallel)
+	Sequential training of weak learners to produce a stronger learner
+		Adaptive boosting (Adaboosting)
+			Successive learners are created with focus on ill fitted data of the previous learner
+		Gradient boosting  (GBM)	
+			
+		XG Boost
+	Boosting follows sequential modeling and combines multiple weak learners to make a strong model.
+	Successive weak learners to improve the accuracy from the prior learners
+	The boosting algorithm builds models sequentially while the bagging algorithm builds models parallelly. 
+	Weights of samples may change for each subsequent weak learner in an Adaboost model. 
+	The samples which are incorrectly predicted by the previous weak learner will be given more weightage 
+	when they are used for training the subsequent weak learner.
+	Random forest is an example of bagging algorithms while AdaBoost, Gradient Boosting, and XGBoost are examples of boosting algorithms.    
+	XGBoost has the advantage of parallel computation, efficient missing value treatment, and cache optimization features in its implementation.
+	
+	Equal weightage to weak learners in bagging vs more weight to weak learners with better performance
+	
+	Subsequent samples have more observations which had relatively high errors in previous weak learners
+	
+	Reduce bias of the model
+	
+	Bagging - Equal weightage to all learners, Parallel model building, Samples are independent of each other
+	Boosting - Unequal weightage to all learners, Sequential model building, Samples are dependent on each other
+	
+	Adaboost		
+			In the AdaBoost model, after the first run, the weightage of data points that were predicted wrong by the first learner 
+			is increased before the data points are used to train the second learner. AdaBoost consists of under-fitted models since
+			it is built up of weak learners.  
+			
+			Adaboost builds weak learners (decision trees) with restricted depth. Since the decision trees are weak learners, therefore they are 
+			mainly one-step or two-step decision trees (restricted depth). In an AdaBoost model, weights of data points that have been 
+			incorrectly classified by the previous learner are increased before they are used to train the subsequent learner.
+			A weighted voting/weighted average is taken among the models/trees to get the final prediction by the AdaBoost model.
+			An AdaBoost classifier is a meta-estimator that begins by fitting a classifier on the original dataset.
+			The weights of incorrectly classified instances are adjusted such that subsequent classifiers focus more on difficult cases.
+			 The default base estimator is a decision tree with max_depth=1
+			 Alpha is a hyperparameter that is used while changing the weights of the samples in an AdaBoost model.
+	Gradient Boosting
+			Gradient Boosting algorithm tries to predict the residuals that have been given by the previous model and keeps on minimizing the residuals 
+				(i.e tries to make the residuals closer to 0) with each iteration of weak learners.
+			If the residuals are added to the initial prediction then the result will be the original value we are trying to predict, 
+			the model will perfectly learn the training data along with the noises and hence will be an overfit model. 
+			To avoid such instances learning rate is used.	
+			If the residuals are added to the initial prediction then the result will be the original value we are trying to predict, 
+			the model will perfectly learn the training data along with the noises and hence will be an overfit model. 
+			To avoid such instances learning rate is used.
+			In Gradient Boosting, init is a hyperparameter that specifies an estimator object that is used to compute the initial predictions.
+			1. Gradient Boosting trees work on residuals instead of changing the weights of observations.
+			2. By fitting new models to the residuals, the overall learner gradually improves in areas where residuals are initially high.
+	XGBoost		
+		Parallelization
+		Cache Computing
+		Modifications are computational
+		XGBoost can build learners parallelly and has the advantage of distributed computing.
+		In XGBoost, gamma is a hyperparameter that specifies the minimum loss reduction required to make a split.
+		The 'subsample' hyperparameter is available in Gradient Boost and XGBoost but not in AdaBoost.
+		random_state, learning_rate and n_estimators are common in AdaBoost, Gradient Boost, and XGBoost
+		scale_pos_weight hyperparameter
+		The implementation provides a hyperparameter designed to tune the behavior of the algorithm for imbalanced classification problems; 
+		this is the scale_pos_weight hyperparameter
+		XGBoost has the ability to handle missing values internally. 
+
+Stacking
+		Build heterogenous models and combine using meta models
+		Split data into fold 1 and fold 2
+		In stacking, heterogeneous models can be built whose result is combined by using another metamodel.
+		For example, let's say we have the training and testing dataset. The training dataset is divided into two folds,
+		fold 1 and fold 2. In the beginning the heterogeneous models, for example, let's say, Adaboost, Gradient Boost, 
+		and Random Forest models are trained using the fold 1 training dataset. After this, heterogeneous models make 
+		their predictions for the fold 2 training dataset. Then using the fold 2 training dataset predictions and observations,
+		another meta-model is trained, for example, let's say XGBoost and the XGBoost model makes the final predictions. Finally, 
+		predictions of the meta-model are evaluated by predicting on the testing dataset.
+		Bagging and boosting use homogenous models while stacking uses heterogeneous models.
+		
+Feature Engineering
+	Most of time , data is not in a state where your data can be used for modeling
+	External/Internal sources 
+	Analytics base table
+	
+	Feature engineering is performed at the early stages when we need to prepare the data to make it compatible with the machine learning algorithms.
+	Model tuning is performed towards the end-stage when we need to improve the model performance by tweaking certain hyperparameters. 
+	Feature engineering includes all the steps required to prepare the data i.e outlier treatment, data cleaning, and scaling. 
+	Hyperparameter tuning is not a part of feature engineering. 
+	
+	Cross Validation	
+		Cross-Validation is a very useful technique for assessing the performance of machine learning models. It helps in knowing how the machine learning model would generalize to an independent data set. You want to use this technique to estimate how accurate the predictions your model will give in practice
+		Divide data into k foldings.. keep 1 fold for testing and 4 for training.. This is one model built M1
+		Built as many models as folds.. 
+		Though k can be between 2 and no of records, Empirically 10 is the right value for k 
+		Idea is to have same variance in performance in training and test data, then the model can be generalized (productionized)
+		if k = number of records Variance in performance training set<<that of test set
+		This is called Leave one out cross validation
+		The leave-one-out cross-validation procedure is appropriate when you have a small dataset or when an accurate estimate of model performance 
+		is more important than the computational cost of the method.
+		The cross-validation approach splits the data into k-folds, each fold is used in both training and testing for different iterations.
+		The iterative process gives a better view of the model performance. 
+		It is not always necessary that the model will perform well on real-world data. 
+		There can be many variations in the real data for which our model is not trained.
+		If k is large then there will be very less variation in the training set because folds will be closer to the total data points in the dataset. 
+		
+	K-Fold() function is available in sklearn.model_selection.
+	cross_val_score can be used to get the scores of the model. 
+	As per the normal distribution, 95% of the data lies in the range of (mean - 2*standard deviation) to (mean+2*standard deviation). 
+	Hence, we can expect our model performance to lie in the specified confidence interval.
+	Train-Train model, validation-> adjust the model coefficients, test-> final evaluation of model
+	
+Imbalanced data set
+	Handle to remove the bias of the model towards majority class when the classes are imbalanced in terms of population
+		Undersampling-- Remove data from majority class ..take 10% of majority case and add with the minority records
+					Loss of information
+
+		Oversampling/Upsampling --- Create synthetic data by increasing number of records of minority class
+									No loss of dataset
+			
+	Imblearn techniques	
+		SMOTE -Synthetic Minority Over-sampling Technique (Upsampling)
+			randomly picks a point from minority class and creates synthetic data using k nearest neighbors
+			SMOTE might increase overfitting. 
+		Tomek (Down sampling)
+			Close instances but opposite classes using K nearest neighbors... drop the majority class
+		Cluster centroid based under sampling		
+			Find homogenous clusters in majority class, Keep centroid and drop other data points 
+			
+	Imblearn.under_sampling is used to import RandomUnderSampler.
+	Oversampling and undersampling techniques are applied on train set. 
+	
+	Regularization of linear models (shrinkage method)
+		Prevent model from become overfit
+		Curse of dimensionality means there are too many features and very few data points. 
+		Curse of dimensionality results in large magnitude coefficients that can be treated by the regularization method.
+		Sum of Squared values of coefficients is the penalty term in ridge regression. 
+			 It is not necessary that ridge regression always performs better than lasso regression. The performance depends on different factors. 
+		Sum of Absolute values of coefficients is the penalty term in lasso regression.
+			The penalty term in Lasso regression is the sum of the absolute value of the coefficient and the absolute values can be zero. 
+			The coefficient becomes zero, which helps in feature selection. (that reduced the dimension of the data)
+		Regularization is used to deal with overfitting by adding a penalty term to the cost function. 
+		If the penalty term is very high then it might underfit the model. 
+		
+	Error function.. contour graph
+		The constraint region for the penalty in ridge regression has a circular shape. 
+		"The possible value of coefficients that can be obtained via ridge regression are the ones that lie on the 
+		intersection of contour lines and the constraint region"
+		The constraint region for the penalty in lasso regression has a rectangular shape. 
+		
+	Pipeline
+		Prepare data to prepare for the ML model
+		Set of steps arranged in a particular sequence ..the sequence in which they are supposed to be executed
+		These steps are put in one object called pipeline object
+		These steps are for transformation of your data
+		The last step is your model
+		Brings some standardization in the team work.. bring some discipline in the team standardize the steps used in the ML projects
+		Transformations are applied on train and test set separately. 
+
+		
+	How do you build pipeline?
+		from sklearn.pipeline import Pipeline
+			(1)Instantiate the class into object by listing out transformation steps .A pipeline is defined as a list of tuples 
+					pipeline = Pipeline(steps)
+			(2)Call the fit(pipe.fit) ---> Pipeline is fitted on the train set
+			(3)Call the score function(pipe.score) --> Pipeline objects checks the performance.
+		Every stage has a fit and transform function except for the last stage when it is an estimator
+		The Pipeline object requires all the stages to have a "fit()" function.
+		The pipeline function transforms all the steps except for the last step. 
+		If there are 4 steps then 3 times transform will be called and for the last step, an estimator will be used. 
+		Pipeline object takes a list of tuples as an input.
+		Pipelines can be used for both classification and regression.
+		The estimator does not have a ‘transform()’ function because it builds the model using the data from the previous steps, 
+		it does not transform the data.
+		The model has to be last stage of the pipeline
+		Provide a unique name to the stage ..actually you can use make_pipeline that will create the pipeline and automatically name each stage
+		make_pipeline creates a pipeline and automatically names each step so that we don’t need to specify the names
+	Performance of the model	
+		Model should be neither too simplistic nor too complex	
+		Parameters we use of by tuning the model is called hyper parameters (to improve the performance of the model)
+		The model is trained on the train set, hyperparameters are tuned on the validation set and final performance is checked on the test set. 
+		of model in validation data set.. The test data should be used to check performance of the model
+		Accuracy remains consistemt on train and test.. model is generalized
+		Improving the performance on the train set will lead to overfitting and the model will perform poorly on the test set. 
+		With the increase in model complexity, test performance might not increase. 
+		We should tweak the hyperparameters based on the validation set performance. 
+		Estimators work to improve overall accuracy but in the case of imbalanced data the estimators are biased towards the majority class. 
+		Data leakage happens when a certain part of the data is already seen in the training process. 
+		That’s why it is always advised to keep the test dataset away and use it only for final evaluation. 
+		When we impute the missing values for the entire data and then split the data into train-test then a certain part of the data is leaked in the training process.
+		Regularization is used to deal with overfitting. Hence, the best measure to avoid data leakage is to split the data into three sets.
+		 The hyperparameters are tweaked based on the performance of the validation set. Tuning helps in model performance which helps in dealing with the underfitting and overfitting of the model. 
+	Hyperparameters
+		 Control behaviour of the algorithm (Hyperparameter) to extract that extra bit of performance from your models
+		 Hyperparameters are defined to tune the model explicitly and not learn from the data. 
+		 Hyperparameter tuning can help us deal with both overfitting and underfitting
+		They are supplied as arguments to the model algorithm
+		Grid Search CV
+		Randomized search 
+		Data leaks.. do not do model tuning after measuring performance on test data
+		We should not treat the train and test set together because it can lead to data leakage so they should not be scaled together
+		Hyperparameter is a parameter value that can be controlled in the learning process. 
+		The number of estimators, depth of the tree, and shrinkage factors are the parameters that can be controlled while tuning the model
+		but weights are the values that need to be optimized(learned while training process). We tune the parameters to get the optimal weights.
+	Grid Search	
+		Grid search selects the best combination from the grid. The best combination of the hyperparameters might exist outside the grid. 
+		Hence, grid search does not ensure the best combination of the hyperparameters. 
+		Combination of hyper parameters and generate the model
+		GridSearchCV returns the best model from a search over a parameter_grid.
+		Cross validation of the model.. 10 times ..the average score is assigned to the model
+		Pickup the cell with the highest performance score
+		GridSearchCV uses cross validation to compute the mean score for each set of hyperparameters.
+		Grid search will ensure that the best combination of hyperparameters is obtained universally. 
+		Grid search looks at each of the combinations of the hyperparameters in a sequential manner. 
+	RandomizedSearchCV
+		Instead of providing a discrete set of values to explore on each hyperparameter we provide a statistical distribution
+		A fixed number of parameter settings is sampled from specified distributions	
+		Higher chance of hitting the right combination
+		Only a fixed number of hyperparameter values are tried out from the provided parameter grid
+		Random search CV tries random combinations of the hyperparameters. This makes Random search less computationally expensive.	
+		RandomizedSearchCV can be provided with a probability distribution in the parameter grid for hyperparameter tuning. 
+		It will pick random values from the distribution along with other hyperparameter values provided in the parameter grid.		
+		Random search has a high chance of hitting the right combination of the hyperparameters. Hence, random search is known to perform better than grid search. 
+		Randomized search CV tries out the random combinations of the parameters n times and this is controlled by an argument called  'n_iter'. 
+		The number of iterations is defined by the user.
+		sklearn.model_selection is used to import GridSearchCV and RandomizedSearchCV. 
+		Sampling with replacement is used if at least one parameter is given as a distribution.
+		If all parameters are presented as a list, sampling without replacement is performed
+		clf = RandomizedSearchCV(estimator=gb, param_distributions=param_grid, cv=5, random_state=1, n_iter = 10)
+		no of iterations * cross validation= 50 that many times the model will be fitted 
+
+
+	
+
+
+		
+
+
+
+	
+
+
+
 
