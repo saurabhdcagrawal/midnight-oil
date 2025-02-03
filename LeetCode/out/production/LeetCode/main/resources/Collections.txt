@@ -1,4 +1,4 @@
-Comparators and comparable in Java are two interfaces which is used to implement sorting in Java. It’s often required to sort objects stored in any collection classes like ArrayList, HashSet or in Array and that time we need to use either  compare() or  compareTo() method defined in java.util.Comparator and java.lang.Comparable.
+Comparators and comparable in Java are two interfaces which is used to implement sorting in Java. Itï¿½s often required to sort objects stored in any collection classes like ArrayList, HashSet or in Array and that time we need to use either  compare() or  compareTo() method defined in java.util.Comparator and java.lang.Comparable.
 
 Read more: http://javarevisited.blogspot.com/2011/06/comparator-and-comparable-in-java.html#ixzz2toaTmt9Z
 
@@ -307,7 +307,7 @@ Map m = Collections.synchronizeMap(hashMap);
 
 HashMap is fastest, ConcurrentHashMap,Collections.synchronizedMap,HashTable. 
 
-2)permits nulls:-HashMap allows null values as key and value whereas Hashtable doesn’t allow nulls. Permit only one null,hashing to null gives bucket location as 0
+2)permits nulls:-HashMap allows null values as key and value whereas Hashtable doesnt allow nulls. Permit only one null,hashing to null gives bucket location as 0
 DIFFERENCE BETWEEN ARRAYS AND ARRAYLIST
 
 Ans) Arrays are created of fix size whereas ArrayList is of not fix size. It means that once array is declared as : 

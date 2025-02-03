@@ -1,22 +1,53 @@
-1) Scalability is the ability for a process/network or system to grow to support increased demand
-Scalability may be needed because of increased data volume or because of more work needed
+1) Scalability is the capability of a system, process or network to grow and manage increased demand
+Scalability may be needed because of increased data volume or because of more work needed eg number of transactions
+Any distributed system that can continuosly evolve in order to support the growing amount of work is said to be scalable
 It comes at the cost of performance
 A scalable architecture helps to balance the load across different nodes
 Following types of scaling
 As the system grows (in data volume, traffic volume, or complexity),
 there should be reasonable ways of dealing with that growth
+Generally, the performance of a system, although designed (or claimed) to be scalable, declines with the system size due to the management or
+environment cost. For instance, network speed may become slower because machines tend to be far apart from one another. More generally, some tasks
+may not be distributed, either because of their inherent atomic nature or because of some flaw in the system design. At some point, such tasks would
+limit the speed-up obtained by distribution. A scalable architecture avoids this situation and attempts to balance the load on all the participating nodes evenly.
 
-Horizontal scaling-> Add more servers/machines in your pool of resources to meet growing need.
 
-Vertical Scaling-> Needs downtime, limited by server capacity.. Increase the resources of a machine , Eg CPU, RAM , Storage
+Horizontal scaling-> Add more servers/machines in your pool of resources to meet growing need.Easy to scale dynamically by adding more
+machines in existing pool.
 
-2) A system is Reliable if it continues to deliver services even if one or more of its hardware or software components fail.
+Vertical Scaling-> Needs downtime, limited by server capacity of single server.. Increase the resources of a machine , Eg CPU, RAM , Storage
+
+Good examples of horizontal scaling are Cassandra and MongoDB as they both provide an easy way to scale horizontally by adding more machines to
+meet growing needs. Similarly, a good example of vertical scaling is MySQL as it allows for an easy way to scale vertically by switching from smaller to bigger machines. However, this process often involves downtime.
+
+2) A system is Reliable if it continues to deliver services -work correctly (performing the correct function at desired level of performance- even in the face of adversity- if one or more of its hardware or software components fail or if a human makes error
 It is achieved with the help of redundancy of data and software components
 The system should continue to work correctly (performing the correct function at the desired level of performance)
-even in the face of adversity
-(hardware or software faults, and even human error)
+even in the face of adversity (hardware or software faults, and even human error)
+If the server carrying the user’s shopping cart fails, another server that has the exact replica of the
+shopping cart should replace it. Obviously, redundancy has a cost and a reliable system has to pay that to achieve such resilience for services by eliminating every single point of failure.
+
+
 3) Availability is how long a system is available to do its function
+It is a simple measure of the percentage of time that a system, service, or a machine remains operational
+under normal conditions
 High reliability guarantees high availability but not vice versa
+An aircraft that can be flown for many hours a month without much downtime can be said to have a high availability.
+Availability takes into account maintainability, repair time, spares availability,
+and other logistics considerations. If an aircraft is down for maintenance, it is
+considered not available during that time.
+
+It is possible to achieve a high availability even with an
+unreliable product by minimizing repair time and ensuring that spares are
+always available when they are needed. Let’s take the example of an online
+retail store that has 99.99% availability for the first two years after its launch.
+However, the system was launched without any information security testing.
+The customers are happy with the system, but they don’t realize that it isn’t
+very reliable as it is vulnerable to likely risks. In the third year, the system
+experiences a series of information security incidents that suddenly result in
+extremely low availability for extended periods of time. This results in
+reputational and financial damage to the customers.
+
 
 4) Efficiency generally for a DS it is throughput and latency
 

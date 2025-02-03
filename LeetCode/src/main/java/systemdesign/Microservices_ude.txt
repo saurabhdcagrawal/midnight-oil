@@ -1,15 +1,40 @@
 Microservices
-	Architectural style where a software system is composed of multiple small automomous services that communicate over the network over well defined API's
-	Make applications easier to scale,faster to develop, enabling innovation and accelerating time to market for new features. 
-		Single responsibility principle--> Gather together things that change for the same reason and seperate those things that change for different reasons
-		Focus service boundaries based on business boundaries
+	Architectural style where a software system is composed of multiple small automomous services that communicate over the network over well defined API's. Make applications easier to scale,faster to develop, enabling innovation and accelerating time to market for new features. 
+	
 	Smaller the service more you maximize the benefits and downsides of microservice architecture
 	The complexity emerges from having more and more moving parts
+	 The challenge is to find the right balance where services remain independent yet manageable.
 	All communication between services are via network calls to enforce seperation between services and avoid the perils of tight coupling
 	Microservice may be deployed on a PaaS or may have its own operating system process
+	
+	
+The Single Responsibility Principle (SRP) states that a module, class, or service should have only one reason to change. This means that each component should focus on a single functionality or concern, making it easier to maintain and scale.
+
+	Breaking It Down:
+	"Gather together things that change for the same reason"
+
+	If multiple functions or components frequently change due to the same business requirement, they should be grouped together.
+	Example: In an e-commerce system, the order processing logic (validating orders, applying discounts, and calculating totals) should be in the same service because changes in pricing rules or discount policies affect all these functionalities.
+	
+	"Separate those things that change for different reasons"
+	If two functionalities are modified due to different business needs, they should be split into separate components.
+	Example: User authentication (handling login, password resets) and order management (processing and tracking orders) have different reasons to change. Keeping them in the same module leads to unnecessary dependencies.
+	
+	
+	
+	Applying SRP in Microservices:
+	Service boundaries should align with business domains, meaning each service should handle a well-defined part of the business.
+	For example, an e-commerce platform can have separate services for:
+	Inventory Service (Tracks stock levels)
+	Payment Service (Handles transactions)
+	Shipping Service (Manages deliveries)
+	
+	By applying SRP at the service level, we ensure that changes in one business area don’t unnecessarily impact others, making the system more modular, scalable, and maintainable.
+
+
+	
 	These services need to be able to change independently of each other and be deployed by themselves without requiring consumers to change
-	Think about what needs to be shown and what needs to be exposed,If there is too much sharing, our consuming services become coupled to our internal representations. This
-    decreases our autonomy, as it requires additional coordination with consumers when making changes.
+	Think about what needs to be shown and what needs to be exposed,If there is too much sharing, our consuming services become coupled to our internal representations. Thisdecreases our autonomy, as it requires additional coordination with consumers when making changes.
 	Our service exposes an application programming interface (API), and collaborating services communicate with us via those APIs. We also need to think about what
     technology is appropriate to ensure that this itself doesn’t couple consumers. This may mean picking technology-agnostic APIs to ensure that we don’t constrain technology
     choices. 
@@ -19,16 +44,22 @@ Microservices
 		With a system composed of multiple collaborating services, we can decide to use different technologies inside each one
 		This allows us to pick the right tech stack for the right job rather than to having a standardized one size fits all approach
 		If one part of our system needs to improve its performance, we might decide to use a
-		different technology stack that is better able to achieve the performance levels required.We may also decide that how we store our data needs to change for different 
+		different technology stack that is better able to achieve the performance levels required.
+		We may also decide that how we store our data needs to change for different 
 		parts of our system. For example, for a social network, we might store our users’ interactions in a graph-oriented database to reflect the highly interconnected nature of a social graph, but perhaps the posts the users make could be stored in a document-oriented data store, giving rise to a heterogeneous architecture
-		
+	Quick adoption to Technology	
 		With microservices, we are also able to adopt technology more quickly, and understand how new advancements may help us. One of the biggest barriers to trying out and
-		adopting new technology is the risks associated with it. With a monolithic application, if I want to try a new programming language, database, or framework, any change will impact a large amount of my system. With a system consisting of multiple s	ervices, I have multiple new places in which to try out a new piece of technology. I can pick a service that is perhaps lowest risk and use the technology there, knowing that I can limit any potential negative impact. Many organizations find this ability to more quickly absorb new technologies to be a real advantage for them.
+		adopting new technology is the risks associated with it. With a monolithic application, if I want to try a new programming language, database, or framework, any change will impact a large amount of my system. With a system consisting of multiple services, I have multiple new places in which to try out a new piece of technology. I can pick a service that is perhaps lowest risk and use the technology there, knowing that I can limit any potential negative impact. Many organizations find this ability to more quickly absorb new technologies to be a real advantage for them.
 		If you can rewrite your microservice in 2 weeks you may mitigate the risks of embracing new technology
 	Resilence:
-		if one system fails and doesnt cascade, you can isolate the problem and rest of the system can carry on working
-		With a monolithic service, if 
-	Scaling on demand for those pieces who need it	
+		With a monolithic service, if a critical component fails, it can bring down the entire application, causing a single point of failure. However, in a distributed or microservices architecture, failures can be isolated to specific services. This allows the rest of the system to continue functioning, improving resilience.
+		For example, if a payment service in an e-commerce application goes down, users might still be able to browse products and add items to their cart, rather than the entire site becoming unavailable. Techniques like circuit breakers, retries, fallback mechanisms, and redundancy help ensure that failures do not cascade across the system.
+	Scaling on demand for those pieces who need items
+	In a monolithic architecture, scaling requires replicating the entire application, even if only a small part of it experiences high demand. This leads to inefficient resource utilization.
+
+In a microservices architecture, only the services that need additional resources can be scaled independently. For example, in an e-commerce platform, the checkout service may experience high traffic during a sale, while the user profile service remains stable. With horizontal scaling, only the checkout service can be scaled up dynamically, optimizing infrastructure costs and performance.
+
+Technologies like Kubernetes, auto-scaling groups, and cloud elasticity enable efficient on-demand scaling based on traffic and load patterns.
 
 	
 Spring Microservices (Spring boot version 3.0.6)

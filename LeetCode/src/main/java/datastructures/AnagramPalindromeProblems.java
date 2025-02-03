@@ -108,6 +108,28 @@ public class AnagramPalindromeProblems {
         return countOdd<=1?true:false;
 
     }
+   /* Given two strings ransomNote and magazine, return true if ransomNote can be constructed by using the letters from magazine and false otherwise.
+    Each letter in magazine can only be used once in ransomNote.
+        Input: ransomNote = "a", magazine = "b"
+    Output: false*/
+    public boolean canConstruct(String ransomNote, String magazine) {
+        int[] charset = new int[26];
+        for(int i=0;i<magazine.length();i++){
+            int index= magazine.charAt(i)-'a';
+            charset[index]++;
+        }
+
+        for(int i=0;i<ransomNote.length();i++){
+            int index= ransomNote.charAt(i)-'a';
+            charset[index]--;
+            if(charset[index]<0)
+                return false;
+        }
+        return true;
+    }
+
+
+
     //Utility method to remove non alpha numeric chars
 // String builder has reverse method
 //Use character class to lower case, to is letter or digit for utility methods

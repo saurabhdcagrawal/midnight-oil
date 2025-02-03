@@ -1,6 +1,6 @@
 1)How to make class immutable in Java
 
-Immutable class is a class which once created, it’s contents can not be changed. Immutable objects are the objects whose state can not be changed once constructed. e.g. String class
+Immutable class is a class which once created, its contents can not be changed. Immutable objects are the objects whose state can not be changed once constructed. e.g. String class
 Immutable means once created cannot be changed during Lifetime
 
 1)Make class as finals   --if not final,people can freely extend the class and override the beahviour
@@ -60,13 +60,13 @@ Immutable means once created cannot be changed during Lifetime
     }  
  } 
 
-Q3) Immutable objects are automatically thread-safe –true/false?
+Q3) Immutable objects are automatically thread-safe true/false?
 
 Ans) True. Since the state of the immutable objects can not be changed once they are created they are automatically synchronized/thread-safe.
  
 Q4) Which classes in java are immutable?
 
-Ans) All wrapper classes in java.lang are immutable – 
+Ans) All wrapper classes in java.lang are immutable
 String, Integer, Boolean, Character, Byte, Short, Long, Float, Double, BigDecimal, BigInteger
  
 Q5) What are the advantages of immutability? 
@@ -93,7 +93,7 @@ java.util.EventListener
 
 
 Clonable
-In java, though clone is ‘intended’ to produce a copy of the same object.
+In java, though clone is intended to produce a copy of the same object.
 
 1)Implement the clone interface
 2)override the clone method
@@ -220,8 +220,8 @@ Serialization is the process of converting an object's state (including its refe
 In general, serialization is used when we want the object to exist beyond the lifetime of the JVM. 
 
 
-•To persist data for future use. 
-••To send state of one or more object’s state over the network through a socket.
+To persist data for future use.
+To send state of one or more objects state over the network through a socket.
 
 
 1)Java provides Serialization API, a standard mechanism to handle object serialization. To persist an object in java, the first step is to flatten the object. For that the respective class should implement "java.io.Serializable" interface
@@ -265,11 +265,11 @@ public class SerializationDemo{
 
 Q6) What happens if the object to be serialized includes the references to other serializable objects?
 
-Ans) If the object to be serialized includes the references to other objects whose class implements serializable then all those object’s state also will be saved as the part of the serialized state of the object in question. 
+Ans) If the object to be serialized includes the references to other objects whose class implements serializable then all those objects state also will be saved as the part of the serialized state of the object in question.
  
 Q7) What happens if an object is serializable but it includes a reference to a non-serializable object?
 
-Ans- If you try to serialize an object of a class which implements serializable, but the object includes a reference to an non-serializable class then a ‘NotSerializableException’ will be thrown at runtime.
+Ans- If you try to serialize an object of a class which implements serializable, but the object includes a reference to an non-serializable class then a NotSerializableException will be thrown at runtime.
 
 
  
@@ -280,7 +280,7 @@ Ans) No. The static variables belong to the class and not to an object they are 
 
 Q9) What is a transient variable?
 
-Ans) These variables are not included in the process of serialization and are not the part of the object’s serialized state.
+Ans) These variables are not included in the process of serialization and are not the part of the objects serialized state.
 After deserializatio,their value will not be changed and reflect the default value
 
 public class SerializationDemo{
@@ -290,7 +290,7 @@ public class SerializationDemo{
 		try{	FileInputStream fileStream = new FileInputStream("student.ser");
 			ObjectInputStream objStream = new ObjectInputStream(fileStream);
 			Student student =(Student)objStream.readObject();/*read obj does not take any arguments*/
-			System.out.println("Student Details“+student.name +student.classNo+student.marks );
+			System.out.println("Student Details+student.name +student.classNo+student.marks );
 		}
 		catch(ClassNotFoundException classNotFoundException){ System.out.println(classNotFoundException); }
 		catch(IOException ioException){ System.out.println(ioException);}
@@ -380,7 +380,7 @@ Ans) true
 
 
 What is SUID
-everytime an object is serialized the java serialization mechanism automatically computes a hash value using ObjectStreamClass’s computeSerialVersionUID() method by passing the class name, sorted member names, modifiers, and interfaces to the secure hash algorithm (SHA), which returns a hash value, the serialVersionUID. 
+everytime an object is serialized the java serialization mechanism automatically computes a hash value using ObjectStreamClassï¿½s computeSerialVersionUID() method by passing the class name, sorted member names, modifiers, and interfaces to the secure hash algorithm (SHA), which returns a hash value, the serialVersionUID. 
 
 
 Now when the serilaized object is retrieved, the JVM first evaluates the serialVersionUID of the serialized class and compares the serialVersionUID value with the one of the object. 
@@ -402,17 +402,17 @@ Changes to a serializable class can be compatible or incompatible.
 Following is the list of changes which are compatible:
 
 
-•Add fields 
-•Change a field from static to non-static 
-•Change a field from transient to non-transient 
-•Add classes to the object tree 
+ï¿½Add fields 
+ï¿½Change a field from static to non-static 
+ï¿½Change a field from transient to non-transient 
+ï¿½Add classes to the object tree 
 List of incompatible changes:
 
-•Delete fields 
-•Change class hierarchy 
-•Change non-static to static 
-•Change non-transient to transient 
-•Change type of a primitive field 
+ï¿½Delete fields 
+ï¿½Change class hierarchy 
+ï¿½Change non-static to static 
+ï¿½Change non-transient to transient 
+ï¿½Change type of a primitive field 
 
 If we explicitly metion the suid using the statement:
 
@@ -425,7 +425,7 @@ EXTERNALIZABLE
 
 Why  use externalization when seralization available?/
 
-•Serialization is a recursive 
+ï¿½Serialization is a recursive 
 All fields required starting from the object till all objects that can be reached by that object are serialized.
 This includes the super class of the object until it reaches the "Object" class and the same way the super class of the instance variables until it reaches the "Object" class of those variables. Basically all the objects that it can read. This leads to lot of overheads,lot of meta data leading to performance issue
 
@@ -620,7 +620,7 @@ ORDER OF EXECUTION
 class loading takes place and all the static variables are initialized to default values ie 0
 static blocks are executed in the order of their appearance in the code
 Call to the super class constructor takes place and it is executed
-Then statements in the class’s constructor are executed
+Then statements in the classï¿½s constructor are executed
 
 OBJECT CLASS
 The class Object is defined in the package java.lang
@@ -643,9 +643,11 @@ Object.hashcode() returns an integer value known as hashcode value for an object
 The general contract of hashCode is:
 
 
-•Whenever it is invoked on the same object more than once during an execution of a Java application, the hashCode method must consistently return the same integer. This integer need not remain consistent from one execution of an application to another execution of the same application. 
-•If two objects are equal according to the equals(Object) method, then calling the hashCode method on each of the two objects must produce the same integer result. 
-•It is not required that if two objects are unequal according to the equals(java.lang.Object) method, then calling the hashCode method on each of the two objects must produce distinct integer results. 
+Whenever it is invoked on the same object more than once during an execution of a Java application,
+the hashCode method must consistently return the same integer. This integer need not remain consistent from one execution of an application to another execution
+ of the same application.
+If two objects are equal according to the equals(Object) method, then calling the hashCode method on each of the two objects must produce the same integer result.
+It is not required that if two objects are unequal according to the equals(java.lang.Object) method, then calling the hashCode method on each of the two objects must produce distinct integer results.
 
 
 
@@ -657,7 +659,8 @@ The equals method does "shallow comparision",check identity ,not the state
 We can overirde the equals method to compare their state(deep comparison)
 	
 NOTE : In case of string the behaviour is different
-The java.lang.String class overrides the hashCode method from java.lang.Object. So the String objects with same value "foo" will be treated as duplicates and will contain same hashcode
+The java.lang.String class overrides the hashCode method from java.lang.Object. So the String objects with same value "foo"
+ will be treated as duplicates and will contain same hashcode
 
 public class AccountHolder {
 	String name;
@@ -739,7 +742,7 @@ Also if you add 2 times ,it will add,since hashcode is different
 
 To string method
 
-Printing a reference will print the classname@hashcode
+P   rinting a reference will print the classname@hashcode
 When you print the reference the toString() method of object is called and  classname@Hashcode is printed,if you want to change override the following method in your class
 
 public String toString(){}
@@ -755,7 +758,7 @@ public String toString() {
 	return "Hi " + name + " Your Account number is " + accID;
 }
 public static void main(String [] args) {
-	AccountHolder accHolder1 = new AccountHolder(“Sam",1001);
+	AccountHolder accHolder1 = new AccountHolder(ï¿½Sam",1001);
 	System.out.println(accHolder1);
 }
 }
@@ -785,7 +788,7 @@ There is tools available inside JDK which helps you to take heap dump and there 
 which helps you to analyze java heap dump. You can use "jmap" command to get java heap dump, this will create heap dump file 
 and then you can use "jhat - Java Heap Analysis Tool" to analyze those heap dumps.
 
-sometimes its just matter of increasing heap size but if it’s recurrent then look for memory leak in Java.
+sometimes its just matter of increasing heap size but if itï¿½s recurrent then look for memory leak in Java.
 How to check heap size
 long heapSize = Runtime.getRuntime().totalMemory(); 
 
@@ -801,14 +804,14 @@ gives an opportunity to perform any sort of cleanup required.
 
 You as Java programmer can not force Garbage collection in Java; it will only trigger if JVM thinks it needs a garbage 
 collection based on Java heap size and thinks heap memory is running low
-There are methods like System.gc () and Runtime.gc () which is used to send request of Garbage collection to JVM but it’s not guaranteed
+There are methods like System.gc () and Runtime.gc () which is used to send request of Garbage collection to JVM but itï¿½s not guaranteed
 that garbage collection will happen.
 If there is no memory space for creating new object in Heap Java Virtual Machine throws OutOfMemoryError or 
 java.lang.OutOfMemoryError heap space
 When an object first created in heap its gets created in new generation inside Eden space and after subsequent Minor Garbage 
 collection if object survives its gets moved to survivor 1 and then Survivor 2 before Major Garbage collection moved that object 
 to Old or tenured generation.
-Whenever Major garbage collection occurs application threads stops during that period which will reduce application’s performance and throughput.
+Whenever Major garbage collection occurs application threads stops during that period which will reduce applicationï¿½s performance and throughput.
 
 
 A FINALIZE METHOD IS CALLED ONLY ONCE

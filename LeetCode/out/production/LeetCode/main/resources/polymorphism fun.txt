@@ -18,7 +18,7 @@ Reflection API can be used to analyze the classes, interfaces, methods and field
 Getting and setting the object fields directly by getting field reference, regardless of what the access modifier is.
 
 Useful while debugging and testing applications, as it allows direct access to methods, constructors, fields, etc.
-Class classVar = Class.forName(“Employee");
+Class classVar = Class.forName(ï¿½Employee");
 Few useful methods 
 getDeclaredConstructors()
 getDeclaredMethods()
@@ -28,7 +28,7 @@ getDeclaredFields()
 Returns an array contaianing the name of all fields delcared in the fields
 public static void main(String args[]) {
 5 try {
-6 Class c = Class.forName(“java.sql.Connection”);
+6 Class c = Class.forName(ï¿½java.sql.Connectionï¿½);
 7 Method m[] = c.getDeclaredMethods();
 8 for (int i = 0; i < 3; i++) {
 9 System.out.println(m[i].toString());
@@ -47,26 +47,26 @@ endTime-startTime=Total time of execution
 
 Interface:
 
-–> If your child classes should all implement a certain group of methods/functionalities but each of the child classes is free to provide its own implementation then use interfaces.
+ï¿½> If your child classes should all implement a certain group of methods/functionalities but each of the child classes is free to provide its own implementation then use interfaces.
 
 For e.g. if you are implementing a class hierarchy for vehicles implement an interface called Vehicle which has properties like Colour MaxSpeed etc. and methods like Drive(). All child classes like Car Scooter AirPlane SolarCar etc. should derive from this base interface but provide a seperate implementation of the methods and properties exposed by Vehicle.
 
-–> If you want your child classes to implement multiple unrelated functionalities in short multiple inheritance use interfaces.
+ï¿½> If you want your child classes to implement multiple unrelated functionalities in short multiple inheritance use interfaces.
 
 For e.g. if you are implementing a class called SpaceShip that has to have functionalities from a Vehicle as well as that from a UFO then make both Vehicle and UFO as interfaces and then create a class SpaceShip that implements both Vehicle and UFO .
 
 Abstract Classes
 
-–> When you have a requirement where your base class should provide default implementation of certain methods whereas other methods should be open to being overridden by child classes use abstract classes.
+ï¿½> When you have a requirement where your base class should provide default implementation of certain methods whereas other methods should be open to being overridden by child classes use abstract classes.
 
 For e.g. again take the example of the Vehicle class above. If we want all classes deriving from Vehicle to implement the Drive() method in a fixed way whereas the other methods can be overridden by child classes. In such a scenario we implement the Vehicle class as an abstract class with an implementation of Drive while leave the other methods / properties as abstract so they could be overridden by child classes.
 
-–> The purpose of an abstract class is to provide a common definition of a base class that multiple derived classes can share.
+ï¿½> The purpose of an abstract class is to provide a common definition of a base class that multiple derived classes can share.
 
 For example a class library may define an abstract class that is used as a parameter to many of its functions and require programmers using that library to provide their own implementation of the class by creating a derived class.
 Use an abstract class
 
-    When creating a class library which will be widely distributed or reused—especially to clients, use an abstract class in preference to an interface; because, it simplifies versioning. This is the practice used by the Microsoft team which developed the Base Class Library. ( COM was designed around interfaces.)
+    When creating a class library which will be widely distributed or reusedï¿½especially to clients, use an abstract class in preference to an interface; because, it simplifies versioning. This is the practice used by the Microsoft team which developed the Base Class Library. ( COM was designed around interfaces.)
 
     Use an abstract class to define a common base class for a family of types.
 
@@ -79,7 +79,7 @@ Use an interface
 
     When creating a standalone project which can be changed at will, use an interface in preference to an abstract class; because, it offers more design flexibility.
 
-    Use interfaces to introduce polymorphic behavior without subclassing and to model multiple inheritance—allowing a specific type to support numerous behaviors.
+    Use interfaces to introduce polymorphic behavior without subclassing and to model multiple inheritanceï¿½allowing a specific type to support numerous behaviors.
 
     Use an interface to design a polymorphic hierarchy for value types.
 
@@ -149,7 +149,7 @@ lt.glow(); /*glow not visible*/
 eg: Public method in the superclass can not be declared again in the subclass as private/protected or default.
 
 3)Exceptions in overriding
-•An overriding method can throw 
+ï¿½An overriding method can throw 
 a)no exception even if overridden method throws any
 b)any unchecked exceptions, regardless of whether the overridden method throws exceptions or not. 
 c)However the overriding method should not throw checked exceptions that are new or broader than the ones declared by the overridden method. The overriding method can throw narrower or fewer exceptions than the overridden method.
@@ -316,7 +316,7 @@ public class StaticOverloading extends ParentNew {
 		}
 	   }
 
-Static methods can be redefined in subclass but that doesn’t mean they are overridden.
+Static methods can be redefined in subclass but that doesnt mean they are overridden.
 Overriding is done on the basis of type of object and static method are attached to class not to object.Check the refernce
 the compiler and JVM don't expect to need an actual instance (object)to invoke the method. And even if you provide one 
 (which we did: the instance referred to by f) the JVM will never look at it. The compiler will only look at the 

@@ -1,0 +1,1877 @@
+Statistical learning & Business analytics
+	Helps in Analyzing data
+	Descriptive statistics
+	https://www.youtube.com/watch?v=d6wG_sAdP0U&ab_channel=TED
+	
+	Classification
+		Classes of unit in the data
+		Ways to segment/say how many kinds of customers do I have
+		Classifying different kinds of customers in different kinds of bucket
+	
+	Pattern Recognition
+		Recognizing data forms that appear to be common
+		Look at distribution of data to see what kind of data is rare/common
+		Histogram, Scatter, box plot,bar plot ->Techniques to visually analyze the data
+	
+	Association
+		Relationship between objects
+		there is a 40% chance that if you buy coffee you buy bread
+		Think in terms of what data might be or might been
+		How does uncertainty relate to data
+		How do I put uncertainty into the analysis of data on a computer
+		
+	Predictive Analytics
+		Models
+			Regression
+			Logistic Regression
+			Neural Networks
+	
+	Business Analytics		
+		Analytics synonymous to quantitative
+		Broad use of data and quantitative analysis(quantitative methods) for decision making within the organization
+		qualitative vs quantitative
+		hot outside vs 90 degree F outside
+		quant means precise(Gives you a sense of why we are doing what we are doing)
+		Why this is a good choice? Because quantitavely I can convince you that it gives a higher profit
+		qualititaive= what we been doing= mental model	
+		Qualitative(Intuitive,human way)
+		real world->observation->mental model (how I believe the world works like)->make decisions
+		Quantitative way(improve model)
+		real world->data(precise observation)->mathematical model(how I believe the world works like said in precise steps)->make decisions	
+							DATA SCIENCE                                                                           DECISION SCIENCE
+								ML                                                                                    Optimization
+							Statistics																				   Simulation	
+							Data Mining																				Dynamic programming
+		
+		Everytime someone says a mathematical model, its just a precise statement of how they believe their segment of world looks like
+		AI is application.. when data to decision process is used to create a product which behaves human like..self autonomous car or playing chess, then its called AIs
+		Making the computer do something smart.. we made it do, its not natural.. thats why artificial	
+		AI is broad term.. 
+		ML is a subset of AI..it is at the core of ML.....machine is able to learn from the data once told how to do so..uses some basic statistical models
+		Deep learning is a subset of ML (machine is setup a way where machine works in a way human brains, neural networks, series of layers ?) 
+		Data science--> Human involvement is there on the part of decision making.. 
+		ML is at the intersection  of Computer Science, Math & Statistics
+		Software development is at the intersection of Computer Science & Business Domain/Knowledge
+		Traditional Research is intersection of Business/Domain Knowledge and Math & Statistics
+		Data Science lies at the intersection of Computer Science, Math & Statistics & Business/Domain Knowledge
+		There are layers
+		
+		basic 
+					
+	Statistical Methodologies
+		Descriptive statistics  what is -> data summarization, graphs,charts and talks 
+		Inferential statistics  what also might be -> talk about population parameter from sample (take a sample of data and make inferences about the population from it)
+		Staistics drives the lines between the two
+		
+	Statistical jargon
+		Population->universe of possible data for a specified object(past,present, future) Eg people who have visited a website of will visit the website (not observed)
+		Parameters-> numerical value associated with a population eg no of clicks made on the website (not observed)
+		Sample-> Selection of observations from a population (people who actualy visited the website on a given day) (observed)
+		Statistic-->numerical value associated with an observed sample..the average amount of time people spent on website on a given day (observed)
+		Statistical problem to go from observed to non observed,from the sample to the population because the object we are interested in
+		is not the statistic but the parameter because the universe we are interested is the population and not the sample or data we have.
+		
+	Primary data
+		Collected by the organization itself for a particular purpose. Fit the needs exactly, up to date and reliable
+	Secondary Data
+		Collected by a different organization/s. Published by government/archives/other organizations
+	qualitative data -> non numeric eg gender, religion, place of birth
+	quantitative data-> numeric	
+		Further divided into discrete and continous
+	Term document matrix converts qualitative data into quantitative data	
+		Different kinds of data was discussed.. spatial, audio, video, pictures, text, numerical, matrices
+	
+	Measure of central tendency
+		Mean-->average of the values... affected by extremes if we change (requires measurement on all observations)
+		Median-> middle observation..no effect if we change the extremes( greater resistance to outliers) (does not require measurement on all observations) Q2
+		Mode-> maximum frequency of occurence (typical value)(does not require measurement on all observations)	
+	Measures of dispersion
+		Range= max-min.. affected by extremes (outliers)
+		Interquartile range(IQR)= q3-q1.. arrange data set in ascending order and range computed on the middle 50% of the observations..
+			Eliminate lower 25% and upper 25%
+			Less affected by outliers
+			Range of the middle 50% of data
+		Variance	
+			Average of the squared differences from mean is the variance
+		Standard Deviation: How much each data point differs from the mean
+			Square root of the variance
+			Problem of units...how do we know how big/small the value is
+			If the data follows a normal distribution, 60% of data lies between mean+standard_deviation & mean-standard_deviation 
+		Coefficient of Variation
+			Standard Deviation as the percentage of mean
+		Z score
+			How do I know if 6 feet is tall, if tall how tall?
+			calibrate a measure w.r.t its own distribution
+			(observation-mean)/(standard deviation)
+			if Z score is 1 then 1standard deviation above the average, if 2 then 2 standard deviation below the average	
+	Exploratory data analysis
+		Set of tools that analyze the data not for the purpose of building a model or extracting intelligence but just to describe/explore aspects of it
+		that may be useful for future model building or future extraction of intelligence
+		John Tukey..coined the term in 1960's
+		To make data analysis easier
+		Qualitative Variables
+			Nominal: No numerical value (names) and ordinal variables(very dissatisfied)	
+		Quantitative Variables
+			Numerical value associated with it
+			
+	Five number summary
+		Minimum, q1(lower quartile), Q2 (median), Q3(75th percentile or upper quartile), maximum
+	Skeweness/Shape of data
+		Skewness is a measure of the extent to which the data values are not symmetrical around the mean.
+		If mean, median and mode agree it points to a perfect symmetrical distribution(bell curve) i.e mean=median then we have zero skewness
+		if mean>median ..positive or right skewed distribution..(data leaks to the right)
+		if mean<median ..negative or left side distribution (data leaks to the left)
+		Right Skewed Distribution: Mode < Median < Mean
+		Left Skewed Distribution: Mean < Median < Mode
+		Hint: median will always be closest to mode
+	Box plot
+		Around the five number summary with extremes as tails.. box starts from Q1 and ends at Q3..line inside the box at Q2 median
+		Size of the box is IQR
+		Shape of box adapts to the skewness in the data
+		Q3+1.5 times the size of the box..values beyond can be considered as outliers (both sides.. q3+1.5IQR, q1-1.5IQR) ,,its called upper fence and lower fence
+	For 2D
+		Covariance--to measure how one variable varies w.r.t variance in another variable(if one variable becomes large does the other also become large or small at the same time)
+					This is +ve covariance
+					A negative value indicates the 2 variables move in opposite direction to each other
+		Correlation
+			Determine the strength of the relationship between 2 variables
+			Covariance/product of Standard Deviation
+			Does not imply causation...?
+			Diff between covariance and correlation?
+	
+	
+	
+Data Science
+		Science of discovering hidden patterns(trends, cycles, rules, association between attributes, groups in data) from large data sets
+		Data sets/Data is usually prepared ->cleansed and structured for the analysis
+		Science->  	statistical tools and techniques employed to understand the data and reliability of identified patterns		
+						Part of Statistics related to understanding data is called descriptive analytics(spread, shape,structure, mean,distribution, gives vital insights about data)
+						Part of Statistics for establishing the reliability of potential patterns identified is called inferential statistics (mean distribution)
+		ML is at the intersection of Computer Science, Math & Statistics
+		Software development is at the intersection of Computer Science & Business Domain/Knowledge
+		Traditional Research is intersection of Business/Domain Knowledge and Math & Statistics
+		Data Science lies at the intersection of Computer Science, Math & Statistics & Business/Domain Knowledge				
+		Data Science lies at the intersection of Computer Science, Math & Statistics & Business/Domain Knowledge
+		Data is the footprints of happenings (natural or human driven) Physical as in files, registers now more digital (browsing, online purchases)
+		Data is the raw material that contains information in it as also noise
+			Eg Ticket Sales, Survey Data
+		Information is processed data 
+		OR It is the data plus the meaning of what the data was collected for minus the noise
+		Data is the input, Information is the output
+		Data is unprocessed but information is processed which is made sense of	
+		
+Mr JC		
+	predict products that can go out of stock
+	Forecast sales		
+	Dutch programmer Guido van Rossum created python in 1991..200 version 2, 2004 python 3
+	3d use programming language
+	Python supports NLP, Front end ,back end, all work for data scientists..building ML models
+	Syntax is important		
+
+Advantage of Anaconda
+	In addition to python, we get a bunch of other tools
+	100's of packages for data science, scikit-learn(ML), conda(new packages and manage current packages)
+	Way to access jupiter notebooks-->Interactive environment to run python code
+	With Anaconda, spin up new packages, different version of python that you can easily toggle
+	Anaconda navigator..interact with tools
+	Install Anaconda Individual edition
+	Environments will show all installed libraries
+	Anaconda Navigator->Home->Jupyter Notebook
+Jupyter	Notebook
+	Run time environment for python..Python code is stored inside jupyter in form of notebooks
+	You can save notebooks. Code repository for future reason
+	Default extension is .ipnyb
+	Cell in a jupiter notebook is where you write code..to execute shift+enter
+	Write as a code block or lines of code.. The code block is executed at once
+	Kernel->tool which controls computation every time you run
+		You can interrupt kernel to stop what is running
+		Restart will restart everything
+	Edit->Manipulate the cells
+	Command mode outside cell.. inside cell you are in edit mode. Some shortcuts do not work in edit mode
+	Different type of cells-> Markdown for comments.. shortcuts next to cell type (keyboard)
+	Markdown is a piece of text..it wont run.. it is a statement..no calculations will be done..It will create text in your file..nothing is being executed
+	Out lines are created by compiler..
+	In a code block, the response the code block gives is the last thing that the code block is asked to calculated
+	Given a notebook, you can run whatever you want to however you want to.. in any order?
+	File type is ipynb..cant open it directly..you need to do it through anaconda navigator->jupyter notebook
+	File made in Jupyter can also downloaded as html file ..and you can use it to share.. dont need jupytor notebook for the person who receives in this way
+
+Google Colab(Colaboratory)
+	Computation in the cloud..for models
+	Notebook automatically saved in google drive
+	Many pre installed packages
+	!pip list--> shows all packages installed
+	Read data by storing in drive
+	Work on code(notebook) together.. Easy to share the work/collaborate
+	Mount google drive in google colab
+	Both Collab and Jupyter are python notebook based IDE's
+	+Code to add code cell
+	+Text to add text cell
+	Both in Colab and Jupyter for markdown/text # at the start of cell is used to create different levels of headers such as header, sub-header(##), sub-sub-header(###) etc
+	They allow us formatting, to remove a cluttered look and also to shrink stuff
+
+Python
+	Python is a case-sensitive language
+	Variables need not be declared in advance in Python. To create a variable, we just assign it a value. 
+	First thing in the name of the variable should be a letter (following that can be number or underscore)
+	# in code cell makes a comment in python
+	For multi-line comments, we can use three quotes.
+	'''This is 
+		a multiline 
+		comment in Python'''
+	Functions come with normal parentheses & Array, String Matrices come with square parentheses indicating their location 
+	Intialization x=y=z=5
+	Evaluation in code cell x o/p 5
+	String, float, integer 3 basic data types+ bool+complex
+	String
+		Single quotes or Double quotes
+		type function tells you data-type type(x)
+		str1='SA'
+		Can multiply and add strings str1*2 o/p	SASA
+		str1[1],str1[-1] o/p: Both are A
+		str2='Great', str2[0:3] o/p 'Gre'
+	Float
+		d=1.6e4 type(d) is float
+	Complex 
+		x=3+4j	type(x)=complex
+	boolean
+		var1=True
+		10>9 o/p True
+	Change variable type(Casting)
+		float(11) o/p 11.0
+		int(11.0) o/p 11
+		float('11')-> 11.0 but not advisable 
+	Print function
+		Persistent command. It tells python when you see print you have to print irrespective of where it is in the line of code
+		For string with numbers in the end ;following is the syntax; separate numerical part while printing
+		I
+			y=15 print("y = ", y) o/p y =  15
+		II
+			price=40
+			print('The price of the mobile is',price,sep='$') o/p The price of the mobile is$40
+			#sep can be blank sep=''..then it is forced to give no space
+			By default the seperation is one space 
+			official: By default, Python considers whitespace as the separator between the different values passed to the print() function. 
+			Therefore, the values in the code will be printed with whitespace between the values passed using commas
+				print("Sarah's age is",35,"turning 36 soon") o/p: Sarah's age is 35 turning 36 soon
+		IV	
+			y=15
+			print('y = ', y,end='\n\n')
+			print(y)
+		O/P	
+			y =  15
+			15
+		
+		for x in range(4,6):
+			for y in range(1,11):
+				print('{} * {} = {}'.format(x,y,x*y))
+				
+		f string
+			If number to be printed is in the beginning of string or middle use f string
+	Input function
+		allows the user to add input to the programming environment
+		age = int(input("Please enter age of person: "))
+		print(age)
+		type(age) 	
+	
+	Arithmetic Operators
+		a+b,a-b,a*b,a%b
+		a/b gives float eg: 4/2 =2.0
+		a//b gives integer (forces) 3//4 0 ---floor division operator.
+		a**b gives a raised to the power of b
+		concatentation with strings and numbers with +
+		Eg 'hello'+'world' is valid but not 'hello'+5 gives error 
+			Use explicit conversion: 'hello'+str(5)
+			float*int will give float .. (implicit type conversion)	
+			
+		a=['2','2','2']
+		a*2 o/p:['2','2','2','2','2','2']	
+		addition of 2 lists with concatenate the list
+	Comparison Operators
+		O/p of comparison operation is bool -> True or False
+		a>b,a>=b,a<b,a<=b,a==b,a!=b
+		2.0==2 o/p True
+	Assignment Operators eg a+=5
+	Logical Operators (and, or)
+		x=12
+		a=x>5 and x<15
+		Can use single '&' in place of 'and'
+			a=x>5 & x<15
+		print(a) o/p->True
+		b=x>20 or x<15
+		print(b) o/p-> False
+		
+	range
+		range(5) start at 0 and stop before 5.. like a hidden data type unless you explictly force it
+		print(range(5)) o/p range(0, 5)
+		list(range(5)) o/p [0, 1, 2, 3, 4]
+		list(range(6,15,3)) o/p [6, 9, 12]
+		for i in range(6,15,3):
+			print (i)
+	
+Data Structures
+	List
+		List is a list of name and numbers[]
+		In Python, List is a collection of objects
+		Nested list 
+		newList=[1,2,['a','b','c'],5]
+		newList[2][1] o/p 'b'
+		newList[2][-1] o/p 'c'
+		List can contain any data type or combination of data types
+		Can identify Strings as list and can do list operations
+		strVar='Saurabh'
+		strVar[2] o/p 'u'
+		Functions to use min,max,len
+	Slicing
+		Slicing creates a new List
+		list[startIndex:stopIndex:step].. Indexes start from 0, start at startIndex, stop before stopIndex..increment with step
+		strList=['data science','machine learning','python','html','big data']
+		strList, strList[:] prints everything
+		strList[:3],strList[0:3] prints first 3 elements starting from 0
+		strList[3:] o/p ['html', 'big data']
+		strList[1:4:2]  o/p ['machine learning', 'html']
+	Mutability
+		strList[3]='R'
+		strList o/p: ['data science', 'machine learning', 'python', 'R', 'big data']
+	List Methods
+		Set of methods that can be applied to an object..built in function that applies to a particular kind of object	
+		append
+			strList.append('html')
+			newList=['statistics']
+			strList.append(newList)
+			strList o/p ['data science','machine learning','python','R','big data','html',['statistics']] (creates a new list)
+		insert
+			strList.insert(1,'AI') o/p ['data science','AI','machine learning','python','R','big data','html',	['statistics']]
+		extend by appending new list
+			strList.append(newList) o/p ['data science', 'machine learning', 'python', 'R', 'big data', 'statistics'] (does not create a new list)
+		del operator in python del
+			Not a method or a function
+			del strList[3] remove the 4th element (0-3)
+		remove
+			no location specified
+			strList.remove('R') removes the first occurence of R
+		pop
+			With no arguments removes the last element
+				strList.pop()
+			Can also give location
+				strList.pop(1)... removes the first element.. uses index when pop
+		reverse
+			strList.reverse()
+		Operators on List
+			strList1+strList2 (Simple concatenation)
+	
+	Tuples(Immutable)
+		Order(sequence) is important unlike list
+		Like list it also not type checked. It can contain any data type or combination of data types.
+		Tuples care abut the sequence in which things are entered into it
+		Allow arithmetic calculations to be done in them?
+		if only strings then list? but if you want to create objects with numbers inside them for calculation then a tuple is a good construct
+		Normal parenthesis to create a tuple()
+		Can also create a list inside tuple
+		sampleTuple=('a',2,3,['india','asia','japan'])
+		type(sampleTuple) o/p tuple
+		sampleTuple[0] o/p 'a'
+		sampleTuple[0]='b' o/p 'tuple' object does not support item assignment (Immutable)
+			if there is a list inside tuple you can change the element inside the list
+		del sampleTuple[0]	
+			'tuple' object does not support deletion
+			
+	Tuple methods	
+		count 
+			Gives the number of times a given value is appearing in the tuple
+			sampleTuple=('a',2,3,2,['india','asia','japan'])
+			sampleTuple.count(2) o/p 2
+		index	
+			Ordered collection, so it will tell where a given value is in the tuple-> Gives the first position where the value is present	
+			sampleTuple.index(2) o/p 1
+		sorted operator (function)
+			numberTuple=(5,4,3,2,1)
+			sorted(numberTuple) o/p [1, 2, 3, 4, 5]
+			however the tuple itself is not sorted as such.. (like in java)..object remains unchanged
+			Even Lists can be sorted
+		pop		
+			Tuples cannot be modified, so the pop() method does not work here. Python will raise an Attribute Error in this case.
+		slice
+			Tuples can still be sliced to created a new tuple
+			X=(20,23,-50,5.6,98)
+			print(X[2:-1]) o/p: (-50,-5.6)
+	
+	Dictionary	
+		key value pair. Create using curly braces
+		balance={	"Mia":100,
+					"John":200,
+					"Rajneesh":500
+				}	
+		Keys need not be strings. It can be anything including numbers
+		Values can be complete lists
+		Accessing the dictionary (Square brackets)
+			balance["Mia"] o/p 100
+		Can use get as well (round brace)
+			balance.get("Mia")
+		Trying to access a key not present gives you key error
+			balance["Raj"] o/p KeyError: 'Raj'
+		Mutable..can modify the value
+			balance["Mia"]=150
+				balance o/p {'Mia': 150, 'John': 200, 'Rajneesh': 500}
+			if the key is not found, it will be appended
+				balance['Saurabh']=0
+				balance o/p {'Mia': 150, 'John': 200, 'Rajneesh': 500, 'Saurabh': 0}
+		len function 	
+			len(balance) o/p 3
+			
+		popitem()..removes the last item
+			balance.popitem()
+			balance o/p {"Mia":100,"John":200,"Rajneesh":500}	
+		pop(key) removes the key value pair	
+			balance.pop("Mia")
+			balance o/p {'John': 200, 'Rajneesh': 500}
+		Using python's del keyword
+			del balance["Mia"]
+			balance o/p {'John': 200}
+		clear (method for many objects with entries)
+			balance.clear()
+			balance o/p {}
+		create a copy
+			balance={"Mia":100,"John":200,"Rajneesh":500}
+			copy_dict=balance.copy()
+		 
+		sorted function in dictionary (sort the keys in the dictionary)	
+			numbDict={2:'Sarah',1:'Raj', 5:'Monica'}
+			sorted(numbDict) o/p  [1, 2, 5]
+		update (same as updating a value directly)
+			numbDict.update({2:'Sam'}) 
+			numbDict o/p {2: 'Sam', 1: 'Raj', 5: 'Monica'}
+			//add a new value
+			numbDict.update({7:'Raj'})
+			numbDict o/p {2: 'Sam', 1: 'Raj', 5: 'Monica', 7: 'Raj'}	
+		keys(), values() method
+			Gets the list of keys and values
+			a=numbDict.keys()
+			b=numbDict.values()
+			print(a)	dict_keys([2, 1, 5])
+			print(b)	dict_values(['Sarah', 'Raj', 'Monica'])
+		
+		name_age = {'Jack':20, 'Summer':25, 'June':30}
+		//printing dictionaty only print keys
+		for i in name_age:
+			print(i) 
+		o/p (only prints keys)
+			Jack 
+			Summer
+			June	
+		
+		
+balance
+	Sets
+		Sets are defined with curly braces and stores values without any duplicates in ascending order(Ascending is important)	
+		Sequence doesnt matter..,matters less than it matters in a list
+		Created using curly braces like dictionary
+			s={1,1,1,1,1,1}
+			s o/p{1}
+		Set operator/function
+			returns distinct elements of list
+			set({1,2,4,3,3,2,1}) o/p {1, 2, 3, 4}
+		Same methods, adding, updating, removal, pop, length
+
+
+	Conditional Statements
+		if condition :
+			steps/code to be executed after condition is true 
+			myList=['python','datascience','R','spark','Tableau']
+			learning='python'
+			if learning in myList:
+				print(learning+' tutorial')
+			else:
+				print('Not in my learning')
+						
+			if not x ==500
+				print('the value of x is different from 500')
+				
+			if (not x ==500):
+				print('the value of x is different from 500')	
+				
+			if (x>500):
+				print('Number is greater than 500')
+			elif(x>400):
+				print('Number is greater than 400')
+			else :
+				print('Number is less than 400')	
+				
+			a = "I am a Data Scientist"
+			if "Data" in a:
+				print("It is present")
+			else:
+				print(False)	
+	
+		Nested if 	
+			Write a program to i/p a float number and see if its 0, positive or negative		
+		
+			number = float(input("Enter a number: "))
+			if number >= 0:
+				if number == 0:
+					print('Number is zero')
+				else:
+					print('Number is greater than zero')
+			else:
+				print('Number is negative')  
+				
+
+	Looping for loops
+		for i in range(5):
+			print(i)
+		Note: no parentheses for for condition	
+				
+		Write a program to find the sum of numbers in a list
+		Note that sumFinal variable used in the loop had to be initialized (because of scope being used outside)
+			sumFinal=0
+			listVar=[100,220,345,585,645]
+			for num in listVar:
+				sumFinal += num
+			print("sum of numbers is", sumFinal)  
+			
+		While loops (else is integrated)
+		In most of the programming languages, the use of else statement has been restricted with the if conditional statements. But Python also allows us to use the else condition with for loops.
+			
+			a = 1
+			limit = 20
+			intSum=0
+			while a < limit :
+				intSum += a
+				a +=1
+			else:
+				print('Sum is ',intSum)
+				
+	Break
+		Write a program to check a list has even number or not
+		For with else integrated..runs afte
+			listNum=[3,5,5,55,75,15]
+			for i in listNum :
+				if(i%2==0):
+					print('Even number found', i)
+					break
+			else:
+				print('No even numbers met')
+    
+	Continue
+		Print odd numbers from 5 to 15	
+		
+			for i in range(5,15):
+				if (i%2 == 0):
+					continue
+				else:
+					print(i)
+		
+	Question is when is why with else or for with else executed.
+		if there is no break.
+		Essentially else is a part of for ..if it encounters break, it will move out of for and else
+		
+		for i in range(1, 4):
+			print(i)
+		else: # Executed
+			print("Break executes")
+		o/p
+		1
+		2
+		3
+		Break executes	
+		*** See loop prints in a new line always?	
+		for i in range(1, 4):
+			print(i)
+			break
+		else: # Not executed as there is a break
+			print("Break does not execute")	
+		o/p 1
+
+			
+	
+	List Comprehension
+		List comprehension is a type of control structure for creating a list from an existing iterable (like tuples, strings, arrays, lists, etc).
+		They offer a shorter and more appealing syntax and are often faster than explicit for loops in creating a list from an existing iterable.
+			apple_prods_price_list=[9000,5666,1254,566,8686]
+			
+			discounted_price=[]
+			for x in apple_prods_price_list:
+				discounted_price_val=0.95*x
+				discounted_price.append(discounted_price_val)
+			discounted_price			
+		Now in list comprehension we will write that as	
+			discounted_price=[0.95*x for x in apple_prods_price_list]
+			discounted_price
+		One more
+			budget= float(input("Enter your budget for the product:"))
+			purchase_possible=['Yes' if x <= budget else 'No' for x in apple_prods_price_list]
+			purchase_possible o/p ['No', 'No', 'Yes', 'Yes', 'No']
+			
+		numbers= range(20)
+		even_list = [i**2 if i %2 ==0 for i in numbers]
+		even_list	
+		
+					
+		repeated_list = [2] * 4
+		print(repeated_list) o/p [2, 2, 2, 2]	
+		
+		[ ]: The outer square brackets tells that we are creating a list
+		x-(x*(5/100): The expression to evaluate or the computation to perform
+		for x in price_list: The iterable from which elements (x) will be fetched
+		
+	Functions
+		Reusability of code
+			def funcn_name(parameters):
+				statement1
+				statement2
+				...
+			Eg
+			def add_my_func(a,b):
+				print(a+b)
+			add_my_func(11,20)
+			
+		function with a return
+			def return_sum_funcn(a,b):
+				return a+b
+			print(return_sum_funcn(11,20))
+			sum_val=sum_funcn(11,30)
+
+		A function can be defined inside another function in Python. The inner function will be then called by the outer function
+			def outer_fun(a, b):
+				#statements
+				def inner_fun(a, b):
+					#statements
+			# call inner function from outer function
+				x = inner_fun(a, b)		
+	
+	Lambda function
+		We generally use them when we require an anonymous function for a small task
+		User-defined functions are defined using the def keyword, whereas lambda functions are defined using the lambda keyword.
+		We cannot use a return statement with lambda functions
+		Syntax func_name=lambda argument:statement
+		
+		dis_add_funcn = lambda a,b :a+b
+		res=dis_add_funcn(15,20)
+		res o/p 35
+		
+		(lambda x: (x+2)*5/2)(4) o/p 15.0
+		The parentheses after the lambda function definition containing 4 specify the argument to be passed to the function.
+	
+	*args in function parameter i/p
+		No of arguments is not defined.. we can have any number of arguments..(list of arguments)
+		can name it as *prices
+		def total_amount(*args):
+			total=0
+			for arg in args:
+				total+=arg
+			return total	
+		total_amount(12,56,66,44,75) o/p: 253
+		
+		def fun(*args):return args
+		fun(12,34,5) o/p (12,34,5) returns tuple of i/p arguments
+		
+	kwargs
+		def total_discounted_amount(*prices,discount=0.0):
+			total=0
+			for price in prices:
+				total+=price
+			discounted_price=total-(total*discount)
+			return discounted_price
+		
+		total_discounted_amount(100,100,100)
+		total_discounted_amount(100,100,100,discount=0.5)
+		
+		Positional arguments & Keyword arguments
+		positional come before keyword.. In above.. positional is *prices, keyword one is discount
+
+		def total_discounted_amount(*prices,discount=0.0,**kwargs):
+			total=0
+			for price in prices:
+				total+=price
+			discounted_price=total-(total*discount)
+			net_spend=discounted_price-kwargs['cashback']
+			return net_spend	
+			
+		total_discounted_amount(100,100,3,discount=0.5,**additionals)	
+		
+		additionals={'cashback':5}
+		total_discounted_amount(100,100,3,**additionals) o/p 198
+		
+		def fun(A, B=30):
+			return A + B
+		(A is a positional argument, B is a keyword argument)	
+		
+		def total_discounted_amount(*prices,discount=0.0,**additionals):
+		total=0
+		for price in prices:
+			total+=price
+		discounted_price=total-(total*discount)
+		net_spend=discounted_price-additionals['cashback']-additionals['rewards']
+		if(net_spend>1000):
+			pr_rewards=10
+		else:
+			pr_rewards=0
+		return net_spend,pr_rewards  
+		
+		additionals={'cashback':5,'rewards':10}
+		ns, prr=total_discounted_amount(10000,100,3,discount=0.5,**additionals)
+		print('NetSpend',ns,"rewards",prr)
+		
+		
+List of functions glossary
+	del dictionary
+	len dictionary
+	print
+	sorted tuple dictionary
+   .pop
+   .get dictionary
+   .copy dictionary
+   .update dictionary
+   
+   sum is a keyword?
+   https://medium.com/geekculture/list-comprehension-conditional-and-looping-statements-in-python-16db4ea9e58b
+   https://towardsdatascience.com/how-list-comprehensions-can-help-your-code-look-better-and-run-smoother-3cf8f87172ae
+   https://colab.research.google.com/notebooks/io.ipynb
+	
+Numpy
+	Numerical Python: package used to do a lot of numerical operations
+	Tell Python we have to use numpy 
+		import numpy as np
+	Numpy has a bunch of functions, data types that we can use . 
+	Always import it
+	Numpy arrays 
+		are more powerful than normal lists
+		Like a list
+		When you print, no comma between individual values between rows or columns
+		numpy arrays are strictly typed
+			arr_str=[4,5,6,7]
+			np_arr_num=np.array(arr_str)
+			np_arr_num
+				type: <numpy.ndarray>
+			sports = ['Cricket', 'Football', 'Tennis', 'Golf', 'Baseball']
+			sports_new = np.array(sports)
+			print(sports_new) o/p ['Cricket' 'Football' 'Tennis' 'Golf' 'Baseball']
+			sports_new o/p array(['Cricket', 'Football', 'Tennis', 'Golf', 'Baseball'], dtype='<U8')
+			Arithmetic operation on arrays
+				arr1=np.array([1,3,5,6])
+				arr2=np.array([2,2,2,2])
+				print(arr1+arr2)
+				print(arr1-arr2)
+				print(arr1/arr2)
+				print(arr1*arr2)
+				print(1/arr1) **Not linear algebra division or inverse? Rather element wise inverse division
+				print(arr1**arr2)
+	Matrix
+		2D
+		matrix=np.array([[1,1,1],[2,3,4]])
+		print(matrix)
+			o/p: [[1 1 1]
+				[2 3 4]]
+		type(matrix)
+			<numpy.ndarray>
+		matrix
+			array([[1, 1, 1],
+				 [2, 3, 4]])	
+		Arithmetic operation on matrices
+			matrix1=np.arange(1,10).reshape(3,3)
+			matrix2=np.eye(3)			
+			print(matrix1+matrix2)
+			print(matrix1-matrix2)
+			print(matrix1/matrix2) 
+				inf in o.p for infinite
+				will give output but with runtime warning
+			print(matrix1*matrix2)
+			Again this is element and not linear algebra***
+			linear algebra multiple multiplication/dot product use @
+				print(matrix1@matrix2)
+		Transpose
+			np.transpose(matrix1)
+			matrix2.T #transpose matrix
+		Min,Max
+			np.min(matrix1)
+			np.max(matrix2)
+			get the min and max value of a matrix.. single value
+	Tensors
+		3D,4D,5D
+	arange function
+		Creates a single dimension array
+			arr3=np.arange(start=0, stop=20, step=5)
+			arr3=np.arange(0,20,5)
+
+		arr3 o/p array([ 0,  5, 10, 15])
+		arr4=np.arange(0,5)
+		print(arr4) o/p: [0 1 2 3 4]
+	linspace
+		matrix=np.linspace(0,50)
+			Creates a 1d array of 50 equidistant points(by default) including last number and first number , because it starts from 0 and ends at 50 there are 2 points
+			Rest has to be divided by 49 (50-0)/49
+		matrix=np.linspace(1,5,5)
+			[1. 2. 3. 4. 5.]
+	Zeroes
+		matrix=np.zeros([2,3])
+	Ones
+		matrix=np.ones([2,3])
+		matrix
+			array([[1., 1., 1.],
+				   [1., 1., 1.]])	
+	eye
+		matrix=np.eye(3)
+		Identity matrix
+		[[1. 0. 0.]
+		 [0. 1. 0.]
+         [0. 0. 1.]]	
+	reshape	
+		arr4= np.arange(0,10)
+		arr4_reshaped=arr4.reshape([2,5])
+		print(arr4_reshaped) o/p [[0 1 2 3 4]
+                                  [5 6 7 8 9]]
+		arr4_reshaped=arr4.reshape([2,6])
+		ValueError: cannot reshape array of size 10 into shape (2,6)						  
+	Trigonometry (in radians)
+		np.sin(4),np.cos(4),np.tan(4)
+		can give it a numpy array or a list
+	exp
+		np.exp(2)
+	log	
+		arr5=np.array([2,4,5])
+		np.log(arr5)
+		log to the base 10
+			np.log10(10)
+			np.log2(10)
+		For other bases uses formula
+	
+	random
+		randint
+			rand_mat=np.random.randint(1,5,10)  [1,5)
+				[1 3 3 1 4 4 1 1 4 2] 
+			rand_mat=np.random.randint(1,5,[5,6])
+				--creates a matrix of [5,6]re
+		rand (random uniform numbers)
+			returns a random numpy array whose elements are drawn randomly from the normal distribution of [0,1)
+			rand_mat=np.random.rand(5)
+			print(rand_mat)
+			rand_mat=np.random.rand(5,5) -- 5 X 5 matrix
+		randn (normal random numbers- standard normal distribution with a mean 0 and variance 1--same as Gaussian distribution?)
+			rand_mat=np.random.randn(5)
+				[-1.03228221 -0.13154734 -1.39811266  1.01883486  0.17548056]		
+	mean
+		np.mean(rand_mat)
+	std(Standard deviation)	
+		np.std(rand_mat)	
+	Accessing numpy arrays	
+		rand_mat[3]
+		rand_mat[1,4]	
+		Using arange
+			rand_mat[np.arange(0,10,3)] 0th,3rd,6th,9th
+		Logical indexing
+			rand_mat[rand_mat>0.5]
+		assign using list
+			rand_mat[0:2]=[1,3] --change value at location 0 and 1 as per the values in the list
+			rand_mat[rand_mat>0.5]=0.99 --logical indexing to assign
+	For a matrix
+		rand_mat=np.random.randn(5,5)
+		rand_mat[1]--gives you 2nd row
+		rand_mat[1][1]--gives you 2nd element of 2nd row
+		rand_mat[1,1]--same as above, can write like this too
+		rand_mat[0:2,1:3]--row 0 and row 1 only and columns 1 and 2 only
+		rand_mat[rand_mat>0.5] --can work with logical indexing but it will disintegrate the matrix structure..just give it like arrays
+		rand_mat[0:2,1:3]=0
+		creation of submatrix and modifying it changes the first matrix
+			submatrix=rand_mat[0:2,1:3]
+			submatrix[:]=3 --changes parent matrix if you print rand_mat
+			submatrix=rand_mat[0:2,1:3].copy() --creates a copy of the matrix, this will fix our problem
+	Save and load a numpy array
+		save
+			np.save('/content/drive/MyDrive/python_course/file_name',randint_matrix1)--will store as a npy file     
+			np.save('/content/drive/MyDrive/python_course/file_name',randint_matrix1_fname=randint_matrix1,randint_matrix2=randint_matrix2)...inside of file it will be saved as  randint_matrix1_fname
+			It will store as a npz file
+			Using np.savez(), we can store several arrays/matrices into a single file in uncompressed .npz format.
+		load	
+			loaded_array=np.load('/content/drive/MyDrive/python_course/file_name.npy')
+			print(loaded_arr) --gives arr directly since its only 1 numpy array
+			loaded_multi=np.load('/content/drive/MyDrive/python_course/file_name.npz')
+			loaded_multi['randint_matrix1_fname']
+			loaded_multi['randint_matrix2']
+			new_matrix=loaded_multi['randint_matrix1_fname']
+		save and open with excel other than python.. simple save as a text file	
+			np.savetxt('/content/drive/MyDrive/python_course/file_name.txt',randint_matrix1,delimiter=',')
+			rand_mat_txt=np.loadtxt('/content/drive/MyDrive/python_course/file_name.txt',delimiter=',')
+			print(rand_mat_txt)		
+			https://towardsdatascience.com/what-is-npy-files-and-why-you-should-use-them-603373c78883
+			https://medium.com/fintechexplained/why-should-we-use-numpy-c14a4fb03ee9
+			https://realpython.com/pandas-dataframe/
+Pandas
+	Another library to create datasets and manipulate datasets
+		import pandas as pd
+	Creates a new datatype like pandas data frame and pandas data series
+	Nice way to store and manipulate data in python
+	We are going to have our own little excel spreadsheets sitting inside python
+	Use this same name to refer functions of this library
+	Pandas series
+		one column in an excel spreadsheet with row labeling
+		Create a list or numpy array into a pandas series	
+			med_price_list=[25,50,76,100]
+			arr_med_price=np.array(med_price_list)
+			series_list=pd.Series(med_price_list)
+			series_arr=pd.Series(arr_med_price)
+			print(series_list)
+				0     25
+				1     50
+				2     76
+				3    100
+				dtype: int64
+			print(series_arr)	
+				0     25
+				1     50
+				2     76
+				3    100
+				dtype: int32
+			med_price_labeled=pd.Series(med_price_list, index=['Omeprazole','Azithromycin','Metformin','Ibuprofin'])	
+			print(med_price_labeled)
+				Omeprazole       25
+				Azithromycin     50
+				Metformin        76
+				Ibuprofin       100
+				dtype: int64
+			med_price_labeled+=2.5
+			print(med_price_labeled)
+				Omeprazole       27.5
+				Azithromycin     52.5
+				Metformin        78.5
+				Ibuprofin       102.5
+				dtype: float64
+			new_med_price_list=[78,55,445,239]
+			new_med_price_labeled=pd.Series(new_med_price_list, index=['Omeprazole','Azithromycin','Metformin','Ibuprofin'])
+			new_med_price_labeled-med_price_labeled
+				Omeprazole       50.5
+				Azithromycin      2.5
+				Metformin       366.5
+				Ibuprofin       136.5
+				dtype: float64
+			Looks like numpy areas with index lables on them
+			Indexing &Accessing
+				new_med_price_labeled[0]
+					78
+				new_med_price_labeled[:3]
+					Omeprazole       78
+					Azithromycin     55
+					Metformin       445
+					dtype: int64
+				new_med_price_labeled[-2:]	(to the end)
+					Metformin    445
+					Ibuprofin    239
+					dtype: int64
+				new_med_price_labeled[:-2]	(from the beginning)
+					Omeprazole      78
+					Azithromycin    55
+					dtype: int64
+				new_med_price_labeled[[0,2,3]]
+					Omeprazole     78
+					Metformin     445
+					Ibuprofin     239
+					dtype: int64
+			Labeled index
+				new_med_price_labeled['Omeprazole']
+					78
+				Slicing with label (Python inconsistency, this is inclusive)
+					new_med_price_labeled[:'Ibuprofin']
+						Omeprazole       78
+						Azithromycin     55
+						Metformin       445
+						Ibuprofin       239
+						dtype: int64
+	DataFrame
+		Real power of pandas package
+		sequences or several series put together
+		A dataframe is made up of several series where each column is a series.
+		Data column has same type
+		But different columns may have different data types(like excel)
+			student=['Jitin','Minh','Saurabh']
+			df=pd.DataFrame(student,columns=['Student'])	
+			df
+					Student
+				0	Jitin
+				1	Minh
+				2	Saurabh
+		With dictionary
+			grades=['B-','A+','A-']
+			df2=pd.DataFrame({'Student':student,'Grade':grades})
+			df2
+				Student		Grade
+			0	Jitin		B-
+			1	Minh		A+
+			2	Saurabh		A-
+		DataFrame using pd.series
+			year=pd.Series([2012,2013,2014,2015])
+			energy_consumption=pd.Series([1500,2000,2700,8000])
+			energy_df=pd.DataFrame({'Year':year,'Energy Consumption in killowatts':energy_consumption})
+			Year	Energy Consumption in killowatts
+				0	2012	1500
+				1	2013	2000
+				2	2014	2700
+				3	2015	8000
+		Using a matrix from numpy array
+			pd.DataFrame(np.random.randn(5,2),columns=['Trial1','Trial2'])
+				Trial1		Trial2
+			0	-0.212177	-0.121405
+			1	0.487844	0.506549
+			2	3.897380	1.087862
+			3	0.418165	0.157110
+			4	1.435211	-1.605930
+		Accessing elements of df
+			energy_df[0] 
+				error
+			energy_df[:1]
+				Year	Energy Consumption in killowatts
+			0	2012	1500
+			Access column as data series
+				energy_df['Year']
+					0    2012
+					1    2013
+					2    2014
+					3    2015
+					Name: Year, dtype: int64
+				energy_df[::2]
+					Year	Energy Consumption in killowatts
+				0	2012	1500
+				2	2014	2700
+				energy_df[::-1] (in reverse)
+					negative reverses order
+					Year	Energy Consumption in killowatts
+				3	2015	8000
+				2	2014	2700
+				1	2013	2000
+				0	2012	1500
+		Adding a new column
+			energy_df['Region']=['Arkansas','Colarado','Massachusets','New York']
+			energy_df
+						Year	Energy Consumption in killowatts	Region
+					0	2012	1500								Arkansas
+					1	2013	2000								Colarado
+					2	2014	2700								Massachusets
+					3	2015	8000								New York
+		Dropping a column from data frame
+			energy_df.drop('Region')
+				Gives an error because by default axis is 0. It tries to find a row to drop
+			energy_df.drop('Region',axis=1)
+				Creates a new dataframe where it drops the column
+				energy_df.drop('Region',axis=1,inplace=True)
+				Drops the column in old dataframe and also creates a new data frame with the dropped column
+		Copy a data frame
+			new_energy_df=energy_df.copy()
+		Dropping a row in data frame
+			new_energy_df=energy_df.copy()
+			new_energy_df.drop(1,axis=0,inplace=True)
+						Year	Energy Consumption in killowatts
+					0	2012	1500
+					2	2014	2700
+					3	2015	8000	
+			Index remains modified		
+				new_energy_df.reset_index()	
+						index	Year	Energy Consumption in killowatts
+					0	0	2012	1500
+					1	2	2014	2700
+					2	3	2015	8000				
+				new_energy_df.reset_index(drop=True,inplace=True)
+				new_energy_df		
+						Year	Energy Consumption in killowatts
+					0	2012	1500
+					1	2014	2700
+					2	2015	8000
+		Accessing individual entries or sub entries
+			The loc method works on label-based indexing whereas iloc method works based on integer-based indexing.
+			First value is integer, second is column name
+			dataframe.loc[row labels, column labels]
+			energy_df.loc[1]
+				Year                                2013
+				Energy Consumption in killowatts    2000
+				Name: 1, dtype: int64
+			energy_df.loc[[1,3],['Year']]
+					Year
+				1	2013
+				3	2015
+			book.loc[[1:3], ['author', 'year']]
+				--Incorrect syntax
+			Can someone explain why the below commands outputs 3 rows instead of 2?
+				book.loc[1:3, ['author', 'year']]	
+			iloc
+				dataframe.iloc[row indices, column indices]
+				energy_df.iloc[[1,3],[0]]
+					Year	Energy Consumption in killowatts
+				1	2013	2000
+				3	2015	8000
+			Modifying with loc
+				energy_df.loc[3,'Year']
+				energy_df.loc[3,'Year']=2017
+				energy_df
+					Year	Energy Consumption in killowatts
+				0	2012	1500
+				1	2013	2000
+				2	2014	2700
+				3	2017	8000
+			Modifying with iloc
+				energy_df.iloc[3,0]=2015
+					Year	Energy Consumption in killowatts
+					0	2012	1500
+					1	2013	2000
+					2	2014	2700
+					3	2015	8000
+			Condition Based Indexing
+				energy_df['Energy Consumption in killowatts']>2000
+					0    False
+					1    False
+					2     True
+					3     True
+				Name: Energy Consumption in killowatts, dtype: bool
+				energy_df.loc[energy_df['Energy Consumption in killowatts']>2000]
+					Only return rows that are true
+					Year	Energy Consumption in killowatts
+				2	2014	2700
+				3	2015	8000
+				book[(book['publisher']=='DAW') & (book['average_rating']>4)]['author'].unique()
+		Combining Data frames
+		merge() can be used for combining data on common columns
+		concat() can be used for combining dataframes across rows or columns
+		data_cust = pd.DataFrame({"customerID":['101','102','103','104'], 
+								'category': ['Medium','Medium','High','Low'],
+								'first_visit': ['yes','no','yes','yes'],
+								'sales': [123,52,214,663]},index=[0,1,2,3])
+
+		data_cust_new = pd.DataFrame({"customerID":['101','103','104','105'], 
+							'distance': [12,9,44,21],
+							'sales': [123,214,663,331]},index=[4,5,6,7])	
+		
+			customerID	category	first_visit	sales
+			0	101	      Medium	 yes	     123
+			1	102	      Medium	 no	         52
+			2	103	        High	 yes	     214
+			3	104	         Low	 yes	     663
+			
+			customerID	distance	sales
+			4	101			12		123
+			5	103			9		214
+			6	104			44		663
+			7	105			21		331
+			(Why does it start from 4,5,6,7?)
+			
+			pd.concat([data_cust,data_cust_new],axis=0)
+				NaN is short for not a number
+				Just append row.. common columns and rows appened
+			customerID	category	first_visit	sales	distance
+			0	101		Medium		yes			123			NaN
+			1	102		Medium		no			52			NaN
+			2	103		High		yes			214			NaN
+			3	104		Low			yes			663			NaN
+			4	101		NaN			NaN			123			12.0
+			5	103		NaN			NaN			214			9.0
+			6	104		NaN			NaN			663			44.0
+			7	105		NaN			NaN			331			21.0
+			
+			pd.concat([data_cust,data_cust_new],axis=1)
+			all columns are appended to the right	
+			None of the series will be on top of each other. Because the series will be combined side-by-side. 
+			When axis=0, two series will stack on each other. When axis=1, two series will stack parallel to each other
+			Rarely used
+			customerID	category	first_visit	sales	customerID	distance	sales
+				0	101	  Medium	 yes	    123.0	 NaN	     NaN	     NaN
+				1	102	  Medium	 no	        52.0	 NaN	     NaN	     NaN
+				2	103	  High	     yes	    214.0	 NaN	     NaN	     NaN
+				3	104	  Low	     yes	    663.0	 NaN	     NaN	     NaN
+				4	NaN	  NaN	     NaN	    NaN	     101	     12.0	     123.0
+				5	NaN	  NaN	     NaN	    NaN	     103	     9.0	     214.0
+				6	NaN	  NaN	     NaN	    NaN	     104	     44.0	     663.0
+				7	NaN	  NaN		 NaN	    NaN	     105	     21.0	     331.0
+				
+			Merge (merge the rows)
+				pd.merge(data_cust,data_cust_new,how='outer',on='customerID') --outer is the union			
+					customerID	category	first_visit	sales_x	distance 	sales_y
+					0	  101	Medium	     yes	     123.0	 12.0	    123.0
+					1	  102	Medium	     no	         52.0	 NaN	    NaN
+					2	  103	High	     yes	     214.0	 9.0	    214.0
+					3	  104	Low	         yes	     663.0	 44.0	    663.0
+					4	  105	NaN	         NaN	     NaN	 21.0	    331.0
+				pd.merge(data_cust,data_cust_new,how='inner',on='customerID') --inner is the intersection			
+					customerID	category	first_visit	sales_x	distance 	sales_y
+					0	  101	Medium	     yes	     123.0	 12.0	    123.0
+					1	  103	High	     yes	     214.0	 9.0	    214.0
+					2	  104	Low	         yes	     663.0	 44.0	    663.0
+				pd.merge(data_cust,data_cust_new,how='right',on='customerID') --all rows in right		
+					customerID	category	first_visit	sales_x	distance 	sales_y
+					0	  101	Medium	     yes	     123.0	 12.0	    123.0
+					1	  103	High	     yes	     214.0	 9.0	    214.0
+					2	  104	Low	         yes	     663.0	 44.0	    663.0
+					3	  105	NaN	         NaN	     NaN	 21.0	    331.0
+			Join (merge on index values(labels) instead of a column)
+				Syntax different.. first_data_frame.join(second_data_frame)
+					data_quarters = pd.DataFrame({'Q1': [101,102,103],
+                              'Q2': [201,202,203]},
+                               index=['I0','I1','I2'])
+
+					data_quarters_new = pd.DataFrame({'Q3': [301,302,303],
+                                  'Q4': [401,402,403]},
+                               index=['I0','I2','I3'])
+					Q1	Q2
+				I0	101	201
+				I1	102	202
+				I2	103	203		
+					
+				Q3	Q4
+				I0	301	401
+				I2	302	402
+				I3	303	403
+				
+				data_quarters.join(data_quarters_new,how="inner")
+					Q1	Q2	Q3	Q4
+				I0	101	201	301	401
+				I2	103	203	302	402				
+				
+		Functions
+			energy_df.head()-- first five rows
+			energy_df.tail()-- bottom five rows
+			energy_df.shape -- rows and column count
+				(4, 2)
+			energy_df.info()--- to check the data type of columns
+				energy_df.head()	
+				<class 'pandas.core.frame.DataFrame'>
+				RangeIndex: 4 entries, 0 to 3
+				Data columns (total 2 columns):
+				 #   Column                            Non-Null Count  Dtype
+				---  ------                            --------------  -----
+				 0   Year                              4 non-null      int64
+				 1   Energy Consumption in killowatts  4 non-null      int64
+				dtypes: int64(2)
+				memory usage: 192.0 bytes
+			Aggregation refers to performing an operation on multiple rows corresponding to a single column.
+			Some of the aggregation examples are as follows:	
+				Min and max of a column	
+					energy_df['Energy Consumption in killowatts'].min()	
+				sum
+					energy_df['Energy Consumption in killowatts'].sum()	
+						14200
+			Unique values in a column
+				energy_df['Energy Consumption in killowatts'].unique()
+			value_counts:To check the counts of unique value in a column
+				The value_counts() function returns unique values in descending order of number of occurrences, i.e., the first element in the output is the most frequently-occurring element
+				book['author'].value_counts()
+					Select with count()
+				energy_df['Energy Consumption in killowatts'].value_counts()
+					1500    1
+					2000    1
+					2700    1
+					8000    1
+					Name: Energy Consumption in killowatts, dtype: int64
+				energy_df['Energy Consumption in killowatts'].value_counts(normalize=True)
+					1500    0.25
+					2000    0.25
+					2700    0.25
+					8000    0.25
+					Name: Energy Consumption in killowatts, dtype: float64
+					Divides by the total number of non null values
+			Statistical functions
+				energy_df['Energy Consumption in killowatts'].mean()
+					3550
+				median
+				mode
+					energy_df['Energy Consumption in killowatts'].mode()[0]
+					mode returned is a list since it can be multiple
+				describe
+					The describe() command, by default, gives a statistical summary of the numerical columns in the data.
+				data_cust.describe()
+							sales
+					count	4.000000
+					mean	263.000000
+					std		274.785977
+					min		52.000000
+					25%		105.250000
+					50%		168.500000
+					75%		326.250000
+					max		663.000000
+				data.describe(include='all').T
+					include='all' gives us all values not just numerical values
+		Loading and saving data frames
+			load csv and excel files from hard drive into pandas
+				data=pd.read_csv('/content/music.csv')
+			For google colab, we have to give colab access to our google drive
+				from google.colab import drive
+				drive.mount('/content/drive')
+			Once drive is mounted
+				path="/content/music.csv"
+				data=pd.read_csv(path)
+			Save data frame as csv file
+				data.to_csv('/content/modified_music.csv',index=False)
+				if index is not put to false, then it will add index value as a seperate column 
+			Save data frame as excel file
+				data.to_excel('/content/modified_music_excel.xsls',index=False)
+		groupby
+			splits the data into groups based on some criteria
+			applies a function to each category
+			combines the result based on the applied function
+				data=pd.read_csv('StockData.csv')
+				data.groupby(['stock'])['price'].mean()
+		apply
+			The apply() function can be used in both series and dataframe. 
+			It is used to apply a function along an axis of the Dataframe.		
+				def profit(s):
+						return 1.10*s
+					data['new_price']=data['price'].apply(profit)
+		sort_values
+			data.sort_values(by='new_price',ascending=False)
+			By default ascending is true
+					stock			date	price	new_price
+			1244	AAPL	18-01-2018	179.26	197.186
+			1243	AAPL	17-01-2018	179.10	197.010
+			1245	AAPL	19-01-2018	178.46	196.306
+			1241	AAPL	12-01-2018	177.09	194.799
+			1247	AAPL	23-01-2018	177.04	194.744
+		datetime
+			Convert date from string to pandas datetime format
+			Otherwise we cant perform date operations
+					data['date']=pd.to_datetime(data['date'],dayfirst=True)
+						stock	date	price	new_price
+					0	AAPL	2013-02-08	67.8542	74.63962
+					1	AAPL	2013-02-11	68.5614	75.41754
+					2	AAPL	2013-02-12	66.8428	73.52708			
+					1   date       5036 non-null   object 
+									to
+					1   date       5036 non-null   datetime64[ns] 
+			ns is number of seconds.. saves it as integer since january 1 000 at midnight
+			Saves it as number of seconds internally
+			Another way
+			date = datetime.date(2022, 1, 29)
+			print(date)
+				2022-01-29
+			Display date in different formats
+				 data['date'].dt.strftime('%m/%d/%Y')
+				 data['date'].dt.strftime('%m-%d-%Y')
+				 data['date'].dt.strftime('%m-%d-%y') -- small y 2 digits for the year
+			Extract year,month and day from datetime object
+				 data['year']=data['date'].dt.year 
+				 dt.month
+				 dt.day
+			Lets you compare date, date calculations 
+				data['date'][1]-data['date'][0]
+					Timedelta('3 days 00:00:00')
+				data['date'][1]>data['date'][0]
+					True
+Data Analysis with Pandas
+	user.head()
+	user.shape
+	user.info()--reflect on data type vs values seen in head
+	strings are reflected as object
+	genre_set=['Action','Adventure','Animation','Childrens','Comedy','Crime']  
+	Can use this extra array of column values for the data set 
+	movie['genre_set'].sum() --values 1 and 0	
+	movie.columns			
+
+
+
+Python Visualization
+
+	Seaborn
+		Seaborn is a Python data visualization library built on top of another Python visualization library, matplotlib. It provides a high-level interface for drawing attractive and informative plots
+		http://seaborn.pydata.org/examples/index.html
+	import matplotlib.pyplot as plt
+	import seaborn as sns
+	%matplotlib inline
+		Everytime I ask you to a make a plot, make it first and put it in the jupyter notebook otherwise you have to say plot show every single time
+	2 kinds of variables: numerical variables and categorical variables.. categorical variables can be used as hue or col (to come later)	
+	Histogram
+		Histograms can be used to examine the distribution of numeric variables.
+		Customize
+			plt.title("Histogram Price")
+			plt.xlim(3000,50000)
+			plt.ylim(0,70)
+			plt.xlabel('Price of cars')
+			plt.ylabel('Frequency')
+			sns.histplot(data=df, x='price',color='orange',bins=15);
+			binwidth=1000 instead of bins 2*IQR/root n
+			bins=(largest-smallesT/binwidth
+		kernel density estimation(KDE)-->estimates the probability density function of every possible X value and it makes a curve of that	
+			Visualizes the distribution of data over an interval with the help of continuous variable/continuos curve
+			KDE nice visualization of granularity
+				sns.histplot(data=df,x='price',kde=True)
+		Tallest cluster of bars is called mode
+		Histogram for categorical variables
+			use hue
+				sns.histplot(data=df,x='price',hue='body_style',kde=True)
+		Subplots (FacetGrid)
+			Histograms next to each other
+			g=sns.FacetGrid(df,col='body_style')
+			g.map(sns.histplot,"price")	
+	Boxplot(box and whisker plot)
+		Really gives us only a five number summary . Its a visual representation of the five number summary
+		outliers |-----[   |  ]-------| outliers
+		         min   q1  m  q3      max
+				 IQR=q3-q1
+				 <min=q1-1.5IQR (10%-90%) both ends so 80% within whiskers
+				 >max=q3+1.5IQR
+		box represents the interquartile range and line in the box represents median 		 
+			plt.title("Horsepower box plot")
+			plt.xlim(30,300)
+			plt.xlabel('Horsepower')
+			sns.axes_style('whitegrid')
+			sns.boxplot(data=df, x='horsepower',color='green');
+			showFliers=False, controls the representation of outliers on the box plot
+			#### Cuisine vs Food Preparation time
+				plt.figure(figsize=(20,7))
+				sns.boxplot(data=df,x='cuisine_type',y='food_preparation_time')
+				plt.show()
+		Skewness
+			Short whisker vs bigger whisker on right tells us data is right skewed (median is close to Q1)
+				whisker is the line in box plot from Q1 to q1-1.5IQR and Q3+1.5IQR
+			median close to Q3 is left skewed
+			Right skewed box plot has longer right whiskers and shorter left whiskers.
+			Left skewed box plot has longer left whiskers and shorter right whiskers.
+			if mean>median ..positive or right skewed distribution..(data leaks to the right)
+			if mean<median ..negative or left side distribution (data leaks to the left)
+			Right Skewed Distribution: Mode < Median < Mean
+			Left Skewed Distribution: Mean < Median < Mode
+			Hint: median will always be closest to mode
+		Comparing groups with boxplots
+			plt.title("Horsepower box plot")
+			plt.xlim(30,300)
+			plt.xlabel('Horsepower')
+			sns.axes_style('whitegrid')
+			sns.boxplot(data=df, x='body_style',y='price');	
+		BarGraph(CountPlot)
+			It can be used to see the number of values(count of observations) in each level/category of a categorical variable
+			sns.countplot(data=df,x='body_style',hue='fuel_type');
+			plt.figure(figsize=(20,7)) (Increase the size)
+			sns.countplot(data=df,x='make');
+			plt.xticks(rotation=90); (change the ticks on x axis to rotate it by 90)
+		LineChart(LinePlot)
+			Line chart is generally used to visualize information that changes over time
+			Line plot can be used to analyze trends and seasonality.
+			flights=sns.load_dataset('flights')
+				sns have some data pre loaded
+			flights.head()
+					year	month	passengers
+				0	1949	Jan	112
+				1	1949	Feb	118
+				2	1949	Mar	132
+				3	1949	Apr	129
+				4	1949	May	121
+			sns.lineplot(data =flights,x='month',y='passengers', hue='year')
+				blue line is average +95% Confidence interval
+			Change style of line -- different line styles for different regions
+				sns.lineplot(data =fmri,x='timepoint', y='signal', style='region', hue='region', ci=False)
+					markers= True -- for each individual dot
+			To change the location of the legend in the plot
+				sns.lineplot(data =flights,x='month',y='passengers', hue='year')
+				plt.legend(bbox_to_anchor=[1,1])
+		ScatterPlot
+			Helps to understand the relationship(co-relation) between 2 variables
+			sns.scatterplot(data=df, x='engine_size',y='horsepower', hue='fuel_type', style='fuel_type');
+		LinearModelplot(lmplot)
+			The lmplot creates a scatter plot and also fits a linear model with a confidence interval for the fitted model
+			Both the hue and col parameters of seaborn's lmplot function can be used for comparing data across different levels of a categorical variable.
+				sns.lmplot(data=df, x='engine_size',y='horsepower'); --shaded area is the confidence interval around it
+					add hue='fuel_type'
+					col='fuel_type' -- you get 2 different graphs side by side, as long as we have a separating variable, we can use the col as a separating variable
+		JointPlot
+			Combines scatter plot and histogram
+			sns.jointplot(data=df,x='engine_size',y='horsepower',kind='hex');
+				One of the drawbacks of scatter plot is overlapping of points. When we have large volumes of data to plot, the data points in plot overlap with each other
+				making it difficult to interpret te data.In such cases we divide entire plot into bins using different shapes (square, triangle, hexagon) and then try to see number of data points falling in each bin. With kind=hex we can get a sense of distribution density i.e it splits the plotting window into several hexagons and color of each
+				hexagon denotes number of data points inside it.
+			sns.jointplot(data=df,x='engine_size',y='horsepower',kind='kde',fill=True);	
+				Histograms with KDE's (univariate distribution).. and a 2d KDE(KDE of the joint distribution) which has different curves of darkness
+			sns.jointplot(data=df,x='engine_size',y='horsepower',kind='reg');
+				Using kind='reg', we can use the joint point to find the best line or curve that fits the plot
+				reg=regression
+			The kind attribute accepts the following keywords:
+				'kde' for kde plot
+				'scatter' for scatter plot
+				'hist' for hist plot
+				'reg' for regression plot
+				'hex' for hex plot		
+			'horsepower' has a left-skewed distribution or right?	.
+		ViolinPlot
+			Violin plots are used to visualize the distribution of numeric variables for several groups.
+			The thickness and tails of each group's density curve can be compared to see where groups are similar or different.
+			Boxplot+KDE estimate of histogram (combination of density plot and box plot)	
+			sns.violinplot(data=df,x='horsepower');
+			sns.violinplot(data=df,x='fuel_type',y='horsepower',orient='v');
+				2 violin plots
+			sns.violinplot(data=df,x='engine_size',y='fuel_type');
+			Palette paramater to change the palette
+				deep,muted,pastel,bright,dark,colorblind
+				sns.violinplot(data=df,y='body_style',x='engine_size',palette='bright');
+		StripPlot
+			it is basically a scatterPlot(like a scatterplot of just 1 variable) that differentiates different categories
+			sns.stripplot(data=df,x='horsepower');
+			sns.stripplot(data=df,x='body_style',y='engine_size');
+			Add jitter
+				Add a small amount of randomness noise so that the points with same values do not overlap (try to spread out the data points)
+				sns.stripplot(data=df,x='body_style',y='engine_size',jitter=True);
+			Add hue
+				sns.stripplot(data=df,x='body_style',y='engine_size',hue='number_of_doors',jitter=True);
+		Swarmplot
+			Very similar to strip plot but it avoids overlapping of points(and orders it?). It makes these horizontal bands
+			Seperation horizontally is ordered (unlike strip plot)
+			In a swarm plot, dots are arranged in vertical columns, we can estimate the distribution of the data by looking at the width of the plot.
+			sns.swarmplot(data=df,x='number_of_doors', y='price');
+			Add hue 
+				sns.swarmplot(data=df,x='fuel_type', y='price',hue='number_of_doors');
+			Dodge is True
+				Avoid overlapping of the categorical data
+				sns.swarmplot(data=df,x='fuel_type', y='price',hue='number_of_doors',dodge=True);
+				Split the seperation provided by hue using dodge = true, it will place the categories side by side instead of overlapping
+		Categorical Plot (catplot)
+			Catplot can handle 8 different plots currently available in Seaborn.
+			It can plot the following plots:
+			Categorical scatterplots:
+				stripplot() (with kind="strip"; the default)
+				swarmplot() (with kind="swarm")
+			Categorical distribution plots:
+				boxplot() (with kind="box")
+				violinplot() (with kind="violin")
+				boxenplot() (with kind="boxen")
+			Categorical estimate plots:
+				pointplot() (with kind="point")
+				barplot() (with kind="bar")
+				countplot() (with kind="count")
+				10395171
+			Default catplot is just the stripplot
+				sns.catplot(data=df,x='fuel_type',y='horsepower');
+			3 categorical variables+ 1 numerical variable
+				Pointplot
+					sns.catplot(data=df,x='body_style',y='horsepower',hue='fuel_type',kind='point');
+					dot on the mean and the bars are 95% confidence intervals
+					Then there is a line connecting the dot between the averages
+				kind=bar	
+					sns.catplot(data=df,x='fuel_type',y='horsepower',hue='number_of_doors',col='drive_wheels',kind='bar');
+					vertical line connecting from zero to the average with confidence interval inside bars 
+				kind=box
+					sns.catplot(data=df,x='fuel_type',y='horsepower',hue='body_style',col='number_of_doors',kind='box');
+				kind=swarm
+					sns.catplot(data=df,x='number_of_doors',y='price',hue='body_style',col='fuel_type',kind='swarm',palette='muted');
+		PairPlot
+			Multiple numerical values
+			A pairplot shows the relationship between 2 numerical variables for each pairs of column in the dataset
+				sns.pairplot(data=df[['normalized_losses','wheel_base','curb_weight','engine_size','price','peak_rpm']]);
+					Histograms across diagonal
+					Each binary relationship is represented twice with axes flipped. so just count above the diagonal
+			Add another category with hue 
+				sns.pairplot(data=df,vars=['wheel_base','curb_weight','engine_size','price'],hue='number_of_doors');
+					Diagonals has KDE 	
+			corner=True		
+				sns.pairplot(data=df,vars=['wheel_base','curb_weight','engine_size','price'],corner=True);
+					Just do things below the diagonal, have the lower triangle...to avoid clutter
+		Heatmap
+			Graph of correlation
+			Can only put int,float values//?
+			It is a great way of representing correlation for each pair of columns in the data
+				sns.heatmap(data=df[['wheel_base','curb_weight','engine_size','price']].corr());
+			annot=True,cbar=False
+				sns.heatmap(data=df[['wheel_base','curb_weight','engine_size','price']].corr(),annot=True,cbar=False);
+			cmap='YlGnBu'
+			cmap=Spectral	
+				Different color schemes
+		2 plots in one cell
+			sns.histplot(data=df,x='food_preparation_time')
+			plt.show()
+			sns.boxplot(data=df,x='food_preparation_time')
+			plt.show() 
+		Plotly
+			Plot-ly -->It makes interactive graphs		
+			import plotly.express as px
+			Histogram
+				his=px.histogram(df,x='price')
+				his.show()
+			Bar Chart	
+				bar=px.bar(df,x='peak_rpm',y='horsepower')
+				bar.show()
+			Box plot
+				Strip plot on left and box plot on right
+				box=px.box(df,x='fuel_type',y='horsepower',points='all')
+				box.show()
+			3d scatter plot
+				fig_3d=px.scatter_3d(df,x='fuel_type',y='horsepower',z='price',color='horsepower')
+				fig_3d.show()
+			Save the plot to an html file	
+				fig_3d.write_html('scatter_3d.html')
+		Customizing Plots		
+			plt.axis('off')
+			sns.set(style='darkgrid')	
+			sns.set(style='whitegrid')
+			sns.set(style='shite')
+			ax.legend([]) --To customize labels of the plot legend
+			plt.legend(loc=)
+			The following values can be added to loc to change the location of the legend:
+				'upper left', 'upper right', 'lower left', 'lower right', 'center', 'best', etc.
+
+Exploratory Data Analysis
+	Lets dive into a dataset and see whats going on with the dataset.. understand everything I can
+	Sanity Checks
+		Building area-->inf, missing.. before we can convert into number... thats why it shows as a string
+			Change these values to NaN
+				housing['BuildingArea'].apply(type).value_counts()
+					<class 'float'>    16571
+					<class 'str'>      10543
+					Name: BuildingArea, dtype: int64
+				The default numerical value for a missing value is NaN (Not a number)	
+				housing['BuildingArea']=housing['BuildingArea'].replace(['inf','missing'],np.nan)
+				housing['BuildingArea']=housing['BuildingArea'].astype(float)	
+				Direct conversion while panda read (need to know what na values are.. prior to importing the dataset) 
+					housing=pd.read_csv("Melbourne_Housing.csv",na_values=['missing','inf'])
+					Now
+					housing['BuildingArea'].dtype
+					--dtype('float64')
+		Null values
+			housing.isnull().sum()
+		Duplicated values
+			housing.duplicated().sum()
+			Drop duplicates			
+				housing.drop_duplicates(inplace=True)	
+				housing.reset_index(drop=True,inplace=True)	
+		The nunique() function of the Pandas library can calculate the total number of unique values of all the columns, whereas the unique() function of Pandas library can list down all the unique values of a particular column.
+			housing['Postcode'].nunique()		
+		Univariate analysis
+		Look at Individual columns
+	Bivariate Analysis
+		Look at Relationship between 2 columns/attributes
+		pd.cut
+			Can be used to convert a  numerical variable to a categorical variable
+			housing['Distance_bins']=pd.cut(housing['Distance'],bins=[0,15,30,50],labels=['Nearby','Moderately Close','Far'], right=False)
+		Relative plot(relplot)
+			lets you create multiple plots on a single axis(scatter or line)	
+			sns.relplot(data=housing,x='AgeOfProp',y='Price',col='Regionname',kind='line',ci=None,col_wrap=4);
+	Missing Value Treatment
+		Leaving the missing value as it is.
+		Dropping the missing values from the data frame.	
+		Imputation?
+			Imputing the columns with mean, median, or mode values depending on the data.
+				Median
+					When data is heavily skewed the missing values can be treated by imputing median. The median is usually preferred in these situations because the value of the mean can be distorted by the outliers. If the outliers do not significantly distort the mean, using the mean as the measure of central tendency will usually be preferred.
+				Mode
+					When missing data is of type categorical, we will not have mean and median in those cases. So the missing values, in this case, will be replaced with the category that has the maximum occurrence in the column(which is the mode of the column). 	
+			Following are the limitations of imputing missing values with central tendencies
+				When we impute the missing values with central tendencies the original distribution of the feature can get distorted.
+				After imputation with the central value, the variance and standard deviation of a feature can get drastically impacted.
+				The impact of distortion is higher with a higher percentage of missing values.	
+			data['column'].fillna(value = x)	
+				The code will replace the NaN values, present in the specified column with the value x
+				The transform function present in Pandas library works on each value of a dataframe and allows to execute a specified function on each value
+				housing['Bedroom']=housing['Bedroom'].fillna(value=housing.groupby(['Regionname','Type'])['Bedroom'].transform('mean'))		
+		Cheats
+			# dropping a column with too many missing values
+				df.drop(columns=["Column With many Missing values"], inplace=True)
+			# Replace missing values by 5.0
+				df["Column name"] = df["Column name"].fillna(5.0)
+			# Replace missing values by the median
+				df["Column name"] = df["Column name"].transform(lambda x: x.fillna(x.median()))
+			# Replace missing values by the average
+				df["Column name"] = df["Column name"].transform(lambda x: x.fillna(x.mean()))
+
+	Outlier Detection and Treatment
+		Replacement will null values
+		Replace with upper whisker value or lower whisker value
+		Drop these observations
+		quantile(0.25),quantile(0.75)
+			Returns the 25th and the 75th percentile
+		IQR=Q3-Q1
+		lower_whisker=Q1-1.5IQR
+		np.clip(housing['col'],lower_whisker,higher_whisker)
+		
+		
+		
+		###
+		Box plot categorical vs numerical?
+		###
+		unfiform vs normal distribution?
+		confidence interval bars
+		.apply will apply to every data point in df
+		
+	Inferential Statistics
+		General probability
+			Outcome of an experiment- event
+			Set of all outcomes of an experiment->Sample space
+			Mutually exclusive events
+			Independent events
+			Mutually exclusive events are not independent 
+			P(AUB)=P(A)+P(B)-P(A intersection B) {0 for mutually exclusive events}
+			Probability that a selected card is a King or a Diamond
+			P(A intersection B) = P(A) * P(B) for independent events
+			P(A intersection B)= P(A) * P(B/A) .. probability of B given A
+
+		Inferential Statistics 
+			Helps to draw the conclusion from data which can be turned into business values.
+			It enables us to draw the conclusion about the population using the sample
+		Descriptive Statistics:
+			It lets us describe and summarize the data
+			It deals with the sample set
+		Descriptive statistics help in describing the data. Whereas, Inferential Statistics helps us to draw conclusions about a population by analyzing a representative sample from the population.
+		Discrete Random Variable
+			The number of customers visiting a shop daily is a discrete random variable as it can take countable discrete values like 1, 4, 10, 50, etc.
+		Continuous Random Variable
+			While, the height of an individual, time-taken to complete a quiz, and amount of water in a jug can take continuous decimal values, and hence are continuous random variables
+		A probability distribution 
+			It consists of all the possible outcomes of a trial and their corresponding probabilities of occurrences. In a continuous probability distribution, the random variable can take any continuous value between the provided range. The distribution plot of a continuous random variable consists of the density plot where the area under a section of the graph denotes the probability of a value occurring within that section. The function used to plot the distribution is called the probability density function.	
+		Types of probability distributions
+			Bernoulli Distribution: 
+				It has only 2 possible outcomes, namely success and failure of 1 single trial
+		Binomial Distribution : 
+			An example of discrete distribution is Binomial Distribution.
+			Sum of bernoulli random variables.. it constitutes many bernoulli trials..every observation represents one of 2 outcomes
+			Number of trials is fixed
+			Each trial is independent of other trials
+			Probability of success is the same for each trial
+			There are only 2 possible outcomes of each trial
+			The random variable X is concerned about the outcome of one trial (only one student). Hence, X is Bernoulli.
+			The random variable X1 is concerned about the outcome of the sum of n trials where n is 10 randomly selected students. Hence, X1 is Binomial.
+			Suppose X is a discrete random variable that follows a certain distribution, for example, Binomial Distribution. Then, the probability that X takes the value k, that is P(X=k) is an absolute probability, while the probability that X takes any value less than or equal to k, that is P(X<=k) is a cumulative probability. 
+			PMF function calculates the absolute probabilities while the CDF function calculates the cumulative probabilities
+			scipy kit
+				from scipy.stats import binom
+				binom.pmf(k = 7,n = 10, p = 0.6)
+				n= sample sizes, k is what we are looking for, p is probability of each success
+				Probability that there are k successes
+				from scipy.stats import binom
+				binom.cdf(k = 7,n = 10, p = 0.6)
+				Probability that there are at the most k successes (less than <=k successes)
+		Uniform Distribution : 
+			Number of microwave ovens sold daily at a consumer goods store
+		Normal Distribution(cdf and ppf)
+			Most commonly used continuous distribution
+			It is characterized by symmetric bell shaped curve
+			They are commonly found everywhere from nature to industry
+			Around
+				68% of data falls within one standard deviation
+				95% of data falls within two standard deviation
+				99.7% of data falls within three standard deviations
+	    Standard normal distribution 
+			It is obtained by standardizing a normal distribution. Suppose X follows a normal distribution with mean μ and standard deviation σ, then Z = (X-μ)/σ is a transformation that standardizes the normal distribution and is called a standard normal distribution. The mean and variance of the standard normal distribution are always 0 and 1 respectively.
+			Probability Distribution Function
+				The pdf function is similar to the pmf function except for the fact that it is used for continuous distributions.If X is a continuous random variable, we calculate the probability that X takes the value x, P(X=x) using the pdf function.
+			Percent Point Function
+				The ppf function is an inverse form of the cdf function. Suppose P(X<=x) = alpha, where we are provided the alpha (probability) value, then we can calculate the value of x using the ppf function. This is the Percent Point Function and is applicable in both discrete and continuous cases.
+				For example, if the percentage p is equal to 0.92, you will get the point below which 92% of data falls. This also means that 8% of data falls above that point.
+					Percentile 
+					Calculate the minimum marks a student must score in order to secure 95th percentile in SAT 2020
+						from scipy.stats import norm
+						norm.ppf(0.95,1007.46, 204.43)
+			Cumulative distribution function		
+				Probability that the score is greater than 750
+					from scipy.stats import norm
+					1-norm.cdf(x = 750, loc = 1007.46, scale = 204.43)
+					When we evaluate the probability to the right of a binomial distribution using 1-binom.cdf(), we subtract 1 from the k. But, in a normal distribution, we do not subtract 1 from x while we calculate the probability to the right of the distribution using 1-norm.cdf(). Why there is such a difference?
+						This is due to the fact that binomial distribution is a discrete distribution; whereas normal distribution is a continuous one. The cdf() function behaves differently for a continuous distribution and a discrete distribution. In the case of a continuous distribution, the cdf is a strictly monotonic increasing continuous function; whereas the cdf of a discrete distribution is a step function.
+							What is the probability that three or more of the LED bulbs are defective?**
+								We need to subtract the cumulative probability of up to 2 defective LED bulbs from 1.
+									1-binom.cdf(k = 2,n = 10, p = 0.05)
+			Percentage of data between 2 points	
+				import scipy.stats as stats
+				stats.norm.cdf(67000,loc=55000,scale=6200)- stats.norm.cdf(59000,loc=55000,scale=6200)
+		Z score
+			How many standard deviations above or below the mean that the data point falls
+			The z-score is very useful as it enables us to compare two scores coming from two different normal populations. The two scores might be on two different scales however we can compare them using the z-score.
+			Real-life application – Suppose you have appeared for two different competitive exams having different scoring systems. How will you compare your scores’ in two exams
+	at the most
+		is on left
+	at least
+	
+	Estimation and Hypothesis Testing
+		Why do we need sampling?
+			In most practical scenarios, we cannot have access to the entire population, so sampling helps us to draw conclusions about a population. It saves time, reduces the cost 
+			of the experiment
+		According to the theory of sampling distribution, suppose we are drawing samples of size  n from a population with mean mu and standard deviation sigma and let X be the random variable representing the sample mean. Then, the distribution of X bar is called the sampling distribution and it follows a normal distribution where:
+			The mean of X bar is mu
+			The standard deviation of X bar is equal to sigma/sqrt{n}.. Also called standard error
+		Parameter/Statistic
+			A parameter is an aggregate measure about a population, while a statistic is an aggregate measure calculated from a sample drawn from the population. 
+		Central limit theorem
+			No matter what the shape of population distribution is the sample distribution of sample means will approach normal distribution as sample size gets bigger
+			 (discrete or continuous) 
+			Averaging something makes it more normally distribution irrespective of the shape of the original distribution
+		Confidence interval
+			A point estimate varies from sample to sample. Therefore, it is not a good and reliable method of estimating population parameters.
+			Hence we use confidence intervals for mu to account for uncertainty due to sampling
+			A point estimate is a single value estimate of a parameter. For instance, a sample mean is a point estimate of a population mean. An interval estimate gives you a range of values where the parameter is expected to lie. A confidence interval is the most common type of interval estimate.
+			Point Estimation is a single point estimate of the population parameter. Interval Estimation is a range of values within which the population parameter is expected to lie with a certain level of confidence (x%)
+		Normal, interval t	
+			The distribution that will be used for the calculation of confidence interval depends on whether the population standard deviation is known or unknown. When the population standard deviation is known, the normal distribution is used. On the other hand, when the population standard deviation is unknown, we estimate it using the sample standard deviation and calculate the confidence interval using the t-distribution.
+		Hypothesis Testing	
+			Is this true or not? Does it work or not etc
+			The objective of the hypothesis testing procedure is to SET a value for the parameter(s) and perform a statistical TEST to see whether that value is tenable in the light of the evidence gathered from the sample or the test statistic calculated from the sample.
+			As the parameter is a summary measure about the population, hypothesis testing helps us to infer about the characteristics of a population.
+		Null Hypothesis has equality sign(H0)
+			The null hypothesis is the presumed current state of the matter. It is assumed to be true while we perform a hypothesis test, where we try to find evidence against the null hypothesis.
+		Alternative hypothesis doesnt contain equality
+			An alternative hypothesis is a claim that is against the null hypothesis. It is the research hypothesis that we want to test.
+			For example, in a hypothesis test concerning the delivery time of an online food delivery service, the null hypothesis can be written as:
+				The mean delivery time of the online food delivery service is 30 minutes.
+				For the above null hypothesis, the possible alternative hypotheses are:
+				The mean delivery time of the online food delivery service is not equal to 30 minutes.
+				The mean delivery time of the online food delivery service is greater than 30 minutes.
+				The mean delivery time of the online food delivery service is less than 30 minutes.
+				The alternative hypothesis decides the type of test (one-tailed or two-tailed) based on whether it is a two-tailed hypothesis or a one-tailed (a greater than type or a less than type).
+			Reject the null hypotheses if its  true (type 1 error) Prob - alpha Fixed before the hypothesis test
+				It is basically a small chance that our test result is by chance. 5% and 1% are standard values of alpha taken for most practical problems
+				 For example, a significance level of 0.05 indicates a 5% risk of concluding that a significant difference exists when there is no actual difference. The level of significance is pre-decided before conducting a test.
+				 The : (100 - alpha) confidence interval contains all values of the population parameter for which the null hypothesis will not be rejected.
+				 
+			Fail to reject the null hypotheses when its is false.. (type 2 error ) Beta 	
+			The power of a test is calculated as 1-beta . In simple words, power of a test is the probability of not making a Type II error.	
+		Hypothesting testing template
+			Identify the key statement
+			Establish the hypothesis
+			Understand and prepare the data
+			Identify the right test
+			Check assumptions
+		What are the steps of conducting a hypothesis test?
+			The following are the steps of conducting a hypothesis test
+			Formulate the null and the alternative hypotheses appropriately for the problem in question. 
+			Based on the nature of the data under the hypothesis, select the appropriate test.
+			Decide the significance level prior to conducting the test.
+			Collect the appropriate data for the test.
+			Calculate the p-value by conducting the test.
+			Compare the p-value with alpha and make a conclusion based on the p-value 	
+			Perform the test and get a conclusion
+				Null hypothese U=5
+				Alternate u>5
+			p-value 
+				The p-value is a measure of the probability that an observed difference could have occurred just by random chance. The lower the p-value, the greater the statistical significance of the observed difference.
+				Assuming the null hypothesis to be true, the p-value is the probability of observing the test statistic or more extreme results from the sample data. 
+					from scipy.stats import norm
+					# provided value of the test statistic is +2.00
+					z_stat = 2
+					# calculating the p-value for a one-tailed test
+					p_val = 1 - stats.norm.cdf(2)
+					# calculating the p-value for a two-tailed test
+					print(p_val*2)
+			one-sample z-test
+				For comparing a sample mean bar{x} with a hypothesized population mean mu where the sample size is n and the population standard deviation is known to be sigma, the one-sample z-test is used. The test-statistic follows a standard normal distribution (mean =0, standard deviation =1)
+				Formula bar (x- mu)/sqrt(sigma)
+				The z-test for one mean is a test to compare the sample mean with a population mean. The following are assumptions for a z-test:
+					The collected data is continuous
+					The population is normally distributed or the sample size is greater than 30
+					The population standard deviation is known
+					The collected data is a random sample from the population
+				The values used in the above formula do not change when we switch from a two-tailed to a one-tailed test. Hence, the test statistic also does not change. However, the critical values(s)/p-value associated with the test do change.
+				In a two-tailed test, the level of significance is equally allocated to both sides of the distribution of the test statistic.
+				In a two-tailed hypothesis test, the rejection region lies on both sides of the distribution of the test statistic.	
+			Confidence interval and hypothesis testing
+				The confidence interval contains all values of mu 0 for which the null hypotheses wont be rejected (in a 2 sided sense)
+				For a two-tailed test, the level of significance is equally allocated to both sides of the distribution of the test statistic.
+			Which Python function is used to compute a confidence interval for the population mean? 
+				Calculate a sampling distribution using one sample when standared deviation of population is given
+				import numpy as np
+				from scipy.stats import norm
+				np.round(norm.interval(0.95, loc = 500, scale = 25/np.sqrt(100)), 2)	
+				interval given
+				t distribution
+					Now, for the same example as above, consider that the population standard deviation is not known to us. In that case, the 95% confidence interval for the population mean can be calculated by using the interval() function of the t class of scipy.stats as shown below:
+						import numpy as np
+						from scipy.stats import t
+						np.round(t.interval(0.95, df = 100-1, loc = 500, scale = 25/np.sqrt(100)), 2)
+						where the df argument denotes the degrees of freedom of the t-distribution. It is calculated as (n-1), n being the sample size.	
+						s is estimate from the sample and corrected from it
+					p value is less than alpha.. null hypothesis can be rejected	
+			left tail test==> area to left of z test statistic (test statistic represents your sample data, to the left of it are data points that are more extreme than the ones in your dataset) is Probability of getting a sample more extreme than the n\ones in your data and it is called p value
+			right tail test: area to the right of z test statistic is the p value..likelihood of getting data points(mean points) more extreme than the z statistic which is 
+				standard of the set
+			value of z is representative of data set 
+			in left tail test from z value you can get norm.cdf directly since its area to the left
+			for right tail test p value is p> lets say 2.8 but norm gives values to left so you can get prob of p<-2.8
+			for left tail test.. rejection region is to left of level of significance value...if z statistic falls in this region.. p value would be value that datapoints lie to left of z statistic and that would be less than level of significance value.. which means reject the null hypotheses
+			for right tail test, rejection is to the right of alpha level of significance, so if the z statistic falls to the right of level of signifincance, p value
+			is probability of data points to the right of z statistic and it will be less than the level of significance...so reject the null hypotheses
+			in otherwords for both left tail and right tail test p<=alpha then reject the null hypotheses else if p>alpha then fail to reject the null hypotheses\
+			Advantages of z statistic,, you can get level of condifence directly to reject the null hypotheses
+				1-pvalue

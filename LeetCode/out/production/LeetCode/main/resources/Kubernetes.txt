@@ -1,0 +1,79 @@
+Kubernetes is called K8s
+Container orchestration technology
+Built by Google
+
+Container and Orchestration
+ 7) Containers overview
+    --Have to check compatibility of various components and underlying infrastructure(OS)
+    Eg NodeJS web server, Mongo DB for database , Kafka/Redis for messaging
+    --Long setup time for developer to set technologies
+    --Different test/dev/prod environments ..depending on the person creating it has preference for different OS
+
+With docker, each component runs on its own containers with own libraries/dependencies
+all on same VM/OS but with separate containers
+Build docker configuration once and all developers could get started with a single docker run command
+irrespective of underlying OS just make sure you have docker installed
+
+--Containers--> completely isolated environments (their own processes/services/mounts,n/w interface)
+they share the same OS kernel
+
+Ubuntu,Fedora
+Common linux kernel but different software that differentiates OS from each other
+Docker can run these special software..you can run debian container on a machine with Ubuntu OS
+But windows based container cannot run on docker host with Linux OS..for that you need docker on a windows server
+Unlike hypervisors containers is not supposed to host different kernels
+The main purpose of docker is to containerize applications and to ship them and run them
+
+Container vs VM
+HardWare Infra->OS->Docker->Container(application,libs,dependencies)->Container(application,libs,dependencies)
+
+Hardware Infra->OS->Hypervisor->VM(application,libs,dependencies,OS)->VM(application,libs,dependencies,OS)
+More utilization of resources, disk space(heavy)(GB in size_ while docker containers are MB in size)
+Containers boot up faster than OS
+Docker has less isolation as more resources are shared between containers like the kernel while VM
+have complete isolation from each other
+Windows, linux can be present in same hypervisor but not on docker host
+
+Lot of containerized version of applications available today..public docker register
+docker hub or docker store(you can find images of most common OS,databases and other services and tools)
+Bringing up an application is using docker run command with the name of the image
+A docker run ansible command would run an instance of ansible on docker host
+
+An image is a package or a template ..used to create one or more containers
+containers are running instance of images that have their own environments and set of processes
+Docker file has info on how to set up the environment(infrastructure) and it is part of the image
+This image will run on any container platform and guaranteed to run the same way when deployed in prod
+
+8) Container Orchestration
+--Our application is packaged in a docker container (docker host)
+--How do you run it--what if your container application depends on other containers such as database services
+or messaging services? what if you need to scale up/down your application
+--Need an underlying platform with a set of resources
+Whole process of automatically deploying and managing containers is called container orchestration
+(DockerSwarm, Mesos, Kubernetes)
+Kubernetes--bit difficult to setup but configurable and supports complicated architecture
+available in GCP, Azure, AWS
+Advantages of container orch
+--High availability--hardware failure ..multiple instances run on different nodes
+--load balance when demand increases deploy more containers//scale up without taking down the application
+Do all this easily with a set of declarative object configuration files
+
+9)Kubernetes architecture
+A node is a machine, physical or virtual on which Kubernetes is installed
+It is a worker machine from which containers will be launched.. It is also known as minions in the past
+What if the node on which your application is failed, then applicatio goes down
+so cluster ..group of nodes.. so application is still operational (also load balancing)
+Master is another node with kubernetes.. (configured master) overlooks other nodes
+Managing the cluster, when a node fails how do you move the workload of a failed node to another worker node
+and responsible for container orchestration of containers on worker nodes
+Installation of Kubernetes
+API server->frontend for kubernetes service (users, cli, management devices talk to api server to interact with kubernetes cluster
+etcd key store-->distributed reliable key value store for storing configuration data in a distributed manner
+all nodes in cluster.. also implementing locks
+scheduler-->distributing containers across multiple nodes... as soon as container is created it is assigned a node
+Controllers-->brain behind orchestration..noticing and responding..when node/containers/endpoints go down
+container run time is the software for running containers
+Kubelet->Agent runs on each node in cluster, make sure containers are running on node as expected
+
+
+

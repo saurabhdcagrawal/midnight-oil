@@ -942,7 +942,7 @@ public class DPAndRecursion {
         System.out.println(getPermutationsRepeatedCharacters("abca"));
         System.out.println(minCostClimbingStairs(new int[]{}));
 
-        System.out.println("Hello\sWorld");
+        System.out.println("Hello World");
         String s="example  good a";
 
         //Escape here in regex

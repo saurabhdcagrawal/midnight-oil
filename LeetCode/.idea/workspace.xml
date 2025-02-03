@@ -1,10 +1,105 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="ChangeListManager">
-    <list default="true" id="affaaf4a-5945-4176-95d8-53d94e06167a" name="Default" comment="" />
-    <ignored path="$PROJECT_DIR$/out/" />
-    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
-    <option name="TRACKING_ENABLED" value="true" />
+    <list default="true" id="affaaf4a-5945-4176-95d8-53d94e06167a" name="Default" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/twentyfive/DDIA.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/twentyfive/SolutionDuplicate2.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/twentyfive/SolutionMostCommonWord.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/twentyfive/SolutionStockProblems.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/twentyfive/SolutionWordPattern.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/twentyfive/progress" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppFive.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppFive.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppFour.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppFour.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppOne$1.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppOne$1.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppOne.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppOne.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppSeven$1.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppSeven$1.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppSeven$2.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppSeven$2.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppSeven.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppSeven.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppSix.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppSix.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppThree$1.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppThree$1.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppThree$2.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppThree$2.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppThree.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppThree.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppTwo.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/AppTwo.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/Processor.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/Processor.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/ProcessorApp.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/ProcessorApp.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/ProcessorAppSix.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/ProcessorAppSix.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/Runner.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/Runner.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/RunnerNew.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/RunnerNew.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/Worker$1.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/Worker$2.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/Threads/Worker.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/beans/Country.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/beans/Country.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/company/MainFunc.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/company/PracticalArrayProblems$1.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/company/PracticalArrayProblems$Interval.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/company/PracticalArrayProblems$IntervalComparator.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/company/PracticalArrayProblems$Solution.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/company/PracticalArrayProblems.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/company/SimpleProblems.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/ArrayProblems.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/ArrayProblems.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/BST$Node.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/BST.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/BTreeNode$DiameterBTree.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/BTreeNode.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/BTreeNode.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/DLLNode.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/DPAndRecursion.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/DPAndRecursion.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/DataStructures.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/Graph.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/Graph.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/Hash$LinkedListNode.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/Hash.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/Heap.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/Heap.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/LLNode.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/LRU.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/MatrixProblems.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/MatrixProblems.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/MinNode.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/MinNode.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/Node.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/Node.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/QueueUsingNode.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/QueueUsingNode.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/QueueUsingStack.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/QueueUsingStack.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/Solution.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/Solution.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/SolutionDiameter$SolutionisBST.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/SolutionDiameter.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/SolutionDiameter.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/SolutionMaxArea.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/Stack.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/Stack.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/StackMinOperationUsingMinNode.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/StackMinOperationUsingMinNode.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/StackMinOperationUsingMinStack.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/StackMinOperationUsingMinStack.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/StackProblems.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/StackProblems.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/StackUsingNode.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/StackUsingNode.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/assist/Result.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/datastructures/assist/Result.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/Chain.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/Chain.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/NegativeProcessor.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/NegativeProcessor.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/Number.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/Number.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/ObserverDesignPattern.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/ObserverDesignPattern.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/PositiveProcessor.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/PositiveProcessor.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/PrototypeDesignPattern.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/PrototypeDesignPattern.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/TestChain.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/TestChain.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/ZeroProcessor.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/designPatterns/ZeroProcessor.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/learningJava/EmpAgeComparator.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/learningJava/EmpAgeComparator.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/learningJava/EmpComparator.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/learningJava/EmpComparator.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/learningJava/EmpSalaryComparator.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/learningJava/EmpSalaryComparator.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/learningJava/Employee.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/learningJava/Employee.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/learningJava/EqualsHashcode.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/learningJava/EqualsHashcode.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/learningJava/JavaFun.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/learningJava/JavaFun.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/string/AnagramComparator.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/string/StringProbs.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/thread/ThreadFun.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/thread/ThreadFun.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/thread/Threadable.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/util/GeneralUtility.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/util/GeneralUtility.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/java/util/Utility.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/java/util/Utility.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/resources/Cloneable_serialization.txt" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/resources/Cloneable_serialization.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/resources/Collections.txt" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/resources/Collections.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/resources/abc.txt" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/resources/abc.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/LeetCode/main/resources/polymorphism fun.txt" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/LeetCode/main/resources/polymorphism fun.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/datastructures/AnagramPalindromeProblems.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/datastructures/AnagramPalindromeProblems.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/datastructures/DPAndRecursion.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/datastructures/DPAndRecursion.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/datastructures/StringProbs.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/datastructures/StringProbs.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/systemdesign/Kafka.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/systemdesign/Kafka.txt" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -200,6 +295,9 @@
       <dir />
     </dirStrings>
   </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
@@ -257,12 +355,21 @@
       </list>
     </option>
   </component>
+  <component name="InvalidFacetManager">
+    <ignored-facets>
+      <facet id="LeetCode/invalid/IvyIDEA" />
+    </ignored-facets>
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 4
+}</component>
   <component name="ProjectFrameBounds" extendedState="6">
     <option name="x" value="-12" />
     <option name="y" value="-12" />
     <option name="width" value="1224" />
     <option name="height" value="972" />
   </component>
+  <component name="ProjectId" id="2sKkpYjwXbYvM3wZGqhQmQBAGlZ" />
   <component name="ProjectView">
     <navigator proportions="" version="1">
       <foldersAlwaysOnTop value="true" />
@@ -316,17 +423,27 @@
       <pane id="Scope" />
     </panes>
   </component>
-  <component name="PropertiesComponent">
-    <property name="Downloaded.Files.Path.Enabled" value="false" />
-    <property name="Repository.Attach.JavaDocs" value="false" />
-    <property name="Repository.Attach.Sources" value="false" />
-    <property name="SearchEverywhereHistoryKey" value="&#9;FILE&#9;file://C:/Users/Saurabh Agrawal/IdeaProjects/LeetCode/src/main/resources/Cloneable_serialization.txt" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/build/build.xml" />
-    <property name="project.structure.last.edited" value="Modules" />
-    <property name="project.structure.proportion" value="0.15" />
-    <property name="project.structure.side.proportion" value="0.2" />
-    <property name="settings.editor.selected.configurable" value="template.copyright.formatting" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
   </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Application.AppSeven.executor&quot;: &quot;Run&quot;,
+    &quot;Application.SolutionMostCommonWord.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/saura/repo/midnight-oil/LeetCode&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;Debugger_Data_Views_Java&quot;
+  }
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\Saurabh Agrawal\IdeaProjects\LeetCode\src\main\resources" />
@@ -340,19 +457,7 @@
       <recent name="C:\Users\Saurabh Agrawal\IdeaProjects\LeetCode\resources" />
     </key>
   </component>
-  <component name="RunDashboard">
-    <option name="ruleStates">
-      <list>
-        <RuleState>
-          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
-        </RuleState>
-        <RuleState>
-          <option name="name" value="StatusDashboardGroupingRule" />
-        </RuleState>
-      </list>
-    </option>
-  </component>
-  <component name="RunManager" selected="Application.AppSeven">
+  <component name="RunManager" selected="Application.SolutionMostCommonWord">
     <configuration name="AppFive" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="main.Threads.AppFive" />
       <module name="LeetCode" />
@@ -362,6 +467,9 @@
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
     </configuration>
     <configuration name="AppFour" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="main.Threads.AppFour" />
@@ -372,6 +480,9 @@
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
     </configuration>
     <configuration name="AppSeven" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="main.Threads.AppSeven" />
@@ -382,6 +493,9 @@
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
     </configuration>
     <configuration name="AppSix" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="main.Threads.AppSix" />
@@ -392,19 +506,25 @@
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
     </configuration>
-    <configuration name="AppThree" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
-      <option name="MAIN_CLASS_NAME" value="main.Threads.AppThree" />
+    <configuration name="SolutionMostCommonWord" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="main.java.twentyfive.SolutionMostCommonWord" />
       <module name="LeetCode" />
       <extension name="coverage">
         <pattern>
-          <option name="PATTERN" value="main.Threads.*" />
+          <option name="PATTERN" value="main.java.twentyfive.*" />
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
     </configuration>
     <list>
-      <item itemvalue="Application.AppThree" />
+      <item itemvalue="Application.SolutionMostCommonWord" />
       <item itemvalue="Application.AppFour" />
       <item itemvalue="Application.AppFive" />
       <item itemvalue="Application.AppSix" />
@@ -412,14 +532,15 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Application.SolutionMostCommonWord" />
         <item itemvalue="Application.AppSeven" />
         <item itemvalue="Application.AppSix" />
         <item itemvalue="Application.AppFive" />
         <item itemvalue="Application.AppFour" />
-        <item itemvalue="Application.AppThree" />
       </list>
     </recent_temporary>
   </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="SvnConfiguration">
     <configuration />
   </component>
@@ -467,363 +588,302 @@
       <window_info anchor="bottom" id="Find" order="1" weight="0.32993197" />
     </layout>
   </component>
-  <component name="VcsContentAnnotationSettings">
-    <option name="myLimit" value="2678400000" />
-  </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>2</line>
-          <properties />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>243</line>
-          <properties />
           <option name="timeStamp" value="32" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>244</line>
-          <properties />
           <option name="timeStamp" value="33" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>246</line>
-          <properties />
           <option name="timeStamp" value="34" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>247</line>
-          <properties />
           <option name="timeStamp" value="35" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>245</line>
-          <properties />
           <option name="timeStamp" value="36" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>250</line>
-          <properties />
           <option name="timeStamp" value="37" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>251</line>
-          <properties />
           <option name="timeStamp" value="38" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>254</line>
-          <properties />
           <option name="timeStamp" value="39" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>264</line>
-          <properties />
           <option name="timeStamp" value="41" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>263</line>
-          <properties />
           <option name="timeStamp" value="42" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>44</line>
-          <properties />
           <option name="timeStamp" value="44" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>45</line>
-          <properties />
           <option name="timeStamp" value="47" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>17</line>
-          <properties />
           <option name="timeStamp" value="57" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>18</line>
-          <properties />
           <option name="timeStamp" value="58" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>19</line>
-          <properties />
           <option name="timeStamp" value="59" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>166</line>
-          <properties />
           <option name="timeStamp" value="64" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>167</line>
-          <properties />
           <option name="timeStamp" value="65" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>168</line>
-          <properties />
           <option name="timeStamp" value="66" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>171</line>
-          <properties />
           <option name="timeStamp" value="67" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>146</line>
-          <properties />
           <option name="timeStamp" value="69" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>151</line>
-          <properties />
           <option name="timeStamp" value="70" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>152</line>
-          <properties />
           <option name="timeStamp" value="71" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>154</line>
-          <properties />
           <option name="timeStamp" value="72" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>147</line>
-          <properties />
           <option name="timeStamp" value="73" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>153</line>
-          <properties />
           <option name="timeStamp" value="74" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>156</line>
-          <properties />
           <option name="timeStamp" value="75" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>157</line>
-          <properties />
           <option name="timeStamp" value="76" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>159</line>
-          <properties />
           <option name="timeStamp" value="77" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>161</line>
-          <properties />
           <option name="timeStamp" value="78" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>180</line>
-          <properties />
           <option name="timeStamp" value="80" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>181</line>
-          <properties />
           <option name="timeStamp" value="81" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>182</line>
-          <properties />
           <option name="timeStamp" value="82" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>183</line>
-          <properties />
           <option name="timeStamp" value="83" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>184</line>
-          <properties />
           <option name="timeStamp" value="84" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>114</line>
-          <properties />
           <option name="timeStamp" value="86" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>115</line>
-          <properties />
           <option name="timeStamp" value="87" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>117</line>
-          <properties />
           <option name="timeStamp" value="88" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>170</line>
-          <properties />
           <option name="timeStamp" value="89" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>149</line>
-          <properties />
           <option name="timeStamp" value="91" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>153</line>
-          <properties />
           <option name="timeStamp" value="93" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>154</line>
-          <properties />
           <option name="timeStamp" value="94" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>151</line>
-          <properties />
           <option name="timeStamp" value="99" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>152</line>
-          <properties />
           <option name="timeStamp" value="101" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>14</line>
-          <properties />
           <option name="timeStamp" value="102" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>200</line>
-          <properties />
           <option name="timeStamp" value="105" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>202</line>
-          <properties />
           <option name="timeStamp" value="107" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>205</line>
-          <properties />
           <option name="timeStamp" value="108" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>206</line>
-          <properties />
           <option name="timeStamp" value="109" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>139</line>
-          <properties />
           <option name="timeStamp" value="127" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>105</line>
-          <properties />
           <option name="timeStamp" value="146" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>254</line>
-          <properties />
           <option name="timeStamp" value="154" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>255</line>
-          <properties />
           <option name="timeStamp" value="155" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>65</line>
-          <properties />
           <option name="timeStamp" value="157" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>63</line>
-          <properties />
           <option name="timeStamp" value="159" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>66</line>
-          <properties />
           <option name="timeStamp" value="160" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url />
           <line>67</line>
-          <properties />
           <option name="timeStamp" value="161" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-method">
           <url />
           <line>114</line>
-          <properties class="main.java.datastructures.MatrixProblems" method="dfs">
+          <properties class="main.java.datastructures.MatrixProblems">
             <option name="EMULATED" value="true" />
           </properties>
           <option name="timeStamp" value="147" />
         </line-breakpoint>
       </breakpoints>
-      <option name="time" value="162" />
     </breakpoint-manager>
   </component>
   <component name="debuggerHistoryManager">
@@ -836,7 +896,7 @@
     </expressions>
   </component>
   <component name="editorHistoryManager">
-    <entry file="jar://C:/Program Files/Java/jdk1.7.0_79/src.zip!/java/lang/String.java">
+    <entry file="jar://$PROJECT_DIR$/../../../../../Program Files/Java/jdk1.7.0_79/src.zip!/java/lang/String.java">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="10285">
           <caret line="656" selection-start-line="656" selection-end-line="656" />
@@ -887,7 +947,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="jar://C:/Program Files/Java/jdk1.7.0_79/src.zip!/java/util/HashMap.java">
+    <entry file="jar://$PROJECT_DIR$/../../../../../Program Files/Java/jdk1.7.0_79/src.zip!/java/util/HashMap.java">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="279">
           <caret line="279" column="11" selection-start-line="279" selection-start-column="11" selection-end-line="279" selection-end-column="11" />
@@ -1110,7 +1170,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="jar://C:/Program Files/Java/jdk1.7.0_79/src.zip!/java/lang/Thread.java">
+    <entry file="jar://$PROJECT_DIR$/../../../../../Program Files/Java/jdk1.7.0_79/src.zip!/java/lang/Thread.java">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="122">
           <caret line="140" column="6" selection-start-line="140" selection-start-column="6" selection-end-line="140" selection-end-column="6" />
@@ -1165,7 +1225,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="jar://C:/Program Files/Java/jdk1.7.0_79/src.zip!/java/util/concurrent/ExecutorService.java">
+    <entry file="jar://$PROJECT_DIR$/../../../../../Program Files/Java/jdk1.7.0_79/src.zip!/java/util/concurrent/ExecutorService.java">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="122">
           <caret line="140" column="17" selection-start-line="140" selection-start-column="17" selection-end-line="140" selection-end-column="17" />

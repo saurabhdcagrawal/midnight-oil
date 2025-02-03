@@ -1,0 +1,73 @@
+1)Generics offer you to Create classes that can work with different data types thereby allowing code reusability
+We can write a method,interface,class and use it for any type we want
+2)Generics ensure type safety
+The object is the superclass of all classes and object reference can refer to any object
+Generic add type safety and make errors to appear compile time instead of run time
+(if there was no generic and we create an arraylist to add student names and someone adds id by default, compiler allows it)
+however at run time we get an error with class cast exception, generics help to avoid this)
+(3) Individual type casting is not needed.. if no generics, every time we retrieve we have to typecast the object
+
+Define type parameter T
+class Printer<T<{
+    T thingToPrint;
+    public Printer(T thingToPrint){
+        this.thingToPrint=thingToPrint;
+    }
+    public void print(){
+        System.out.println(thingToPrint);
+    }
+}
+
+//Printer is a raw type and references to generic type should be parameterized
+public class GenericsClass{
+    public static void main(String args[]){
+       Printer<Integer> printer= new Printer<>(5);
+       printer.print();
+    }
+
+}
+
+
+//bounded generic
+Multiple bounds
+
+<T extends Animal>
+<T extends Serializable>
+<T extends Animal & Serializable>
+
+Instead of Generic classes we can also have Generic methods
+
+public static <T> void shout(T thingToShout){
+    System.out.println(thingToShout+"!!!!!");
+}
+
+public static <T,V> void shout(T thingToShout, V otherThingToShout){
+    System.out.println(thingToShout+"!!!!!");
+    System.out.println(otherThingToShout+"!!!!!");
+}
+
+public static <T,V> T shout(T thingToShout, V otherThingToShout){
+    System.out.println(thingToShout+"!!!!!");
+    System.out.println(otherThingToShout+"!!!!!");
+    return thingToShout;
+}
+
+Wildcards
+
+List<Integer> myList= new ArrayList<Integer>();
+printList(myList);//gives an error although Integer extends object
+List<Integer> is not a subclass of List<Object>
+However, a collection of Object is not the supertype of any collection.
+private static void printList(List<Object> myList){
+System.out.println();
+}
+
+Solution: Use <?> wildcard
+private static void printList(List<?> myList){
+System.out.println();
+}
+
+We can also use bounds
+private static void printList(List<? extends Animal> myList){
+System.out.println();
+}
