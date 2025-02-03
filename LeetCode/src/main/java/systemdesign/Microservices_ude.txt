@@ -55,11 +55,7 @@ The Single Responsibility Principle (SRP) states that a module, class, or servic
 		With a monolithic service, if a critical component fails, it can bring down the entire application, causing a single point of failure. However, in a distributed or microservices architecture, failures can be isolated to specific services. This allows the rest of the system to continue functioning, improving resilience.
 		For example, if a payment service in an e-commerce application goes down, users might still be able to browse products and add items to their cart, rather than the entire site becoming unavailable. Techniques like circuit breakers, retries, fallback mechanisms, and redundancy help ensure that failures do not cascade across the system.
 	Scaling on demand for those pieces who need items
-	In a monolithic architecture, scaling requires replicating the entire application, even if only a small part of it experiences high demand. This leads to inefficient resource utilization.
-
-In a microservices architecture, only the services that need additional resources can be scaled independently. For example, in an e-commerce platform, the checkout service may experience high traffic during a sale, while the user profile service remains stable. With horizontal scaling, only the checkout service can be scaled up dynamically, optimizing infrastructure costs and performance.
-
-Technologies like Kubernetes, auto-scaling groups, and cloud elasticity enable efficient on-demand scaling based on traffic and load patterns.
+	In a monolithic architecture, scaling requires replicating the entire application, even if only a small part of it experiences high demand. This leads to inefficient resource utilization.In a microservices architecture, only the services that need additional resources can be scaled independently. For example, in an e-commerce platform, the checkout service may experience high traffic during a sale, while the user profile service remains stable. With horizontal scaling, only the checkout service can be scaled up dynamically, optimizing infrastructure costs and performance.Technologies like Kubernetes, auto-scaling groups, and cloud elasticity enable efficient on-demand scaling based on traffic and load patterns.
 
 	
 Spring Microservices (Spring boot version 3.0.6)
