@@ -1,0 +1,447 @@
+1) Scalability is the ability for a process/network or system to grow to support increased demand
+Scalability may be needed because of increased data volume or because of more work needed
+It comes at the cost of performance
+A scalable architecture helps to balance the load across different nodes
+Following types of scaling
+As the system grows (in data volume, traffic volume, or complexity),
+there should be reasonable ways of dealing with that growth
+
+Horizontal scaling-> Add more servers/machines in your pool of resources to meet growing need.
+
+Vertical Scaling-> Needs downtime, limited by server capacity.. Increase the resources of a machine , Eg CPU, RAM , Storage
+
+2) A system is Reliable if it continues to deliver services even if one or more of its hardware or software components fail.
+It is achieved with the help of redundancy of data and software components
+The system should continue to work correctly (performing the correct function at the desired level of performance)
+even in the face of adversity
+(hardware or software faults, and even human error)
+3) Availability is how long a system is available to do its function
+High reliability guarantees high availability but not vice versa
+
+4) Efficiency generally for a DS it is throughput and latency
+
+5) Serviceability or Manageability is the ease with which system can be maintained or repaired.
+Over time, many different people will work on the system (engineering and operations, both maintaining current behavior
+and adapting the system to new use cases), and they should all be able to work on it productively
+
+6)Load Balancing - Loan balancing is used to improve the availability and responsiveness, increase the efficiency of the system,
+remove single point of failure,reduce wait time. A load balancer is a hardware/software component that
+sits between client and server, distributes traffic across multiple backend servers as per an algorithm. It
+prevents an application server from being a single point of failure.
+Advantages->Less wait time, the new request does not need to wait for the previous request to be fully serviced
+Load balancing algorithms->Round Robin, Weighted Round Robin, Less Recently Used, Least connection method,IP hash.
+LB has to continuously health check back end nodes and see if they are up and running
+User gets IP address of load balancer via DNS and internally communicates with web servers using private network
+
+
+Load balancer itself can be a point of failure, to overcome this a second load balancer can be added to the top
+of current one. Active LB and passive LB
+
+7)Caching--> Uses the locality of reference principle.
+Something which is requested recently is more likely to be requested again.
+Cache is a short term memory that stores the results of a recent fetch or request.
+Cache exists in all level of application, hardware,OS, Browser, Applications.
+It makes sense for the cache to be closest to front end
+to avoid taxing the downstream systems.
+It helps in better utilization of existing resources
+In a distributed environment with multiple nodes you need global caches
+CDN cache(more frequently used for static data), distributed cache
+Cache invalidation... keep the cache consistent with the data (in case of data updation)
+Write through cache, Write back cache, write around cache
+Cache eviction policies-- LRU,MRU,LFU,MFU,FIFO,LIFO, Random removal
+
+Database replication-> Using slave master... Master for writes, slave for reads.. builds up redundancy
+Can work multiple queries at the same time
+(slave gets copies)
+Better performance, high reliability and availability
+
+8)Data Partitioning-- Breaking a large database into smaller parts (multiple smaller DB's) to improve reliability,
+performance and serviceability and load balancing. After one point vertical scaling is not possible and it is cheaper
+and more feasible to add a node.
+
+Sharding/Horizontal partition.. Data is distributed using keys. Every DB has same schema
+Vertical Partition: Data is stored differently(featured based) in different DB's. Schema will be different
+Directory based Partition: Have a lookup service to abstract away the partition logic. Loosely coupled
+
+Key or hash based partitioning, List based partitioning, Round Robin, Composite Partitioning
+Common issues
+How does de-normalization solve the issue related to data partitioning?
+Difficult to impose foreign key constraints lead to data inconsistency
+If partitioning changes, we have to rebalance the system leading to significant downtime as we may have to move the partition
+to the new location
+
+9)Indexes Speed up data retrieval, slows down writing data i.e writing performance (insert,updates, deletes)
+Remove unused indexes
+
+10) A proxy is software or hardware component that sit between the client and server.
+Forward proxy anonymize the client from the server, hide the identity of the client.
+Reverse proxy is used to anonymize the server from the client..
+Proxies can be used for cache data, filter/transform requests
+Reverse proxy can be used for load balancing, security
+
+11)Redundancy and replication is duplicating the hardware/software components of a system used to perform key functions
+with an attempt to remove single point of failure
+Replication is usually for data. For eg in case of DBMS systems there is a primary replica and a secondary replica
+Updates first go to primary replica and then are slowly transitioned to secondary replica
+
+12) CDN is a network of geographically dispersed servers used to store static content (images/vide).
+When the user visits a website, a CDN server geo-close to the user will deliver static content.
+If the CDN server does not have the resource, it will request the web server and store the content
+CDN is run by 3rd party providers and you are charged for data transfers in and out of CDN, so do not cache infrequently used assets
+Webserver/website can invalidate content in CDN by API provided by the CDN providers
+
+Stateless web tier -- Store user and session data outside of the web tier (such as NoSQL DB),
+ so any server then can serve the subsequent requests of the client
+
+CAP theorem
+In presence of network partition, choose consistency or availability. In a DS system only 2 of 3 are guaranteed.
+Consistency->All clients/nodes see the same data at the same time..
+Availability-> In presence of network partition, non-failing nodes on either sides, respond to every request
+Partition tolerance->System should continue to operate and function even if there is a network partition
+leading to a comm breakdown between the nodes
+We cannot build a general data store that is continually available, sequentially consistent, and tolerant to any partition
+failures. We can only build a system that has any two of these three properties. Because, to be consistent, all nodes should
+see the same set of updates in the same order. But if the network loses a partition, updates in one partition might not make
+it to the other partitions before a client reads from the out-of-date partition after having read from the up-to-date one.
+The only thing that can be done to cope with this possibility is to stop serving requests from the out-of-date partition,
+but then the service is no longer 100% available.
+
+PACELC theorem (extension of CAP theorem)
+In case of network partition, there is trade off between consistency and availability
+However when the system is running normally in absence of partition, there is a trade off between consistency and latency
+RDBMS always choose consistency
+HBASE,Big table (big data) choose consistency over latency and availability
+Cassandra, Dynamo choose availability over consistency but otherwise choose lower latency over consistency
+MongoDB choose availability over consistency but otherwise choose consistency over latency
+
+
+
+Bloom filters??
+Quorum--> In a distributed system with data replicated across different nodes,
+quorum is the minimum number of nodes on which distributed operation(read/write) is performed to ensure that operation can be committed
+and called successful
+
+What value should we choose for a quorum? More than half of the number of nodes in the cluster:
+(N/2+1) where N is the total number of nodes in the cluster
+Quorum is achieved when nodes follow the below protocol: R + W > N where:
+N = nodes in the quorum group
+W = minimum write nodes
+R = minimum read nodes
+This will guarantee that every read will see at least one copy of latest value written
+
+Read more--
+Reading
+(N=3, W=1, R=3): fast write, slow read, not very durable
+(N=3, W=3, R=1): slow write, fast read, durable
+
+Leader&follower:Quorum (slow) Leader and follower is an alternate to quorum based DS approach
+
+Heartbeating is one of the mechanisms for detecting failures in a distributed system.
+If there is a central server, all servers periodically send a heartbeat message to it.
+If there is no central server, all servers randomly choose a set of servers and send them a
+heartbeat message every few seconds. This way, if no heartbeat message is received from a server
+for a while, the system can suspect that the server might have crashed. If there is no heartbeat
+within a configured timeout period, the system can conclude that the server is not alive anymore
+and stop sending requests to it and start working on its replacement.
+
+Polling is a technique where we check for fresh data over a given interval by periodically making API requests to a server.
+For example, we can use polling if there is data that changes frequently or we need to wait for the server to transition
+a given state.
+--Ajax polling (client request for  new data..sent requests every 0.5 second and receives response)
+The server has to respond even if there is no new data leading to empty HTTP responses and overhead
+--Long polling (client sends request and server sends response irregularly only when new data is available)
+--A real-world use case for polling would be if we used a third-party authentication provider (such as Firebase or Auth0 ) and
+need to wait on the result before we proceed. When a user registers, we send the user’s data to the authentication provider
+from the client. Then on the server, we wait for the response from the authentication provider and then create a user in our database.
+During this whole process, the client must wait through the authentication and the user creation on our server. Since we know
+this process will either succeed or fail reasonably quickly, we can be comfortable implementing a poll that will make API
+requests to our server every 1 second until we complete the process of registering and creating a new user.
+Once the response is available, server sends a new request
+Web sockets
+Server side events
+
+
+Checksum--> In a distributed system, data moves between nodes and it may be possible that data is lost/damaged/incomplete/corrupted
+when it arrives at one node from the other due to faults in storage,network or other software issues.
+For checksum Create a hash string on i/p using SHA/MD5 and send it as a part of the data. On receiving, recompute hash and see if matches
+with the stored checksum
+
+
+Tips
+1)In any kind of platform where we need to create a timeline, creation time should be part of primary key and used in data sharding
+(epoch time + auto incrementing sequence)
+The advantages of this.. we dont need to create extra index on creation time, write latency will reduce
+And also we do not need to filter to get latest tweets as our primary key has epoch time..
+2) Load balancer before cache servers, Key can be the owner id and value can be tweet objects in a doubly linked list fashion
+Insert new tweets at the head of the linked list and old can be removed from tail
+
+3) Cache structure you can discuss.. Key will be feed id, Value feed objects in a doubly linked list ot tree map fashion
+(sorted as per creation time?)..
+ Whenever users want to fetch more feed items, they can send the last FeedItemID they currently see in their newsfeed,
+ we can then jump to that FeedItemID in our hash-map and return next batch/page of feed items from there.
+
+Memcache
+It is often used to speed up dynamic database-driven websites by caching data and objects in RAM to reduce the number of times an
+external data source (such as a database or API) must be read. Memcached is free and open-source software, licensed
+under the Revised BSD license. It is a distributed hashtable.
+
+Information retrieval/search Index
+Boolean Retrieval Model: Term Document incidence matrix
+Inverted Index--> For each term t in documents/corpus we store a list of doc's(doc ids') that contains t
+The index is stored in form of dictionary and list for each entry(term) is called postings list that contain postings (list of docids
+containing the term)
+And operator intersect the postings list for both terms
+Brutus AND Caesar
+Merge the 2 postings list... If both are pointing to same doc id, add it to the list
+for OR... If either is pointing to a doc id, add it to the list
+Collection of documents is called corpus
+Tokenization-- Parse each document, split into tokens, stemming, stop word removal ,normalized tokens
+(friend, 1) , (token, 1) , (countryman,1)
+This goes to indexer that builds an inverted index
+First sort the tuples as per term, remove duplicate tuples
+(term,doc freq)->postingslist
+Storing doc freq is for optimization... process a query based on order of increasing doc freq
+https://www.youtube.com/watch?v=Hy78R3yuutg&list=PL0ZVw5-GryEkGAQT7lX7oIHqyDPeUyOMQ&index=4&ab_channel=OresoftLWC
+
+CDN and ISP
+
+---techniques to approach
+
+Use the whiteboard: Using a whiteboard helps your interviewer follow your proposed design. Get up to
+the whiteboard in the very beginning and use it to draw a picture of what you're proposing.
+Acknowledge interviewer concerns: Your interviewer will likely jump in with concerns. Don't brush
+them off; validate them. Acknowledge the issues your interviewer points out and make changes accordingly.
+• Be careful about assumptions: An incorrect assumption can dramatically change the problem. For
+example, if your system produces analytics / statistics for a dataset, it matters whether those analytics
+must be totally up to date.
+• State your assumptions explicitly: When you do make assumptions, state them. This allows your interviewer to correct you if you're mistaken, and shows that you at least know what assumptions you're
+making.
+Estimate when necessary: In many cases, you might not have the data you need. For example, if you're
+designing a web crawler, you might need to estimate how much space it will take to store all the URLs.
+You can estimate this with other data you know.
+
+1) Scope the problem (Will people be able to specify their own short URLs? Or will it all be auto-generated? Will you
+ need to keep track of any stats on the clicks? Should the URLs stay alive forever, or do they have a timeout?
+2) Make reasonable assumptions
+(For example, is it okay for
+the data to be stale by a max of ten minutes? That all depends. If it takes 1 O minutes for a just-entered URL
+to work, that's a deal-breaking issue. People usually want these URLs to be active immediately. However, if
+the statistics are ten minutes out of date, that might be okay)
+3)Walk through your system from end-to-end to provide a flow. A user enters a new URL. Then what?
+  It may help here to ignore major scalability challenges and just pretend that the simple, obvious approaches
+  will be okay. You'll handle the big issues in Step 4.
+4): Identify the Key Issues
+  Once you have a basic design in mind, focus on the key issues. What will be the bottlenecks or major challenges in the system?
+  For example, if you were designing TinyURL, one situation you might consider is that while some URLs will
+  be infrequently accessed, others can suddenly peak. This might happen if a URL is posted on Reddit or
+  another popular forum. You don't necessarily want to constantly hit the database.
+  Your interviewer might provide some guidance here. If so, take this guidance and use it.
+Step 5: Redesign for the Key Issues
+  Once you have identified the key issues, it's time to adjust your design for it. You might find that it involves
+  a major redesign or just some minor tweaking (like using a cache).
+  Stay up at the whiteboard here and update your diagram as your design changes.
+  Be open about any limitations in your design. Your interviewer will likely be aware of them, so it's important
+  to communicate that you're aware of them, too.
+
+
+ Keep web tier stateless
+• Build redundancy at every tier
+• Cache data as much as you can
+• Support multiple data centers
+• Host static assets in CDN
+• Scale your data tier by sharding
+• Split tiers into individual services
+• Monitor your system and use automation tools
+
+
+
+Public endpoints
+Private endpoints
+I am not super confident
+Read replica/Write replica ? Load balancer
+Ask pointed questions
+Password SHA256(encrypted and stored)
+Third party payment such as Stripe/Square
+https://www.youtube.com/watch?v=NtMvNh0WFVM&ab_channel=Exponen
+
+
+Database design
+Choice of DB doesnt really affect the functional requirements as such
+Depending on choice of your DB, will decide how your non functional requirements will work and if
+you will be able to scale to meet the non functional requirements
+1)Structured data or Unstructured Data
+2)Query pattern
+3) Amount of data/Scale
+
+Cache Redis/Memcached... for caches
+
+Structured data then do we need ACID (Inventory management system) ... Inventory management system
+if ACID is not needed you can use a noSQL
+Blob storage-- picture,videos.. Amazon S3, It is not databases because database is something that you will query on
+(S3+CDN)
+Document DB-? Complex query on different attributes ..structure different attributes...Amazon catalogue
+Text Search Engine ... Search etc.. elastic search, Solr built on top of Apache Lucene
+Fuzzy Search(Eg edit distance).... dont keep them as primary source of truth....
+(above is special case of document DB)
+For metrics kind of system ..time series database open TS db
+
+Data Warehouse...Hadoop...put data from various transaction systems...
+
+Ever increasing data ..Uber ..Columnar DB () Cassandra Hbase..in an exponential fashion
+small number of queries and large set of data
+
+Combination of databases may be a good choices in some case
+
+Non-relational databases might be the right choice if:
+• Your application requires super-low latency.
+• Your data are unstructured, or you do not have any relational data.
+• You only need to serialize and deserialize data (JSON, XML, YAML, etc.).
+• You need to store a massive amount of data.
+
+
+
+High Design
+Non functional requirements
+Ask the interviewer
+
+
+
+Kafka..real time decision
+make your data move fast at scale
+
+Producer vs consumer (Source vs Sink)
+Data driven vs event driven approach
+Put events in the queue
+Start putting data in queue
+Events will be unique in nature..
+Message goes under a topic in queue
+Topic is a category--- eg customer....
+Topic can have multiple partitions? For fault tolerance
+Sequence correct within one partition
+
+Kafka cluster contain many brokers
+Take message from producer, assigns it to offset and store on local disk..Catch to fetch request from consumer
+one partition assigned to multiple broker with owner being leader for one partition
+Messaging, Storing and Caching as a part of the core Kafka product
+
+Kafka connect--- Mainframe.. db2
+KSQL to run queries
+kclient to connect through
+streaming data
+
+Loose Decoupling(Small services to be designed and stored in container)
+Fully distributed
+Easy to Scale
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Machine Learning
+What distinguishes a machine learning algorithm from a non-machine-learning algorithm,
+such as a program that controls traffic lights, is its ability to adapt its behaviors to new input.
+And this adaptation, which seems to have no human intervention, occasionally leads to the impression
+that the machine is actually learning
+
+A machine learning algorithm is the process that uncovers the underlying relationship within the data.
+
+The outcome of a machine learning algorithm is called machine learning model,
+which can be considered as a function FF, which outputs certain results, when given the input.
+Rather than a predefined and fixed function, a machine learning model is derived from historical data.
+Therefore, when fed with different data, the output of machine learning algorithm changes, i.e.
+the machine learning model changes.
+
+Types of ML
+Supervised Learning
+Data is labeled and we have some ground truth.
+We used the data to train the ML model and then use the ML to predict non-labeled data
+
+Unsupervised Learning
+One is expected to learn the underlying patterns or rules from the data,
+without having the predefined ground truth as the benchmark.
+
+Clustering---Cluster the samples based on groups based on similarities among the data set
+Eg: Customers who buy electronics, who buy books...targeted campaigns
+Association----uncover hidden association patterns between the attributes of the sample
+Who buy books buy greeting cards...rearrange merchandise to promote sales
+
+Semi Supervised Learning ---
+Not all data is labeled.. takes years to label a data
+
+Classification vs Regression (Part of Supervised ML model)
+
+If the output of a machine learning model is discrete values, e.g. a boolean value, we then call it a classification model.
+While we call the model that outputs continuous values as regression model.
+
+Sometimes in real world..the regression problems will have data that is not all numeric
+Eg: type of house.. we may have to transform
+
+Speaking of features, we would also like to mention that some of the machine learning models (e.g. decision tree)
+can handle directly the non-numeric feature as it is, while more often one has to transform those non-numeric features
+into numeric one way or another.
+
+Problems can be converted..thin line
+Eg:Logistic Regression probability of cat or not as a continuous value of probabilities
+
+The ultimate goal of the machine learning workflow is to build a machine learning model.
+We obtain the model from the data. As a result, it is the data that determines the upper bound of performance
+that the model can achieve. There are numerous models that can fit a specific data. The best that we can do,
+is to find a model that can approach the most to the upper bound set by the data. We cannot really expect that a
+model can learn something else out of the scope of data.
+
+Feature Engineering (Building the pipeline etc)..Divide data into 2 sets
+training and testing
+Use data to train and rest of data to test
+
+Feature engineering is the development of new data features from raw data.
+With this technique, engineers analyze the raw data and potential information
+in order to extract a new or more valuable set of features.
+Feature engineering can be seen as a generalization of mathematical optimization that allows for better analysis.
+
+
+An under fitting model is the one that does not fit well with the training data,
+i.e. significantly deviated from the ground truth.
+using an over simplified model for the kind of data.(not able to capture hidden relationships)
+..a simple linear regression (Wrong ML model)
+
+
+Contrary to the case of underfitting, an over-complicated model that is able to fit every bit of the data,
+would fall into the traps of noises and errors. The model managed to have less misclassification in the training data,
+ yet it is more likely that it would stumble on the unseen data.
+
+Bias and Variance.... how close prediction is to actual value...variance is how responsive to changes in input data
+Tune the parameters... there is a co-relation between bias and variance
+
+Through the separation of model and data, ML algorithms can solve many problems in a more flexible,
+generic and autonomous manner, i.e. much like a human, the ML algorithms seem to be able to learn from the
+environment (i.e. the data) and adjust its behaviors (i.e. the model) accordingly in order to solve a specific problem.
+Without explicitly coding the rules (i.e. the model) in the ML algorithms, we construct a sort of meta-algorithm that is
+able to learn the rules/patterns from the data, in a supervised or even unsupervised manner
+
+Best ML model can provide 80% accuracy
+
+Therefore, in the scenarios where the accuracy of the algorithm is critical,one should carefully examine their
+decision of adopting ML algorithms.
+. In summary, one can not treat the mistakes made by a ML model simply as bugs in the software.
+It requires a holistic approach to improve the model, rather than patching the model case by case.
+
+
+
+Design data intensive applications
+to achieve: reliable, scalable, and maintainable data systems

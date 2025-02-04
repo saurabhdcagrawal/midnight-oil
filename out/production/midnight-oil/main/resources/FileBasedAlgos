@@ -1,0 +1,17 @@
+External merge sort ,how will you sort a file of size 2 GB
+Answer
+
+Lets assume we have X MB of memory available ,
+Divide the file into k chunks where X *K =2 GB
+900 MB data to be sorted using 100 MB of RAM
+Read  first chunk of 100 MB of data in memory ,sort is in Nlog(N) time
+Repeat for all 9 chunks
+X/(K+1) bring this much amount of sorted chunk ,
+Read 10 MB of each sorted chunk in main memory and allocate 10 MB for o/p buffer and
+write it to the final sorted file
+Perform a K way merge sort and store result in output buffer, if any of the  chunk buffer gets empty
+read it with the next 10MB of its associated 100 MB and if there is no more data
+
+difference between factory and service
+
+

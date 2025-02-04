@@ -1,0 +1,903 @@
+------------Kafka--Section 1 Udemy
+
+1) Kafka Introduction
+
+If you have 4 source systems and 6 target systems, you have to write 24 integrations
+Each integration comes with different complexities
+	Protocol--> how data transported TCP,HTTP, REST, FTP,JDBC
+	Data format--> Binary, CSV, Python
+	Data schema and evolution--> how data is shaped may change ---Data schema and evolution happens over time(data changes in shape both ss and target system?)
+Each ss will also have an increased load from all connects and request to extract the data
+We bring some decoupling using Apache kafka-->decoupling of data streams and systems
+Source data could be 
+	--> website events, user interaction, financial transactions, pricing data
+Target could be 
+	--> databases, analytics,email system and audit, notification service
+
+
+Kafka created by linkedin now open source project managed by Confluent, IBM, Cloudera
+	Distributed, Resilient architecture, Fault Tolerant
+	Horizontal Scalability--> Can scale to 100's of brokers, can scale to millions of messages per second
+	High performance-->real time system-->low latency less than 10 ms
+	Widespread adoption
+Graphical UI for Apache Kafka is Conduktor
+
+Apache Kafka Use cases
+	Gather metrics from different locations
+	Application logs gathering
+	Activity tracking
+	Messaging system
+	Microservices Pub/Sub (Decoupling of system dependencies)
+	Stream processing
+	Integration with Big Data technologies
+Usage in Industry	
+	Uber using Kafka to gather trip,user ,taxi data in real time to compute and forecast demand and compute surge pricing in real time
+	Netflix for providing real time recommendations while you are watching TV shows
+	LinkediN to collect spam, make better connection recommendations in real time
+Kafka is used as a transportation mechanism
+Architect-->understand the role of Kafka in enterprise pipelines
+
+
+For developers
+	Kafka connect API
+	Ksql DB
+	kafka Streams API
+	Confluent Components
+
+Section 4 Kafka Theory
+Topic
+	Particular stream of data within a Kafka cluster(logs, purchases, tweets, trucks gps    )... (similar to table in a dabatabase without the constraints)
+	they are identified by name
+	Can have many topics within a Kafka Cluster 
+	Support any kind of messon format (json,xml,binary)
+	Sequence of messages in topic is called data stream
+	Cannot query topics...use kafka producer to send data and kafka consumers to read data
+
+Partition: 
+	Topic can be divided into partitions (3)
+	You can have as many partitions as you want
+	Messages sent to topic are going to one of the partition
+	In each partion each message is ordered (with the help of id)..
+	every message in a partition gets an incremental id called Kafka partition offset
+	Kafka topics are immutable..once the data is written to the partition..it cannot be changed
+	Once sent to a topic, a message can be modified?
+	Each partition will have message from one or more topics?
+	
+Offset
+	Multiple services are reading from the same stream of data thats an advantage for eg truck GPS goes to location dashboard and notification service
+	Data once written to Kafka topic cannot be changed (immutability)
+	Data in Kafka is only kept for limited time (1 week but thats configurable).. 
+	offset 3 in partition 0 is different of offset 3 in partition 1
+	Offset will not be reused even if previous messages are deleted
+	Order is guaranteed within partition but across partition if we need ordering difficult to achieve this ?
+	Data is randomly assigned to a partition ***unless the key is provided
+
+Producers 
+	They get data from source system and write data to topics(which are further broken down into partitions)
+	Producers know to which partition to write to and which Kafka broker has it (producer knows/decides in advance)
+	In case of Kafka broker failures producers will automatically recover?	
+	Producers send data across all partitions (load balancing) based on some mechanism --this is how kafka scales
+	Each partition will have message from one or more topics
+
+Message Keys 
+	Producer can add keys to messages (String,number, binary)
+	A key is sent when you need message ordering for a specific field
+	if key is null, then data is sent round robin
+	if key!= null then messages for same key will go to same partition (hashing strategy)
+	for eg provide truck id as key of messages..where we want to get continuos set of data for position... 
+	Key(binary)+Value(binary) i.e message content +Compression(lz4,gzip) +Headers.i.e key value pair(optional ) +partition+offset+timestamp(set by system or user)
+	This kafka message gets sent to kafka for storage
+
+Kafka Message Serializer
+	Accept bytes as input from producers and sends bytes as outputs to consumers
+	We perform serialization-transform object/data into bytes
+	They are used into value and key
+	Key=123; Value="Hello World" KeySerializer=IntegerSerializer and Value serializer= StringSerializer
+	Common serializer->Int,Float String, Avro,ProtoBuf
+
+Kafka partioner 
+	Code logic (resides in producer) that takes a record and determines to which partition to send it to
+
+Consumers
+	They read data from a topic(identified by a name) (pull model)
+	A consumer may read data from one or more topic partition
+	Consumers will know which broker to reader from
+	Consumers will know how to recover if a broker fails
+	Data is read in order from low to high offsets within each partition
+	No ordering between partitions but only within a partition
+	Just provide the topic name you want to read from. Kafka will route your call to the appropriate brokers and partitions
+Consumer deserialize--transform bytes into object used on both key and value of the message(can be for Integer string Avro protobuf)
+	Consumer needs to know in advance what is the expected format for your key and value
+	During the topic lifecycle, once the topic ic created, you must not change the type of data which is sent by the producers
+	otherwise you are going to break the consumers
+	Instead You can create a new topic instead and consumers will have to be reprogrammed
+	
+Consumer group-> 
+	A group of consumers who read from the partitions covering a topic
+	All consumers in an application read data as a consumer group
+	Group is reading from the Kafka topic as a whole
+	Multiple consumer groups can read from one topic
+	However within a consumer group, one partition can be assigned to only one consumer
+	To create distinct consumer groups we will use consumer property group id
+	
+	Topic-A Part 0		Topic A Part 1 		Topic-A Part 2
+	Consumer 1			Consumer 2			Consumer 3		Consumer 4 (Inactive)
+	
+	<----------------------------Consumer Group--------------------------------->
+	To create distinct consumer groups use property group.id
+	Same command is used to create kafka consumer and consumer group, the only difference being that the consumer group
+	uses group id property
+	Without this every consumer created uses a random group id
+
+Consumer offsets
+	Kafka stores offset at which consumer group has been reading..Why consumer group here.. Is it a single value(highest) or multiple values of each consumer?
+	The offsets are in the Kafka topic name of __consumer_offsets and are periodically committed when a consumer in a group has processed data from Kafka
+	By this information we will be able to store how far a topic a consumer group has read
+	The Kafka broker will write to __consumer_offsets(within Kafka)
+	If a consumer dies, it will be able to read back from where it left off, thanks to the committed consumer offsets
+
+Delivery strategy-semantics
+	At least once
+		Java consumer by default will commit at least once (right after the message is processed)
+		This is usually preferred. However this can lead to reprocessing of the same message
+		Our processing should be idempotent so reprocessing the message has no impact
+
+	At most once--> 
+		As soon as message is received by consumers offsets are committed
+		..if processing goes wrong some messages will be lost because we have committed offsets sooner than we have processed them
+		(This will happen if we reread message from the next commit after lets say 4262 onwards)
+	
+	Exactly once--->
+		For Kafka->Kafka workflows Use the transactional API
+		For Kafka->External system workflows use an idempotent consumer
+		
+Kafka brokers: 
+	A Kafka cluster is composed of multiple brokers(server)
+	Each broker identified by an id (integer)
+	They receive and send data
+	Each broker contains certain topic partitions which means all topics are distributed across all brokers-- This is what makes Kafka scale (horizontal scaling)
+	
+	Broker 101			Broker 102 			Broker 103
+	Topic-A Part 0		Topic A Part 2 		Topic-A Part 3
+	Topic-B Part 1		Topic-B Part 0
+
+After connecting to one broker..you can connect to any broker (entire cluster) bootstrap broker-- kafka clients have smart mechanics
+	Every kafka broker is called a bootstrap server--has knowledge of all the brokers in the cluster
+	kafka client will initiate a connection and send metadata request to broker 101 and broker 101 will return list of all brokers
+	Kafka client will then connect to the required broker to produce or consume data
+	This is how clients connect to a Kafka cluster
+	Are client and source systems same ?
+	
+Topic replication factor
+	Every topic has a replication factor
+	In prod, replication factor >1 to provide fault tolerance(usually 2-3 but more often 3)
+	That means partition are replicated across different brokers depending on replication factor
+	This way if a broker is down another partition can serve data for fault tolerance
+	
+	Broker 101			Broker 102 			 Broker 103
+	Topic-A Part 0		Topic A Part 1 		 Topic-A Part 1(repl)
+						Topic-A Part 0(repl)
+						
+	In above if Broker 101 goes down broker 101 and broker 103 can still serve the data	
+	
+Leader of a partion	
+	There can be however only 1 leader for a partition at a given time
+	By default Producers will send data to leader only to the leader of the partition
+	Other brokers will replicate the data ..if its fast enough we call it ISR (In sync replica)
+	Each partition has one leader and multiple ISR
+	Similarly by default Kafka comsumers will rrequest/read data from the leader of the partition
+	By default :In the event the leader broker of a partition goes down then an ISR can become a new leader and serve data for producer and consumer
+	
+Newer Kafka versions
+	Kafka v2.4( possible to read the data from the closest replica) to improve latency, performance
+	Called Kafka Consumers replica fetching
+	Decrease network cost if using the cloud
+	
+Producer acknowledgement
+	Producers send data to brokers that have topic partitions
+	acks=0 producer will not wait for acknowledgement from broker that write happened(possibl data loss) because if broker goes down we wont know about it
+	acks=1 producer will wait for leader to acknowledge(limited data loss)
+	acks=all (all in sync replicas to provide confirmation) -> no data loss
+
+Kafka topic durability
+	If you have replication factor of N, you can still loose N-1 brokers and recover your data
+
+Zookeeper
+	a software
+	manages brokers(keeps a list of them)
+	helps in performer leader elections (whenever a broker goes down)
+	sends notification to Kafka ? in case of changes( new topic created, broker dies, broker comes up, delete topics, etc)
+	Apache zookeeper used by kafka for storing metadata for the users?
+	Since the beginning of Kapka, a companion to brokers (Kafka 2.x cannot work without zookeeper)
+	Starting with 3.x Kafka raft mechanism , it can work without zookeeper
+	Kafka 4.0 will work without zookeeper (Still done? not production ready yet)
+	Zookeeper by design operates with an odd number of servers(1,3,5,7)
+	Zookeeper cluster (1 leader for writes and rest are followers (reads))
+	Below were configured to be connected to zookeeper before
+		Producer
+		Consumer
+		Kafka Clients
+		Admin Clients
+	But now never use zookeeper as a configuration in your kafka clients..
+	Over time the kafka clients  and CLI have been migrated to leverage the brokers as a connection instead of zookeeper
+	Since Kafka 0.10 consumers store offsets in kafka topics and consumer must not connect to zookeeper
+	Since Kafka 2.2 kafka-topics.sh CLI commands references Kafka brokers and not zookeeper for topic management (creation, deletion)
+	The Zookeeper CLI is deprecated
+	All API's and commands that were previously leveraging Zookeeper are migrated to use Kafka instead so that in future when cluster is migrated to be without zookeeper,
+	the change will be invisible to clients
+	Kafka 3.x implements kraft to replace zookeeper
+	Zookeeper is less secure and care should be taken to ensure ports are open to allow traffic only from Kafka brokers and not Kafka clients
+	Basically modern day developer will never use zookeeper as configuration in your kafka clients and other programs that connect to Kafka
+	Do not connect to Zookeeper, only connect to Kafka
+	3 zookeepers managing 3 brokers// in new system only 3 brokers, one is designated as leader to replace zookeeper function
+
+
+Kafka kRaft (come back to this )
+	In 2020 Kafka project started to remove zookeeper dependency
+	With more than 100,000 partitions in cluster, zookeeper was having scaling issues
+	Now w/o Zookeeper scales to millions of partitions , easier to maintain and setup
+	improves stability makes it easier to monitor, support and administer
+	Single Security Model for the whole system
+	Faster controller shutdown and recovery time
+	Kafka 3.x implements Kraft 
+	Gives performance improvement
+	how to launch a cluster in Kraft mode
+
+
+-----Starting Kafka-----------------
+
+Install WSL2->Install Kafka CLI tools using Binaries on WSL2-> Start Kafka using Binaries on WSL2
+https://www.conduktor.io/kafka/starting-kafka/
+https://www.conduktor.io/kafka/how-to-install-apache-kafka-on-windows/
+
+WSL2 is Windows Subsystem for Linux 2 and provides a Linux environment for your Windows computer that does not require a virtual machine
+
+Go to Kafka folder
+	cd kafka_2.13-3.0.0/
+	
+Start zookeeper using binaries in wsl2 pointing to zookeeper conf file
+	bin/zookeeper-server-start.sh config/zookeeper.properties
+	
+Start Apache Kafka using binaries in wsl2 pointing to kafka conf file
+	Open another Shell window and run the following command from the root of Apache Kafka to start Apache Kafka.	
+	./kafka-server-start.sh ../config/server.properties
+	
+	
+Go to ubuntu
+		Start kafka-topics.sh
+
+Can change 
+	Zookeeper. conf -> dataDir=/tmp/zookeeper
+	Kafka server.properties-> log.dirs=/tmp/kafka-logs ..can also change default partitions to 3
+	
+	
+--------------------Kafka CLI introduction----------------------------	
+
+Kafka Topics CLI
+#Create topic
+	sh kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --create --partitions 3 --replication-factor 1
+	Note	
+		localhost has only one broker
+		cannot create a topic with a replication factor > 1 in localhost
+		Question?
+		When a topic is auto-created, how many partitions and replication factor does it have by default?
+			by default it's 1 & 1, but these can be controlled by the settings num.partitions and default.replication.factor
+
+#List topic
+	sh kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+#Describe topic
+	sh kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --describe
+	Response
+		Topic: first_topic      TopicId: x3oItUuxQeK7oNhuvfJMMw PartitionCount: 3       ReplicationFactor: 1    Configs: segment.bytes=1073741824
+				Topic: first_topic      Partition: 0    Leader: 0       Replicas: 0     Isr: 0
+				Topic: first_topic      Partition: 1    Leader: 0       Replicas: 0     Isr: 0
+				Topic: first_topic      Partition: 2    Leader: 0       Replicas: 0     Isr: 0
+#Delete Topic
+	sh kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --delete
+	
+
+Kafka Producer CLI
+
+#Producer write to topic
+	sh kafka-console-producer.sh --bootstrap-server localhost:9092 --topic first_topic
+		>Hello my name is Saurabh from Boa.
+		>I love Kafka
+		>Bye
+	(Ctrl+C is used to exit the producer)
+
+#Producer write to topic with acks=all
+	sh kafka-console-producer.sh --bootstrap-server localhost:9092 --topic first_topic --producer-property acks=all
+		> some message that is acked
+		> just for fun
+		> fun learning!
+	
+# producing to a non existing topic
+	sh kafka-console-producer.sh --bootstrap-server localhost:9092 --topic new_topic
+		> hello world!	
+Bootstrap will give an error and then create a topic
+
+# produce with keys
+By default when we produce the messages, the key is null
+	sh kafka-console-producer.sh --bootstrap-server localhost:9092 --topic first_topic --property parse.key=true --property key.separator=:
+		>name:Saurabh
+		>surname:Agrawal
+If you dont give key seperator it will give an exception
+
+Kafka Console Consumer CLI
+	sh kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic
+	
+	Listening
+	Now start producing
+	sh kafka-console-producer.sh --bootstrap-server localhost:9092 --topic first_topic --property partitioner.class=org.apache.kafka.clients.producer.RoundRobinPartitioner 
+		>hello world
+		>my name is Saurabh
+For dev only, dont use in production..inefficient partitioner
+
+# Consume from beginning
+	sh kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic --from-beginning
+	Response
+		I love Kafka
+		my name is Saurabh
+		Saurabh
+		Agrawal
+		hello world
+		Hello my name is Saurabh from Boa.
+		Bye
+Out of order? Partition
+If you want to scale..multiple partitions
+If only one partition, it will be in order
+
+# display key, values and timestamp in consumer
+	sh kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic --formatter kafka.tools.DefaultMessageFormatter --property print.timestamp=true --property print.key=true --property print.value=true --property print.partition=true --from-beginning
+	Response
+	CreateTime:1679344469796        Partition:0     null    I love Kafka
+	CreateTime:1679346629249        Partition:0     null    my name is Saurabh
+	CreateTime:1679345577677        Partition:1     name    Saurabh
+	CreateTime:1679345585155        Partition:1     surname Agrawal
+	CreateTime:1679346621860        Partition:1     null    hello world
+	CreateTime:1679344459169        Partition:2     null    Hello my name is Saurabh from Morgan.
+	CreateTime:1679344472085        Partition:2     null    Bye
+
+Actual order
+		>Hello my name is Saurabh from Boa.
+		>I love Kafka
+		>Bye
+		>name:Saurabh
+		>surname:Agrawal
+		>hello world
+		>my name is Saurabh
+
+Thus you dont get full ordering but you get ordering within partition
+
+Kafka Consumers in Group
+
+	Each partition goes to one consumer in a group
+	#Create consumer group by giving a group name --group parameter
+	#uses same kafa console consumer
+	sh kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic second_topic --group my-first-application
+	
+	#Create 2 consumers like above
+	Partition will be divided among the above 2 consumers and any messages sent to second topic will come to the consumer based on partition assigned
+	Shows power of Kafka. Messages spread across all consumers
+	4 consumers for 3 partitions... one consumer will never be reading any data
+	Number of consumers in group application<= total number of partitions
+	#When he restarted a given consumer , messages appeared.. if there was  a lag.. 
+	To replicate, send a lot of messages in topic, quickly close a consumer and start again
+	#Question--> if you stop a consumer in a group, wouldnt the partition be re-assigned to another consumer(rebalance)? instead of waiting on the old consumer to start
+	#Solved---> only 1 consumer at a time, all partitions go to same consumer... once you stop and write to topic, then you restart consumer, messages would appear (lag)
+	#Same topic second consumer group
+	Without from beginning you only see messages once the consumer/consumer group has been launched
+	
+	With from beginning you see the messages since inception
+	sh kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic second_topic --group my-second-application --from-beginning
+	
+	Shows all messages in that topic.. once a consumer has read, consumer offset has been committed
+	If you run one more time , consumer offset has been comitted, from beginning would not show old messages
+	
+Kafka Consumer Groups CLI
+
+#List all consumer groups
+	sh kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+Response
+	my-first-application
+	my-second-application
+	
+#Describe a given consumer group
+	sh kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group my-second-application
+Response
+	GROUP                 TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+	my-second-application second_topic    0          27              27              0               -               -               -
+	my-second-application second_topic    1          56              56              0               -               -               -
+	my-second-application second_topic    2          35              35              0               -               -               -
+
+Publish to second topic, create lag
+
+	GROUP                 TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+	my-second-application second_topic    0          27              28              1               -               -               -
+	my-second-application second_topic    1          56              58              2               -               -               -
+	my-second-application second_topic    2          35              35              0               -               -      
+
+
+Now if you open the consumer group again, lagged messages will reappear
+	sh kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic second_topic --group my-second-application
+	
+	consumer id will appear if the consumer group is listening
+	
+GROUP                 TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                                           HOST            CLIENT-ID
+my-second-application second_topic    0          28              28              0               consumer-my-second-application-1-1f6223e8-2eb5-4647-873d-3c369ef05b80 /127.0.0.1      consumer-my-second-application-1
+my-second-application second_topic    1          58              58              0               consumer-my-second-application-1-1f6223e8-2eb5-4647-873d-3c369ef05b80 /127.0.0.1      consumer-my-second-application-1
+my-second-application second_topic    2          35              35              0               consumer-my-second-application-1-1f6223e8-2eb5-4647-873d-3c369ef05b80 /127.0.0.1      consumer-my-second-application-1
+
+#partition are going to same consumer id... since only one consumer exists in consumer group
+# if we create another consumer in the consumer group, it will rebalance and partition will go to another consumer id	
+
+
+#if you dont specify group id but give by beginning, temporary console consumer groups are created
+	sh kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic second_topic --from-beginning
+	sh kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+#Response	
+	my-first-application
+	my-second-application
+	console-consumer-79678
+	
+	
+Reset Offsets of a consumer group
+#reset offset (earliest the data exist in job , dry run will not execute but show you how the odffsets will be )
+#note it needs also topics
+	sh kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group my-second-application --reset-offsets --to-earliest --dry-run --topic second_topic
+#Response
+	GROUP                          TOPIC                          PARTITION  NEW-OFFSET
+	my-second-application          second_topic                   0          0
+	my-second-application          second_topic                   1          0
+	my-second-application          second_topic                   2          0	
+	
+	sh kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group my-second-application --reset-offsets --to-earliest --execute --topic second_topic
+#Response
+	GROUP                          TOPIC                          PARTITION  NEW-OFFSET
+	my-second-application          second_topic                   0          0
+	my-second-application          second_topic                   1          0
+	my-second-application          second_topic                   2          0
+
+Reset cannot happen when consumer is running.. so consumer must be off
+If you now start consumer, you will see all messages after reset
+
+---------------------Kafka Java------------------------------------------------
+
+Official SDK for Apache kafka is the Java SDK
+https://www.conduktor.io/kafka/kafka-sdk-list/ for all languages
+
+kafka clients
+slf4j api
+sl4j simple
+
+
+dependencies {
+    // https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients
+    implementation 'org.apache.kafka:kafka-clients:3.1.0'
+
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    implementation 'org.slf4j:slf4j-api:1.7.36'
+
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-simple
+    implementation 'org.slf4j:slf4j-simple:1.7.36'
+}
+
+File->Settings->Build,Execution & deployment->Buld Tools->Gradle->Build and run using Intellij(instead of Gradle)	
+Trick
+
+Issues on Java connectivity
+https://www.udemy.com/course/apache-kafka/learn/lecture/11567132#questions/17130518
+
+Step1
+First, stop Kafka and Zookeeper.
+Then, please run these commands on your end, on WSL2, one by one
+
+sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
+sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
+
+When the two commands have succeeded, relaunch Zookeeper and Kafka
+
+Step2 In Kafka /config/server.properties file add below
+
+advertised.listeners=PLAINTEXT://127.0.0.1:9092
+listener.security.protocol.map=PLAINTEXT:PLAINTEXT
+listeners=PLAINTEXT://0.0.0.0:9092
+
+
+
+Data is needed to be moved between applications and data stores
+Apache Kafka--provides messaging infrastructure.. 1.4 trillion messages every day
+Data movement/logistics:Get lots of messages from one system to another, rapidly, scalably and reliably
+In computing, transfer of data is called messaging but unlike other systems..Kafka is used for
+high throughput use cases,,vast amount of data is needed to be moved
+**other applications***traditional message systems** struggle with scalability***
+Database replication/log shipping (that support replication)
+ETL is option..proprietary and costly.Lots of custom development
+Apps are publishers... brokers is like mailbox and consumers are like apps who consume
+Under higher volumes, blast the broker with messages.. if there is no throttling
+message is dropped.. feed it to consumers..lazy slow or unresponsive application consumers
+Messaging systems are more of a middleware
+Kafka is a distributed messaging system,designed to move data at high volumes
+Created to address shortcomings of traditional data movement tools and approaches particulary when the data is growing
+and it needs to move faster across more and more diverse systems
+
+***Kafka architecture*******
+Publishers, consumers, brokers, topic
+Publisher sends messages to a location called topic
+Topics have a specific name that can be decided upfront or on demand
+As long as producers know the topic name and have perm to send on the particular topic, they should be able to send the messages
+Consumer receive messages based on topic they are interested in
+The place where kafka keeps and maintains topics is called broker(physical containers of data)
+Broker is a executable daemon process that runs on a machine.. physical machine or a virtual machine
+(Multiple Throughput)
+Broker uses file system of underlying machine
+With Kafka, you can scale out as much as brokers to achieve level of throughput
+Kafka cluster is a grouping of multiple Kafka brokers(Grouping mechanism that determines a cluster's membership
+of brokers is important part of Kafka's architecture and enables scaling)-->Apache Zookeeper?
+
+
+Kafka..real time decision
+make your data move fast at scale
+
+Producer vs consumer (Source vs Sink)
+Data driven vs event driven approach
+Put events in the queue
+Start putting data in queue
+Events will be unique in nature..
+Message goes under a topic in queue
+Topic is a category--- eg customer....
+Topic can have multiple partitions? For fault tolerance
+Sequence correct within one partition
+
+Kafka cluster contain many brokers
+Take message from producer, assigns it to offset and store on local disk..Catch to fetch request from consumer
+one partition assigned to multiple broker with owner being leader for one partition
+Messaging, Storing and Caching as a part of the core Kafka product
+
+Kafka connect--- Mainframe.. db2
+KSQL to run queries
+kclient to connect through
+streaming data
+
+Loose Decoupling(Small services to be designed and stored in container)
+Fully distributed
+Easy to Scale
+
+ 
+
+
+
+
+
+
+
+New notes----------******************************************************************************************************
+
+Producers Take data from source systems and send data into apache kafka.. round robin concept key based strategy, acks strategy
+data is distributed to different partitions
+Consumers operate in consumer group//store offsets in an offset topic (delivery strategy semantics)
+Kafka cluster managed by zookeeper..leader followe broker management
+To produce data to a topic, a producer must provide the Kafka client with any broker from the cluster and the topic name
+Very important: you only need to connect to one broker (any broker) and just provide the topic name you want to read from.
+Kafka will route your calls to the appropriate brokers and partitions for you!
+
+How we move data becomes as important as the data itself
+data is at the core of making decisions, the faster, easily we move data, the more agile
+our organizations can be and the more we can focus on customer needs
+our organizations can be and the more we can focus on customer needs
+Kafka is an example of publish Subscribe messaging system
+Enter Kafka: Unit of data is called a message. A message is an array of bytes without structure
+A Message can have optional metadata called as Key..The key also is byte array and as with the message
+has no specific meaning to kafka
+Key is used when data needs to be written in more controlled manner?(Multiple partition)
+For efficiency messages are written into Kafka in batches
+A Batch is a collection of messages all of which are being produced to the same topic and partition
+Trade off between latency and throughput
+
+Schema: Schema additional structure or schema imposed on messaged content so that it is easily understood
+(json) XML (extensible markup language)
+Use well defined schema and Put data format in a common repository, messages can be understood
+without coordination( Decoupling)
+
+Topics: Messages in Kafka are subscribed into topics. Topics are additionally broken down into partitions
+A partition is a single log. Writes are appended towards the end
+Partition is how Kafka provides redundancy and scalability. Partitions can be hosted on different server
+So single topic can be scaled horizontally across multiple servers
+
+Stream: is considered to be a single topic of data regardless of the number of partitions
+Single stream of data moving from producers to the consumers
+
+Kafka Clients: Users of the system and there are 2  basic types producers and consumers
+A message will be produced to a specific topic..by default the producer will balance messages to all partitions
+or to a specific partition using message key (More on this)
+
+Consumers read messages.. In other publish subscribe systems they are called subscribers or readers
+Consumer subscribes to one or more topics and reads the messages in the order in which they were
+produced to each partition...Consumers keeps track of the messages by using offset
+Each message has a unique offset in a given partition.
+Kafka creates a monotonically increasing value(meta data)
+called offset to each message as it is produced..consumer use this offset and they can stop and restart
+without loosing its place
+
+Consumer group : One or more consumers work together to consume a topic
+Each partition is consumed by only one member(more on this)
+
+
+Broker: A single Kafka server is called a broker
+Broker receives messages from producers, assigns offset to them and writes the message to storage on disk
+It also services consumers responding to fetch requests from partition and responding with the messages
+that have been published
+Single broker can handle thousands of partitions and millions of messages per second
+
+Kafka cluster: Kafka Designed to operate as a part of cluster
+One broker will function as the cluster controller and responsible for administrative operations
+including dealing with failures and assigning partitions to brokers
+A partition is owned by one broker and that broker is called leader of the partition
+A replicated partition is assigned to additional brokers called followers of the partition
+For eg in figureL Broker 1 leader of partition 0, Broker 2 is follower of partition 0
+All producers must connect to the leader in order to publish messages but consumers may fetch message
+from leader or followers
+Retention: Based on strategy (either time or partition reaches a certain size)
+
+Multiple kafka clusters? Mirror maker
+
+Why Kafka?Among multiple publish/subscribe systems
+Kafka can handle: Multiple producers whether clients are using many topics or same topic
+kafka can handle multiple consumers to read single stream of message without interfering with each other
+Disk based retention: Messages are written to disk
+Scalable: Scalability makes it easy to handle any amounts of data
+Can start with a single broker, move to production with large clusters of tens of hundreds of brokers
+Expansion can be done while cluster is online with no impacts to availability
+High performance:
+Streaming is easy
+The data eco system :
+
+Usecases
+(1) Activity tracking; User clicks on different frontends generates messages related to various topics
+And the consumers listen to these topics for generating reports, feeding ML system ,updating search results etc
+(2)Messaging: Applications need to send notifications
+(3) Metrics and logging
+
+kafka is based on the concept of a commit log?
+Name based on Franz Kafka founded in 2010
+
+
+Kafka CLI comes bundled with the kafka binaries
+kafka-topics.sh
+replication factor can be 1 for 1 broker
+NEWWWWWWWW
+ProducersTake data from source systems and send data into apache kafka.. round robin concept key based strategy, acks strategy
+data is distributed to different partitions
+Consumers operate in consumer group//store offsets in an offset topic (delivery strategy semantics)
+Kafka cluster managed by zookeeper..leader followe broker management
+To produce data to a topic, a producer must provide the Kafka client with any broker from the cluster and the topic name
+Very important: you only need to connect to one broker (any broker) and just provide the topic name you want to read from.
+Kafka will route your calls to the appropriate brokers and partitions for you!
+
+How we move data becomes as important as the data itself
+data is at the core of making decisions, the faster, easily we move data, the more agile
+our organizations can be and the more we can focus on customer needs
+our organizations can be and the more we can focus on customer needs
+Kafka is an example of publish Subscribe messaging system
+Enter Kafka: Unit of data is called a message. A message is an array of bytes without structure
+A Message can have optional metadata called as Key..The key also is byte array and as with the message
+has no specific meaning to kafka
+Key is used when data needs to be written in more controlled manner?(Multiple partition)
+For efficiency messages are written into Kafka in batches
+A Batch is a collection of messages all of which are being produced to the same topic and partition
+Trade off between latency and throughput
+
+Schema: Schema additional structure or schema imposed on messaged content so that it is easily understood
+(json) XML (extensible markup language)
+Use well defined schema and Put data format in a common repository, messages can be understood
+without coordination( Decoupling)
+
+Topics: Messages in Kafka are subscribed into topics. Topics are additionally broken down into partitions
+A partition is a single log. Writes are appended towards the end
+Partition is how Kafka provides redundancy and scalability. Partitions can be hosted on different server
+So single topic can be scaled horizontally across multiple servers
+
+Stream: is considered to be a single topic of data regardless of the number of partitions
+Single stream of data moving from producers to the consumers
+
+Kafka Clients: Users of the system and there are 2  basic types producers and consumers
+A message will be produced to a specific topic..by default the producer will balance messages to all partitions
+or to a specific partition using message key (More on this)
+
+Consumers read messages.. In other publish subscribe systems they are called subscribers or readers
+Consumer subscribes to one or more topics and reads the messages in the order in which they were
+produced to each partition...Consumers keeps track of the messages by using offset
+Each message has a unique offset in a given partition.
+Kafka creates a monotonically increasing value(meta data)
+called offset to each message as it is produced..consumer use this offset and they can stop and restart
+without loosing its place
+
+Consumer group : One or more consumers work together to consume a topic
+Each partition is consumed by only one member(more on this)
+
+
+Broker: A single Kafka server is called a broker
+Broker receives messages from producers, assigns offset to them and writes the message to storage on disk
+It also services consumers responding to fetch requests from partition and responding with the messages
+that have been published
+Single broker can handle thousands of partitions and millions of messages per second
+
+Kafka cluster: Kafka Designed to operate as a part of cluster
+One broker will function as the cluster controller and responsible for administrative operations
+including dealing with failures and assigning partitions to brokers
+A partition is owned by one broker and that broker is called leader of the partition
+A replicated partition is assigned to additional brokers called followers of the partition
+For eg in figureL Broker 1 leader of partition 0, Broker 2 is follower of partition 0
+All producers must connect to the leader in order to publish messages but consumers may fetch message
+from leader or followers
+Retention: Based on strategy (either time or partition reaches a certain size)
+
+Multiple kafka clusters? Mirror maker
+
+Why Kafka?Among multiple publish/subscribe systems
+Kafka can handle: Multiple producers whether clients are using many topics or same topic
+kafka can handle multiple consumers to read single stream of message without interfering with each other
+Disk based retention: Messages are written to disk
+Scalable: Scalability makes it easy to handle any amounts of data
+Can start with a single broker, move to production with large clusters of tens of hundreds of brokers
+Expansion can be done while cluster is online with no impacts to availability
+High performance:
+Streaming is easy
+The data eco system :
+
+Usecases
+(1) Activity tracking; User clicks on different frontends generates messages related to various topics
+And the consumers listen to these topics for generating reports, feeding ML system ,updating search results etc
+(2)Messaging: Applications need to send notifications
+(3) Metrics and logging
+
+kafka is based on the concept of a commit log?
+Name based on Franz Kafka founded in 2010
+
+
+Kafka CLI comes bundled with the kafka binaries
+kafka-topics.sh
+replication factor can be 1 for 1 broker
+kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --create --partitions 1 --replication-factor 1
+ kafka-topics.sh --bootstrap-server localhost:9092 --list
+ kafka-topics.sh --bootstrap-server localhost:9092 --describe
+ kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --delete
+ kafka-console-producer.sh --bootstrap-server localhost:9092 --topic first_topic
+
+ null keys// only values
+ but you can produce keys
+  kafka-console-producer.sh --bootstrap-server localhost:9092 --topic first_topic --property parse.key=true --property key.separator=:
+
+------------Kafka--Section 1 Stephen Maarek
+Graphical UI for Apache Kafka is Conduktor
+If you have 4 source systems and 6 target systems, you have to write 24 integrations
+Each integration comes with difficulty around protocol..data format, how data is parsed(TCP, HTTP, Rest, FTP, JDBC)
+Data schema and evolution happens over time(data changes in shape both ss and target system?)
+Each ss will also have an increased load from all connects and request to extract the data
+We bring some decoupling using Apache kafka-->decoupling of data streams and systems
+Kafka created by linkedin now open source project managed by Confluent, IBM, Cloudera
+Distributed, Resilient architecture, Fault Tolerant
+Horizontal Scalability--> Can scale to 100's of brokers, can scale to millions of messages per second
+High performance-->real time system
+
+Apache Kafka Use cases
+Gather metrics from different locations
+Application logs gathering
+Activity tracking
+Messaging system
+Microservices Pub/Sub (Decoupling of system dependencies)
+Stream processing
+Integration with Big Data technologies
+Netflix uses Kafka to apply recommendations in real time while watching TV shows
+Uber uses Kafka to gather trip, taxi and user data to compute and forecast demand and compute surge pricing in real time
+LinkedIn uses Kafka to prevent spam, collect user interactions to make better connections in real time
+Kafka is used as a transportation mechanism
+Architect-->understand the role of Kafka in enterprise pipelines
+
+Section 4 Kafka Theory
+Topic
+Particular stream of data within a Kafka cluster(logs, purchases, tweets, trucks gps    )... (similar to table in a dabatabase without the constraints)
+Can have many topics.. they are identified by name
+Support any kind of messon format (json,xml,binary)
+Sequence of messages in topic is called data stream
+Cannot query topics...use kafka producer to send data and kafka consumers to read data
+
+Partition: Topic can be divided into partitions (3)
+You can have as many partitions as you want
+In each partion each message is ordered (with the help of id)..every message in a partition gets an incremental id called offset
+Kafka topics are immutable..once the data is written to the partition..it cannot be changed
+Once sent to a topic, a message can be modified
+Multiple services are reading from the same stream of data thats an advantage for eg truck GPS
+Data in Kafka is only kept for limited time (1 week but thats configurable).. offset 3 in partition 0 is different of offset 3 in partition 1
+Offset will not be reused even if previous messages are deleted
+Order is guaranteed within partition but across partition if we need ordering difficult to achieve this
+Data is randomly assigned to a partition unless the key is provided
+Producers write data to topics
+Producers know to which partition to write to and which Kafka broker has it (producer knows in advance)
+In case of Kafka failures producers will automatically recover
+
+Key: Producer can add keys to messages.. if key is null, then data is sent round robin
+if key!= null then messages for same key will go to same partition for eg truck id..where we want to get continuos set of data
+jkey is sent for message ordering
+Key binary+Value-Binary+Compression+Headers(optional ) key value pair+partition+offset+timestamp(set by system or user)
+This kafka message gets sent to kafka for storage
+
+Kafka Message Serializer
+Accept bytes as input from producers and sends bytes as outputs to consumers
+We perform serialization..transform data into bytes..used into value and key.. IntegerSerializer and Value serializer
+
+Kafka partioner (code logic that takes a record and determines to which partition to send it to) ..More on this?
+
+Consumers
+They read data from a topic (pull model)
+A consumer may read data from one or more partition.. consumers know which broker to reader from
+They know how to recover
+Data is read in order from low to high offsets
+Consumer deserialize--transform bytes into object used on both key and value of the message(can be for Integer string Avro protobuf)
+Consumer needs to know in advance what is the expected format for your key and value
+During the topic lifecycle, once the topic ic created, You must not change the type of data which is sent by the producers
+otherwise you are going to change the consumers... You can create a new topic instead.. and reprogram consumers
+Consumer group-> A group of consumers who read from the partitions covering a topic
+Multiple consumer groups can read from one topic
+However within a consumer group, one partition can be assigned to only one consumer
+To create distinct consumer groups we will use consumer property group.id
+
+kafka stores offset at which consumer group has been reading..Why consumer group here.. More on this?
+The offsets are in the Kafka topic name of __consumer_offsets and are periodically committed
+If a consumer dies, it will be able to read back from where it left off thanks to the committed consumer offsets
+
+Delivery strategy-semantics
+Java consumer by default will commit at least once (right after the message is processed)
+Our processing should be idempotent so reprocessing the message has no impact
+
+At most once--> as soon as me/ssage is received..if processing goes wrong some messages will be lost
+
+Exactly once--->Use the transactional API
+
+Kafka brokers: A Kafka cluster is composed of multiple brokers(server)..identified by an id
+Each broker contains certain topic partitions which means all topics are distributed across all brokers
+After connecting to one broker..you can connect to any broker (entire cluster) bootstrap broker?
+Every kafka broker is called a bootstrap server
+kafka client will initiate a connection and send metadata request to broker 101 and broker 101 will return list of all brokers
+Kafka client will then connect to the required broker to produce or consume data
+
+Topic replication factor >1 to provide fault tolerance
+That means partition are replicated across different brokers depending on replication factor
+There can be however only 1 leader for a partition at a given time
+Producers will send data to leader to the leader of the partition, the other brokers will replicate the data ..if its fast enough we call it ISR
+Each partition has one leader and multiple ISR
+
+Kafka v2.4( possible to read the data from the closest replica) to improve latency, performance
+Producer acknowledgement--> acks=0 producer will not wait for acknowledgement from broker that write happened(possibl data loss)
+acks=1 producer will wait for leader to acknowledge(limited data loss)
+acks=all (all in sync replicas to provide confirmation) -> no data loss
+
+Kafka topic durability
+if you have replication factor of N, you can still loose N-1 brokers and recover your data
+
+Zookeeper
+manages brokers(keeps a list of them)
+helps in performer leader elections
+sends notification to kafka in case of changes( new broker, broker dies, broker comes up, delete topics)
+
+Apache zookeeper used by kafka for storing metadata for the users
+Used for leader election
+Keeps list of brokers
+Sends notification to brokers.. kafka until 2.x cannot work without zookeper
+starting with 3.x Kafka raft mechanism , it can work without zookeeper
+kafka 4.0 can work without zookeeper
+Zookeeper by design operates with an odd number of servers(1,3,5,7)
+Zookeeper cluster (1 leader for writes and rest are followers (reads))
+Kafka clients were configured to be connected to zookeeper,,before
+But now never use zookeeper as a configuration in your kafka clients..over time the kafka clients  and CLI have been migrated to leverage the brokers as a connection
+instead of zookeeper
+Since Kfka 0.10 offsets are stored in kafka topics and consumer must not connect to zookeeper
+Since Kafka 2.2 kafka-topics.sh CLI commands Kafka brokers and not zookeeper for topic management
+With more than 100,000 partitions in cluster, zookeeper was having scaling issues
+Kafka 3.x implements kraft to replace zookeeper
+Zookeeper is less secure and care should be taken to ensure ports are open to allow traffic only from Kafka brokers and not Kafka clients
+Basically modern day developer will never use zookeeper as configuration in your kafka clients and other programs that connect to Kafka
+ 3 zookeepers managing 3 brokers// in new system only 3 brokers, one is designated as leader to replace zookeeper function
+
+

@@ -36,7 +36,7 @@ Iterator Design Pattern ( behaviourial)
  The Iterator and Aggregate interfaces work together to provide a seamless and standardized way of iterating over a collection.
 
 	
-Singleton pattern
+Singleton pattern (Creational design pattern)
 	Ensures a class has only one instance and provides a global point of access to it
 	Things should not be leaking in global namespace..important to scope it..
 	It can change without you knowing it..

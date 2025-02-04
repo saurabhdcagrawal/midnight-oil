@@ -1,0 +1,137 @@
+Statistical learning & Business analytics
+	Helps in Analyzing data
+	Descriptive statistics
+	https://www.youtube.com/watch?v=d6wG_sAdP0U&ab_channel=TED
+	
+	Classification
+		Classes of unit in the data
+		Ways to segment/say how many kinds of customers do I have
+		Classifying different kinds of customers in different kinds of bucket
+	
+	Pattern Recognition
+		Recognizing data forms that appear to be common
+		Look at distribution of data to see what kind of data is rare/common
+		Histogram, Scatter, box plot,bar plot ->Techniques to visually analyze the data
+	
+	Association
+		Relationship between objects
+		there is a 40% chance that if you buy coffee you buy bread
+		Think in terms of what data might be or might been
+		How does uncertainty relate to data
+		How do I put uncertainty into the analysis of data on a computer
+		
+	Predictive Analytics
+		Models
+			Regression
+			Logistic Regression
+			Neural Networks
+	
+	Business Analytics		
+		Analytics synonymous to quantitative
+		Broad use of data and quantitative analysis(quantitative methods) for decision making within the organization
+		qualitative vs quantitative
+		hot outside vs 90 degree F outside
+		quant means precise(Gives you a sense of why we are doing what we are doing)
+		Why this is a good choice? Because quantitavely I can convince you that it gives a higher profit
+		qualititaive= what we been doing= mental model	
+		Qualitative(Intuitive,human way)
+		real world->observation->mental model (how I believe the world works like)->make decisions
+		Quantitative way(improve model)
+		real world->data(precise observation)->mathematical model(how I believe the world works like said in precise steps)->make decisions	
+							DATA SCIENCE                                                                           DECISION SCIENCE
+								ML                                                                                    Optimization
+							Statistics																				   Simulation	
+							Data Mining																				Dynamic programming
+		
+		Everytime someone says a mathematical model, its just a precise statement of how they believe their segment of world looks like
+		AI is application.. when data to decision process is used to create a product which behaves human like..self autonomous car or playing chess, then its called AIs
+		Making the computer do something smart.. we made it do, its not natural.. thats why artificial	
+		AI is broad term.. 
+		ML is a subset of AI..it is at the core of ML.....machine is able to learn from the data once told how to do so..uses some basic statistical models
+		Deep learning is a subset of ML (machine is setup a way where machine works in a way human brains, neural networks, series of layers ?) 
+		Data science--> Human involvement is there on the part of decision making.. 
+		ML is at the intersection  of Computer Science, Math & Statistics
+		Software development is at the intersection of Computer Science & Business Domain/Knowledge
+		Traditional Research is intersection of Business/Domain Knowledge and Math & Statistics
+		Data Science lies at the intersection of Computer Science, Math & Statistics & Business/Domain Knowledge
+		There are layers
+		
+		basic 
+					
+	Statistical Methodologies
+		Descriptive statistics  what is -> data summarization, graphs,charts and talks 
+		Inferential statistics  what also might be -> talk about population parameter from sample (take a sample of data and make inferences about the population from it)
+		Staistics drives the lines between the two
+		
+	Statistical jargon
+		Population->universe of possible data for a specified object(past,present, future) Eg people who have visited a website of will visit the website (not observed)
+		Parameters-> numerical value associated with a population eg no of clicks made on the website (not observed)
+		Sample-> Selection of observations from a population (people who actualy visited the website on a given day) (observed)
+		Statistic-->numerical value associated with an observed sample..the average amount of time people spent on website on a given day (observed)
+		Statistical problem to go from observed to non observed,from the sample to the population because the object we are interested in
+		is not the statistic but the parameter because the universe we are interested is the population and not the sample or data we have.
+		
+	Primary data
+		Collected by the organization itself for a particular purpose. Fit the needs exactly, up to date and reliable
+	Secondary Data
+		Collected by a different organization/s. Published by government/archives/other organizations
+	qualitative data -> non numeric eg gender, religion, place of birth
+	quantitative data-> numeric	
+		Further divided into discrete and continous
+	Term document matrix converts qualitative data into quantitative data	
+		Different kinds of data was discussed.. spatial, audio, video, pictures, text, numerical, matrices
+	
+	Measure of central tendency
+		Mean-->average of the values... affected by extremes if we change (requires measurement on all observations)
+		Median-> middle observation..no effect if we change the extremes( greater resistance to outliers) (does not require measurement on all observations) Q2
+		Mode-> maximum frequency of occurence (typical value)(does not require measurement on all observations)	
+	Measures of dispersion
+		Range= max-min.. affected by extremes (outliers)
+		Interquartile range(IQR)= q3-q1.. arrange data set in ascending order and range computed on the middle 50% of the observations..
+			Eliminate lower 25% and upper 25%
+			Less affected by outliers
+			Range of the middle 50% of data
+		Variance	
+			Average of the squared differences from mean is the variance
+		Standard Deviation: How much each data point differs from the mean
+			Square root of the variance
+			Problem of units...how do we know how big/small the value is
+		Coefficient of Variation
+			Standard Deviation as the percentage of mean
+		Z score
+			How do I know if 6 feet is tall, if tall how tall?
+			calibrate a measure w.r.t its own distribution
+			(observation-mean)/(standard deviation)
+			if Z score is 1 then 1standard deviation above the average, if 2 then 2 standard deviation below the average	
+	Exploratory data analysis
+		Set of tools that analyze the data not for the purpose of building a model or extracting intelligence but just to describe/explore aspects of it
+		that may be useful for future model building or future extraction of intelligence
+		John Tukey..coined the term in 1960's
+		To make data analysis easier
+		Qualitative Variables
+			Nominal: No numerical value (names) and ordinal variables(very dissatisfied)	
+		Quantitative Variables
+			Numerical value associated with it
+			
+	Five number summary
+		Minimum, q1(lower quartile), Q2 (median), Q3(75th percentile or upper quartile), maximum
+	Skeweness/Shape of data
+		Skewness is a measure of the extent to which the data values are not symmetrical around the mean.
+		If mean, median and mode agree it points to a perfect symmetrical distribution(bell curve) i.e mean=median then we have zero skewness
+		if mean>median ..positive or right skewed distribution..(data leaks to the right)
+		if mean<median ..negative or left side distribution (data leaks to the left)
+		Hint: median will always be closest to mode
+	Box plot
+		Around the five number summary with extremes as tails.. box starts from Q1 and ends at Q3..line inside the box at Q2 median
+		Size of the box is IQR
+		Shape of box adapts to the skewness in the data
+		Q3+1.5 times the size of the box..values beyond can be considered as outliers (both sides.. q3+1.5IQR, q1-1.5IQR)
+	For 2D
+		Covariance--to measure how one variable varies w.r.t variance in another variable(if one variable becomes large does the other also become large or small at the same time)
+					This is +ve covariance
+					A negative value indicates the 2 variables move in opposite direction to each other
+		Correlation
+			Determine the strength of the relationship between 2 variables
+			Covariance/product of Standard Deviation
+			Does not imply causation...?
+			Diff between covariance and correlation?

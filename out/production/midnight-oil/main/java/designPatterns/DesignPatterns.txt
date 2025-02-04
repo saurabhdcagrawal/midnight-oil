@@ -1,0 +1,8 @@
+Solid architectures that are reuseable and extendible and are industry standard
+
+Singleton->Database driver, list of all configuration settings for your application
+For a given class there can be only one instance
+Go and get the data any point to time
+
+
+Facade--> Front of the building

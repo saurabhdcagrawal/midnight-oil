@@ -1,0 +1,335 @@
+Garbage collection
+Multithreading
+Design Patterns
+Db2 Java
+UI
+LRU cache
+Map
+read excel
+my profile
+Generics
+Whats new in Java 8
+Monday design patterns
+
+for a large database joins are expensive,therefore denormalize your data(duplicate it
+in multiple tables)
+
+Protected :Variable ,methods,constructors
+Class in same package or subclasses in a different package
+Protected access gives the subclass a chance to use the helper method or variable,
+ while preventing a nonrelated class from trying to use it.
+
+A class can extend only one class but implement any number of interfaces
+Unlike classes, an interface can be extended from more than one interface
+
+Tree
+Graph
+BFS DFS Graph search
+Heap
+String array problems
+
+
+JOINS
+
+Explicit Join                                     Implicit Join
+1 SELECT CourseName, TeacherName                1 SELECT CourseName, TeacherName
+2 FROM Courses INNER JOIN Teachers              2 FROM Courses, Teachers
+3 ON Courses.TeacherID = Teachers.TeacherID     3 WHERE Courses.TeacherID =
+                                                4 Teachers.TeacherID
+                                                  (ON replaced by where)
+
+
+CARTESIAN product join
+select * from student,cartesian
+
+return m* n rows
+
+inner join outer join have a where clause
+
+
+
+//Student_id Student_name Advisor_id
+  1          student_1              1
+  2          student_2              8
+  4          student_4              2
+  5          student_5              3
+  7          student_7              3
+
+//Advisor_id Advisor_name
+1            advisor 1
+3            advisor 3
+5            advisor 5
+
+The inner join takes into account only those non NULL rows from the tables involved
+
+Retrieve all rows that match the WHERE clause and also
+those that have a NULL value in the column used for join.
+
+Left outer joins include all records from the first (left) of two tables,
+	 	A = B (+)
+
+Right outer joins include all records from the second (right) of two tables,
+		A (+) = B
+
+FULL OUTER JOIN
+
+select student_id,student_name,advisor_id,advisor_name
+from student s inner join advisor a on s.advisor_id=a.advisor_id
+
+SQL example for just getting the rows that don't join
+select * from dbo.Students S FULL OUTER JOIN dbo.Advisors A ON
+S.Advisor_ID=A.Advisor_ID where A.Advisor_ID is null or S.Student_ID is null
+
+
+
+number of employees in each department
+
+//to include apartment with 0 employees
+select department.name ,count(*) from department d
+left join employee e
+on d.dept_id=e.dept_id group by department_name
+
+Join to get data from 2 tables
+
+//left join
+empId empName managerId
+101   Tom      103
+102   Dick     101
+103   Harry
+104   Martha   101
+
+
+Self Join :
+List employee names along with manager
+select e1.empName ,e2.empName as 'ManagerName' from emp e1 left outer join e2
+on e1.managerId=e2.empId
+
+
+Sub Queries
+Independent subquery -Inner query independent of output query .inner query executed only once
+executed first
+List all items whose unit price is greater than the price of Item A
+
+List the second highest Unit price from the item table.
+
+HAVING CLAUSE
+Is used when working with aggregate functions
+    HAVING applies to summarized group records, whereas WHERE applies to individual records.
+
+Get count of customers from countries which have more than 10 customers
+
+select count(customer_id), country from CUSTOMER group by country having count(customer_id)>10
+
+Correlated sub query
+Reference of outer table in inner query
+Inner query executed once for every row of outer query
+
+Simulate from starting outer query (opposite to independent)
+
+List all item details of items having max price in their class
+
+item itemid itemname unitprice class
+
+select Io.itemid,Io.itemname,Io.class from Item Io
+where Io.unitprice= (
+select max(unitprice) from Item Ii where Ii.class=Io.class);
+
+
+exists is a part of co related subquery
+EXISTS returns TRUE if inner query used returns any one record.
+NOT EXISTS returns TRUE if inner query does not return anything
+inner query returns any row ,output query will print
+Usually inner query will be select *
+
+customer         - customerid customername dateOfReg
+customerPurchase - customerid itemid qtypurchased billid netprice
+
+list customers who have purchased at least one item
+select * from customer C where exists( select * from customer Purchase CP
+                                       where cp.customerid=c.customerid)
+a 90
+b 80
+c 50
+
+//constructor is private ,cannot instantiate the class ,nor inherit
+//only way to create an instance of the class ,
+is by providing a public static method as using the factory method pattern
+
+//finally block will always be executed even if there is a return in try statement
+
+//finally is optional ,catch is optional but try has to be followed by catch or finally//
+finally is used to write clean up code
+
+//final if you add to a reference ,the reference cannot be pointed to a new object
+
+//static variables are class variables ,so they can be accessed by any instance method
+// Non static variables ,cannot be accessed in a static method ,create an instance of the class and then
+reference it using the object
+
+
+Java reflection API
+ //reflective information about the class and objects during run time such as methods and fields presemt
+  in the class during run time//
+direct access ro constructor,fields , getting setting object fields regardless
+of what the access modifier is used for debugging and testing
+//
+
+//function overloading ,calls to function are resolved during compile time
+//functions with same name ,same return type ,different input argument list
+//function overriding
+//function with same name and signature in sub class
+//calls resolved during run time
+//reference to the base class ,and add object of subclass,compile time it is matched with the base class
+//but during run time it runs the sublcass method
+
+Hashmap Array of linked list ,search in O(1)
+Linked Hashmap implemented through doubly linked lists ,O(1) lookup and insertion
+TreeMap -offers O(logn) lookup and insertion  ,keys are ordered
+ therefore key has to implement the comparable interface
+
+
+
+//Hashmap - Array of linked list
+infinite keys ,finite int /long values ,use hashcode function that will convert
+key to hashcode.2 keys can have same hashcode
+
+using a function such as modulo ,map hashcode to an index in the array ,
+at this linked list ,there is a linked list of key and value
+hash(key)modulo array.length .
+
+2 keys can link to same index location either they map to same location or they have same hashcode
+hence we have to use linked list .This is called collision
+
+If collisions is high runtime is O(n) ,where N is number of keys
+
+To find do the same ,get hashcode ,see the value it is mapped to go to the location
+traverse the link list and try to find a match
+
+
+
+
+
+THREAD
+To define deadlock, first I would define process.
+Process : As we know process is nothing but a program in execution.
+
+Resource : To execute a program process needs some resources.
+ Resource categories may include memory, printers, CPUs, open files, tape drives, CD-ROMS, etc.
+
+Deadlock : Deadlock is a situation or condition when two or more processes are
+holding some resources and trying to acquire some more resources,
+and they can not release the resources until they finish there execution.
+
+Deadlock condition or situation
+
+n the above diagram there are two process P1 and p2 and there are two resources R1 and R2.
+
+Resource R1 is allocated to process P1 and resource R2 is allocated to process p2.
+To complete execution of process P1 needs resource R2,
+so P1 request for R2, but R2 is already allocated to P2.
+
+In the same way Process P2 to complete its execution needs R1,
+but R1 is already allocated to P1.
+
+both the processes can not release their resource until
+ and unless they complete their execution.
+
+ So both are waiting for another resources and they will wait forever.
+ So this is a DEADLOCK Condition.
+
+In order for deadlock to occur, four conditions must be true.
+
+Mutual exclusion - Each resource is either currently allocated to exactly
+ one process or it is available.
+(Two processes cannot simultaneously control the same resource or be in their critical section).
+Hold and Wait - processes currently holding resources can request new resources.
+No preemption - Once a process holds a resource, it cannot be taken away by another process
+ or the kernel.
+Circular wait - Each process is waiting to obtain a resource which is held by another process
+
+Ways to avoid having deadlocks are:
+
+avoid having locks (if possible),
+avoid having more than one lock
+always take the locks in the same order.
+
+
+[DECLARE]
+   Declaration statements;
+BEGIN
+   Execution statements;
+  [EXCEPTION]
+      Exception handling statements;
+END
+
+
+
+//Thread creation ,create a new class by extending the thread class ,override the public void run method
+//create an instance of this class T1 and call the start method of this instance
+
+ public class MyThread extends Thread {
+
+    public void run(){
+       System.out.println("MyThread running");
+    }
+  }
+   MyThread myThread = new MyThread();
+    myTread.start();
+
+//create a class that implements java.lang.Runnable  ,
+override the public run method
+//Create a thread object by passing an instance of runnable object in its constructor
+//call the start method on the thread object
+Better resource utilization.
+
+Simpler program design in some situations.
+
+More responsive programs.
+
+ public class MyRunnable implements Runnable {
+
+    public void run(){
+       System.out.println("MyRunnable running");
+    }
+  }
+   Thread thread = new Thread(new MyRunnable());
+     thread.start();
+
+The JVM and/or operating system determines the order in which the threads are executed.
+ This order does not have to be the same order in which they were started.
+
+ Java garbage collection -automatic memory mechanism my Java where developers do not have
+ to manage memory .Java complies to bytecode ,this bytecode runs on JVM
+ JVM will automatically reclaim memory for objects that are unused.. An unused object,
+ or unreferenced object, is no longer referenced by any part of your program.
+ So the memory used by an unreferenced object can be reclaimed.
+The heap is divided into three sections:
+ Young generation(eden ,survivor1 ,survivor 2 ) old generation/tenured generation permanent
+ Young Generation: Newly created objects start in the Young Generation. The Young Generation is further subdivided
+ into an Eden space, where all new objects start, and two Survivor spaces, where objects are moved
+  from Eden after surviving one garbage collection cycle. When objects are garbage collected
+  from the Young Generation, it is a minor garbage collection event.
+ Old Generation: Objects that are long-lived are eventually moved from the
+
+ Young Generation to the Old Generation. When objects are garbage collected from the Old Generation,
+  it is a major garbage collection event.
+ Permanent Generation: Metadata such as classes and methods are stored in the Permanent Generation.
+ Classes that are no longer in use may be garbage collected from the Permanent Generation.
+ During a full garbage collection event, unused objects in all generations are garbage collected.
+
+
+
+While one thread is Iterating the HashMap object, if other thread try to add/modify
+ the contents of Object then we will get Run-time exception saying ConcurrentModificationException.
+ Whereas In ConcurrentHashMap we wont get any exception while performing any modification at the
+  time of Iteration.
+
+MapReduce provides a means to distribute
+computation without burdening the programmer with the details of distributed computing
+(but at a different level of granularity).
+
+Can private methods be overriden?
+Private methods are not inherited by subclasses and hence there is no point of overriding.
+Since the private members cannot be inherited, there is no place for discussion on java runtime overloading or java overriding (polymorphism) features.
+
+

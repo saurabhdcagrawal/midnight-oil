@@ -1,0 +1,851 @@
+1)How to make class immutable in Java
+
+Immutable class is a class which once created, its contents can not be changed. Immutable objects are the objects whose state can not be changed once constructed. e.g. String class
+Immutable means once created cannot be changed during Lifetime
+
+1)Make class as finals   --if not final,people can freely extend the class and override the beahviour
+2)Data members as private and final
+3)provide constructor to set them
+4)Provide getter methods,do not provide setter methods
+5)No methods that modify the state
+   
+
+ final class Immutable  
+
+ {  
+
+   private final int val1;  
+   private final String val2;  
+
+
+    public Immutable(int a, String s)  
+
+   {  
+
+         val1 = a;  
+         val2 = s;  
+
+    }  
+
+    public int getVal1()  
+
+     {  
+
+         return val1;  
+
+    }  
+
+    public String getVal2()  
+
+    {  
+
+        return val2;  
+
+    }  
+
+ }  
+
+    
+
+ public class ImmutableClassDemo {  
+
+     public static void main(String[] args) {  
+
+         Immutable obj = new Immutable(10, "ShivaSoft ...the supreme solution");  
+
+         System.out.println(obj.getVal1());  
+
+         System.out.println(obj.getVal2());  
+
+    }  
+ } 
+
+Q3) Immutable objects are automatically thread-safe true/false?
+
+Ans) True. Since the state of the immutable objects can not be changed once they are created they are automatically synchronized/thread-safe.
+ 
+Q4) Which classes in java are immutable?
+
+Ans) All wrapper classes in java.lang are immutable
+String, Integer, Boolean, Character, Byte, Short, Long, Float, Double, BigDecimal, BigInteger
+ 
+Q5) What are the advantages of immutability? 
+
+Ans) The advantages are: 
+1) Immutable objects are automatically thread-safe,there are no synchronisation issues
+ the overhead caused due to use of synchronisation is avoided.
+2) Once created the state of the immutable object can not be changed so there is no possibility of them getting into an inconsistent state.
+3) The best use of the immutable objects is as the keys of a map.
+ 
+Disadvantage
+Since they have only one value,you run the risk of creating large amount of these objects
+
+
+
+2) What is a marker interface
+A so-called marker interface is a Java interface which doesn't actually define any fields and methods
+ It is just used to "mark" Java classes which support a certain capability to inform the compiler that the class can provide special behaviour at runtime
+
+Java Marker Interface Examples
+java.lang.Cloneable
+java.io.Serializable
+java.util.EventListener
+
+
+Clonable
+In java, though clone is intended to produce a copy of the same object.
+
+1)Implement the clone interface
+2)override the clone method
+
+
+SHALLOW COPY
+What is Shallow Copy?
+
+Shallow copy is a bit-wise copy of an object.
+In shallow copy the object is copied without its contained objects
+ A new object is created that has an exact copy of the values in the original object. If any of the fields of the object are references to other objects, just the reference addresses are copied i.e., only the memory address is copied. 
+
+so any changes you make to the the original object contained inside the object to be cloned  will be reflected in the object contained within the copied object and vice versa.
+
+
+public class Color {
+
+    private String color;
+
+    public Color(String c){
+        this.color = c;
+    }
+
+    //getters and setters for the fields should go here........
+}
+
+public class ColoredCircle implements Cloneable {
+
+    private int centerX;
+    private int centerY;
+	private Color color;
+
+	public ColoredCircle(int x, int y, Color c){
+	    this.centerX = x;	
+		this.centerY = y;
+		this.color = c;
+	}
+
+    public Object clone() {
+        try {
+            return (ColoredCircle)super.clone();
+        }
+        catch (CloneNotSupportedException e) {
+            // This should never happen
+        }
+    }
+
+    //getters and setters for the fields should go here........
+}
+
+public class CloneMain {
+
+    public static void main(String [] args) {
+
+		Color c = new Color("RED");
+        ColoredCircle c1 = new ColoredCircle(200,200,c);
+        ColoredCircle c2 = c1.clone();
+    }
+}
+
+Because clone() is declared in class Object, it is inherited by every Java object and hence calling super.clone() copies your superclass's fields, and makes bitwise copies of your fields
+ This is nothing but shallow copy which means when you copy the "ColoredCircle" using clone() method, the fields x and y are copied perfectly with values but field "color" is copied by reference. So any changes you make to the color of the original object will be reflected in the copied object and vice versa. The solution for this is deep copy
+
+
+
+DEEP COPY
+
+Change the Color class to implement "Cloneable" interface and clone() method and call the clone() method of color object inside the clone() method of the ColoredCircle object. Look at the changed Color class and ColoredCircle class below.
+
+public class Color implements Cloneable{
+
+    private String color;
+
+    public Color(String c){
+        this.color = c;
+    }
+
+    public Object clone() {
+        try {
+            return (Color)super.clone();
+        }
+        catch (CloneNotSupportedException e) {
+            // This should never happen
+        }
+    }
+
+    //getters and setters for the fields should go here........
+}
+
+public class ColoredCircle implements Cloneable {
+
+    private int centerX;
+    private int centerY;
+    private Color color;
+
+    public ColoredCircle(int x, int y, Color c){
+        this.centerX = x;	
+        this.centerY = y;
+        this.color = c;
+    }
+
+    public Object clone() {
+        ColoredCircle coloredCircle = null;
+        try {
+            coloredCircle = (ColoredCircle)super.clone();
+        }
+        catch (CloneNotSupportedException e) {
+            // This should never happen
+        }
+        coloredCircle.color = (Color) color.clone();
+        return coloredCircle;
+    }
+
+    //getters and setters for the fields should go here........
+}
+
+
+
+
+
+Serialization
+
+Serialization is the process of converting an object's state (including its references) to a sequence of bytes, as well as the process of rebuilding those bytes into a live object at some future time. Simple......Coverting an object to bytes and bytes back to object. So when is serialization used? Serialization is used when you want to persist the object. 
+In general, serialization is used when we want the object to exist beyond the lifetime of the JVM. 
+
+
+To persist data for future use.
+To send state of one or more objects state over the network through a socket.
+
+
+1)Java provides Serialization API, a standard mechanism to handle object serialization. To persist an object in java, the first step is to flatten the object. For that the respective class should implement "java.io.Serializable" interface
+2)Next step is to actually persist the object
+
+class Student implements Serializable{
+	public String name;
+	public int classNo;
+	public int marks;
+	public Student(String name, int classNo, int marks){
+		this.name = name;
+		this.classNo = classNo;
+		this.marks = marks;
+	}
+}
+public class SerializationDemo{
+	public static void main(String[] args){
+		try{
+			FileOutputStream fileStream = new FileOutputStream("student.ser");
+			ObjectOutputStream objStream = new ObjectOutputStream(fileStream);
+			Student student = new Student("Tan", 5, 76);
+			objStream.writeObject(student);
+		}
+		catch(IOException ioException){
+			System.out.println(ioException);
+		}finally{
+	
+			if(fileStream!=null){
+				try{
+					fileStream.close();/*may throw an exception*/
+				}catch(IOException ioException){System.out.println(ioException);}
+			}
+			if(objStream!=null){
+				try{
+					objStream.close();
+				}catch(IOException ioException){System.out.println(ioException);}
+			}
+		}
+	}
+}
+
+Q6) What happens if the object to be serialized includes the references to other serializable objects?
+
+Ans) If the object to be serialized includes the references to other objects whose class implements serializable then all those objects state also will be saved as the part of the serialized state of the object in question.
+ 
+Q7) What happens if an object is serializable but it includes a reference to a non-serializable object?
+
+Ans- If you try to serialize an object of a class which implements serializable, but the object includes a reference to an non-serializable class then a NotSerializableException will be thrown at runtime.
+
+
+ 
+8) Are the static variables saved as the part of serialization?
+
+Ans) No. The static variables belong to the class and not to an object they are not the part of the state of the object so they are not saved as the part of serialized object.
+ Lets assume that you have serialized a static field and its value and before deserialization of the object, the static field value is changed by some other object. Now the static field value that is serialized/stored is no more valid. Hence it make no point in serializing the static field. 
+
+Q9) What is a transient variable?
+
+Ans) These variables are not included in the process of serialization and are not the part of the objects serialized state.
+After deserializatio,their value will not be changed and reflect the default value
+
+public class SerializationDemo{
+	public static void main(String[] args){
+		FileInputStream fileStream =null;
+		ObjectInputStream objStream = null;
+		try{	FileInputStream fileStream = new FileInputStream("student.ser");
+			ObjectInputStream objStream = new ObjectInputStream(fileStream);
+			Student student =(Student)objStream.readObject();/*read obj does not take any arguments*/
+			System.out.println("Student Details+student.name +student.classNo+student.marks );
+		}
+		catch(ClassNotFoundException classNotFoundException){ System.out.println(classNotFoundException); }
+		catch(IOException ioException){ System.out.println(ioException);}
+		finally{
+			if(fileStream!=null){
+				try{
+					fileStream.close();/*may throw an exception*/
+				}catch(IOException ioException){System.out.println(ioException);}
+			}
+			if(objStream!=null){
+				try{
+					objStream.close();
+				}catch(IOException ioException){System.out.println(ioException);}
+			}
+		}
+
+
+
+
+q10)During deserialization,constructors are not called.So specific operation that are performed when you initiate the object are not performed when deserialized.How will we perform such operations during deserialization
+
+by providing two methods inside your serializable class. Those methods are:
+
+1)private void writeObject(ObjectOutputStream out) throws IOException; 
+2)private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException; 
+
+
+Also we can store the transient variables state as a part of the serialized object at the time of serialization through this(in a way we can control what is to be serialized and what is not serialized)
+
+private void writeObject(ObjectOutputStream os) { 
+
+    public class TestCustomizedSerialization implements Serializable{ 
+
+   
+    private String noOfSerVar; 
+    transient private int noOfTranVar; 
+
+    TestCustomizedSerialization(int noOfTranVar, String noOfSerVar) { 
+        this.noOfTranVar = noOfTranVar; 
+        this.noOfSerVar = noOfSerVar; 
+    } 
+
+
+
+     try { 
+     os.defaultWriteObject(); 
+     os.writeInt(noOfTranVar); 
+     } catch (Exception e) { e.printStackTrace(); } 
+     } 
+
+     private void readObject(ObjectInputStream is) { 
+     try { 
+     is.defaultReadObject(); 
+     int noOfTransients = (is.readInt()); 
+     } catch (Exception e) { 
+         e.printStackTrace(); } 
+     } 
+
+q) Now what if you dont want to serialize one of the sub class of a serializable class?
+To stop the automatic serialization, you can once again use the private methods to just throw the NotSerializableException in your class. 
+
+
+private void writeObject(ObjectOutputStream out) throws IOException{
+
+    throw new NotSerializableException("Dont Serialize");
+}
+
+private void readObject(ObjectInputStream in) throws IOException{
+
+    throw new NotSerializableException("Dont Serialize");
+}
+
+
+Q13) If a class is serializable but its superclass in not , what will be the state of the instance variables inherited  from super class after deserialization?
+
+Ans) The values of the instance variables inherited from superclass will be reset to the values they were given during the original construction of the object as the non-serializable super-class constructor will run
+
+
+
+q)which java classes are not serializable
+ certain system classes defined by java like "Thread", "OutputStream", "Socket" are not serializable.
+
+
+Q14) To serialize an array or a collection all the members of it must be serializable. True /False?
+Ans) true
+
+
+
+What is SUID
+everytime an object is serialized the java serialization mechanism automatically computes a hash value using ObjectStreamClass�s computeSerialVersionUID() method by passing the class name, sorted member names, modifiers, and interfaces to the secure hash algorithm (SHA), which returns a hash value, the serialVersionUID. 
+
+
+Now when the serilaized object is retrieved, the JVM first evaluates the serialVersionUID of the serialized class and compares the serialVersionUID value with the one of the object. 
+If the sserialVersionUID values match then the object is said to be compatible with the class and hence it is de-serialized. If not InvalidClassException exception is thrown. 
+
+
+Versioning issue
+Client sends a serializable class with default generated serialVersionUID (e.g 123L) to server over socket, while server may generate a different serialVersionUID (e.g 124L) during deserialization process, and raise an unexpected InvalidClassExceptions. Since the default serialVersionUID computation is highly sensitive to class details and may vary from different JVM implementation, an unexpected InvalidClassExceptions will result here. 
+
+What's the solution for this versioning issue?
+
+The solution is very simple. Instead of relying on the JVM to generate the serialVersionUID, you explicitly mention (generate) the serialVersionUID in your class. The syntax is: 
+
+private final static long serialVersionUID = <integer value> 
+
+Yes, its a static, private variable in the class. Once you define the serialVersionUID in your class explicitly, you dont need to update it until and unless you make the incompatible changes
+
+Changes to a serializable class can be compatible or incompatible. 
+Following is the list of changes which are compatible:
+
+
+�Add fields 
+�Change a field from static to non-static 
+�Change a field from transient to non-transient 
+�Add classes to the object tree 
+List of incompatible changes:
+
+�Delete fields 
+�Change class hierarchy 
+�Change non-static to static 
+�Change non-transient to transient 
+�Change type of a primitive field 
+
+If we explicitly metion the suid using the statement:
+
+private final static long serialVersionUID = <integer value> 
+
+then if any of the metioned compatible changes are made the class need not to be recompiled. But for incompatible changes there is no other way than to compile again.
+
+
+EXTERNALIZABLE
+
+Why  use externalization when seralization available?/
+
+�Serialization is a recursive 
+All fields required starting from the object till all objects that can be reached by that object are serialized.
+This includes the super class of the object until it reaches the "Object" class and the same way the super class of the instance variables until it reaches the "Object" class of those variables. Basically all the objects that it can read. This leads to lot of overheads,lot of meta data leading to performance issue
+
+
+Externalization is nothing but serialization but by implementing Externalizable interface to persist and restore the object. To externalize your object, you need to implement Externalizable interface that extends Serializable interface.
+
+Externalizable interface is not a marker interface and it provides two methods - writeExternal and readExternal .It is the responsibility of the class to save and restore the contents of its instances which means you will have complete control of what to serialize and what not to serialize
+
+Unlike Serializable interface which will serialize all the variables in the object with just by implementing the interface, here you have to explicitly mention what fields or variables you want to serialize and the same is done in "writeExternal" and "readExternal" methods
+
+import java.io.*;
+
+public class Car implements Externalizable {
+
+    String name;
+    int year;
+
+    /*
+     * mandatory public no-arg constructor
+     */
+    public Car() { super(); }
+    
+    Car(String n, int y) {
+	name = n;
+	year = y;
+    }
+
+    /** 
+     * Mandatory writeExernal method. 
+     */
+    public void writeExternal(ObjectOutput out) throws IOException  {
+	out.writeObject(name);
+	out.writeInt(year);
+    }
+
+    /** 
+     * Mandatory readExternal method. 
+     */
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+	name = (String) in.readObject();
+	year = in.readInt();
+    }
+
+    /** 
+     * Prints out the fields. used for testing!
+     */
+    public String toString() {
+        return("Name: " + name + "\n" + "Year: " + year);
+    }
+}
+
+import java.io.*;
+
+public class ExternExample {
+   
+    public static void main(String args[]) {
+
+	// create a Car object 
+	Car car = new Car("Mitsubishi", 2009);
+	Car newCar = null;
+	
+	//serialize the car
+	try {
+	    FileOutputStream fo = new FileOutputStream("tmp");
+	    ObjectOutputStream so = new ObjectOutputStream(fo);
+	    so.writeObject(car);
+	    so.flush();
+	} catch (Exception e) {
+	    System.out.println(e);
+	    System.exit(1);
+	}
+
+	// de-serialize the Car
+	try {
+	    FileInputStream fi = new FileInputStream("tmp");
+	    ObjectInputStream si = new ObjectInputStream(fi);  	    
+	    newCar = (Car) si.readObject();
+	}
+	catch (Exception e) {
+	    System.out.println(e);
+	    System.exit(1);
+	}
+
+	/* 
+	 * Print out the original and new car information
+	 */
+	System.out.println("The original car is ");
+	System.out.println(car);
+	System.out.println("The new car is ");
+        System.out.println(newCar);
+    }
+}
+
+
+
+
+Question
+What will happen when an externalizable class extends a non externalizable super class? 
+
+Then in this case, you need to persist the super class fields also in the sub class that implements Externalizable interface. ie in the readExternal and writeExternal method
+
+Question
+What if the super class implements the Externalizable interface? 
+
+Well, in this case the super class will also have the readExternal and writeExternal methods as in Car class and will persist the respective fields in these methods
+In subclass readExternal and writeExternal methods make a reference to subclass methodd
+
+super.readExternal(out);
+super.writeExternal(out);
+Static variable,block,method
+
+Static variable are class variable. They are initialized when class is loaded,
+Static variables are used when you want to keep a value across instances of a class , e.g., 
+Number of objects that are getting created
+Number of users visiting your website
+
+Can be initialised,accessed in a constructor,static method or static block
+
+
+public class StaticVarDemo
+{
+
+     private static int objcount;
+     public StaticVarDemo ()
+    {
+      objcount++
+    } 
+public static void  main(String args[])
+{
+
+   new StaticVarDemo;
+   new StaticVarDemo;
+   new StaticVarDemo;
+   System.out.println(objcount);
+}
+}
+
+Static block:executed when class is loaded in memory,can be used to initialise static variables
+
+If multiple static blocks are present in the class then their order of execution is their sequence in the class
+
+
+Why static blocks and static methods cannot access not static variables
+Ans
+There are 4 scope levels in java
+Block Level
+Method Level
+Object Level
+Class Level
+
+
+Smaller scope variables can access variables of Larger Scope but reverse is not true
+
+Non static methods can access static variables,However reverse is not tue
+If you try to acess non static member tthrough static method,since static method is one copy,when ypu acess through 
+class.staticmethod name,not clear which object data member needs to be changed
+Therefore if you wish to acess non static data member through static method,create an object of class and then acess the member
+
+class StaticDemo{
+  private int counter=0;
+
+  public StaticDemo(int counter){
+    this.counter=counter;
+  }
+
+  public static void changeCounter(){
+    counter=400;
+  }
+
+public static void main(String [] args){
+
+StaticDemo demo1 = new StaticDemo(200);
+StaticDemo demo2 = new StaticDemo(100);
+StaticDemo.changeCounter();
+
+}
+
+public class StaticMethodDemo {
+     public String message = "Hi";
+     public void displayName(){
+           System.out.println("StaticMethodDemo");
+     }
+ public static void main(String[] args) {
+           displayName();---compiletimeerror
+           System.out.println(message);
+	      StaticMethodDemo demo =  new StaticMethodDemo();
+	      demo.displayName();
+    }
+}
+
+ORDER OF EXECUTION
+class loading takes place and all the static variables are initialized to default values ie 0
+static blocks are executed in the order of their appearance in the code
+Call to the super class constructor takes place and it is executed
+Then statements in the class�s constructor are executed
+
+OBJECT CLASS
+The class Object is defined in the package java.lang
+Object is the implicit super class of all Java classes
+The methods in Object are inherited by all Java classes
+equals
+toString
+hashCode
+A method that takes an Object reference as the parameter can accept any object as the parameter
+The following method print can accept any Java object as the parameter
+public void print(Object o){
+	System.out.println(o.toString());
+}
+
+
+
+HASHCODE Method
+Object.hashcode() returns an integer value known as hashcode value for an object
+
+The general contract of hashCode is:
+
+
+Whenever it is invoked on the same object more than once during an execution of a Java application,
+the hashCode method must consistently return the same integer. This integer need not remain consistent from one execution of an application to another execution
+ of the same application.
+If two objects are equal according to the equals(Object) method, then calling the hashCode method on each of the two objects must produce the same integer result.
+It is not required that if two objects are unequal according to the equals(java.lang.Object) method, then calling the hashCode method on each of the two objects must produce distinct integer results.
+
+
+
+, 
+Overriding equals method
+If an object is created using new operator,even if member variables are same,it has a different hashcode Equals method checks hashcode like equality operator
+The equals method does "shallow comparision",check identity ,not the state 
+
+We can overirde the equals method to compare their state(deep comparison)
+	
+NOTE : In case of string the behaviour is different
+The java.lang.String class overrides the hashCode method from java.lang.Object. So the String objects with same value "foo"
+ will be treated as duplicates and will contain same hashcode
+
+public class AccountHolder {
+	String name;
+	int accID;
+	AccountHolder(String name,int accID){
+		this.name = name;
+		this.accID = accID;
+	}
+
+	//Overiding the equlas() method to suit the business logic
+
+	/*
+	public boolean equals(Object targetAccHolder) {
+		AccountHolder accHolder = (AccountHolder)targetAccHolder;
+		if(accHolder.accID == this.accID)
+			return true;
+		else
+			return false;
+	}*/
+	
+	public static void main(String [] args) {
+		AccountHolder accHolder1 = new AccountHolder("Paul",1001);
+	 	AccountHolder accHolder2 = new AccountHolder("Jerry",1002);
+	 	AccountHolder accHolder3 = new AccountHolder("Paul",1001);
+	 	AccountHolder accHolder4=accHolder1;  .equals method if not overriden will return true
+	 	System.out.println(accHolder1);
+	 	System.out.println(accHolder4);
+	 	
+	 	/*
+	 	 * The below code will return false false if the equals()
+	 	 * is NOT overriden. Try the program after uncommenting
+	 	 * the equals method
+	 	 */
+	 	System.out.println(accHolder1.equals(accHolder2));
+	 	System.out.println(accHolder1.equals(accHolder3));/8 before oevrriding false,after oveririding true*/
+	 	System.out.println(accHolder1.equals(accHolder4));	 	
+	}
+}
+
+
+When do we override hashcode method also
+
+
+you MUST also override hashCode(). Otherwise a violation of the general contract for Object.hashCode will occur, which can have unexpected repercussions when your class is in conjunction with all hash-based collections as the elements of the collection are determined by their hash code.
+1)Use only those variables present in the equals field and also avoid fields that may change state of the object
+     public class CustomerID {  
+	private long crmID;  
+	private int nameSpace;  
+	public CustomerID(long crmID, int nameSpace) 
+	{    super();    
+	this.crmID = crmID;    
+	this.nameSpace = nameSpace;  
+	}  
+	public boolean equals(Object obj) {    
+		//null instanceof Object will always return false    
+		if (!(obj instanceof CustomerID))     /*check if obj is instance of class*/ 
+			return false;    
+                    if (obj == this)      /*check for object.equals(equals)
+	            return true;    
+			return  this.crmID == ((CustomerID) obj).crmID && this.nameSpace == ((CustomerID) obj).nameSpace;  
+			} 
+	public int hashCode() {    
+		int result = 0;    
+		result = (int)(crmID/12) + nameSpace;    
+		return result;  
+		}  
+	public static void main (String[] args) 
+	{    
+      Map m = new HashMap();    
+	m.put(new CustomerID(2345891234L,0),"Jeff Smith");         
+	System.out.println(m.get(new CustomerID(2345891234L,0))); ---will return null if you do not override the hashcode ,because the hashcode will return different hashcode value,so when u try to add an obhect in a map or set ,it checks the hashcode,whether the hashcode of object is replicated,in case it is,it will not add,else it will add
+Also if you add 2 times ,it will add,since hashcode is different
+	}
+	}
+}
+
+
+}
+
+To string method
+
+P   rinting a reference will print the classname@hashcode
+When you print the reference the toString() method of object is called and  classname@Hashcode is printed,if you want to change override the following method in your class
+
+public String toString(){}
+
+public class AccountHolder {
+	String name;
+	int accID;
+	public AccountHolder(String name, int accID) {
+		this.name = name;
+		this.accID = accID;
+	}
+public String toString() {
+	return "Hi " + name + " Your Account number is " + accID;
+}
+public static void main(String [] args) {
+	AccountHolder accHolder1 = new AccountHolder(�Sam",1001);
+	System.out.println(accHolder1);
+}
+}
+GARBAGE COLLECTION
+When a java program is started,the JVM gets some memory from OS.Java Virtual Machine or JVM uses this memory for all its need and part of this memory is call java heap memory.
+Heap in Java generally located at bottom of address space and move upwards. 
+whenever we create object using new operator or by any another means object is allocated memory from Heap and 
+When object dies or garbage collected ,memory goes back to Heap space in Java
+Default size of Heap in Java is 128MB on most of 32 bit Sun's JVM but its highly varies from JVM to JVM 
+if your application is large and lots of object created you can change size of heap space by using JVM command line options 
+-Xms and -Xmx. 
+Xms denotes starting size of Heap while Xmx denotes maximum size of Heap in Java
+heap is divided into three main regions named as New Generation, Old or Tenured Generation and Perm space. 
+New Generation is further divided into three parts known as Eden space, Survivor 1 and Survivor 2 space
+
+
+New objects are created into young generation and subsequently moved to old generation.
+Perm space of Java Heap is where JVM stores Meta data about classes and methods,String pool and Class level details
+New objects are created into young generation and subsequently moved to old generation.
+
+
+
+JAVA HEAP DUMP
+Java Heap dump is a snapshot of Java Heap Memory at a particular time. 
+This is very useful to analyze or troubleshoot any memory leak in Java or any Java.lang.outofmemoryerror. 
+There is tools available inside JDK which helps you to take heap dump and there are heap analyzer available tool 
+which helps you to analyze java heap dump. You can use "jmap" command to get java heap dump, this will create heap dump file 
+and then you can use "jhat - Java Heap Analysis Tool" to analyze those heap dumps.
+
+sometimes its just matter of increasing heap size but if it�s recurrent then look for memory leak in Java.
+How to check heap size
+long heapSize = Runtime.getRuntime().totalMemory(); 
+
+
+
+Java has a built in mechanism to reclaim memory from objects that are no longer used,ie no longer referenced by the program
+Garbage Collection in Java is carried by a daemon thread called Garbage Collector controlled by JVM
+
+Garbage collection relieves java programmer from memory management which is essential part of C++ programming and 
+gives more time to focus on business logic.
+Before removing an object from memory Garbage collection thread invokes finalize () method of that object and 
+gives an opportunity to perform any sort of cleanup required.
+
+You as Java programmer can not force Garbage collection in Java; it will only trigger if JVM thinks it needs a garbage 
+collection based on Java heap size and thinks heap memory is running low
+There are methods like System.gc () and Runtime.gc () which is used to send request of Garbage collection to JVM but it�s not guaranteed
+that garbage collection will happen.
+If there is no memory space for creating new object in Heap Java Virtual Machine throws OutOfMemoryError or 
+java.lang.OutOfMemoryError heap space
+When an object first created in heap its gets created in new generation inside Eden space and after subsequent Minor Garbage 
+collection if object survives its gets moved to survivor 1 and then Survivor 2 before Major Garbage collection moved that object 
+to Old or tenured generation.
+Whenever Major garbage collection occurs application threads stops during that period which will reduce application�s performance and throughput.
+
+
+A FINALIZE METHOD IS CALLED ONLY ONCE
+Can we override the finalize object?
+Q9) What is the purpose of overriding finalize() method?
+Ans) The finalize() method should be overridden for an object to include the clean up code or to dispose of the system resources that should to be done before the object is garbage collected.
+
+
+Generally an object becomes eligible for garbage collection in Java on following cases:
+1) 
+a)All references of that object explicitly set to null e.g. object = null
+b)Make the reference variable to refer to another object :
+c)
+public class GarbageCollnTest2 {
+
+   public static void main(String [] args){
+
+String str1 = "Garbage collected after use";
+String str2 = "Another String";
+
+//String object referred by str1 is not eligible for GC yet
+str1 = str2;
+/* Now the str1 variable referes to the String object "Another String" and the object "Garbage collected after use" is not referred by any variable and hence is eligible for GC */
+
+   }
+}
+
+ISLANDS OF ISOLATION
+
+
+
+2) Object is created inside a block and reference goes out scope once control exit that block.
+
+3)An object becomes eligible for Garbage Collection when no live thread can access it
+
+What is a design pattern?
+If a problem occurs over and over again, a solution to that problem has been used effectively. That solution is described as a pattern. The design patterns are language-independent strategies for solving common object-oriented design problems. 
