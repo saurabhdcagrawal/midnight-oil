@@ -1,0 +1,1009 @@
+Earlier, programmers used to write programs in an unstructured way. 
+The programs were not split into small modules and often were very lengthy.
+They frequently used the �goto� statement to jump from one part of a program to another. 
+This made the physical sequence of the program entirely different from the logical sequence.As the siz-e increases, such programs were very difficult to 
+understand and maintain.
+Structured Programming reduced the complexity of programs to an extend.
+Even though structured programming is a good style of programming compared to the unstructured style, there are several problems in this style also. 
+In structured programming, the focus is on process rather than on data. 
+Design approach is �Top-Down� where the entire solution is divided into smaller units (Functions and Procedures). 
+
+All these smaller units need to work on a data item to return the result.
+For this reason the data items used are global which could be accessed by all modules. This increased the complexity of the program. 
+If the data is getting corrupted, it was difficult to pin point the faulty module that corrupted the data.
+
+
+
+A language developed by sun microsystems
+Initially developed for consumer devices,Now used to develop enterprise applications
+
+
+Features
+1)Object oriented
+In OOP, the entire program is viewed as a number of objects interacting with each other.
+Each object will have some (attributes)data and functions(behaviour). 
+Car object
+
+State
+Current Speed
+Current Gear
+Engine State (Running, Not Running)
+
+Behavior (Acts on the object and changes state)
+Slow down
+Accelerate
+Stop
+Switch Off Engine
+Start Engine
+
+One can use an object just by knowing the functions.There is no need to know about the data for using an object. This reduces the complexity of an object.
+For example, a Stack object will have a list as data and push and pop as functions. 
+The list could be made up of an array or a linked list. One need not know this to use the Stack as long as one knows how to use the push and pop functions.
+This makes the usage of Stack very simple.
+
+Consider a banking application. In structured programming, the application will contain a set of functions, arrays, structures and files. 
+It would be difficult for anyone to look at this and relate it with the activities of a bank. 
+In OOP, the application will contain objects like Customer, Account and Manager that interact with each other.
+Since real life situations could be modeled well, this application is very easy to understand and maintain.
+
+
+Abstraction:
+	� The process of exposing the relevant details and hiding the irrelevant details
+        � Used to reduce complexity
+          Helps simplify the understanding and using of any complex system
+          One does not have to understand how the engine works to drive a car
+           Similarly one does not have to understand the internal implementation of a software object to use it
+          One need not know the internal details of the printf function of C to use it.
+          While structured programming provides abstraction at the level of data structures and function, OOP provides abstraction at a higher level; 
+          that is at the level of objects.
+          Higher the abstraction level easier it is to understand
+
+Encapsulation:
+	The process of binding code and data together in a module and preventing other modules from directly accessing the data
+        
+This keeps the data safe from outside interface and misuse. One way to think about encapsulation is as a protective wrapper that prevents code 
+and data from being arbitrarily accessed by other code defined outside the wrapper.  
+ Implemented using the concept of access specifiers
+         public, private etc.
+         Typically in a class
+         State is private (not accessible externally)
+         Behavior is public (accessible externally)
+. Classes will usually declare their data members as private preventing other modules from directly accessing them. 
+At the same time, functions will be declared as public so that other modules can directly access them.
+The private data members represent the implementation details of the class which need not be exposed to the outside world. 
+The public functions represent the interface of the class through which the outside world can interact with its objects.
+
+Private->Accessible only within the class
+Default->A default method is accessible only to classes within its package(subclass or non subclass) ..
+
+// Java program to illustrate default modifier
+package p1;
+
+// Class Geeks is having Default access modifier
+class Geek
+{
+    void display()
+    {
+        System.out.println("Hello World!");
+    }
+}
+
+
+---------------------
+package p2;
+import p1.*;
+
+// This class is having default access modifier
+class GeekNew
+{
+    public static void main(String args[])
+    {
+        // Accessing class Geek from package p1
+        Geeks obj = new Geek();
+
+        obj.display(); //compile time error
+    }
+}
+Protected-> Same package both subclasses or non subclasses
+Different package only subclasses
+
+/ Java program to illustrate
+// protected modifier
+package p1;
+
+// Class A
+public class A
+{
+protected void display()
+    {
+        System.out.println("GeeksforGeeks");
+    }
+}
+----------------------------------------
+// Java program to illustrate
+// protected modifier
+package p2;
+import p1.*; // importing all classes in package p1
+
+// Class B is subclass of A
+class B extends A
+{
+    public static void main(String args[])
+    {
+        B obj = new B();
+        obj.display();
+    }
+
+}
+
+Output:
+
+GeeksforGeeks
+
+
+Public=>All packages
+
+
+
+
+Inheritance:
+	     The feature by which one class acquires the properties and functionalities of another class
+          Inheritance leads to reusability of code
+          When �is a� relationship exists between two classes, we use inheritance
+          The parent class is termed super class and the inherited class is the sub class
+          The keyword extends is used by the sub class to inherit the features of super class
+           A subclass cannot access the private members of its super class.
+          
+          Multi-level inheritance is allowed in Java but not multiple inheritance
+          A class can implement multiple interfaces
+
+Polymorphism:
+	Ability of the same interface to take more than one form.
+          Polymorphism results in ease of use.
+          
+          STATIC POLYMORPHISM
+          Method overloading
+          For example, assume that we want to write C functions to find the area of a square,rectangle, We may have to write two functions (different fn names)as follows.
+          int area_square(int side);
+          int area_square(int length,int breadth);
+          In OOP, the same functions can be written as follows.
+          int area(int a,int b);
+          int area(int side);
+The appropriate function will be invoked based on the type of arguments passed to the function. For example, if the SquareRoot function is called with an int argument, the first function will be invoked.
+
+In function overloading, the command used for calling the SquareRoot function will always be the same, but it will take different meaning based on the argument. 
+         DYNAMIC POLYMORPHISM
+
+Redefining a base class method in a sub class is called method overriding
+
+public class Policy{
+	//Data Members and Other Methods
+	public void read(){
+		//Read the premium, maturityValue
+		//and other data
+	}
+	public void write(){
+		System.out.println("Premium:" + premium);
+		System.out.println("Maturity Value:" +
+					maturityValue);
+		//Write other data
+	}
+}
+
+
+public class TermInsurancePolicy extends Policy{
+	private int term;
+	public void read(){
+		super.read();
+		//Read term
+	}
+	public void write(){
+		super.write();
+		System.out.println(term);
+	}
+	//Other Methods
+}
+
+public class EndowmentPolicy extends Policy{
+	//Data Members and Method
+	public void read(){
+		super.read();
+		//Read other data members
+	}
+	public void write(){
+		super.write();
+		//Write other data members
+	}
+}
+
+char choice;
+Policy policy;
+if (choise == �T�){
+	policy = new TermInsurancePolicy();
+}
+else{
+	policy = new EndowmentPolicy();
+}
+policy.read();
+//Calls the read of TermInsurancePolicy or EndowmentPolicy
+//Decided at runtime
+policy.write();
+//Calls the write of TermInsurancePolicy or EndowmentPolicy
+//Decided at runtime
+
+
+
+
+A reference to a super class can refer to a sub class object
+JVM calls a method based on the data type of the object referred by the reference and NOT based on the data type of the reference
+
+Decision on which method is to be invoked is taken at runtime  and hence this is known as dynamic binding
+
+
+
+
+
+2)Robust
+automatic memory manageement
+Garbage collection is one of the most important feature of Java. Garbage collection is also called automatic memory management as 
+JVM automatically removes the unused variables/objects  from the memory. User program cann't directly free the object from memory, 
+instead it is the job of the garbage collector to automatically free the objects that are no longer referenced by a program.
+
+The class Object is defined in the package java.lang
+Object is the implicit super class of all Java classes
+The methods in Object are inherited by all Java classes
+equals
+toString
+hashCode
+finalize
+A method that takes an Object reference as the parameter can accept any object as the parameter
+
+
+
+ Every class inherits finalize() method from java.lang.Object, the finalize() method is called by garbage collector
+ when it determines no more references to the object exists. 
+In Java, it is good idea to explicitly assign null into a variable when no more in use.
+
+
+,implements exceptional handliing,strongly typed language therefore data conversion errors will be caught quickly
+The Automatic Garbage Collection of Java de-allocates the dynamic memory automatically when this memory is no more used by the program
+3)Distributed
+� JAVA handles TCP/IP protocols and is hence suitable for the distributed environment of the internet. 
+Objects on one Java Virtual Machine can execute on a remote JVM  
+
+4)Portable/Neutral architecture--
+Java code compiled on Windows can be run on Unix without recompilation
+The source code of Java will be stored in a text file with extension .java
+The Java compiler compiles a .java file into byte code
+The byte code will be in a file with extension .class
+Byte code is a binary language
+Byte code is input to the Java Virtual Machine
+JVM can be thought of as a processor created with software.
+The interface between the JVM and the .class file remains the same irrespective of the underlying platform.
+This makes platform independence possible.
+The JVM interprets the .class file to the machine language of the underlying platform(executable code)
+The JVM which interprets the byte code is platform dependent. 
+Thus, only a JVM needs to be implemented on each platform to enable any compiled JAVA code to be run without any change.The JVMs for all platforms are available free (http://java.sun.com/)
+to the source program.
+5)Secure-
+Built in security features like absence of pointers and confinement of the java program within 
+its runtime environment
+6)Supports Multithreading
+� JAVA allows the programs to do many things simultaneously. It uses light-weight threads for performing different tasks in the same process
+
+
+IDENTIFIERS are name given to class,variables,methods,can begin with a $ or underscore
+Variables,
+Memory location used to hold a value
+
+  
+A thread is a single sequential flow of control within a program
+Facility to allow multiple activities within a single process
+Referred as lightweight process
+Each thread has its own program counter, stack and local variables
+Threads share memory, heap area, file
+
+
+The threads may not make the program faster,but it gives an illusion of faster performance for the user.
+threads have less context to save than a process (due to this task switching is faster)
+
+Multiple threads(one for each job) can be created to cater multiple jobs within a process
+To perform asynchronous or background processing
+  To increase the responsiveness of GUI applications
+  For better utilization of system resources
+
+2)An example for usage of thread in background and asynchronous processing is Garbage Collector in Java.
+3)Another example of a multithreaded application is a game software wherein the GUI display, updating of scores, 
+sound effects and timer display(asynchronous task) are happening simultaneously.
+/*
+ * Date: 03-Apr-2007
+ * @author E&R Dept, Infosys Technologies
+   Limited
+ * @version 1.0
+ * Description: This file is a demo
+   Java program depicting the use of multiple threads by
+ * extending the Thread class
+ */
+
+
+
+/**
+ * class Animal
+ * Description: class extends Thread
+   class
+ * overrides run() method
+ */
+
+/*how to create a thread extending from
+ * thread class, here start is being
+ * called from main method where two
+ * threads are getting created*/
+
+
+class Animal extends Thread {
+
+		private String message; //message to output
+
+
+	        Animal(String msg)
+	        {
+		   message = msg;
+
+
+		}
+
+		public void run() {
+			while (true) {
+			   System.out.println(message);
+			   try {
+				  sleep(2000);  // sleep for 2 seconds
+			       }
+			   catch (InterruptedException e) { }
+
+		 } //end of while
+          } // end of run
+} // end of Animal
+
+
+/**
+ * class MultiThreadDemo
+ * Description: class contains main method
+ */
+
+
+class MultiThreadDemo_Thread {   // multithreaded client code
+
+/**
+* Method main, starting point of the application
+* @param String args[] to take in command line arguments
+* creates two objects of the Animal class and calls its start method
+*/
+
+
+    public static void main(String args[])  {
+
+
+    //Instantiate a thread named dog
+     Animal dog = new Animal("Wuff..Wuff");
+
+
+    //Instantiate a thread named cow
+     Animal cow = new Animal("Moo..Moo");
+
+     dog.start();
+     cow.start();
+ }
+}
+
+
+thread object is class member ,in constructor start method and override run method
+
+
+class Animal implements Runnable{
+
+		private String message; //message to output
+		Thread t;
+
+
+	        Animal(String msg)
+	        {
+		   message = msg;
+		   t = new Thread(this, message);
+
+		   t.start();
+		}
+
+		public void run() {
+		  while (true) {
+		     System.out.println(message);
+		     try {
+			  Thread.sleep(2000);  // sleep for 2 seconds
+			 }
+		     catch (InterruptedException e) { }
+
+		} //end of while
+          } // end of run
+} // end of Animal
+
+
+/**
+ * class MultiThreadDemo
+ * Description: class contains main method
+ */
+
+
+class MultiThreadDemo_Runnable {   // multithreaded client code
+
+/**
+* Method main, starting point of the application
+* @param String args[] to take in command line arguments
+* creates two objects of the Animal class and calls its start method
+*/
+
+
+
+The thread scheduler which is the part of JVM decides which thread should run at a given moment, and also takes a thread 
+out of the run state.
+The order in which runnable threads (the threads which are ready to run) are chosen is not guaranteed.
+
+MAIN THREAD STARTS FIRST AND ENDS LAST
+
+
+ng started with JAVA	
+
+     Download the JAVA SDK (v1.4 or higher) � (http://java.sun.com)
+	Set up the following environment variables. Commonly set variables are:-
+�	Java_Home
+�	Classpath
+�	Path
+	Write and save java codes as .java files and compile and execute the same. (JAVA codes can be written in a TextPad or Notepad. The command for compilation/execution is given in the command prompt).
+�	Compiling java program � C:\>javac pgmname.java  
+(Successful compilation generates a .class file of the same program name)
+�	Executing java program � C:\> java pgmname          
+pgmname - name of your program
+s
+
+
+
+
+
+
+
+8)DATA TYPES
+Integer Types
+byte (1 byte)
+short (2 bytes)
+int (4 bytes)
+long (8 bytes)
+Floating Type
+float (4 bytes)
+double (8 bytes
+The size of data types remain the same on all platforms
+Textual
+char (2 bytes)
+The char data type in Java is 2 bytes because it uses UNICODE character set to support internationalization
+UNICODE is a character set which covers all known scripts and language in the world
+
+
+Logical
+boolean (1 byte) 
+Variable of smaller capacity can be assigned to another variable of bigger capacity without any explicit typecasting
+Eg double to int
+
+however
+Whenever a larger type is converted to a smaller type, the typecast operator has to be explicitly specified
+
+
+In C language, a function whose return type is not specified is assumed to return an int. In Java there is no default return type for a method.
+ Specifying the return type of a method is mandatory in Java.
+A variable declared within an inner scope is not visible to the outer scope enclosing it. 
+However the variables declared in the outer enclosing scope are visible to the inner scope.
+The variable names within the inner and outer scope cannot be the same
+�return� statement explicitly takes control out of the method back to the caller of the method
+
+ARRAY AND NEW OPERATOR
+new operator is used to create objects at run time and returns the reference of the newly created objects
+In Java, all objects are created dynamically using new operator
+
+new� allocates memory only at run time. Hence, we can declare how many ever objects we want. 
+However, if at run time, sufficient memory is not available, then a run time exception occurs.
+Objects and arrays can be passed to a method by passing their references as arguments
+
+In Java, all arrays are created dynamically using NEw operator
+
+Reference variables are used in Java to store the references of the objects created by the operator new.we can think of Java references as C pointers, their usages are different
+Any one of the following syntax can be used to create a reference to an int array
+int [] x = new int[5];
+A reference type can be assigned �null� to show that it is not referring to any object
+Java will not allow the programmer to exceed its boundary
+If x is a reference to an array, x.length will give you the length of the arra
+Objects and arrays can be passed to a method by passing their references as arguments
+
+REFERENCE VARIABLES ARE CREATED INSIDE STACK
+
+
+THIS:this� reference will refer to the object that has invoked the method ie instance variables
+
+constructor is a method,does nt have return type,not even void
+
+
+Static data is a data that is common to the entire class
+A single copy of total will be shared by all instances of the class
+Static � allows an instance variable/method of a class to be accessed without creating any objects of the class type.
+ (The main() method is declared as static because it needs to be accessed before any objects are created for it)
+
+Static methods can access only other static data and methods
+in order to access non static data membere,it has to first create object of the class
+non static methods can access static methods
+
+Primitive types are not objects in Java.Wrapper type are used to convert primitive types to objects
+Object wrappers are available for the corresponding native data type
+
+All wrapper classes are immutable
+Boolean, Character, Byte, Short, Integer, Long, Float, and Double
+Wrapper class is used to convert primitive data type to  objects
+a)Many methods are available in the Java library that work only for objects,can convert primitive types to objects and send them
+b)Collection classes ,store objects not primitive data types
+c)Provide many utility classes,For eg Integer.parseInt(String)---------+ concats strings and adds numbers
+
+int i = 500;
+//i cannot be passed to an object that accepts Object
+Integer x = new Integer(i);
+//i is wrapped in an object x
+//x can be passed to the method
+int value = x.intValue();
+//Returns back the primitive int
+
+Integer i1 = 3;//autoboxing
+int i2  = i1; //unboxing
+J2SE 5.0 has a feature that automatically converts primitives such as int to wrapper objects and vice versa
+Boxing and Unboxing that avoids explicit call to constructor,same with unboxinf prevents explicit call to intValue method
+
+EXCEPTION HANDLING
+Exception is an exceptional case that occurs during the execution of a program and disrupts the normal flow of 
+instructions.
+When there is an exception
+Normally the program crashes and prints a system generated error message
+Not acceptable in a mission critical application
+The Java programming language provides a mechanism to help programs report and handle such errors by excepton handler
+In Java
+When an error occurs, the program throws an exception object (object is of type throwable,the throwable object is implicit superclass of all such objects)
+The exception object that is thrown contains information about the exception
+The runtime environment attempts to find the Exception Handler
+The exception handler attempts to recover from the error
+If the error is unrecoverable, provide a gentle exit from the program after clean up operations like closing open files etc
+Helpful in separating the execution code from the error handler
+
+Exceptions are situations within the control of an application, that it should try to handle
+Errors indicate serious problems and abnormal conditions that most applications should not try to handle
+
+
+Throwable
+Exception Error
+Runtime Exceptions
+ArrayIndex
+Arithmetic
+NuLlPointer
+The statements that may produce an exception should be placed inside a try block
+
+When a Java program tried to use a reference that is not referring to an object,
+ the runtime will create and throw an object of NullPointerException
+
+The statements that may produce an exception should be placed inside a try block
+Note
+It is mandatory for a programmer to place the statements that may throw any  exception,
+ other than Runtime Exceptions in a try block(should be handled)
+Compiler shows an error in case the try block is not present
+In case the programmer forgets to handle an exception, the compiler will force her to do so
+
+Runtime Exceptions are also known as Unchecked Exceptions as the compiler will not check whether the programmer
+ has handled them or not
+All exceptions other than Runtime Exceptions are also known as Checked exceptions as the
+ compiler will check whether the programmer has handled them or else generate a compilation error
+
+
+The try block is immediately followed by a catch block
+The catch block contains the statements that could handle 
+the exception(many catch blocks can be there for one try block)
+
+
+
+The finally block is a block that can follow the try and catch blocks(not compulsary)
+It is guaranteed that the statements in the finally block will be executed 
+irrespective of whether an exception has occurred or not
+The finally block will contain those statements that are to be always executed
+The finally block is executed even if the try or catch block contains control transfer statements
+ like return, break or continue
+However, a call to System.exit method in the try block or catch block will terminate the
+ program immediately without executing the finally block
+//Open a file
+try{
+	//Read data from the file
+}
+catch(NoDataException e){
+	//Handle the exception
+}
+finally{
+	//In either case, close the file
+}
+
+try follows catch or finally compulsarily
+
+try{
+	c = a/b;	
+}
+catch(ArithmeticException e){
+	b = 1;
+	c = a;
+}
+System.out.println(c);
+If the try block is not throwing any exception, the catch block will be completely ignored and the program continues
+If the try block throws an exception, the appropriate catch block (if one exists) will catch it
+All the statements in the catch block will be executed and then the program continues
+A catch block that is written for catching the class Exception will catch all other exceptions
+If multiple catch blocks are existing, this catch block should be the last one
+
+
+Runtime exceptions are thrown by runtime,they are exceptions arising due to wrong input data or wrong business logic
+Some exceptions are thrown by the runtime
+When a Java program tries to divide by zero, the runtime will create and throw an object of ArithmeticException
+When a Java program tries to access an element outside the boundary of an array, the runtime will create and throw an object of ArrayIndexOutOfBoundsException
+When a Java program tried to use a reference that is not referring to an object, the runtime will create and throw an object of NullPointerException
+
+
+JUNIT
+Is a standard open source Unit Testing Framework created by Erich Gamma and Kent Beck
+Helps the developer to write and run repeatable automated tests
+Eclipse IDE comes with both JUnit and a plug-in for creating and working with JUnit tests
+
+The method setUp() is used to initialize the test fixtures
+The method tearDown() contains the code to clean the common objects.
+
+INTERFACE
+Created just for standardizing the behaviour of a family of classes
+An interface is similar to (not same as) an abstract class that has only abstract methods
+A List is required if we want to store a number of Policy objects
+putPolicy(policy,position)
+Policy getpolicy(position)
+interface List{
+	public void put(Policy policy, int position);
+	public Policy get(int position);
+}
+By default
+All data members of an interface are public,static and final
+Static methods cannot be declared in an interface 
+
+All methods of an interface are public, abstract and the keyword abstract need not (and should not) be used
+All list classes can implement the interface List
+An interface cannot be instantiated
+A reference to an interface can refer to objects of any class that implements the interface
+
+It is mandatory for the concrete classes that implement an interface to implement all the methods declared in the interface
+A class that implements an interface without defining at least one of the methods in an interface should be declared as abstract
+A class can extend one class and implement an interface at the same time
+Effect of Multiple Inheritance is achieved
+
+Unlike classes, an interface can be extended from more than one interface
+interface Editor{
+	public void edit();
+}
+interface Painter{
+	public void draw();
+}
+interface EditorWithPainter extends Editor, Painter{
+	public void wrapTextAroundPicture();
+}
+A class can extend only one class but implement any number of interfaces
+
+A package is a collection of related classes and interfaces in Java
+Logical grouping of classes and interfaces
+Avoiding clash of names
+Provides an extra level of protection to its members
+
+All the classes and interfaces that are used for performing I/O operations can be placed in the same package
+All the classes and interfaces that are used for writing network programs can be placed in the same package
+Packages prevent the clash of class/interface names
+More than one class/interface can have the same name
+They should be in two different packages
+The fully qualified names of these classes/interfaces will be different
+Packages prevent the clash of class/interface names
+More than one class/interface can have the same name
+They should be in two different packages
+The fully qualified names of these classes/interfaces will be different
+
+It is difficult to use the fully qualified name of a class through out the program
+The import statement can be used to import a class into a program so that the class name need not be fully qualified
+All the classes and interfaces in this package can be used without qualifying them with package name
+Importing a package will not import subpackages only classes and interface in that package
+
+Data Members and Methods can have any of these specifier
+Classes and Interfaces can have either the public access or the default access
+
+java.lang
+Contains classes that form the basis of the design of the Java programming language
+No need to explicitly import this package
+The String class, System class etc, belong to this package
+
+
+The Collections Framework is a set of classes and interfaces
+
+Standardizes the way in which groups of objects are handled
+The important interfaces of the Collection Framework are
+Collection
+List
+Queue
+Set
+SortedSet
+Collection interface declares the methods that any Collection should have
+Any class that defines a Collection should implement this interface
+Some of the important methods are
+add
+remove
+contains
+isEmpty
+
+
+
+Java I/o
+The classes for performing input and output operations are available in the package java.io
+
+Java Input/Output system is device independent
+The basic I/O system of Java can handle only two kinds of data
+Bytes
+Characters
+To perform asynchronous or background processing
+Increases the responsiveness of GUI applications
+Better utilization of system resources
+
+MORE ON GENERICS
+GENERICS
+Generics help to write algorithms independent of a data type
+These algorithms can be applied to a variety of data types
+The data type is parameterized
+A class, interface or a method that works on a parameterized type is called a generic
+public class List<T>{
+	protected T [] list;
+	public List(T [] list){
+		this.list = list;
+	}
+	public void put(T element, int position){
+		list[position] = element;
+	}
+	public T get(int position){
+		return list[position];
+	}
+}
+
+Versions before Java 5.0 used the Object class to bring about similar effect of a Generic
+
+public void put(Object element, int position){
+	//Code goes here
+}
+public Object get(int position){
+	//Code goes here
+
+This approach is difficult and not type safe
+The object returned by the get method should be typecast to the actual object before using it
+Any object, even incompatible type, can be passed to put method which can be detected only at run time
+
+
+
+   3+ years OO development and design experience, preferably with Java/J2EE.
+
+�         Knowledge of rich-internet web application development (e.g. GWT, Ext GWT, Flex, AJAX)
+Unix/Linux Competence
+
+�         Messaging Experience with XML/SOAP/MQ
+
+�         Strong experience with SQL programming and relational databases (Sybase/DB2 Preferred)
+
+package learnJava.oop;
+
+class Light {
+	// Private methods are not inherited by subclasses and hence there is no
+	// point of overriding.
+	// Since the private members cannot be inherited, there is no place for
+	// discussion on java runtime
+	// overloading or java overriding (polymorphism) features
+	private void glow() {
+		System.out.println("Glow glow");
+	}
+}
+
+class SunLight extends Light {
+	public void glow() {
+		System.out.println("Call me in your day time!");
+	}
+}
+
+public class SubclassPrivateExample {
+	public static void main(String args[]) {
+		SunLight sL = new SunLight();
+		sL.glow();
+
+		Light lt = new SunLight();
+		// lt.glow();/*Glow is not visible*/
+	}
+}
+
+In a class, there can be several methods sharing the same name but differ in
+
+Parameter types
+Number of parameters
+Order of the parameters declared in the method
+By depending on the parameters provided for the method, in the run time, compiler determines which version of the method to execute.
+
+An overloaded method may or may not have different return types. But return type alone
+is not sufficient for the compiler to determine which method is to be executed at run time.
+
+
+/*Static methods can be redefined in subclass but that doesn’t mean they are overridden.
+Overriding is done on the basis of type of object and static method are attached to class not to object.Check the reference
+the compiler and JVM don't expect to need an actual instance (object)to invoke the method. And even if you provide one
+(which we did: the instance referred to by f) the JVM will never look at it. The compiler will only look at the
+declared type of the reference(ie its class), and use that declared type to determine, at compile time, which method to call.
+That's what we mean when we say a static method does not have run-time polymorphism
+If you want to invoke the child class redefined method you will have to use a child class object
+*/class ParentNewOne{
+
+	   public  static void move(){
+		      System.out.println("Static Parent can move");
+		   }
+
+}
+
+
+public class StaticOverloading extends ParentNewOne {
+
+
+	public  static void move(){
+	      System.out.println("Static Child can move");
+	   }
+
+	/*public  static void move(int i){
+	      System.out.println("Static Parent can be overloaded");
+	   }*/
+
+
+
+		public static void main(String args[])
+		{
+
+			ParentNewOne cl= new StaticOverloading();
+			StaticOverloading class2= new StaticOverloading();
+			//cl.move();//Calls baseClass
+			//cl.move(3);
+			/*class2.move();
+			class2.move(3);*/
+			cl.move();
+
+		}
+	   }
+
+Can overloaded methods have different return types?
+In a class, there can be several methods sharing the same name but differ in
+
+Parameter types
+Number of parameters
+Order of the parameters declared in the method
+By depending on the parameters provided for the method, in the run time, compiler determines which version of the method to execute.
+
+An overloaded method may or may not have different return types. But return type alone is not sufficient for the compiler to determine which method is to be executed at run time.
+
+Can a protected method be overridden in subclass?
+Yes, the protected method of a superclass can be overridden by a subclass. If the superclass method is protected,
+the subclass overridden method can have protected or public (but not default or private) which means the subclass overridden method
+can not have a weaker access specifier
+
+
+Deadlock and race condition
+
+Race condition
+
+A "race condition" exists when multithreaded (or otherwise parallel) code that would access a shared resource could
+do so in such a way as to cause unexpected results.
+
+Take this example:
+
+for ( int i = 0; i < 100; i++ )
+{
+   x = x + 1;
+}
+if 5 threads are accessing this code.. the value will not up end up to be 500
+
+This is because, in order for each thread to increment the value of x, they have to do the following:
+(simplified, obviously)
+
+Retrieve the value of x
+Add 1 to this value
+Store this value to x
+Any thread can be at any step in this process at any time, and they can step on each other when a shared resource
+is involved. The state of x can be changed by another thread during the time between x is being read and when
+it is written back.
+
+Let's say a thread retrieves the value of x, but hasn't stored it yet. Another thread can also retrieve
+ the same value of x (because no thread has changed it yet) and then they would both be storing the same value
+ (x+1) back in x!
+
+Example:
+
+Thread 1: reads x, value is 7
+Thread 1: add 1 to x, value is now 8
+Thread 2: reads x, value is 7
+Thread 1: stores 8 in x
+Thread 2: adds 1 to x, value is now 8
+Thread 2: stores 8 in x
+Race conditions can be avoided by employing some sort of locking mechanism before
+the code that accesses the shared resource:
+
+for ( int i = 0; i < 10000000; i++ )
+{
+   //lock x
+   x = x + 1;
+   //unlock x
+}
+
+Think of a race condition using the traditional example.
+Say you and a friend have an ATM cards for the same bank account.
+Now suppose the account has $100 in it.
+Consider what happens when you attempt to withdraw $10 and
+your friend attempts to withdraw $50 at exactly the same time.
+
+Think about what has to happen. The ATM machine must take your input, read what is currently in your account, a
+nd then modify the amount. Note, that in programming terms, an assignment statement is a multi-step process.
+
+So, label both of your transactions T1 (you withdraw $10), and T2 (your friend withdraws $50).
+ Now, the numbers below, to the left, represent time steps.
+
+       T1                        T2
+       ----------------          ------------------------
+ 1.    Read Acct ($100)
+ 2.                              Read Acct ($100)
+ 3.    Write New Amt ($90)
+ 4.                              Write New Amt ($50)
+ 5.                              End
+ 6.    End
+After both transactions complete, using this timeline, which is possible if you don't use any sort of locking mechanism,
+the account has $50 in it. This is $10 more than it should (your transaction is lost forever, but you still have the money).
+
+This is a called race condition. What you want is for the transaction to be serializable,
+that is in no matter how you interleave the individual instruction executions, the end result
+will be the exact same as some serial schedule (meaning you run them one after the other with no interleaving) of the
+same transactions. The solution, again, is to introduce locking; however incorrect locking can lead to dead lock.
+
+Deadlock occurs when there is a conflict of a shared resource. It's sort of like a Catch-22
+and when two (or more) threads are blocking each other.
+
+Usually this has something to do with threads trying to acquire shared resources.
+For example if threads T1 and T2 need to acquire both resources A and B in order to do their work.
+If T1 acquires resource A, then T2 acquires resource B, T1 could then be waiting for resource B while
+T2 was waiting for resource A. In this case, both threads will wait indefinitely for the resource held
+by the other thread. These threads are said to be deadlocked.
+
+   T1            T2
+   -------       --------
+1.  Lock(x)
+2.               Lock(y)
+3.  Write x=1
+4.               Write y=19
+5.  Lock(y)
+6.  Write y=x+1
+7.               Lock(x)
+8.               Write x=y+2
+9.  Unlock(x)
+10.              Unlock(x)
+11. Unlock(y)
+12.              Unlock(y)
+
+You can see that a deadlock occurs at time 7 because T2 tries to acquire a lock on x but T1 already holds
+the lock on x but it is waiting on a lock for y, which T2 holds.
+
+This bad. You can turn this diagram into a dependency graph and you will see that there is a cycle.
+The problem here is that x and y are resources that may be modified together.
+
+One way to prevent this sort of deadlock problem with multiple lock objects (resources)
+is to introduce an ordering. You see, in the previous example, T1 locked x and then y but T2 locked y and then x.
+If both transactions adhered here to some ordering rule that says "x shall always be locked before y" then
+this problem will not occur. (You can change the previous example with this rule in mind and see no deadlock occurs).
+
+Difference between executor and executor service-----------

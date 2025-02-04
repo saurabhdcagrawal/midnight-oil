@@ -1,0 +1,137 @@
+Unsupervised - learning technique
+	Clustering
+		Grouping objects that are similar.. How do we identify one object is similar to other?
+		Manhattan-- This distance takes the sum of the absolute values of the differences of the coordinates.
+		Euclidean-- Minowski distance is equal to euclidean when p=2
+		Chebyshev-- This distance between the points X(x1, y1) and Y(x2, y2) is given by max ( abs(x1-x2),abs(y1-y2))
+	K-means clustering is centroid-based clustering and uses Euclidean distances.
+	Hierarchical clustering is a connectivity-based clustering algorith in which the core idea is of objects being more related to nearby objects 
+	than to objects farther away. (we come up with a tree and then take the number of clusters into account later)
+	Connectivity-based clustering models are very easy to interpret but they lack scalability as computational complexity goes up quickly
+	as the size of the dataset increases.
+	hey can be visualized using dendrograms. 
+	However, they lack scalability as computational complexity goes up in the order of n2, where n is the number of observations.
+	while the agglomerative clustering algorithm scales in the order of n2.? (diff between agglomerative and hierarchal)
+	
+	How do I choose K in K-means clustering?
+		The elbow method is used to determine the optimal value of K to perform the K-means clustering algorithm.
+		The basic idea behind this method is that it plots the within-cluster sum of squares (WCSS) with changing K.
+		In the K-means clustering algorithm, we first select k points at random as cluster centers, then we assign objects to their closest 
+		cluster center according to the Euclidean distance function, and then we calculate the centroid or mean of all objects in each cluster. 
+		We then repeat the second and third steps until the same points are assigned to each cluster in consecutive rounds.
+		
+	The cdist function of scipy computes the distance of every point in one set from every point in another set. 
+	As such, it can be used to compute the distance of every point with the centroid points provided.	
+	
+	The variables used for clustering should be scaled first in order to ensure that all the variables are on the same scale.
+	When the zscore function is applied to a variable, the distribution of the variable remains the same as it is just scaled to have zero mean
+	and unit variance.
+	
+	Scaling is very important in cluster analysis is because all features do not have the same range of values, and scaling prevents 
+	any feature from becoming dominant due to the high magnitude of its values.
+	
+	Since it involves squares in its computation, Euclidean distance is sensitive to outliers.
+	In Mahalanobis distance, an ellipsoid (or contour) is created on principal components of the data which are its natural axis, and the points that lie on a particular ellipsoid (or contour) are considered equidistant from each other. 
+	So points that have some relationship among variables will be closer than points that don't have a relationship between any of its variables.
+	
+	The K-means clustering algorithm is susceptible to the curse of dimensionality.
+The algorithm is not very computationally expensive and scales in the order of n, the number of data points.
+The algorithm involves computation of mean, and so, is sensitive to outliers.
+The value of K has to be chosen before running the algorithm, but the right value of K is almost always not known.
+
+
+Silhouette score gives a measure of how similar points within a cluster are to each other compared to how similar those points are to neighboring clusters. This measure has a range of [-1, 1].
+
+If a sample is well-clustered and points are already assigned to a very appropriate cluster, the average distance of points from points in the same cluster will be low, and consequently, the silhouette score value will be close to 1.
+
+Visual analysis of attributes selected for clustering might give an idea of the range of values of the number of clusters to form.\\
+
+Dynamic clustering involves clustering again and again as new data comes in.
+
+The predict()function is used to predict the closest cluster to which a data point belongs.
+
+Hierarchical Clustering
+	Divisive, or top-down, clustering method clusters data points by assigning all the observations to a single cluster and then 
+	partitioning the cluster into two least similar clusters. Agglomerative, or bottom-up, clustering method clusters data points 
+	by assigning each observation to its own cluster, computing the similarity (e.g., distance) between each of the clusters, and 
+	joining the two most similar clusters repetitively till we have one large cluster.
+	
+	When performing hierarchical clustering with single linkage, the distance between two clusters is defined as the shortest distance
+	between two points in each cluster.
+	
+	When performing hierarchical clustering with complete linkage, the distance between two clusters is defined as the largest distance 
+	between two points in each cluster.
+	
+	In hierarchical clustering, unlike K-means, we do not have to pre-define the number of clusters. 
+	We can cluster the data and then decide the number of clusters to choose by looking at the dendrogram.
+	However, the drawback is that it does not work very well when we have a huge amount of data.
+	
+	When two clusters are merged, the new cluster has more points than the previous ones. So, the sum of variances increases.
+	
+	The cophenetic correlation
+		is computed as the correlation between actual and dendrogram distances between points. It ranges from -1 to 1.
+		The cophenetic coefficient shows the goodness of fit of our clustering. The lower value of the cophenetic coefficient indicates 
+		bad clustering.
+		Cophenetic correlations give a measure of how faithful dendrograms are to the data. They can be used to compare dendrograms.
+	hands on Hierarchical clustering	
+		The zscore function of scipy subtracts the column mean from each observation in a column and divides by the column standard deviation.
+		The affinity parameter is used to define the distance metric in sklearn AgglomerativeClustering.
+		In sklearn AgglomerativeClustering, the labels_ attribute gives the clusters to which each observation has been assigned.
+		If we set n_clusters=4, then the cluster labels assigned to the observation will range from 0 to 3.
+		The cophenet function of scipy returns the cophenetic correlation and cophenetic distances between every pair of observations in the data provided.
+	Dimensionality reduction
+		Curses of Dimensionality
+			Having too many attributes in the data can lead to overfitting as many of those attributes
+			might be affecting the outcome (or target) just by chance.
+			Computational time increases
+			Impossible to visualize
+			Get rid of multicollinearity
+			When doing dimensionality reduction, we are interested in the independent variables only.
+		Techniques 
+			Feature Elimination
+				Dropping  a variable
+			Feature extraction
+				Create new variables from old variables
+				PCA is most popular technique
+					Not dropping variable but combining them
+				t SNe (Non linear technique)
+					Convert 2000 variables to 2 only for the purpose of visualize
+		PCA	
+			Principal Component Analysis (PCA) takes into consideration only the linear relationship between variables. 
+			So, it is a linear dimensionality reduction technique.
+			One of the advantages of PCA is that the transformed variables obtained after executing PCA are independent of each other,
+			i.e., they are not correlated with each other.
+			PCA involves creating new variables from all the existing variables. 
+			So, it is a feature extraction type of dimensionality reduction technique.
+			The principal components are arranged in decreasing order of explained variance. 
+			So, the first principal component will explain the most amount of variance in the data.
+			Using PCA, the columns are completely changed. PCA finds a new relationship between the columns. 
+			So, we use it to get a higher score. If the focus is to find feature importance, then PCA fails as it 
+			completely transforms the columns and new columns will not mean the same as the older ones, so we cannot name them. 
+			Feature importance after PCA will make no sense at all.
+			
+		In the covariance matrix, the diagonal elements capture the variance of individual variables and the non-diagonal elements 
+		capture the covariance between pairs of variables.	
+		
+		Eigen decomposition involves computing the eigenvectors (and also eigenvalues), which are the natural axes of the data
+		Eigen vectors, by definition, remain unchanged in direction when transformed by the matrix.
+		The new variables created using PCA are a combination of all the original variables and might not always be interpretable.
+		
+		
+		The explained_variance_ attribute of sklearn’s PCA class gives the eigenvalues of the covariance matrix of the input data.
+		The components_ attribute of sklearn’s PCA class returns the eigenvectors of the covariance matrix of the input data.
+		Since the addition of variables increases R^2, R^2 of the train set in Scenario 1 will be greater than R^2 of the train set in Scenario 2.
+		
+		Ward Linkage involves analysis of variance of clusters while combining clusters using the agglomerative approach of clustering	
+		
+		PCA extracts principal components which capture the highest variance in the data, while clustering forms clusters to maximize homogeneity within the 
+		clusters and heterogeneity between the clusters. PCA works column-wise whereas clustering works row-wise.
+		
+		The Ward linkage analyzes the variance of clusters. It measures how much the within-cluster sum of squares (WCSS) will increase when one cluster is merged with another 
+		and merges those two clusters such that the increase in WCSS is minimum.
+		
+		Symmetric eigen vectors are orthogonal to each other. So, the angle between them is 90 degrees.
+		The covariance matrix of an nxp matrix will have p eigen values.
+
+
+

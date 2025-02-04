@@ -1,28 +1,65 @@
-1) Scalability is the ability for a process/network or system to grow to support increased demand
-Scalability may be needed because of increased data volume or because of more work needed
+1) Scalability is the capability of a system, process or network to grow and manage increased demand
+Scalability may be needed because of increased data volume or because of more work needed eg number of transactions
+Any distributed system that can continuosly evolve in order to support the growing amount of work is said to be scalable
 It comes at the cost of performance
 A scalable architecture helps to balance the load across different nodes
 Following types of scaling
 As the system grows (in data volume, traffic volume, or complexity),
 there should be reasonable ways of dealing with that growth
+Generally, the performance of a system, although designed (or claimed) to be scalable, declines with the system size due to the management or
+environment cost. For instance, network speed may become slower because machines tend to be far apart from one another. More generally, some tasks
+may not be distributed, either because of their inherent atomic nature or because of some flaw in the system design. At some point, such tasks would
+limit the speed-up obtained by distribution. A scalable architecture avoids this situation and attempts to balance the load on all the participating nodes evenly.
 
-Horizontal scaling-> Add more servers/machines in your pool of resources to meet growing need.
 
-Vertical Scaling-> Needs downtime, limited by server capacity.. Increase the resources of a machine , Eg CPU, RAM , Storage
+Horizontal scaling-> Add more servers/machines in your pool of resources to meet growing need.Easy to scale dynamically by adding more
+machines in existing pool.
 
-2) A system is Reliable if it continues to deliver services even if one or more of its hardware or software components fail.
+Vertical Scaling-> Needs downtime, limited by server capacity of single server.. Increase the resources of a machine , Eg CPU, RAM , Storage
+
+Good examples of horizontal scaling are Cassandra and MongoDB as they both provide an easy way to scale horizontally by adding more machines to
+meet growing needs. Similarly, a good example of vertical scaling is MySQL as it allows for an easy way to scale vertically by switching from smaller to bigger machines. However, this process often involves downtime.
+
+2) A system is Reliable if it continues to deliver services -work correctly (performing the correct function at desired level of performance- even in the face of adversity- if one or more of its hardware or software components fail or if a human makes error
 It is achieved with the help of redundancy of data and software components
 The system should continue to work correctly (performing the correct function at the desired level of performance)
-even in the face of adversity
-(hardware or software faults, and even human error)
+even in the face of adversity (hardware or software faults, and even human error)
+If the server carrying the user’s shopping cart fails, another server that has the exact replica of the
+shopping cart should replace it. Obviously, redundancy has a cost and a reliable system has to pay that to achieve such resilience for services by eliminating every single point of failure.
+
+
 3) Availability is how long a system is available to do its function
+It is a simple measure of the percentage of time that a system, service, or a machine remains operational
+under normal conditions
 High reliability guarantees high availability but not vice versa
+An aircraft that can be flown for many hours a month without much downtime can be said to have a high availability.
+Availability takes into account maintainability, repair time, spares availability,
+and other logistics considerations. If an aircraft is down for maintenance, it is
+considered not available during that time.
 
-4) Efficiency generally for a DS it is throughput and latency
+It is possible to achieve a high availability even with an
+unreliable product by minimizing repair time and ensuring that spares are
+always available when they are needed. Let’s take the example of an online
+retail store that has 99.99% availability for the first two years after its launch.
+However, the system was launched without any information security testing.
+The customers are happy with the system, but they don’t realize that it isn’t
+very reliable as it is vulnerable to likely risks. In the third year, the system
+experiences a series of information security incidents that suddenly result in
+extremely low availability for extended periods of time. This results in
+reputational and financial damage to the customers.
 
-5) Serviceability or Manageability is the ease with which system can be maintained or repaired.
+
+4) Efficiency generally for a DS it is throughput(no of items delivered in a given unit of time) and latency(response time to a given request)
+
+5) Serviceability or Manageability or Maintainability is the ease with which system can be maintained or repaired.
 Over time, many different people will work on the system (engineering and operations, both maintaining current behavior
 and adapting the system to new use cases), and they should all be able to work on it productively
+Serviceability or manageability is the simplicity and speed with which a system can be repaired or maintained; if
+the time to fix a failed system increases, then availability will decrease.
+Things to consider for manageability are the ease of diagnosing and
+understanding problems when they occur, ease of making updates or
+modifications, and how simple the system is to operate (i.e., does it routinely
+operate without failure or exceptions?).
 
 6)Load Balancing - Loan balancing is used to improve the availability and responsiveness, increase the efficiency of the system,
 remove single point of failure,reduce wait time. A load balancer is a hardware/software component that
@@ -33,6 +70,12 @@ Load balancing algorithms->Round Robin, Weighted Round Robin, Less Recently Used
 LB has to continuously health check back end nodes and see if they are up and running
 User gets IP address of load balancer via DNS and internally communicates with web servers using private network
 
+To utilize full scalability and redundancy, we can try to balance the load at
+each layer of the system. We can add LBs at three places:
+• Between the user and the web server
+• Between web servers and an internal platform layer, like application
+servers or cache servers
+• Between internal platform layer and database.
 
 Load balancer itself can be a point of failure, to overcome this a second load balancer can be added to the top
 of current one. Active LB and passive LB
@@ -46,9 +89,22 @@ to avoid taxing the downstream systems.
 It helps in better utilization of existing resources
 In a distributed environment with multiple nodes you need global caches
 CDN cache(more frequently used for static data), distributed cache
-Cache invalidation... keep the cache consistent with the data (in case of data updation)
-Write through cache, Write back cache, write around cache
-Cache eviction policies-- LRU,MRU,LFU,MFU,FIFO,LIFO, Random removal
+Cache invalidation ensures that when data is updated, the cache remains consistent with the source of truth (typically a database). 
+Keeping the cache in sync prevents stale data issues, ensuring users receive the latest information.
+Write through cache -> Data is written to both cache and database at the same time.
+Ensures data consistency but adds latency to write operations.
+Write back cache -->Data is written only to the cache initially and later asynchronously flushed to the database.
+Improves write performance but risks data loss if the cache crashes before syncing.
+Write-Around Cache->Data is written directly to the database, bypassing the cache.
+The cache is only updated when the data is later read.
+Reduces cache churn but can lead to cache misses on frequently updated data.
+
+Cache eviction policies-- When a cache reaches its size limit, it must evict (remove) old data. The eviction policy determines which data gets removed:LRU,MRU,LFU,MFU,FIFO,LIFO, Random removal
+
+Choosing the Right Strategy
+Read-heavy systems: Prefer Write-Through Cache with LRU eviction.
+Write-heavy systems: Prefer Write-Around Cache with LFU or FIFO.
+High-performance applications: Write-Back Cache is best but requires additional recovery mechanisms to avoid data loss.
 
 Database replication-> Using slave master... Master for writes, slave for reads.. builds up redundancy
 Can work multiple queries at the same time
@@ -95,10 +151,41 @@ Stateless web tier -- Store user and session data outside of the web tier (such 
 
 CAP theorem
 In presence of network partition, choose consistency or availability. In a DS system only 2 of 3 are guaranteed.
-Consistency->All clients/nodes see the same data at the same time..
+
+
+Consistency->All clients/nodes see the same data at the same time..Consistency means that every time a client reads data, it sees the most recent write. In other words, all nodes in the system always have the same view of data.If you update a value in one part of the system, every subsequent read (regardless of which node you contact) will reflect that update immediately. This ensures that all users and processes are working with the same data.In a banking system, if you transfer funds from your account, you expect that every time you check your balance—whether through a mobile app or an ATM—the updated balance (after the transfer) is what you see.
+
 Availability-> In presence of network partition, non-failing nodes on either sides, respond to every request
+Availability means that every request made to the system receives a response, regardless of whether that response reflects the most recent write. Essentially, the system is always "up" and responsive.
+Even if some parts of the system are experiencing issues or delays, the system still processes requests and returns some answer. However, this answer might sometimes be based on outdated information.
+
 Partition tolerance->System should continue to operate and function even if there is a network partition
-leading to a comm breakdown between the nodes
+leading to a communication breakdown between the nodes
+Partition tolerance is a property of distributed systems that enables them to continue operating even when there are network failures that split the system into isolated segments (or partitions). 
+In other words, even if some nodes in the system cannot communicate with others due to network issues, the system as a whole remains functional.
+
+The CAP theorem states that in a distributed system, you can only achieve two out of three properties:
+
+CP (Consistency + Partition Tolerance, sacrificing Availability)
+
+System ensures all nodes see the same data.
+If a network partition occurs, some nodes may refuse to serve requests until they resynchronize.
+Example: Distributed databases like HBase, Zookeeper, Google Spanner.
+Use case: Banking systems where accurate balances matter more than uptime.
+
+AP (Availability + Partition Tolerance, sacrificing Consistency)
+System responds to requests even if some nodes have stale data.
+Updates might not be immediately reflected across all nodes.
+Example: NoSQL databases like DynamoDB, Cassandra, CouchDB.
+Use case: Social media feeds, where slightly outdated posts are acceptable but downtime isn’t.
+Key Takeaway
+If consistency is critical, choose CP and tolerate temporary unavailability.
+If availability is more important, choose AP and allow temporary inconsistencies.
+True CA systems do not exist in distributed networks because partitions are unavoidable. 🚀
+
+Consistency + Availability..partition tolerance is avoidable hence this usecase is invalid
+
+
 We cannot build a general data store that is continually available, sequentially consistent, and tolerant to any partition
 failures. We can only build a system that has any two of these three properties. Because, to be consistent, all nodes should
 see the same set of updates in the same order. But if the network loses a partition, updates in one partition might not make

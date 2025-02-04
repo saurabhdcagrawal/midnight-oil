@@ -1,0 +1,117 @@
+Elastic search most popular open source technologies to build and deploy robust search engines
+Term frequency, inverse document frequency, inverted index
+Full Text queries
+Compound queries
+Filters
+Analytic engine to run complex queries giving insights
+
+Basic Data Structure->Inverted Index it is at the heart of the search engine
+
+What is objective of search? getting the most relevant documents with the search terms
+1)Web crawling/2)Indexing.. 3)scoring documents on basis of relevance, and retrieve ranked by relevance
+E commerce will show let you search their catalogue of products ,video search will show you videos etc
+
+Lucene->Ecosystem. Just like hadoop for distributed computing
+Solr is search server sits on top of lucene .Provides distributed indexing, load balancing, replication
+automated recover and centralized configuration
+Nutch... in Lucene ecosystem for webcrawling and index parsing
+CrateDB... Open source SQL distributed database in Lucene ecosystem
+
+Elastic search-->distributed search and analytics engine runs on top of Lucene developed by a company
+called Elastic. Offers many extensions to core lucene functionality, easy to use
+Open source--written in Java ,search and analytics engine
+
+Features of Elastic Search
+Distributed,Scales to thousand of nodes, High Availability
+RESTful API->CRUD monitoring and other operations using Rest Calls
+Schemaless
+Application-> Ecommerce/Product Catologue/Inventory/provideAutoComplete
+Vido Site/ Index Title/categories/Tags/
+Elearning/Cources/Authors/Topics/
+Mine log data for insights/price alerting platform..BI and analytics
+
+Kibana->Allows you to visualize and navigate your data within elastic search
+
+Elastic search can be used as a service in the cloud or can be downloaded locally
+
+Near realtime search..can pickup changes from your document very quickly ~1s from time a document is
+indexed till it becomes searchable
+
+Cluster of nodes performs searching and indexing..every node has a unique id and name
+helps to perform admin tasks.. a cluster can scale to 100 nodes
+The index is stored within the cluster..
+Nodes join a cluster using the cluster name
+Machines in a cluster have to be in the same network
+
+titles/description/comments these are all different kind of documents
+Documents are divided into categories or types
+All these types make up an index... within elastic search an index can have multiple kind of documents
+so an index is a collection of smilar documents.. an index within a cluster is uniquely identofied by a name
+Any number of indices within a cluster
+Different indices for different category etc catalogue in one index, customer info for different index, inventory management
+Index can have multiple document types.... (logic partition of docs within one index for eg)
+Blog post/blog comment/document types are user defined..
+Typically all docs which have same set of fields belong to one type
+
+Document is a container of text which needs to be searched
+Expressed in JSON in Elastic search
+All document lies in index
+Every doc requires a doc type and an index to identify a set of documents
+
+By default an index in elastic search has 5 shards and 1 replica
+****Initial elastic search monitoring ***********************
+
+monitoring and rest end points
+http://localhost:9200
+http://localhost:9200/_cat/health?v&pretty
+http://localhost:9200/_cat/nodes?v&pretty
+
+Use curl for indices
+curl -XGET 'http://localhost:9200/_cat/indices?v&pretty'
+curl -XGET http://localhost:9200/_cat/indices?v
+
+XPUT is idempotent ..create
+POST is update
+****** create an index in Elastic Search ******************
+curl -XPUT http://localhost:9200/products?
+{"acknowledged":true,"shards_acknowledged":true,"index":"products"}
+
+curl -XGET http://localhost:9200/_cat/indices?v
+health status index    uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+yellow open   products 1nkqwanqQv-1b279fSm97A   1   1          0            0       225b           225b
+
+Health status yellow because we have a single node. No place for replicas
+
+*** add a document to index***************************************************
+curl -XPUT http://localhost:9200/products/mobiles/1?pretty -d"{\"name\" :\"iPhone7\",\"camera\": \"12MP\",\"storage\": \"256MB\"}"
+
+Type is mobiles
+id is 1
+metadata and shard
+For a different type you can assign same id
+*** get a document by id ***************************************************
+
+XGET products/mobiles/1... you will get metadata and document information/contents
+if you add _source=false, then you wouldnt get document information , only found=true
+_source=name,reviews only those attributes would be returned along with meta data
+
+*****************Update in Elastic Search************************
+1)To update a value, same xput query with id for update, in meta deta there is a version field it will be updated to 2
+
+2) curl -XPOST http://localhost:9200/products/mobiles/2/_update?pretty -d'{}'
+3){"script":"ctx._source.size+=2"}
+
+******************Delete individual doc in elastic search********************************
+ curl -XDELETE 'http://localhost:9200/products/mobiles/2?pretty'
+
+ *************TO check if a document is present**************************
+ curl -i -XHEAD 'http://localhost:9200/products/mobiles/1?pretty'
+ HTTP://1.1 200K
+
+The delete is not happening immediately but at a later stage ..for now it is just marked for deletion
+**************Delete index in elastic search******************************
+
+ curl -XDELETE 'http://localhost:9200/products?pretty'
+
+*** bulk update on operations not allowed**but nulk retrieva;
+

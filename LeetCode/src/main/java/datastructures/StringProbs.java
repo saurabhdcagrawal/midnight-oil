@@ -36,7 +36,9 @@ public class StringProbs {
     public boolean sortAndCheckAnagram(String wordOne, String wordTwo) {
         return (sortString(wordOne).equals(sortString(wordTwo)));
     }
-
+//Brute force
+//Check length, sort the characters in array
+//then use equals.. Sorting takes O (nlogn)
     public boolean checkAnagram(String wordOne, String wordTwo) {
         if (wordOne.length() != wordTwo.length())
             return false;
@@ -59,7 +61,11 @@ public class StringProbs {
         }
 
         return true;
-    }
+    } // Time Complexity O(n), Space complexity O(1)
+    //As table size remains constant no matter how long the string is
+    //For unicode characters use hashmap
+
+    
      //difference in counts of anagram..tells us char differences
     public static int makingAnagrams(String s1, String s2) {
         // Write your code here

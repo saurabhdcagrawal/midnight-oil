@@ -1,0 +1,6 @@
+Array questions and string questions are interchangeable?
+Hashtable using balanced binary search tree?
+Arraylist amortized inserion runtime is O(1)
+Hash Table Collision Resolution (pg 636), Rabin-Karp Substring Search (pg 636)
+String append ..every time a new string is created and copied over.. therefore if we are appending n strings.. run time is o(n2). Use string builder, 
+it just appends and does not create a new character everytime
