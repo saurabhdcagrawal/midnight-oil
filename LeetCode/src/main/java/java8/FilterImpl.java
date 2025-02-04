@@ -25,8 +25,7 @@ public class FilterImpl {
 // terminal operations count,collect,forEach
 //streams let you move from external iteration to internal iteration
 //because the responsibility of iteration is delegated
-// streams API can work out several optimizations behind the scenes
-// in addition the code can run the code in parallel
+// streams API can work out several optimizations behind the scenes// in addition the code can run in parallel
 // 1 Get list of dishnames greater than 300 calories
 //short circuiting operators anyMatch,allMatch,noneMatch
 //A_filter
@@ -69,7 +68,7 @@ public class FilterImpl {
       List<Dish> meatDishes= menu.stream().filter(d->d.getType()==Dish.Type.MEAT).limit(2).collect(Collectors.toList());
       System.out.println(meatDishes);
        /* Streams support the method map, which takes a function as argument. The function is applied
-        to each element, mapping it into a new element creating a transforming */
+        to each element, mapping it into a new element creating a transformation */
         //List<Integer> lengthList=menu.stream().map(d->d.getName().length()).collect(Collectors.toList());
       //get length of each dish
        menu.stream().map(Dish::getName).map(String::length).forEach(System.out::println);
