@@ -503,3 +503,170 @@ Through reflection, we can invoke methods at runtime irrespective of the access 
     Inner Class
     Method-local Inner Class
     Anonymous Inner Class
+
+Java Records are immutable data classes introduced in Java 14 (as a preview) and finalized in Java 16.
+   1)All instance variables must be declared in the record header.
+    public record Person(String name, int age) {}
+
+    2) Unlike regular Java classes, records don’t allow defining additional instance variables.
+    private String address;  //  Compilation error
+
+   3) Records Allow Static Fields & Methods Even though records restrict instance variables, you can define static fields and methods.
+This is useful for constants, utility methods, or factory methods.
+
+Example of Static Fields & Methods in a Record:
+
+public record Person(String name, int age) {
+    // Static field (Allowed)
+    private static final String COUNTRY = "USA";
+
+    // Static method (Allowed)
+    public static String getDefaultCountry() {
+        return COUNTRY;
+    }
+}
+4)
+In records, you can create a parameterized constructor, which calls the default constructor
+  with the provided parameters inside its body. You can also create compact constructors which
+  are similar to default constructors with the twist that you can add some extra functionality
+  such as checks inside the constructor body
+
+Dependency Injection
+Dependency Injection (DI) is a design pattern used in Spring and other frameworks where an object
+(class) receives its dependencies from an external source, rather than creating them itself.
+Prevent tight coupling, improve flexibility and testability
+Think of it like this: Instead of cooking your own food (creating dependencies),
+you get it delivered to your door (injected dependencies).
+This makes it easier to change the restaurant (dependency) without affecting
+how you eat (use the dependency).
+
+Spring automatically injects dependencies using Spring IoC (Inversion of Control) Container.
+Spring scans the beans (@Service, @Component, @Repository) and injects them where needed.
+If multiple implementations exist, use @Qualifier or @Primary.
+No need to manually instantiate objects with new.
+
+@Service
+public class OrderService {
+    private PaymentService paymentService = new PaymentService();
+
+    public void processOrder() {
+        paymentService.processPayment();
+    }
+}
+Problems:
+
+Tightly coupled → OrderService always depends on PaymentService.
+Difficult to change → If we want a PayPalPaymentService, we need to modify OrderService.
+Hard to test → You can't easily replace PaymentService with a mock.
+
+Example 2: Using Constructor Injection (Best Practice) ✅
+Here, PaymentService is injected instead of being created inside OrderService.
+
+@Service
+public class OrderService {
+    private final PaymentService paymentService;
+
+    @Autowired // Not required in Spring Boot 2+, but can be used for clarity
+    //@RequiredArgsConstructor  // Lombok generates a constructor with required (final) fields
+    public OrderService(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+
+    public void processOrder() {
+        paymentService.processPayment();
+    }
+}
+Benefits: ✔ Loose Coupling → OrderService doesn’t depend on a specific PaymentService implementation.
+✔ Easier Testing → You can inject a mock PaymentService for unit tests.
+PaymentService mockPaymentService = mock(PaymentService.class);
+OrderService orderService = new OrderService(mockPaymentService);
+✔ More Flexibility → If we want to use PayPalPaymentService, we don’t need to modify OrderService.
+Immutability – The final keyword prevents accidental modification.
+Explicit Dependencies – You can clearly see what dependencies the class needs.
+
+
+Example 3: Setter Injection (For Optional Dependencies)
+If PaymentService is optional, use setter injection.
+This lets us use a default implementation if no bean is injected.
+
+@Service
+public class OrderService {
+    private PaymentService paymentService = new DefaultPaymentService(); // Default implementation
+
+    @Autowired
+    public void setPaymentService(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+}
+Good for optional dependencies.
+Can lead to NullPointerException if setter is not called.
+Mutable dependency, requires calling setter before use.
+
+
+
+Example 4: Field Injection (Not Recommended)
+Avoid using field injection because:
+
+It hides dependencies (no constructor arguments).
+ No way to know what dependencies are required just by looking at the constructor.
+It doesn’t work well with unit tests.
+It doesn’t support final fields.
+Field injection is not recommended due to poor testability and hidden dependencies.
+@Service
+public class OrderService {
+    @Autowired
+    private PaymentService paymentService;
+}
+
+Harder to test → You need a Spring container to inject the dependency.Can't Inject Mocks
+Easily in Unit Tests (Makes testing harder).
+Field is mutable → You can accidentally change paymentService.
+When you declare a field as final, it must be initialized once and cannot be reassigned after that.
+Without final, someone could accidentally reassign the repository, potentially introducing bugs.
+Interface injection?
+If you use field injection, you can't make the field final because it's initialized after
+the object is constructed:
+public interface PaymentService {
+    void processPayment();
+}
+@Service
+public class OrderService {
+    @Autowired
+    private OrderRepository orderRepository;  // Can't be final
+
+    public void processOrder() {
+        orderRepository.saveOrder();
+    }
+}
+Interface based
+@Service
+public class PayPalPaymentService implements PaymentService {
+    public void processPayment() {
+        System.out.println("Processing payment via PayPal.");
+    }
+}
+
+@Service
+public class StripePaymentService implements PaymentService {
+    public void processPayment() {
+        System.out.println("Processing payment via Stripe.");
+    }
+}
+
+@Service
+public class OrderService {
+    private final PaymentService paymentService;
+
+    @Autowired
+    public OrderService(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+
+    public void processOrder() {
+        paymentService.processPayment();
+    }
+}
+✔ Use Constructor Injection for mandatory dependencies.
+✔ Use Setter Injection for optional dependencies.
+✔ Avoid Field Injection unless necessary.
+✔ Use Interface Injection for flexible and scalable applications.
