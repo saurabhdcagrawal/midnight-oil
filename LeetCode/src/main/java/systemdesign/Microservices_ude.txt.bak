@@ -601,6 +601,7 @@ Spring-----------------
 	Spring boot does autoconfiguration 
 	Embedded Server
 --------------------------------------Complete Spring boot app-----------------------------------------
+https://www.youtube.com/watch?v=NpdG3lmKJ5g&ab_channel=ProgrammingTechie
 Spring boot 3.1 Java 17 Spring framework 6		
 #SpringCloud 
 	Spring cloud is a project under the spring project ecosystem
@@ -612,12 +613,23 @@ Spring boot 3.1 Java 17 Spring framework 6
 	Build web including RESTful services/applications using spring MVC..Use apache tomcat as the default embedded container 
 #Lombok
 	To remove boilerplate code
+	@RequiredArgsConstructor--> parameterized constructor
+	@Data for getters and setters
+	@Slf4j
+		log.info("Product {} is saved",product.getId());
+
 	
 #SpringDataMongoDB
-	
+	For product service
 #Api gateway
 		Acts as a gatekeeper/entry point to send out requests to different services from users
-		dont want to give the hostname/ip address services of microservice
+		dont want to give the hostname/ip address of product service/microservice
+		As a user you want to communicate with product service
+		
+Authentication server->KeyCloak
+Start by containerizing all your microservices using Docker and manage them locally with Docker Compose for ease of development. 
+When you're ready to scale and deploy to production, transition to Kubernetes for advanced orchestration, scalability, and resilience.
+docker-compose.yml
 
 #Logical architecture of each microservice		
 Http request from clients->Controller->Service(Business logic...sometimes talk to MQ)->Repository(DataAcessLayer)->Database		
@@ -632,6 +644,7 @@ http://localhost:8080/api/product
 	"price": 1200
 }
 
+Multiline string intoduced in Java 14
 
 Controller->Service->Repository
 It is a good practice to sepeare dto from model..expose only what is needed
