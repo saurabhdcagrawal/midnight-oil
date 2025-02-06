@@ -1,0 +1,72 @@
+-- Delete and truncate difference
+DELETE is a reversible DML (Data Manipulation Language) command used to delete one or more rows
+from a table based on the conditions specified in the WHERE clause.
+Instead, TRUNCATE is an irreversible DDL (Data Definition Language) command used to delete all
+rows from a table
+DELETE works slower than TRUNCATE  because it logs each row deletion.
+ Also, we can't use the TRUNCATE statement for a table containing a foreign key.
+
+ -- Create the 'orders' table (parent table)
+ CREATE TABLE orders (
+     order_id INT PRIMARY KEY,
+     order_date DATE,
+     customer_name VARCHAR(100)
+ );
+
+ -- Create the 'order_items' table (child table)
+ CREATE TABLE order_items (
+     order_item_id INT PRIMARY KEY,
+     order_id INT,
+     product_name VARCHAR(100),
+     quantity INT,
+     price DECIMAL(10, 2),
+     FOREIGN KEY (order_id) REFERENCES orders(order_id)
+ );
+
+ orders table: parent table
+
+ order_id	order_date	customer_name
+ 1	2025-01-01	John Doe
+ 2	2025-01-02	Jane Smith
+ 3	2025-01-03	Alice Johnson
+
+ order_items table: child table
+
+ order_item_id	order_id	product_name	quantity	price
+ 101	1	Laptop	1	1200.00
+ 102	1	Mouse	2	25.00
+ 103	2	Keyboard	1	75.00
+ 104	3	Monitor	1	300.00
+ 105	3	HDMI Cable	3	15.00
+
+Before truncating the parent table (orders), you can delete the rows in the child table
+(order_items) that reference it:
+
+DELETE FROM order_items WHERE order_id IN (SELECT order_id FROM orders);
+Now you can truncate
+TRUNCATE TABLE orders;
+
+Option 2: Temporarily disable the foreign key constraint
+Option 3: Use DELETE instead of TRUNCATE
+If you can't or don't want to disable the foreign key check or delete the rows manually,
+you can use DELETE to remove all rows from the table, which does check foreign key constraints:
+DELETE checks for foreign key constraints before removing a row ensuring data integrity is maintained
+ If there are dependent child rows in the referenced table,
+the database will either throw an error or delete the child rows based on the foreign key's
+ ON DELETE action (such as CASCADE, SET NULL, or RESTRICT).
+
+ TRUNCATE is not designed to respect foreign key constraints at all.
+ It quickly drops all rows in the table without any checks,
+ which could lead to orphaned records in the child table (i.e., child records that no longer have a valid parent).
+  Because of this, if there is a foreign key relationship,
+  TRUNCATE may breaking data integrity.
+
+-- -- Drop and truncate difference
+DROP deletes a table from the database completely, including the table structure and all the
+associated constraints, relationships with other tables, and access privileges.
+TRUNCATE deletes all rows from a table without affecting the table structure and constraints.
+DROP works slower than TRUNCATE. Both are irreversible DDL (Data Definition Language) commands.
+
+- Having works on aggregated data after they are grouped, while 'WHERE' checks each row individually.
+ If both statements are present in a query, they appear in the following order:
+ WHERE – GROUP BY – HAVING. The SQL engine interprets them also in the same order.

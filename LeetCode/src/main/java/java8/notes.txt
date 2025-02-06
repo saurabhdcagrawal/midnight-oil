@@ -86,75 +86,95 @@ Collections use external iteration, Stream use internal iteration
 */
 New.................... Durgasoft
 (1)Lambda expressions
+A lambda expression is an anonymous function that provides a concise way to implement
+functional interfaces. It eliminates boilerplate code and enables functional programming in Java.
+a function which is not having name, not having any modifiers, not having any return type
+
+// Basic lambda expression
+() -> { System.out.println("Hello"); }
+
+// If there's only one statement, curly braces are optional
+() -> System.out.println("Hello");
+
+// Lambda with parameters and type inference
+(int a, int b) -> { System.out.println(a + b); }
+(a, b) -> System.out.println(a + b);  // Type inference by compiler
+
+// Single argument, no need for parentheses
+(String s) -> { return s.length(); }  // Explicit return
+s -> s.length();  // Simplified form
+
+Remove curly braces {} for single statements.
+Remove return keyword for single expression return values.
+Remove type declarations if Java can infer them.
+Remove parentheses if there's only one parameter.
+
 (2)Functional interfaces
-(3)Default methods(Concrete methods) can be defined in interfaces..
-(4)Static methods defined(inside interface)
-(5)Predefined functional interfaces: predicate, function, consumer
-(6) Double colon operator used for method reference and constructor reference
-Method references are special types of lambda expressions that execute only one method.
-General syntax of method reference:
-object::methodName
-(7) Streams API
-(8) Joda API (Date and time API)
-(9) Optional
+A functional interface is an interface with exactly one abstract method.
+It can have any number of static or default methods.
+Examples of Built-in Functional Interfaces:
+Runnable → run()
+Callable<T> → call()
+ActionListener → actionPerformed()
+Comparable<T> → compareTo()
+Java 8 predefined Functional Interfaces:
+Predicate<T> → Returns boolean (test(T t))
+    Predicate: To perform a test and return a Boolean value.
+     //Streams use it
+Function<T, R> → Transforms data (apply(T t))
+    Function: Function<T, R> interface in Java takes an input (T) and produces an output (R).
+    It is used when you want to transform data from one type to another.
+Consumer<T> → Consumes input (accept(T t))
+    Consumer: Accept arguments but do not return any values.
+    //For each uses consumer
+Supplier: Do not accept any arguments but return a value.
+Operator: Perform a reduction type operation that accepts the same input types
 
-https://medium.com/javarevisited/a-comprehensive-guide-to-java-8-method-reference-f0bf5457b72d
-Intention---
--
-First objective to simplify programming (concise code) (do away with boilerpate code)
-To enable functional programming in forms of lambda expressions(behaviour parameterization)
-To enable parallel processing and be able to write compatible code which runs on multicore processors
-A)
-Lambda expressions
-To enable functional programming in java to get functional programming benefits
-To write and read more reusable code and reuse API's very easily and effectively
-Desc:
-lambda expression is a function which is not having name, not having any modifiers, not having any return type
-1)
-()->{sop("Hello")}
-can remove curly brace..only one statement then curly brace is optional
-()->sop("Hello")
-----
-2)
-(int a, int b)->{Sop(a+b)}
-//type inference...if compiler can guess..then no need to add type
-(a,b)->sop(a+b);
-
-3) (String s) ->{return s.length())
-//no need to write return... for single argument remove parentheses for input
-s->s.length();
-
-So remove curly braces for single statement, remove return statement , remove type if type can be determined
-and remove parentheses if only one i/p argument
-When you mention return use curly braces
-parentheses on left, curly brace on right--
-
-B) we use functional interface To invoke lambda expression
 Lambda expression can be passed to a function that is expecting a functional interface
-
-You can use a lambda expression in the context of a functional interface
-if an interface contains single abstract method then its called a functional interface
-(it can have any number of static or default methods)
-Can do the same with anonymous inner class?
-Runnable,Callable,ActionListener,Comparable(compareTo)
-https://www.baeldung.com/java-static-default-methods
-Static and default methods in an interface is a new concept of java 8
+we use functional interface To invoke lambda expression
 You can use @FunctionalInterface annotation so compiler will give an error
 
-//Lambda expressions can exist with or without class
-//they can be passed around as parameters to another method
+@FunctionalInterface
+interface MyFunctionalInterface {
+    void doWork();
+}
 
-FunctionalInterface fi = (String name) -> {"hello "+name};
+public class LambdaExample {
+    public static void main(String[] args) {
+        MyFunctionalInterface task = () -> System.out.println("Doing work...");
+        task.doWork();  // Output: Doing work...
+    }
+}
+import java.util.function.Consumer;
 
+public class LambdaWithoutClass {
+    public static void main(String[] args) {
+        // Lambda stored in a variable (doesn't belong to any class)
+        Consumer<String> printMessage = message -> System.out.println("Message: " + message);
 
+        // Calling the lambda
+        printMessage.accept("Hello, Lambda!");
+    }
+}
+import java.util.function.Function;
 
-(i)If an interface extends another interface and child interface does not contain any abstract method
-parent is functional interface then child interface will be also a functional interface
-(ii) if parent interface is a functional interface and child interface extends the same
-abstract method then its also a functional interface
-(iii) if child has an abstract method then its not a functional interface
+public class LambdaAsParameter {
+    // Method that accepts a lambda expression
+    public static void printLength(String str, Function<String, Integer> lengthFunction) {
+        System.out.println("Length: " + lengthFunction.apply(str));
+    }
 
-By using functional interface one can call lambda expressioni
+    public static void main(String[] args) {
+        // Passing a lambda expression as a method parameter
+        printLength("Hello", s -> s.length());
+    }
+}
+
+Lambdas can exist without a class—they are anonymous functions.
+Lambdas can be passed around as parameters, making code cleaner and more functional.
+This enables functional programming by treating functions as first-class citizens
+
+By using functional interface one can call lambda expression
 interface exampleInterface{
     public void m1()
 }
@@ -238,6 +258,22 @@ processFile((BufferedReader br)->br.readLine());
 
 List<Integer> l= new ArrayList<Integer>();
 Collections.sort(l,(a,b)->(a-b))
+
+
+(3)Default methods(Concrete methods) can be defined in interfaces..
+(4)Static methods defined(inside interface)
+(5)Predefined functional interfaces: predicate, function, consumer
+(6) Double colon operator used for method reference and constructor reference
+Method references are special types of lambda expressions that execute only one method.
+General syntax of method reference:
+object::methodName
+(7) Streams API
+(8) Joda API (Date and time API)
+(9) Optional
+
+https://medium.com/javarevisited/a-comprehensive-guide-to-java-8-method-reference-f0bf5457b72d
+Intention---
+
 
 INHERITANCE_____________________________
 Java does not support multiple inheritance
@@ -590,9 +626,13 @@ If PaymentService is optional, use setter injection.
 This lets us use a default implementation if no bean is injected.
 
 @Service
+//@Setter(onMethod_ = @Autowired)  // Lombok generates the setter and applies @Autowired
 public class OrderService {
     private PaymentService paymentService = new DefaultPaymentService(); // Default implementation
-
+    //if we do not use default implementation
+    //Use @Autowired(required = false) to make the dependency optional.
+    //otherwise spring will fail
+    //and then handle the null check in the processMethod
     @Autowired
     public void setPaymentService(PaymentService paymentService) {
         this.paymentService = paymentService;
@@ -602,13 +642,11 @@ Good for optional dependencies.
 Can lead to NullPointerException if setter is not called.
 Mutable dependency, requires calling setter before use.
 
-
-
 Example 4: Field Injection (Not Recommended)
 Avoid using field injection because:
 
 It hides dependencies (no constructor arguments).
- No way to know what dependencies are required just by looking at the constructor.
+No way to know what dependencies are required just by looking at the constructor.
 It doesn’t work well with unit tests.
 It doesn’t support final fields.
 Field injection is not recommended due to poor testability and hidden dependencies.
