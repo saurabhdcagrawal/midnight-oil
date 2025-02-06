@@ -175,6 +175,11 @@ Spring Boot- Auto configuration
 	spring.datasource.username=root
 	spring.datasource.password=secret
 	
+	You can use exclude attribute of @EnableAutoConfiguration if you want auto-configuration not to apply to any specific class.
+	//use of exclude
+	@EnableAutoConfiguration(exclude={className})
+
+	
 	You can define both application and Spring boot-related properties into a file called application.properties. You can create this file manually or use Spring Initializer to create this file. You don’t need to do any special configuration to instruct Spring Boot to load this file, If it exists in classpath then spring boot automatically loads it and configure itself and the application code accordingly
 	
 Debugging logs can be enabled in three ways -
@@ -186,6 +191,8 @@ Debugging logs can be enabled in three ways -
 	TRACE->DEBUG->INFO->WARN->ERROR
 	
 Application-context
+	1️)Annotation-Based Configuration (Modern Approach)
+	2)XML-Based Configuration (Legacy Approach)
 	No, Spring Boot won't load an XML configuration file like application-context.xml automatically unless you explicitly instruct it to do so. By default, Spring Boot favors annotation-based configuration and auto-configuration, so if you want to include an XML file, you'll need to use the @ImportResource annotation in your main application class:	
 	
 	@SpringBootApplication
@@ -195,6 +202,12 @@ Application-context
 			SpringApplication.run(MySpringBootApplication.class, args);
 		}
 	}
+	
+Why is XML Configuration Less Popular Now?
+	More complex than annotations.
+	Harder to maintain (large XML files).
+	Not as flexible as annotation-based configuration.
+	Still useful when integrating legacy applications.
 	
 6. What does the @SpringBootApplication annotation do internally?
 	In Spring Boot, automatic component scanning is one of the key features that simplifies application setup and management. By default, Spring Boot uses the @SpringBootApplication annotation, which is a combination of several annotations, including @ComponentScan.
@@ -206,15 +219,15 @@ Application-context
 	@ComponentScan
 	This annotation is responsible for finding and registering all Spring beans (components) defined with annotations like @Component, @Service, @Repository, and @Controller.
 	By default, @ComponentScan will scan the package where the main Spring Boot application class is located and its sub-packages.
-	If you want to change the base packages that should be scanned, you can specify the basePackages attribute in the @ComponentScan annotation, like this:	
 	
-	Automatic discovery: No need to manually register beans in configuration files.
-	Simplified setup: Just use the correct annotations, and Spring Boot handles the rest.
-	Loose coupling: Encourages a modular, decoupled structure for the application.
 	
 	You only need to explicitly add @ComponentScan if:
 	You want to change the default scanning behavior (e.g., scan additional packages or exclude certain packages).
 	Your components are located outside the base package of your main application class, and you want to scan other packages.
+	
+	Automatic discovery: No need to manually register beans in configuration files.
+	Simplified setup: Just use the correct annotations, and Spring Boot handles the rest.
+	Loose coupling: Encourages a modular, decoupled structure for the application.
 	
 Spring Boot Dev Tools
 	Setup for IntelliJ
@@ -255,8 +268,10 @@ Spring Boot embedded server
 	Default is starter-tomcat(jetty,undertow is also supported)
 	Yes, we can replace the Embedded Tomcat server with any server by using the Starter dependency in the pom.xml file. Like you can use spring-boot-starter-jetty as a dependency for using a jetty server in your project.
 	
+	Can we disable the default web server in the Spring boot application?
 	Yes, we can use application.properties to configure the web application type i.e spring.main.web-application-type=none.
-	The default port of the tomcat server-id 8080. It can be changed by adding sever.port properties in the application.property file.
+	
+	The default port of the tomcat server-id 8080. It can be changed by adding sever.port properties in the application.properties file.
 	
 	In Gradle, the equivalent to a pom.xml file (used in Maven) is the build.gradle file. Both files define the project's build configuration, dependencies, plugins, and other tasks, but the structure and syntax differ between Maven (XML) and Gradle (Groovy or Kotlin DSL).
 
@@ -291,6 +306,127 @@ Spring Boot Actuator
 	Application properties (e.g., properties defined in application.properties or application.yml)
 	Configurable properties (e.g., values for @Value annotations)
 	In short, this endpoint gives a detailed view of the current environment configuration of your Spring Boot application, making it useful for debugging or inspecting the settings that affect your application during runtime
+
+Spring automatically detects components when you use annotations like @Component, @Service, or @Repository. But sometimes, you don’t want automatic scanning and need more control over bean creation.
+
+Example situations where you might use @Bean:
+	When dealing with third-party classes that don’t have @Component annotations.
+	When you want to customize bean creation with specific logic.
+	When you want manual control over dependencies.
+
+import org.springframework.stereotype.Component;
+
+@Component
+public class Car {
+    public void drive() {
+        System.out.println("Driving a car!");
+    }
+}
+
+ApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
+Car car = context.getBean(Car.class);
+car.drive();  // Output: Driving a car!
+
+
+Now, let’s say Car does not have @Component, but you still want Spring to manage it.
+
+public class Car {
+    private String model;
+
+    public Car(String model) {
+        this.model = model;
+    }
+
+    public void drive() {
+        System.out.println("Driving a " + model);
+    }
+}
+
+//error
+ApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
+Car car = context.getBean(Car.class);
+car.drive();  // Output: Driving a car!
+
+Since Car is just a normal Java class, Spring won’t detect it automatically.
+
+So, we manually register it using @Bean inside a @Configuration class:
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration  // This class defines beans manually
+public class AppConfig {
+
+    @Bean  // This method tells Spring: "Hey, create and manage this bean!"
+	//create a method returning this class
+    public Car myCar() {
+        return new Car("Tesla Model S");
+    }
+}
+
+//now works
+ApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
+Car car = context.getBean(Car.class);
+car.drive();  // Output: Driving a tesla model S!
+
+When Should You Use @Bean?
+	For third-party libraries (e.g., database connections, API clients).
+	When you need to customize bean creation (e.g., setting properties dynamically).
+	When the class doesn’t have @Component but you still want Spring to manage it.
+
+
+Imagine you are working on a Spring Boot application that needs to connect to a MySQL database.
+
+Usually, you can define database configurations in application.properties, but sometimes, you might want to manually configure the database connection using Java code.
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import javax.sql.DataSource;
+import org.apache.commons.dbcp2.BasicDataSource;
+
+@Configuration  // Marks this class as a configuration provider
+public class DatabaseConfig {
+
+    @Bean  // Manually defining a DataSource bean
+    public DataSource getDataSource() {
+        BasicDataSource dataSource = new BasicDataSource();
+        dataSource.setUrl("jdbc:mysql://localhost:3306/mydb");
+        dataSource.setUsername("root");
+        dataSource.setPassword("password");
+        dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        return dataSource;
+    }
+}
+
+Why Use @Bean Here?
+
+The BasicDataSource class (from Apache Commons DBCP) is a third-party class, so we can't use @Component.
+We need to set some properties (URL, username, password, etc.) before returning the object.
+
+//Now, let’s use constructor injection to get this bean inside a service.
+
+import org.springframework.stereotype.Service;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+
+@Service
+public class DatabaseService {
+
+    private final DataSource dataSource;
+
+    public DatabaseService(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    public void testConnection() {
+        try (Connection connection = dataSource.getConnection()) {
+            System.out.println("✅ Database connected successfully!");
+        } catch (SQLException e) {
+            System.out.println("❌ Failed to connect to database: " + e.getMessage());
+        }
+    }
+}
 
 
 Spring boot vs spring mvs vs Spring
