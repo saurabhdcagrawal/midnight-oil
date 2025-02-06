@@ -70,3 +70,96 @@ DROP works slower than TRUNCATE. Both are irreversible DDL (Data Definition Lang
 - Having works on aggregated data after they are grouped, while 'WHERE' checks each row individually.
  If both statements are present in a query, they appear in the following order:
  WHERE – GROUP BY – HAVING. The SQL engine interprets them also in the same order.
+
+ 20. What is normalization in SQL, and why use it?
+Normalization is a systematic process of organizing data in a relational database to minimize redundancy
+(duplicate data), eliminate undesirable characteristics like insertion, update, and deletion anomalies,
+ and ensure data integrity. It involves decomposing a table into smaller (and less redundant) tables
+ and defining relationships between them.
+ The process typically follows a series of normal forms (1NF, 2NF, 3NF, BCNF, etc.),
+ each addressing specific types of redundancy and dependency issues
+-- By organizing data into multiple related tables, normalization eliminates duplicate information,
+ ensuring that each piece of data is stored only once.
+ With reduced redundancy, the risk of data anomalies (inconsistencies arising from update,
+ deletion, or insertion operations) decreases.
+ Data integrity rules (like primary keys, foreign keys, and constraints)
+ help maintain accuracy and consistency across the database
+
+OrderID	CustomerName	CustomerAddress	OrderDate
+1	    John Doe	    123 Main St	2020-01-01
+2	    John Doe	    123 Main St	2020-01-02
+3	    Jane Smith	    456 Elm St	2020-01-01
+
+After Normalization (Split into Two Tables):
+
+Customers Table:
+CustomerID	  CustomerName	CustomerAddress
+1	           John Doe	    123 Main St
+2	           Jane Smith	456 Elm St
+
+OrderID	CustomerID	OrderDate
+1	1	2020-01-01
+2	1	2020-01-02
+3	2	2020-01-01
+Improved Data Integrity: Updates to customer information need to be made in only one place.
+Easier Maintenance: Fewer chances of data inconsistencies.
+
+While normalization is aimed at reducing redundancy and ensuring integrity, denormalization involves
+intentionally reintroducing redundancy by combining data from multiple tables.
+Denormalization is often employed when read performance is prioritized over write performance
+because:
+Faster Query Performance:
+It can reduce the complexity and number of joins needed to retrieve data,
+thereby speeding up query execution times.
+
+37. How to find the nth highest value in a column of a table?
+SELECT * FROM EMPLOYEE ORDER BY SALARY DESC LIMIT 1 OFFSET 5;
+
+DDL: CREATE, ALTER TABLE, DROP, TRUNCATE, and ADD COLUMN
+DML: UPDATE, DELETE, and INSERT
+DCL: GRANT and REVOKE
+TCL: COMMIT, SET TRANSACTION, ROLLBACK, and SAVEPOINT
+DQL: – SELECT
+
+(INNER) JOIN – returns only those records that satisfy a defined join condition in both (or all)
+ tables. It's a default SQL join.
+LEFT (OUTER) JOIN – returns all records from the left table and those records from the
+right table that satisfy a defined join condition.
+RIGHT (OUTER) JOIN – returns all records from the right table and
+those records from the left table that satisfy a defined join condition.
+FULL (OUTER) JOIN – returns all records from both (or all) tables.
+It can be considered as a combination of left and right joins.
+
+Type of Index
+A Unique Index ensures that no duplicate values exist in a specific column of a table.
+Helps maintain data integrity by preventing duplicate entries.
+--If we try to insert another row with an existing Email, the database will throw an error:
+
+2. Clustered Index
+A Clustered Index defines the physical order of rows in a table.
+A table can have only one clustered index because it determines how data is physically stored.
+By default, the Primary Key creates a Clustered Index.
+CREATE CLUSTERED INDEX idx_order_id
+ON Orders (OrderID);
+The database physically arranges records in the order of OrderID.
+When we query data, searching by OrderID is faster because the records are already sorted.
+When you create a table with a Primary Key, a Clustered Index is automatically created.
+If your table doesn’t have a Primary Key, you might need to manually create a Clustered Index on a column
+that is often used for searching or sorting
+
+
+3. Non-Clustered Index
+The data remains stored in its original order.
+Non clustered stores pointers to the actual row locations.
+A table can have multiple non-clustered indexes
+Stores pointers for fast lookups without changing data order
+EmployeeID	Name	Department	Salary
+1	Alice	HR	60000
+2	Bob	IT	75000
+3	Charlie	HR	62000
+
+CREATE NONCLUSTERED INDEX idx_department
+When we search for employees in HR, the database looks up the index instead of scanning the full table.
+✅ Non-clustered indexes improve search efficiency and allow multiple indexes per table.
+
+

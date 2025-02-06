@@ -257,6 +257,151 @@ Spring Boot-Profiles
 		See demo 
 		Centralized class for the application related configuration
 	A combination of configuration properties and profiles in spring boot is powerful, externalize all configuration needed for your application
+	
+	
+Configuration Profiles (Properties/YAML Files):
+	What They Do:
+	These files (like application.properties, application-dev.properties, or sections in application.yml) hold your environment-specific configuration settings.They provide the actual configuration values (e.g., database URLs, usernames, passwords, etc.) for different environments (development, production, etc.).
+2. Centralized Configuration Class (using @ConfigurationProperties):
+	What It Does:
+	This is a Java class that is used to map the configuration properties from your files into a structured object that you can easily use in your code.It acts as a central point of access for all those configuration values. With this class, you can simply inject it into other parts of your application and refer to the properties directly (instead of repeatedly reading from the properties file).
+How They Work Together:
+Loading the Values:
+When you start your Spring Boot application, Spring Boot reads the configuration files (taking into account the active profile) and loads all the defined properties.
+Binding to the Class:
+The centralized configuration class, annotated with @ConfigurationProperties(prefix = "app") (or any prefix you choose), is automatically populated with the values from those configuration files.
+Usage:
+Your code then simply uses the centralized configuration class to access these values. This approach keeps your configuration organized and easily manageable.
+Example Flow:
+Define Environment-Specific Configurations:
+You have an application.yml that includes a common section and environment-specific sections (e.g., dev, prod).
+Centralized Configuration Class:
+You create a class like AppConfig that is annotated with @ConfigurationProperties(prefix = "app").
+Spring Boot Bootstraps:
+Spring Boot reads the application.yml based on the active profile (say, dev).
+It then binds the values under the app prefix to your AppConfig class.
+Access in Your Application:
+You inject AppConfig into your controllers or services and use the values as needed.
+
+spring:
+  profiles:
+    active: dev  # This line sets the active profile
+
+# Default settings for all profiles
+app:
+  name: MySpringBootApp
+  description: Default Application Configuration
+
+---
+spring:
+  profiles: dev
+app:
+  datasource:
+    url: jdbc:mysql://localhost:3306/devdb
+    username: devuser
+    password: devpass
+
+---
+spring:
+  profiles: prod
+app:
+  datasource:
+    url: jdbc:mysql://prodserver:3306/proddb
+    username: produser
+    password: prodpass
+
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@ConfigurationProperties(prefix = "app")
+public class AppConfig {
+
+    private String name;
+    private String description;
+    private DataSourceProperties datasource;
+
+    // Getters and setters
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public DataSourceProperties getDatasource() {
+        return datasource;
+    }
+
+    public void setDatasource(DataSourceProperties datasource) {
+        this.datasource = datasource;
+    }
+
+    // Nested class for datasource properties
+    public static class DataSourceProperties {
+        private String url;
+        private String username;
+        private String password;
+
+        // Getters and setters
+        public String getUrl() {
+            return url;
+        }
+
+        public void setUrl(String url) {
+            this.url = url;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+    }
+}
+
+How to Use the Configuration:
+
+Anywhere in your Spring Boot application, you can inject AppConfig to access these properties:
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class AppController {
+
+    @Autowired
+    private AppConfig appConfig;
+
+    @GetMapping("/app-info")
+    public String getAppInfo() {
+        return "App Name: " + appConfig.getName() + ", Description: " + appConfig.getDescription()
+            + ", DB URL: " + appConfig.getDatasource().getUrl();
+    }
+}
+
 
 Spring Boot embedded server
 	Old ways of deploy 1) Install Java 2) Install tomcat 3)Deploy War(Web archive)
