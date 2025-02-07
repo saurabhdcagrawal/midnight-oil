@@ -18,12 +18,18 @@ Finance basics
 Wealth Management and Institutional Clients refer to different types of financial services
 tailored to distinct groups of clients with varying needs.
 
+Wealth management serves individuals (especially the wealthy) with personalized services
+ for growing and protecting their wealth.
+Institutional clients are organizations with large-scale investments and financial needs,
+ and they require services focused on managing large portfolios and corporate-level strategies
+
 1. Wealth Management
 Wealth management refers to a set of financial services provided to individuals and
 high-net-worth individuals (HNWIs), typically focusing on growing, managing,
 and preserving their wealth.
 Wealth management often includes personalized advice, investments, tax planning,
 estate planning, and retirement strategies.
+
 
 Characteristics of Wealth Management:
 Target Audience: High-net-worth individuals, families, or affluent individuals.
@@ -65,5 +71,9 @@ Corporate advisory services.
 Trading and capital market services.
 A pension fund seeking advice on managing its multi-billion-dollar portfolio or a
 corporation managing its cash reserves and capital allocation.
-
+Asset Allocation: The investment management firm will assess the pension fund’s needs and help
+allocate the $5 billion across different asset classes—equities, bonds, real estate, private equity,
+etc.—to achieve the right balance of risk and return.
+Risk Management: The firm will design strategies to minimize risk, ensuring that the pension fund’s
+portfolio can weather economic downturns without affecting its ability to pay pensions.
 Advice tailored to meet the needs of large organizations, but less personal than WM clients
