@@ -12,3 +12,58 @@ https://leetcode.com/problems/serialize-and-deserialize-n-ary-tree/solution/
 
 As we all know, primitives are pass by value and in no circumstance will they maintain their values.
 So, we create a custom class which is a thin wrapper around an integer.
+
+Finance basics
+
+Wealth Management and Institutional Clients refer to different types of financial services
+tailored to distinct groups of clients with varying needs.
+
+1. Wealth Management
+Wealth management refers to a set of financial services provided to individuals and
+high-net-worth individuals (HNWIs), typically focusing on growing, managing,
+and preserving their wealth.
+Wealth management often includes personalized advice, investments, tax planning,
+estate planning, and retirement strategies.
+
+Characteristics of Wealth Management:
+Target Audience: High-net-worth individuals, families, or affluent individuals.
+Services Provided:
+Investment advisory services (stocks, bonds, real estate, etc.).
+Tax planning, estate planning, and wealth preservation.
+Retirement and financial planning.
+Risk management and insurance.
+Family office services (if applicable).
+Customization: Highly personalized to the client's specific financial situation, goals, and preferences.
+Focus: The primary focus is on individual wealth accumulation, preservation, and growth.
+Example:
+A wealthy individual seeking advice on investing their inherited estate, planning
+for their children’s education, managing taxes, or preparing for retirement.
+
+Example 1: Wealth Management
+Client: John Doe, a wealthy individual
+
+Situation: John, 45 years old, has an estate worth $10 million, including real estate,
+stocks, and other investments. He is seeking advice on how to manage and grow his wealth,
+especially since he wants to ensure his family is financially secure when he retires and when he passes away.
+
+Services Provided:
+
+Investment Strategy: John’s wealth manager will assess his current portfolio and suggest a diversified investment strategy based on his risk appetite, including stocks, bonds, and alternative assets like real estate and private equity.
+Estate Planning: The wealth manager will help John set up a trust, ensuring his assets are passed on to his children in a tax-efficient manner, possibly reducing inheritance taxes.
+Retirement Planning: Since John plans to retire in 20 years, his wealth manager will create a customized retirement plan to ensure a stable income during retirement, using a combination of investments and annuities.
+Tax Management: The wealth manager will help John reduce tax liability through strategies like tax-loss harvesting and charitable giving.
+In this case, John’s wealth manager is providing a highly personalized service tailored to John’s financial goals, risk tolerance, and family situation
+
+Institutional clients refer to organizations or entities that invest large sums of money in the
+financial markets, such as corporations, government agencies, pension funds, foundations, endowments,
+and insurance companies.
+These clients typically have complex investment needs and manage significant assets (often in billions).
+
+Portfolio management for large-scale investments (stocks, bonds, private equity, real estate).
+Asset allocation, risk management, and strategy development.
+Corporate advisory services.
+Trading and capital market services.
+A pension fund seeking advice on managing its multi-billion-dollar portfolio or a
+corporation managing its cash reserves and capital allocation.
+
+Advice tailored to meet the needs of large organizations, but less personal than WM clients

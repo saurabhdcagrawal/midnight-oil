@@ -259,7 +259,7 @@ Spring Boot-Profiles
 	A combination of configuration properties and profiles in spring boot is powerful, externalize all configuration needed for your application
 	
 	
-Configuration Profiles (Properties/YAML Files):
+1) Configuration Profiles (Properties/YAML Files):
 	What They Do:
 	These files (like application.properties, application-dev.properties, or sections in application.yml) hold your environment-specific configuration settings.They provide the actual configuration values (e.g., database URLs, usernames, passwords, etc.) for different environments (development, production, etc.).
 2. Centralized Configuration Class (using @ConfigurationProperties):
@@ -848,18 +848,21 @@ Run the URL
 			spring.jpa.hibernate.ddl-auto=create-drop
 		In production use none	
 			spring.jpa.hibernate.ddl-auto=none
+			
+CRUD operations - Spring boot rest API structure			
 	#How the controller will call the data
-		@GetMapping("/api/v1/student/{id}") (connects to service..business logic layer)
+		@GetMapping("/api/v1/student/{id}") 
 		public Student getStudent(@PathVariable int id){
         return studentService.getStudent(id);
     }
-	Inside service (connects to data access layer)
-		@GetMapping("/api/v1/student/{id}")
-    public Student getStudent(@PathVariable int id){
-        return studentService.getStudent(id);
-    }
+	
+	Service Layer
+	public Student getStudent(int id) {
+		return studentRepository.findById(id)
+			.orElseThrow(() -> new IllegalStateException("Student not found"));
+	}	
 		
- #Post is used when you want to add new resources
+ #Post is used when you want to add new resources, accepts Json RequestBody
 	Controller:
 	  @PostMapping("/api/v1/register")
 		public void registerNewStudent(@RequestBody Student student){
@@ -879,7 +882,7 @@ POST:http://localhost:8080/api/v1/register
 		"name": "Prakash",
 		"email": "prakash@gmail.com",
 		"dateOfBirth": "2011-07-23"
-		}
+		}		
 First time succeeds
 Second time
 {
@@ -916,6 +919,48 @@ public void updateStudent(@PathVariable Long id,
                           @RequestParam (required=false) String email){
         studentService.updateStudent(id,name,email);
     }
+	
+PUT http://localhost:8080/api/v1/update/5?name=Rajesh&email=rajesh@gmail.com
+
+@PathVariable in Spring Boot
+	@PathVariable is an annotation in Spring Boot that extracts values from URL path parameters and binds them to method parameters in a REST controller.
+
+	The {id} in @GetMapping("/student/{id}") acts as a placeholder in the URL.
+	@PathVariable int id automatically extracts the value from the URL and assigns it to the method parameter id.	
+
+	@GetMapping("/student/{id}/{name}")
+	public String getStudent(@PathVariable int id, @PathVariable String name) {
+		return "Student ID: " + id + ", Name: " + name;
+	}
+	GET http://localhost:8080/api/v1/student/10/John
+	
+	@GetMapping("/student/{studentId}")
+	public String getStudent(@PathVariable("studentId") int id) {
+    return "Student ID: " + id;
+	}
+	GET http://localhost:8080/api/v1/student/7
+
+	@GetMapping("/student")
+	public String getStudent(@RequestParam int id) {
+    return "Student ID: " + id;
+}
+	GET http://localhost:8080/student?id=5
+	
+	Use @PathVariable when the parameter is part of the URL path (e.g., /users/123).
+	Use @RequestParam when the parameter is optional or part of a query string (e.g., /users?age=30).
+	
+
+@RestController = @Controller + @ResponseBody
+	The @RestController annotation in Spring Boot is a specialized version of @Controller, designed specifically for RESTful web services. It is a combination of:
+
+	@Controller → Indicates that the class is a Spring MVC controller.
+	@ResponseBody → Automatically serializes the return values of methods into JSON or XML and writes them to the HTTP response body.
+	Automatically converts Java objects to JSON/XML.
+	Used for creating RESTful APIs, not for rendering views.
+	Eliminates the need for @ResponseBody on each method.
+
+	@Controller ->For handling HTML views (like JSP, Thymeleaf)
+
 
 #mvn clean then install will create demo snapshot jar
 java -jar (name of jar) --server.port=8081
@@ -1374,7 +1419,7 @@ Image is downloaded from hub.docker.com (Docker registry)
 			Hence it is still able to make that connection (until those local copies are still working)..if they are down, then it will contact discovery server and go down
 #ApiGateway
 	Microservice environment can have multiple instances and an app can run on different ports
-	We cannot rely on harcordedip:port to call the service (external use)
+	We cannot rely on harcordedip:port to call the service (external clients)
 	Use a component at the start of architectural landscape called API gateway which is responsible for routing the request from users to corresponding services
 	onlineshop.com(api-gateway) ../.api/product-->then route it to product service /api/order-->go to order server
 	Can also configure a rule for accessing eureka service
@@ -1384,6 +1429,12 @@ Image is downloaded from hub.docker.com (Docker registry)
 	--Security
 	--LoadBalancing
 	--SSL Termination (terminated at the entry point of request.. and internally it will use http request)
+✅ Single Entry Point - Clients don’t need to know individual microservice URLs.
+✅ Security & Authentication - Can enforce OAuth, JWT, API keys, etc.
+✅ Rate Limiting & Throttling - Prevents abuse by limiting requests.
+✅ Logging & Monitoring - Tracks API usage and performance.
+✅ Load Balancing - Can route traffic based on load.
+✅ Request Aggregation - Calls multiple services and combines responses.
 	#SpringCloudGateway
 	Create a module with
 	<dependency>
@@ -1671,6 +1722,18 @@ Image is downloaded from hub.docker.com (Docker registry)
       <groupId>io.zipkin.reporter2</groupId>
       <artifactId>zipkin-reporter-brave</artifactId>
     </dependency>
+
+	✅ Tracks Requests Across Services – Helps debug failures in complex systems.
+✅ Assigns a Unique Trace ID – Every request gets a unique identifier.
+✅ Uses Span IDs – Tracks request flow inside each service.
+✅ Improves Monitoring – Helps analyze request-response latency.
+
+🛠 Key Components in Distributed Tracing
+1️⃣ Trace ID – A unique identifier assigned to each request.
+2️⃣ Span ID – Each service call gets a unique Span ID inside the Trace.
+3️⃣ Micrometer Tracing – A lightweight, built-in Spring Boot library for tracing.
+4️⃣ Zipkin – A visualization tool that displays traces & spans.
+
 
 Add dependency in all services 
 	Download Docker zipkin.io Quickstart 
