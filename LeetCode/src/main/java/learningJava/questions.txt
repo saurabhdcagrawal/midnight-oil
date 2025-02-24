@@ -72,6 +72,9 @@ Java 8 filter and map questions
 
 Trader{name,city}
 Transaction{trader, year, value}
+//Arrays as list can only be used with non-primitive types
+//if you try to convert boolean[] int , the ArraysAsList conversion
+//will give you List<boolean[]>
 
  Trader raoul = new Trader("Raoul", "Cambridge");
         Trader mario = new Trader("Mario", "Milan");

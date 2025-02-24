@@ -17,6 +17,8 @@ package main.java.twentyfive;
 
 import org.junit.Test;
 
+import java.util.Arrays;
+
 import static org.junit.Assert.assertEquals;
 
 public class SolutionMathProbs {
@@ -57,4 +59,40 @@ public class SolutionMathProbs {
             assertEquals(123,reverseNumber(321));
         }
 
+    public void moveZeroes(int[] nums) {
+    /*    Example 1:
+        Input: nums = [0,1,0,3,12] posn=0//1,0,0,3,12, pos->1 //1,3,0,0,12..pos->2//1,3,12,0,0
+        Output: [1,3,12,0,0] */
+        //have a start position, find non zero element..swap with that element..
+        //any zeros at beginning will move to end
+        //1,1,0,3,12..if 1 is at beginning it will ovwerwrite itself
+        //1,2,3,0,0,0 unaffected
+        int insertPositionForNonZero=0;
+        for(int i=0;i<nums.length;i++){
+            if (nums[i]!=0){
+                int temp=nums[i];
+                nums[i]=nums[insertPositionForNonZero];
+                nums[insertPositionForNonZero]=temp;
+                insertPositionForNonZero++;
+            }
+        }
+    }
+    public int maxOperations(int[] nums, int k) {
+        //1,3,3,3,4
+        Arrays.sort(nums);
+        int i=0,j=nums.length-1;
+        int operation=0;
+        while(i<j){
+            if(nums[j]+nums[i]==k){
+                operation++;
+                i++;
+                j--;
+            }
+            else if(nums[i]+nums[j]>k)
+                j--;
+            else
+                i++;
+        }
+        return operation;
+    }
 }

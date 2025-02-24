@@ -1,0 +1,78 @@
+0) To convert string number or character number to integer
+'c'-0;
+Character.valueOf
+Initialize like this
+List<Integer> l = new ArrayList<>();
+Use enhancedForLooops
+For Integer use equals..
+
+1)hmap.put(arr[i],hmap.getOrDefault(arr[i],0)+1);
+2)for(Map.Entry<Integer,Integer> e: hmap.entrySet())
+3)Set<Integer> freqSet = new HashSet<>(freq.values());
+4)The distinction between O(n + m) and O(max(n, m)) depends on whether we are performing
+independent operations on both inputs or we are constrained by the larger input.
+Let's analyze both cases.
+
+5)When is it O(n + m)?
+Condition:
+When we process both inputs separately, meaning each contributes to the total runtime.
+Example:
+In your case, you iterate over both sets independently:
+
+for(Integer num : hset1){  // Runs O(n) times
+    if(!hset2.contains(num))
+        answer0.add(num);
+}
+
+for(Integer num : hset2){  // Runs O(m) times
+    if(!hset1.contains(num))
+        answer1.add(num);
+}
+The first loop runs O(n) times.
+The second loop runs O(m) times.
+Since these are independent loops (not nested), the total time is O(n + m).
+
+Condition:
+When the algorithm processes elements in parallel, meaning it depends only on the larger
+input.
+while(i < n && j < m) {  // Iterates up to max(n, m) times
+    if (list1[i] < list2[j])
+        result.add(list1[i++]);
+    else
+        result.add(list2[j++]);
+}
+
+5) Use stack.push and not stack.add.. add is a general method from Collections interface
+6)  sb.deleteCharAt(sb.length()-1); and sb.delete.. sb.reverse//
+Different String builder methods
+7) For BST
+Retrieval:
+Time complexity O(H) where H is height of tree
+H is generally O (log n) average case
+O(N) in case of skewed tree
+Space complexity same
+To do : delete node in a BST
+
+Find Depth:
+Space complexity Worst: case.. when the tree is completely unbalanced O(n)
+depth of recursion stack before it reaches base case
+O(5)->o(4)-->o(3)-->O(2)->O(1)
+if tree is balanced..it reaches base case earlier
+At its peak, the deepest recursion level is log₂(N), so the maximum stack depth
+ = O(log N)
+maxDepth(1)	1 + max(maxDepth(2), maxDepth(3))
+maxDepth(2)	1 + max(maxDepth(4), maxDepth(5))
+maxDepth(4)	1 + max(maxDepth(null), maxDepth(null))
+//what we are doing is recursive DFS
+
+8)
+ //// This problem can be viewed as a graph traversal where:
+    // - Rooms represent vertices (nodes).
+    // - Keys act as edges connecting these vertices.
+    // Then the problem reduces to starting from vertex 0 can we traverse the entire graph and visit every node, i.e. if the graph is fully connected (i.e., not disjoint).
+    //Let N be the number of rooms and you can specify that E is the total number of keys (edges) across all rooms.
+    //Time Complexity is O(N+E) we visited every room and key once
+    //Space Complexity O(N) as recursion stack can grow up to N rooms..if the rooms
+    //form a linear chain
+    //Also visited array needs O(N) space
+    //While your DFS approach works well, a BFS approach using a queue could be considered to avoid deep recursion in cases of large inputs.
