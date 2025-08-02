@@ -67,7 +67,7 @@ These clients typically have complex investment needs and manage significant ass
 
 Portfolio management for large-scale investments (stocks, bonds, private equity, real estate).
 Asset allocation, risk management, and strategy development.
-Corporate advisory services.
+Corporate advisory services.		
 Trading and capital market services.
 A pension fund seeking advice on managing its multi-billion-dollar portfolio or a
 corporation managing its cash reserves and capital allocation.
@@ -77,3 +77,132 @@ etc.—to achieve the right balance of risk and return.
 Risk Management: The firm will design strategies to minimize risk, ensuring that the pension fund’s
 portfolio can weather economic downturns without affecting its ability to pay pensions.
 Advice tailored to meet the needs of large organizations, but less personal than WM clients
+
+---------------------------------------------------------------------------
+
+Here’s a set of technical interview questions based on Bank's requirements for a Big Data Engineer role: General System Design & Scalability QuestionsHow do you design a highly scalable data system in Scala/Java for large-scale processing?
+
+#What are the key considerations when designing a fault-tolerant big data pipeline?How do you handle backpressure in a real-time streaming system?Explain how you would architect a low-latency real-time data processing system using Spark and Kafka.
+
+[Producers] → [Kafka Topics] → [Spark Structured Streaming] → [Sink: DB / Kafka / Dashboard / Data Lake]
+Kafka handles ingestion, buffering, and durability.Spark Structured Streaming does real-time data processing.
+Sink can be a database, downstream Kafka topic, or data warehouse.
+Use Kafka producers to stream data from source systems (e.g., app logs, transactions, IoT).Organize data by topic and use partitions to parallelize processing.Ensure replication is enabled for durability and acks=all for delivery guarantees. Use acks=all when:Kafka broker will not send an acknowledgment to the producer until all in-sync replicas (ISRs) have successfully written the message.
+
+acks=all?
+Ensures high durability — message isn’t lost if a broker crashes. 
+Slightly higher latency, since the leader waits for replicas.Ensure writes are written to all partitions
+Data durability is more important than latency
+You're dealing with financial, transactional, or critical data
+You want strong delivery guarantees 
+Ensure idempotent writes to prevent duplicate records if job retries.
+Each message (or operation) is processed only once, no matter how many times it is sent or retried.
+
+To ensure idempotent writes and prevent duplicates in real-time systems:
+Enable Kafka producer idempotence (enable.idempotence=true).
+
+✅ What Does an Idempotent Producer Do?
+An idempotent Kafka producer ensures that even if it retries, the same message is not written multiple times to the Kafka topic.
+
+So:
+
+Even if the producer sends the same message twice (due to retries), Kafka ensures it’s written only once.
+
+Why Would a Producer Send the Same Message Twice?
+Network timeout (didn't get ack)
+
+Broker crash/rebalance
+
+Leader change
+
+Client retry on transient errors
+
+Without idempotence, all of these might lead to duplicate messages in the topic.
+
+🛠️ How Does Idempotent producer work
+To enable idempotence, set acks=all and enable.idempotence=true in the producer configuration.
+
+After the message is written to the leader's log, the leader broker replicates the message to the in-sync replicas (ISRs).
+Once the message is successfully replicated to all ISRs, the leader broker waits for acknowledgments from these ISRs.
+When all ISRs acknowledge the message, the leader broker sends an acknowledgment back to the producer.
+At this point, the producer is notified that the message has been successfully written and replicated in the cluster, according to the acks=all setting.
+
+The producer will automatically add a unique sequence number to each message (per partition) and the broker will check the sequence number to avoid writing duplicate records from retries.
+When Kafka sees a duplicate (producerId, partition, sequenceNumber) → it discards it.
+If the producer is retrying a message after a failure, the broker will recognize the sequence number and discard the duplicate, ensuring that only the first message is committed.
+
+Message Duplication: If idempotence is not enabled on the producer and a duplicate message is sent, Kafka will not discard it. 
+
+
+
+
+What are the trade-offs between batch processing and stream processing in big data applications?Data Freshness: B->Historical data/periodic updates, S-> near real time data
+Design: B-> Easier to implement, S-> Complex, maintain State and ordering)
+Throughput: B->High , S->Lower than batch
+Data Order: B->Natural order maintained in file, S-> Can get out of order,handling out of order and late data a challenge
+Fault Tolerance: Easier, can reprocess the entire file S->Need Exactly once guarantee and
+state recovery
+Use case: B->ETL Compliance, Reporting, machine learning training, want to process historical or large datasets at once
+ S->Instant decision making, fraud monitoring, alerting, IOT devices, real timeLatency:B-> High latency, S-> low latency (ms to s) Spark, MapReduce & Hadoop EcosystemExplain the differences between RDDs, DataFrames, and Datasets in Spark. When would you use each?How does Spark handle data shuffling, and what optimizations can you apply?Compare Spark-SQL vs. Hive—when would you choose one over the other?How does YARN resource management work with Spark jobs?What are the best practices for optimizing Spark performance (e.g., caching, partitioning, serialization)?Describe the MapReduce programming model. How does it differ from Spark’s processing model? Large-Scale Data Pipeline DevelopmentHow do you design and implement real-time streaming pipelines with Kafka and Spark Streaming?What are Kafka consumer groups, and how do they help with parallel processing?How do you handle schema evolution in Kafka messages?Describe how you would ingest data from multiple sources into a centralized data warehouse.What are the challenges of ETL in a distributed environment, and how do you address them?How would you ensure exactly-once processing in a streaming pipeline? Data Modeling & Storage OptimizationWhat are fact and dimension tables, and how do they impact warehouse performance?How would you model data in HDFS for efficient storage and query performance?Explain the benefits of using Parquet/ORC over CSV for large-scale analytics.How do you optimize Hive queries for large datasets?What techniques would you use to ensure data privacy and security in a big data system?How does data partitioning and bucketing improve query performance? Debugging, Monitoring & Performance TuningHow do you debug slow Spark jobs?What are common performance bottlenecks in big data systems, and how do you resolve them?How do you monitor Kafka lag and troubleshoot consumer performance issues?How do you handle skewed data in Spark or Hive queries?How would you set up real-time monitoring using Grafana/Prometheus/Spark UI? Scenario-Based Problem-Solving QuestionsScenario: You need to build a near real-time fraud detection system for TD Bank. How would you design it?Scenario: You are tasked with migrating an existing batch pipeline to real-time streaming. What steps would you take?Before starting the migration, you need to fully understand how the current batch pipeline works:Data Sources: Where is the data coming from? Is it in files, databases, or other sources?Batch Process: How often are batches processed? What are the transformation steps involved?Latency and SLAs: What are the batch job’s time requirements? Is there a need for near-instantaneous updates in real-time?Failures and Recovery: How does the batch pipeline handle errors? What are the recovery mechanisms?Select an appropriate streaming framework that fits your requirements. Some popular frameworks are:Apache Kafka: For distributed messaging and real-time data streams.Apache Flink: Advanced stream processing with stateful computations.Apache Spark Streaming: Micro-batching and stream processing with fault tolerance.Apache Pulsar: Real-time messaging with built-in stream processing.Replace batch data ingestion (e.g., cron jobs or ETL) with real-time event producers (Kafka producers, APIs, etc.).Use Kafka Topics or Pulsar topics to stream data as events, ensuring high-throughput, fault tolerance, and scalability.Scenario: Your Spark job is running out of memory. How do you debug and optimize it?Scenario: A critical Kafka topic is experiencing high consumer lag. How would you fix it?
+Replace batch data ingestion (e.g., cron jobs or ETL) with real-time event producers (Kafka producers, APIs, etc.).Use Kafka Topics or Pulsar topics to stream data as events, ensuring high-throughput, fault tolerance, and scalability.
+Consumer Lag = Difference between the latest offset in the topic and the last committed offset by the consumer.
+Use tools like:
+kafka-consumer-groups.sh --describe
+Slow consumer, optimize consumer logic, batch DB writes, reduce computation, avoid blocking calls
+Enable multi-threaded or asynchronous processing within consumers.
+
+Consumer keeps restarting, retrying, or failing silently.Monitor consumer logs for exceptions or stack traces.
+Scale horizontally: add more consumer instances (within the same group).  Check for uneven partition distribution or "hot partitions". 
+
+Check broker logs for errors.Monitor broker health (e.g., disk I/O, CPU, JVM GC pauses).
+Tune Kafka producer configs: linger.ms, batch.size, acks.
+Ensure proper replication and ISR healthLag appears high due to delayed offset commits.     
+Lag appears high due to delayed offset commits.Use enable.auto.commit=false and commit offsets after successful processing
+Use Grafana + Prometheus / Confluent metrics for observability.  
+
+A DLQ is a special Kafka topic where you send messages that:Cannot be processed after a certain number of retries.Violate schema, have missing fields, or trigger unexpected exceptionsSuch a message is called a poison pill . DLQ lets your pipeline stay alive by:Skipping bad messages instead of crashingPreserving problematic events for later inspectionPreventing infinite retry loops and lag buildupA financial transaction has a missing account number — DLQ it. A JSON message doesn’t match the expected schema — DLQ it.DLQs are a safety net, not a trash can. Use them wisely — or you'll just create a second, more haunted Kafka topic  Bonus: Behavioral & Best PracticesCan you describe a challenging big data project you worked on and how you solved the issues?How do you collaborate with data scientists, analysts, and business teams to build effective pipelines?What are the best practices for handling PII data in a financial institution?Data Minimization and Masking(i) Collect only what's necessary for business purposes. Avoid storing sensitive data full account numbers, SSN(ii) Prefer tokenized or Masked data values for processing
+Tokenization is the process of replacing sensitive data (like a credit card number) with a non-sensitive equivalent called a tokenThis token is used throughout your systems: for billing, fraud checks, analytics.But only your secure tokenization service can map TKN-abc123xzy back to 4111 1111 1111 1111.When a transaction happens, the actual card number is tokenized before storing in logs, databases, or audit trails.Only authorized systems (e.g., payment gateway) can de-tokenize the number when it's absolutely necessary (e.g., to process a charge or refund).All analytics, reconciliation, or fraud checks are done using tokens, not raw PII.
+
+Data classification and tagging(i) Classify data as PII (name, email, DOB) and SPI (sensitive) - biometric, SSN(ii) Apply metadata tags in data catalogs such as collibra
+Encryption at rest and in transitUse AES-256 for Data at Rest (HDFS, S3, DB)Use TLS/SSL for all network traffic , API's, messaging Kafka and database connection
+Access control and Role based permissionsUse role based access control and attribute based access controUsers are assigned roles (e.g., Analyst, Developer, Admin).Roles are granted permissions (e.g., read/write access to specific data or services).Users get access only to the resources allowed by their role.ABAC makes access decisions based on attributes of:The user (e.g., department = "Risk", clearance = "Confidential")The resource (e.g., data sensitivity = "PII")The environment (e.g., time of day, device type, location)Access is controlled through policies that evaluate attributes, not just roles.Allow access if:user.department == "Fraud" AND data.sensitivity == "Non-PII" AND request.time < 6PM
+Use least privilege principle - Users, services, and systems should be granted the minimum access necessary to perform their job or function — no more
+Audit Logging and MonitoringLog all access to PII with user identity, timestamp, IP and purposeMonitor for anomalies in data access patterns (e.g., excessive reads, off-hours activity).
+Data Retention and deletion policiesDefine data lifecycle policiesHow long PII is  storedWhen and how it is archived and deleted
+Training and auditsConduct regular privacy training for developers, analysts, and business teamsMaintain a Data Privacy Officer (DPO) role or team to enforce policies.Periodic compliance audits and reviews of all systems handling PII.
+
+Would you like sample answers for any of these questions? 
+
+
+
+Fact Table
+Contains: Quantitative data or measurable facts (e.g., sales, revenue, clicks).
+Has:
+Foreign keys to dimension tables
+Numeric metrics/measures (e.g., total sales, quantity sold)
+Fact tables contain mostly IDs and numbers → compact, easier to compress.
+Reduces storage cost and improves I/O performance.
+Fact tables grow very large (millions or billions of rows).
+
+
+
+sale_id	date_id	product_id	store_id	quantity	revenue
+101		202304	1234		45			10			200
+
+Dimension Table
+Contains: Descriptive/contextual data to describe the facts.
+Used for: Filtering, grouping, and labeling in queries.
+Typically denormalized for performance
+Keeps dimensions smaller and reusable
+
+
+product_id	product_name	category	brand
+1234		T-Shirt			Apparel		Nike
+
+Star schema (facts + denormalized dimensions) makes it fast to join fact tables with dimensions.
+Dimension tables are usually small → efficient joins with large fact tables.
+Use of indexes, partitioning, and materialized views is easier.
+
+
+Easier to add new metrics (facts) without touching the dimensions.
+Dimensions can evolve independently (e.g., add new attributes like product_color).

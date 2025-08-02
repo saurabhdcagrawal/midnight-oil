@@ -505,7 +505,7 @@ like JMS and AMQP and implemented in software like RabbitMQ,ActiveMQ, IBM MQ, Az
    - Each message is delivered to **all** consumers, allowing multiple independent systems to process the same data.
    - Equivalent to multiple batch jobs reading the same file.
    
- The two patterns can be combined: for example, two separate groups of consumers
+The two patterns can be combined: for example, two separate groups of consumers
 may each subscribe to a topic, such that each group collectively receives all messages,
 but within each group only one of the nodes receives each message. Concept of consumer groups  
 
@@ -513,8 +513,17 @@ but within each group only one of the nodes receives each message. Concept of co
    - Consumers must **acknowledge** messages to confirm processing.
    - If a consumer crashes before acknowledging, the broker redistributes the message to another consumer.
    - This can lead to **message reordering**, which is problematic for dependent events.
+   - Combination of load balancing with message redelivery semantics will mean that the message is re-ordered
+   - Messages should be completely independent of each other
 
----
+--- JMS style API based message brokers and log based message brokers
+ With AMQP- and JMS-style message brokers, processing and acknowledging messages is a destructive operation, since it causes the messages
+ to be deleted on the broker. On the other hand, in a log-based message broker, consuming messages is more like reading from a file: it is a read-only operation that does not change the log.
+ The only side effect of processing, besides any output of the consumer, is that the consumer offset moves forward. But the offset is under the consumer’s control, so it can easily be manipulated if necessary: for example, you can start a copy of a consumer with yesterday’s offsets and write the output to a different location, in order to reprocess the last day’s worth of messages. You can repeat this any number of times,
+ varying the processing code.
+ This aspect makes log-based messaging more like the batch processes of the lastchapter, where derived data is clearly separated from input data through a repeatable transformation process. It allows more experimentation and easier recovery from errors and bugs, making it a good tool for integrating dataflows within an organization
+ 
+ 
 
 ### **Log-Based Message Brokers (Hybrid Model)**
 - Combines the **durable storage** of databases with the **low-latency notifications** of messaging systems.
@@ -529,8 +538,26 @@ but within each group only one of the nodes receives each message. Concept of co
   - **No ordering guarantee across partitions.**
 - **Performance:**
   - By partitioning and replicating messages across multiple nodes, modern brokers can handle millions of messages per second while maintaining fault tolerance.
-
+  - To achieve load balancing across a group of consumers, instead of assigning individual messages to consumer clients, the broker
+   can assign entire partitions to nodes in the consumer group.
+  - Each client then consumes all the messages in the partitions it has been assigned. Typically, when a consumer has been assigned a log partition, it reads the messages in the partition sequentially, in a straightforward single-threaded manner.
+  - The number of nodes sharing the work of consuming a topic can be at most the number of log partitions in that topic, because messages within the same partition are delivered to the same node.
+  - If a single message is slow to process, it holds up the processing of subsequent
+ messages in that partition
+ - Thus, in situations where messages may be expensive to process and you want to parallelize processing on a message-by-message basis, and where message ordering is not so important, the JMS/AMQP style of message broker is preferable. On the other hand, in situations with high message throughput, where each message is fast to process and where message ordering is important, the log-based approach works very well.
+ -  Consuming a partition sequentially makes it easy to tell which messages have beenprocessed: all messages with an offset less than a consumer’s current offset have already been processed, and all messages with a greater offset have not yet been seen.
+ Thus, the broker does not need to track acknowledgments for every single message it only needs to periodically record the consumer offsets. The reduced bookkeeping overhead and the opportunities for batching and pipelining in this approach help
+ increase the throughput of log-based systems.
 ---
+  In database replication, the log sequence number allows afollower to reconnect to a leader after it has become disconnected, and resume repli
+cation without skipping any writes. Exactly the same principle is used here: the mes sage broker behaves like a leader database, and the consumer like a follower.
+ If a consumer node fails, another node in the consumer group is assigned the failed consumer’s partitions, and it starts consuming messages at the last recorded offset. If the consumer had processed subsequent messages but not yet recorded their offset,
+ those messages will be processed a second time upon restart.
+ 
+ To reclaim disk space, the log is actually divided into segments, and from time to time old segments are deleted or moved to archive storage.
+ Regardless of how long you retain messages, the throughput of a log remains more or less constant, since every message is written to disk anyway. This behavior is in contrast to messaging systems that keep messages in memory by default and only write them to disk if the queue grows too large: such systems are fast when queues are short and become much slower when they start writing to disk, so the throughput
+ depends on the amount of history retained.
+
 
 ### **Key Takeaways**
 - **Batch processing** works with bounded data and scheduled jobs, while **stream processing** handles real-time, unbounded data.
@@ -539,3 +566,19 @@ but within each group only one of the nodes receives each message. Concept of co
 - Scalability is achieved through **partitioning** and **asynchronous processing**.
 
 This version makes the notes more structured, concise, and readable while preserving all essential details. Let me know if you'd like further refinements! 🚀
+
+Change Data Capture
+ To prevent dual writes and race condition which can lead to inconsistency.. make database as the leader and other derived data systems as followers(cache,index,OLAP databases)
+
+More recently, there has been growing interest in change data capture (CDC), which is the process of observing all data changes written to a database and extracting them in a form in which they can be replicated to other systems for eg a search index or a cache. CDC is especially interesting if changes are made available as a stream, immediately as they are written.
+
+Like message brokers, change data capture is usually asynchronous: the system of record database does not wait for the change to be applied to consumers before committing it. This design has the operational advantage that adding a slow consumer
+does not affect the system of record too much
+ 
+Increasingly, databases are beginning to support change streams as a first-class inte face, rather than the typical retrofitted and reverse-engineered CDC efforts
+
+External consumers can asynchronously consume this log and use it to update derived data systems.
+ 
+Kafka Connect is an effort to integrate change data capture tools for a wide range of database systems with Kafka
+
+Continue from Page 457

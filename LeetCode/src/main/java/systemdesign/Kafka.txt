@@ -5,7 +5,7 @@
 If you have 4 source systems and 6 target systems, you have to write 24 integrations
 Each integration comes with different complexities
 	Protocol--> how data transported TCP,HTTP, REST, FTP,JDBC
-	Data format--> Binary, CSV, Python, Avro, Protobuf
+	Data format--> Binary, Json, CSV, Python, Avro, Protobuf
 	Data schema and evolution--> how data is shaped may change ---
 	Data schema and evolution happens over time(data changes in shape both ss and target system?)
 Each ss will also have an increased load from all connects and request to extract the data
@@ -31,7 +31,7 @@ Apache Kafka Use cases
 	Activity tracking
 	Messaging system
 	Microservices Pub/Sub (Decoupling of system dependencies)
-	Stream processing
+	Stream processing (more recently using Streams API)
 	Integration with Big Data technologies (Spark, Flink,Hadoop, Storm)
 Usage in Industry	
 	Uber using Kafka to gather trip,user ,taxi data in real time to compute and forecast demand and compute surge pricing in real time
@@ -42,12 +42,14 @@ Architect-->understand the role of Kafka in enterprise pipelines
 
 
 For developers
-	Kafka connect API
-	Ksql DB
-	kafka Streams API
+	Kafka connect API-> Import Export data from/to within Kafka
+	Ksql DB-> Write Kafka Streams applications using SQL
+	kafka Streams API-> Learn to process and transform  data within Kafka
+	Kafka Security-> Setup Kafka Security in a cluster
 	Confluent Components
 
 Section 4 Kafka Theory
+Q:Can a producer send message to more than one topic?
 Topic
 	Particular stream of data within a Kafka cluster(logs, purchases, tweets, trucks gps    )...
 	Stream of related messages
@@ -65,7 +67,7 @@ Partition:
 	You can have as many partitions as you want
 	Messages sent to topic are going to one of the partition
 	In each partion each message is ordered (with the help of id)..
-	every message in a partition gets an incremental id called Kafka partition offset
+    every message in a partition gets an incremental id called Kafka partition offset
 	Kafka topics are immutable..once the data is written to the partition..it cannot be changed
 	Once sent to a topic, a message can be modified?
 	Each partition will have message from one or more topics?
@@ -94,7 +96,7 @@ Offset
 
 Producers 
 	They get data from source system and write data to topics(which are further broken down into partitions)
-	Producers know to which partition to write to and which Kafka broker has it (producer knows/decides in advance)
+	Producers know to which partition to write to and which Kafka broker has it (producer knows/decides in advance not Kafka)
 	In case of Kafka broker failures producers will automatically recover?	
 	Producers send data across all partitions (load balancing) based on some mechanism --this is how kafka scales
 	Each partition will have message from one or more topics
@@ -134,8 +136,6 @@ Consumers
 	Data is read in order from low to high offsets within each partition
 	No ordering between partitions but only within a partition
 	Just provide the topic name you want to read from. Kafka will route your call to the appropriate brokers and partitions
-
-
 
 
 
@@ -180,7 +180,7 @@ Consumer offsets
 	The Kafka broker will write to __consumer_offsets(within Kafka)
 	If a consumer dies, it will be able to read back from where it left off, thanks to the committed consumer offsets
 
-Delivery strategy-semantics
+Delivery strategy-semantics for consumers
 	At least once
 		Java consumer by default will commit at least once (right after the message is processed)
 		This is usually preferred. However this can lead to reprocessing of the same message
@@ -200,8 +200,10 @@ Kafka brokers:
 	Each broker identified by an id (integer)
 	They receive and send data
 	Each broker contains certain topic partitions which means all topics are distributed across all brokers-- 
+	Q: Does a broker have more than one partition? Yes.
 	Brokers keep the data ready for downstream consumers, how long the data is kept is determined by the so called retention time
-	This is what makes Kafka scale (horizontal scaling)
+	Data and partition is distributed across all brokers,
+		This is what makes Kafka scale (horizontal scaling)
 	
 	Broker 101			Broker 102 			Broker 103
 	Topic-A Part 0		Topic A Part 2 		Topic-A Part 3
@@ -216,12 +218,12 @@ Kafka brokers:
 	a catastrophic failure. This limits the reasonable max size of a Kafka cluster to
 	approximately 50 brokers with up to 4000 partitions each.
 
-After connecting to one broker..you can connect to any broker (entire cluster) bootstrap broker-- kafka clients have smart mechanics
-	Every kafka broker is called a bootstrap server--has knowledge of all the brokers in the cluster
+Kafka Broker Discovery	
+	After connecting to one broker..you can connect to any broker (entire cluster) bootstrap broker-- kafka clients have smart mechanics
+	Every kafka broker is called a bootstrap server(broker)--has knowledge of all the brokers in the cluster
 	kafka client will initiate a connection and send metadata request to broker 101 and broker 101 will return list of all brokers
 	Kafka client will then connect to the required broker to produce or consume data
-	This is how clients connect to a Kafka cluster
-	Are client and source systems same ?
+	This is how clients(Producer,Consumers) connect to a Kafka cluster
 	
 Topic replication factor
 	Every topic has a replication factor
@@ -237,7 +239,8 @@ Topic replication factor
 	
 Leader of a partion	
 	There can be however only 1 leader for a partition at a given time
-	By default Producers will send data to leader only to the leader of the partition
+	By default Producers will send data to leader only to the leader of the partition and by default Kafka consumers will read from the leader broker 
+	for the partition
 	Other brokers will replicate the data ..if its fast enough we call it ISR (In sync replica)
 	Each partition has one leader and multiple ISR
 	Similarly by default Kafka comsumers will rrequest/read data from the leader of the partition
@@ -256,6 +259,7 @@ Producer acknowledgement
 	acks=0 producer will not wait for acknowledgement from broker that write happened(possibl data loss) because if broker goes down we wont know about it
 	acks=1 producer will wait for leader to acknowledge(limited data loss)
 	acks=all (all in sync replicas to provide confirmation) -> no data loss
+	Q:Why is this needed when we have consumer_offsets
 
 Kafka topic durability
 	If you have replication factor of N, you can still loose N-1 brokers and recover your data
@@ -267,11 +271,11 @@ Zookeeper
 	sends notification to Kafka ? in case of changes( new topic created, broker dies, broker comes up, delete topics, etc)
 	Apache zookeeper used by kafka for storing metadata for the users?
 	Since the beginning of Kapka, a companion to brokers (Kafka 2.x cannot work without zookeeper)
-	Starting with 3.x Kafka raft mechanism , it can work without zookeeper
+	Starting with 3.x Kafka raft mechanism , it can work without zookeeper using Kafka Raft instead(KIP 500)
 	Kafka 4.0 will work without zookeeper (Still done? not production ready yet)
 	Zookeeper by design operates with an odd number of servers(1,3,5,7)
 	Zookeeper cluster (1 leader for writes and rest are followers (reads))
-	Below were configured to be connected to zookeeper before
+	Below were configured to be connected to zookeeper before	
 		Producer
 		Consumer
 		Kafka Clients
@@ -756,6 +760,58 @@ And the consumers listen to these topics for generating reports, feeding ML syst
 kafka is based on the concept of a commit log?
 Name based on Franz Kafka founded in 2010
 
+Let’s walk through a Kafka-style flow:
+
+1. Producer → Broker
+Producer sends a message to a Kafka topic.
+
+Kafka acknowledges this to the producer once it's written to the broker’s log (based on acks setting).
+
+2. Consumer Polls the Broker
+Consumer asks Kafka: “Give me the next message from this partition.”
+
+Broker delivers message based on the consumer's committed offset.
+
+3. Consumer Processes the Message
+After processing, the consumer should commit the offset (either automatically or manually).
+
+💥 But if something goes wrong?
+❌ Scenario 1: Crash Before Offset Commit
+Consumer processes the message, but crashes before committing offset.
+
+On restart, Kafka sees that offset wasn't updated — so it sends the same message again.
+
+✅ Message appears again — not because the broker re-sent it on its own, but because the consumer re-pulled it.
+
+❌ Scenario 2: Timeout or Manual Retry
+Producer doesn’t get ack due to network glitch.
+
+It retries sending the same message.
+
+Now the same message may appear twice in the topic (unless idempotent producer is enabled in Kafka).
+
+✅ Here, the producer is responsible for the duplicate.
+
+
+
+In Spring Kafka, when you're consuming messages and you've configured the consumer to use manual acknowledgment, calling:
+— it's often used in Spring Kafka or other similar messaging libraries when manual acknowledgment mode is enabled.
+
+If you don’t call acknowledge():
+
+The offset won't be committed.
+
+If the consumer crashes or restarts, Kafka will resend the same message — because it thinks it wasn’t processed.
+
+
+
+
+
+
+
+
+
+
 
 Kafka CLI comes bundled with the kafka binaries
 kafka-topics.sh
@@ -1041,6 +1097,12 @@ Ksql
 	
 	
 Questions
+
+	
+
+
+
+
 	A consumer wants to read messages from a specific partition of a topic. How can this be achieved?
 		assign() can be used for manual assignment of a partition to a consumer, in which case subscribe() must not be used. 
 		Assign() takes a collection of TopicPartition object as an argument
@@ -1247,6 +1309,16 @@ Questions
 		messages with the same key always go to the same partition in a topic. Kafka guarantees order within a partition, but not across 
 		partitions in a topic, so alternatively not providing a key - which will result in round-robin distribution across partitions 
 		- will not maintain such order.
+	
+	is KSQL ANSI SQL compliant?
+		KSQL is not ANSI SQL compliant, for now there are no defined standards on streaming SQL languages
+
+	Which of the following errors are retriable from a producer perspective? (select two)
+		NOT_ENOUGH_REPLICAS
+		NOT_LEADER_FOR_PARTITION
+		Both of these are retriable errors, others non-retriable errors. See the full list of errors and their "retriable" status here:
+	
+	
 
 
 

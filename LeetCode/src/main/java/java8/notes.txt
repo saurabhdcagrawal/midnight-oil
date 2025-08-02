@@ -708,3 +708,48 @@ public class OrderService {
 ✔ Use Setter Injection for optional dependencies.
 ✔ Avoid Field Injection unless necessary.
 ✔ Use Interface Injection for flexible and scalable applications.
+
+
+We use @Bean in Spring to define and manage Spring beans explicitly.
+It tells Spring that the method annotated with @Bean will return an object that should be
+registered in the Spring application context as a Spring-managed bean.
+
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate(); // Creates and registers a RestTemplate bean
+    }
+}
+
+Here, restTemplate() returns a RestTemplate instance, which is then managed by Spring
+and can be injected wherever needed using @Autowired.
+
+Useful for Third-Party Classes – When working with classes that are not annotated with
+ @Component, @Service, or @Repository, you can still register them as beans.
+Used when you need full control over bean creation.
+
+Some classes (like those from external libraries) cannot be annotated with @Component, @Service, etc.,
+so you must manually register them as beans.
+
+🔹 Example: Registering a RestTemplate Bean
+👉 This allows you to modify its properties before making it available in the application context.
+
+✅ When you need custom bean initialization/destruction logic.
+✅ When you want fine-grained control over dependencies.
+✅ When you need different bean scopes (e.g., prototype, request).
+
+Why Can't You Use @Component or @Service for Third-Party Classes?
+1️ Annotations Only Work on Classes Inside Your Project
+
+Spring’s component scanning (@ComponentScan) only scans packages within your application.
+Since external libraries reside outside your source code,
+Spring won't find them even if you could add @Component.
+2 You Can't Modify External Source Code
+
+@Component, @Service, and @Repository are annotations that must be declared inside the class itself.
+Since you don’t own third-party classes (e.g., RestTemplate, ObjectMapper), you can’t go inside those
+classes and add annotations.
+
+Reactive programming is a programming style focused on handling asynchronous data streams.

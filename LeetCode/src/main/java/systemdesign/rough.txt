@@ -1,0 +1,86 @@
+Junit dependency,Mockito will come by default when we generate spring boot project
+Spring security test as well to mimic the jwt token, h2 in memory test database..
+You can create an application.yml file just for your test resources.. you can add the same configuration as the main config
+change the URL's to point to h2 memory database
+config server..add it as optional..
+
+
+Junit->Junit5->Junit jupiter dependency
+
+Create junits for all functionalities
+
+
+Mockito framework, wiremock
+
+What is mock? Mockito is used to mock the methods
+
+Suppose Write a test case for getting orders, multiple calls to the database..or mutliple calls to other service
+Here We are just trying to test this functionality, we are not trying to test the other calls 
+We mimic those scenarios programmaticcally, rather than calling database, return this object.. we will define..
+similarly we will define the rest endpoint call, we are mocking.. rather than call all the different API'scenarios
+
+
+Wiremock-->To mock the rest endpoints..other service calls, mock this json data in a  file and return the json file
+
+We will also do integration testing.. we will mimic all API endpoints
+
+Order service.. ->Unit testing
+Order controller-->Integration testing
+
+Junit and mockito library
+
+
+
+Right click and generate test OrderServiceImpl
+Mock the classes and dependencies
+Now we need to inject mock
+Implement OrderServiceImpl
+
+@InjectMocks
+OrderService orderService= new OrderServiceImpl();
+orderService is class where all mocks need to be injected
+
+@BeforeAll
+Define all common mockings 
+Called for each and every test case
+
+//order service should get orderDetails,productDetails and paymentDetails
+@DisplayName("Get Order Sucess Scenario")-?What particular name should come in the reports 
+@Test
+void test_when_order_success(){
+//internal calls mock
+//actual method..
+// assert calls
+// verify.. how many calls happened.. does it call findById or not if so it should be only calling one time
+
+
+Order order= getMockOrder();
+
+//mock
+when (orderRespository.findById(anyLong()).thenReturn(OptionalOf(Order))
+
+//actual call
+orderService.getOrderDetails(orderId)
+
+//verify
+verify(orderRepository, times(1).findById(anyLong()); //verify this call happend or not
+
+//assert
+assertNotNull(orderResponse)
+assertEquals(order.getId(),orderResponse.getOrderId())	
+
+}
+
+
+void test_when_order_failure(){
+
+when (orderRespository.findById(anyLong()).thenReturn(OptionalOfNullable(null))
+
+Custom Exception=assertThrows(CustomException.class,()->orderService.getOrderDetails(1)) //matching the exception class
+assertEquals("NOT_FOUND",exception.getErrorCode()) //matching the error code
+assertEquals(404,exception.getStatus()) //matching the status
+verify(orderRepository,times(1)).findById(anyLong());
+}
+
+Run test with coverage Intellij
+Open the class and you see coverage inside the class

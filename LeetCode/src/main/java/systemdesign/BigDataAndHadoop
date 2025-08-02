@@ -103,7 +103,7 @@ Hadoop architecture ->Client, Name Node, Data Node(hard drive where data blocks 
 		Map Stage
 			Record reader
 		
-Spark
+
 	A parallel processing framework
 	Hadoop had shortcomings in area of ML
 	Developed at University of California, Berkeley 2012.. databricks 2013
@@ -117,4 +117,16 @@ Functional style of programming
 	Not restricted to a particular programming language
 	
 		
-	
+	Spark is a parallel execution framework which enables us to perform operations on big datasets
+	uses the map reduce framework powerful not suites for requirments
+	If you have complex requirements, you need to chain together map reduce jobs,
+	After one map reduce is finished the results have been written to disk and reloaded into next map reduce jobs
+
+	Spark can run 100 times faster than Hadoop map reduce
+	Assume the data can job in memory..even if disk than faster
+	Much richer jobs can be built in spark, not just map reduce, richer set of tools (80)
+	It builds an execution plan first making Really clever optimizations..
+
+	Stand alone mode--> get full benefits  multicore parallel processing without thinking
+	of multithreading
+	spark will distribute across all available cores

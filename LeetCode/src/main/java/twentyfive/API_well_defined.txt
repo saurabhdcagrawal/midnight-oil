@@ -1,0 +1,676 @@
+Well defined API's
+
+1. Statelessness
+
+In a stateless API, the server does not remember client information between requests.
+Every request carries all the information needed for the server to process it.
+This makes APIs easier to scale horizontally because any server in the cluster can handle any request.
+
+✅ Example
+GET /clients/123/analytics
+Authorization: Bearer <JWT>
+The JWT carries authentication info → server doesn’t keep sessions.
+
+The JWT (JSON Web Token) contains all authentication and authorization data.
+The server doesn’t store session state — it only validates the token.
+Scaling: if one server instance is busy or down, another can process the request without issue.
+Works perfectly with load balancers and auto-scaling groups in cloud environments.
+
+❌ Bad Stateful Example
+The server uses session-based authentication, storing session data in memory.
+If the client makes request #1 and the server assigns session ID X123, then request #2 must go to the same server (because that’s where the session lives).
+
+❌ Stateful (In-Memory Sessions)
+The server itself stores session data in memory.
+Client gets a session ID like X123. (server usually sends in a cookie)
+Client sends:
+Cookie: sessionId=abc123
+Server looks up abc123 → finds { userId: 45, role: admin }.
+
+3. What Happens on Subsequent Requests
+For every new request:
+The client sends back the session ID.
+The server queries the session store → fetches user data. (if there is a common session store)
+Then applies authentication/authorization checks.
+This means the server is holding the state of the session.
+
+Multi‑server or cloud‑scale app: You either need a shared session store (like Redis) or move to JWT for stateless auth.
+
+
+On request #2, the client must hit the same server so it can find that session in memory.
+If the load balancer sends the request to another server → it won’t recognize X123.
+This is why it’s considered bad for scalability.
+
+
+ The problem is it doesn’t scale well in a load-balanced environment. That’s why JWT is better — it removes the need for a session store by making the token itself carry the user’s identity and permissions."
+
+Problems:
+
+If that server crashes, the session is lost → user forced to re-login.
+Harder to scale across multiple regions or use a load balancer.
+Inconsistent experience → not acceptable for global APIs like L's Analytics API.
+
+Business Impact
+Statelessness reduces operational risk: no “sticky sessions,” so load can be distributed freely.
+Improves resilience: if one server fails, requests keep flowing.
+Simplifies compliance: tokens can carry signed claims (like user roles), reducing sensitive server-side storage.
+
+📌 Why We Use Sessions
+🔹 Without Sessions
+Every time you make a request, the server would have no memory of you.
+
+That means you’d have to send your username and password with every request.
+
+This is insecure and inconvenient.
+
+🔹 With Sessions
+After you log in once:
+
+The server verifies your credentials.
+
+It creates a session (with your user ID, role, etc.) and stores it.
+
+It gives you a session ID (in a cookie).
+
+On each new request:
+
+You send back the session ID.
+
+The server looks up your session to know who you are and what you can do.
+
+This way, you don’t need to log in every time, and you don’t expose your password repeatedly.
+
+🔹 Why JWT Became Popular
+Sessions require server‑side storage.
+
+JWT avoids that by embedding user info (claims) right in the token, so the server can authenticate you without looking up session data.
+
+You still don’t have to log in on every request, but now the API stays stateless and scales better.
+
+🎤 Interview Soundbite
+"The main reason we use sessions is so users don’t have to log in on every request. Instead of sending credentials each time, the server creates a session after login and uses a session ID to identify the user. JWT takes this further — it removes the need for a session store by letting the token itself carry the user’s identity, while still avoiding repeated logins."
+
+
+
+“For APIs to be reliable and scalable, statelessness is key. I prefer token-based authentication like JWT, so each request carries its own context — this way, the system can scale horizontally across AWS or Azure clusters without sticky sessions.
+
+
+3. Versioning
+
+APIs evolve. You’ll need to add fields, change response formats, or deprecate old logic.
+Without versioning, new changes can break existing clients.
+Versioning provides a controlled way to deliver improvements while supporting backward compatibility.
+
+✅ Good Versioning Example
+GET /v1/analytics
+Returns riskScore as integer.
+
+GET /v2/analytics
+Returns enriched Json structure
+
+Both /v1 and /v2 are supported for some time.
+Clients can choose when to migrate.
+Deprecation notices (in docs or response headers) warn clients when /v1 will be retired.
+
+❌ Bad Non-Versioned Example
+GET /analytics
+Originally returned:
+{
+  "clientId": "123",
+  "riskScore": 82
+}
+
+riskScore is an integer from 0–100.
+Simple and works fine for early clients.
+
+
+{
+  "clientId": "123",
+  "risk": {
+    "score": 82,
+    "category": "High",
+    "confidence": 0.95
+  },
+  "lastUpdated": "2025-07-30T12:45:00Z"
+}
+
+Introduces a nested object for risk data.
+Adds category (“Low”, “Medium”, “High”) for readability.
+Adds confidence score for more precision.
+Adds lastUpdated timestamp for compliance traceability.
+
+Existing clients parsing riskScore as an integer will break.
+No safe migration path.
+
+What you can do ?
+With versioning:
+/v1/analytics → still returns simple integer score.
+/v2/analytics → returns the enriched structure.
+
+Business Impact
+Protects client trust: no sudden breakage of production systems.
+Facilitates innovation: you can roll out new features in /v2 while /v1 keeps existing users happy.
+Regulatory compliance: if a new law requires more fields (e.g., audit metadata), you add it in a new version without violating old contracts.
+
+
+Similarly, versioning ensures backward compatibility. For example, I’d expose /v1 and /v2 endpoints, where /v2 introduces new analytics fields. This allows clients to migrate at their own pace while avoiding breaking existing integrations. At my current firm, we used this approach when normalizing compliance data from multiple providers.”
+
+
+4) Documentation
+
+Use Swagger/OpenAPI for interactive docs.
+Provide request/response samples.
+Sandbox (dev/qa environments) for testing:
+https://sandbox.l.com/api/v1/analytics
+
+
+
+5 Observability
+APIs must be monitored for performance, errors, and usage.
+
+✅ Example
+Logging: Log every request with a unique request ID for traceability.
+
+Include timestamp, request path, response status codes, latency, and client ID. Avoid storing PII or financial data in logs
+[2025-07-30T12:02:15Z] RequestId=abc123
+Method=GET Path=/v2/analytics/123
+Status=200 Latency=120ms ClientId=xyz789
+
+If a client reports an issue, you can trace their exact request using the RequestId.
+
+Metrics: latency, throughput, error rate. Collected in real time and exposed to tools like Prometheus.
+Grafana dashboards display latency, error rates, and traffic volume.
+
+Set alerts to identify issues proactively:
+Alerts: if error rate > 5% in 1 min, trigger on call.
+P99 latency >300ms → warning alert.
+No traffic detected for 5 minutes → may indicate outage.
+
+
+“For me, observability is crucial to ensuring API reliability. I log each request with a unique ID, status code, and latency while ensuring no PII is stored. For metrics, I expose latency, throughput, and error rate to Prometheus, and visualize them on Grafana dashboards. Alerts are configured, for example if error rate exceeds 5% in a minute, it triggers on‑call. In practice, this setup has allowed us to quickly detect anomalies — like a sudden surge in 500 errors — and resolve issues before they impacted clients or breached SLAs.”
+
+
+6)  Error Handling & Transparency
+When an API request fails, the client should know exactly what went wrong and how to fix it.
+Without clear errors, clients struggle to debug, integration takes longer
+
+For Analytics APIs (like L’s), transparency is especially critical since wrong or unclear responses could lead to financial losses or compliance breaches.
+
+✅ Good Error Handling Practices
+1. Use Standard HTTP Status Codes
+2xx → Success (200 OK, 201 Created)
+4xx → Client Errors (400 Bad Request (invalid req format malformed json, user inout missing), 401 Unauthorized, 404 Not Found, 408 Request timeout)
+5xx → Server Errors (500 Internal Server Error, 503 Service Unavailable)
+This ensures consistency across APIs.
+
+2. Return Structured Error Responses
+Always respond with a predictable JSON structure (not plain text or HTML).
+
+Example
+
+{
+  "errorCode": "INVALID_INPUT",
+  "message": "Account ID must be 10 digits",
+  "status": 400,
+  "timestamp": "2025-07-30T14:15:00Z"
+}
+
+
+errorCode: matches HTTP code
+A machine-friendly string or number clients can map to specific handling logic.
+
+Example: "errorCode": "AUTH_TOKEN_EXPIRED"
+errorMessage: human-readable message
+traceId: helps correlate logs for debugging
+details: optional context for developers
+
+3. Provide Actionable Feedback
+Errors shouldn’t just say what went wrong — they should hint at how to fix it.
+Example
+{
+  "status": "error",
+  "errorCode": "400",
+  "errorMessage": "Invalid date format",
+  "details": "Expected format: YYYY-MM-DD"
+}
+A developer now knows exactly how to correct the request.
+
+4. Avoid Leaking Sensitive Information
+Never include stack traces or internal DB errors in client-facing messages.
+Internal logs (linked via traceId) can have detailed error data for engineers, but not in client responses.
+Avoid: "SQL Exception at line 45 in ClientDAO.java"
+
+{
+  "errorCode": "INVALID_INPUT",
+  "message": "The client ID format is incorrect"
+}
+
+5. Transparency Through Traceability
+Use a traceId for every request.
+Clients can provide this ID in support tickets → engineers instantly find the corresponding logs.
+Example:
+Support email: “Request with traceId abc123 failed at 10:15 UTC.”
+→ Engineers search logs for abc123 to pinpoint the issue.
+
+❌ Bad Error Handling Example
+Request:
+
+GET /clients/999/analytics
+Response:
+500 Internal Server Error
+
+Problems:
+Doesn’t explain if the client ID was invalid, the service was down, or the request was malformed.
+Developer has no way to fix it.
+
+
+🎯 Business Impact
+Faster troubleshooting → clients fix their issues without waiting for support.
+Better reliability perception → clients see clear, consistent messages instead of mysterious errors.
+Compliance → traceability helps auditors understand how errors were handled.
+
+🔑 How You Can Phrase It in Interview
+“For me, error handling is about clarity and transparency. I always use standard HTTP status codes with structured JSON responses. For example, a 404 error in our sanctions API returns not just the code but a message like Client not found, a traceId for log correlation, and details such as the invalid client ID. This allows client developers to quickly resolve issues themselves and gives us an audit trail for compliance. What I avoid is returning generic 500 errors with no context, which leaves clients in the dark.
+
+
+
+5. Performance & Scalability
+An API must continue to perform reliably and quickly even as the number of requests or data volume grows.
+Clients expect consistent response times whether you have 1,000 or 1,000,000 requests.
+Scalability = ability to handle growth without degrading latency, reliability, or cost efficiency.
+
+1. Pagination for Large Datasets
+Returning thousands of records in one call is slow and heavy.
+
+Instead, I return data in chunks with limit and offset or with cursors.
+
+Example: A client requesting transaction history gets 100 records per page instead of all 50,000 at once.
+
+
+
+📌 When Cursor Works Better than Offset
+1. Large Datasets
+Offset: offset=1000000 → DB scans 1 million rows just to start.
+
+Cursor: Starts from last known ID directly → constant time.
+
+Example: Paging through 50M client records in your AML system.
+
+
+"An offset just tells the server to skip N rows, so if new records arrive, offsets shift and you risk duplicates or skips. A cursor uses a unique ID or timestamp from the last record served as a bookmark, so the next page always continues from the right spot — even if the data changes in the meantime."
+ Interview Soundbite
+"In offset pagination, the client sends limit and offset each time. However, a well-designed API helps by providing pagination metadata in the response — such as total records and the next offset — so the client doesn’t need to calculate it manually. In high-volume scenarios, we sometimes prefer cursor-based pagination, where the server returns a cursor token for the client to use in the next request."
+
+Instead of telling the server “give me page 3” or “start at offset 100,” the server gives the client a “cursor token” that marks where to continue.
+
+The token usually encodes:
+
+The last item’s unique ID or timestamp
+
+Possibly some metadata (like sort order)
+
+The client passes the token back to get the next “page.”
+
+
+
+
+
+2. Caching with Redis (or Similar)
+
+Some queries are very frequent (e.g., fetching a client’s risk profile).
+Instead of hitting the database each time, cache results in memory.
+Reduces latency (submillisecond responses) and DB load.
+
+Example Flow
+First request: API fetches data from DB → stores in Redis with TTL (e.g., 5 minutes).
+Subsequent requests: Served directly from Redis.
+
+
+
+
+
+Common Cache Strategies for APIs
+1. Cache-Aside (Lazy Loading)
+How it works:
+
+Application checks cache first.
+
+If data is missing, fetch from DB → store in cache → return to client.
+
+Pros:
+
+Simple and popular (e.g., with Redis).
+
+Cache only stores what is requested (efficient).
+
+Cons:
+
+First request for missing data is slow (“cache miss”).
+
+Example:
+Client requests risk profile → if not in Redis, fetch from DB2 → cache for 5 minutes.
+
+2. Read-Through Cache
+How it works:
+
+Application always reads through the cache layer.
+
+Cache provider fetches from DB on misses automatically.
+
+Pros:
+
+Transparent to the application.
+
+Consistent access path.
+
+Cons:
+
+More complex to set up.
+
+3. Write-Through Cache
+How it works:
+
+Data is written to cache and DB at the same time.
+
+Ensures cache and DB are always in sync.
+
+Pros:
+
+No stale data.
+
+Reads are always fast.
+
+Cons:
+
+Slower writes (since 2 writes per operation).
+
+Use Case:
+
+Client preferences or analytics configs where reads must always reflect the latest state.
+
+4. Write-Behind (Write-Back)
+How it works:
+
+Application writes to cache first.
+
+Cache writes to DB asynchronously.
+
+Pros:
+
+Very fast writes.
+
+Good for high-throughput systems.
+
+Cons:
+
+Risk of data loss if cache fails before DB write.
+
+Harder to ensure durability.
+
+5. Time-to-Live (TTL) / Expiration
+How it works:
+
+Cached items expire after a set period.
+
+Ensures data freshness.
+
+Example:
+
+Cache analytics results for 5 minutes.
+
+After TTL, fetch fresh data from DB.
+
+6. Cache Invalidation Strategies
+Manual Invalidation: Explicitly delete cache entries when underlying DB changes.
+
+Write-through Invalidation: Update cache when DB is updated.
+
+Versioning: Include a version number in cache keys so old data is ignored.
+
+7. Content Delivery Network (CDN) Caching
+How it works:
+
+Useful for static or semi-static data.
+
+Push data closer to global clients via CDN edge nodes.
+
+Use Case:
+
+Static financial reports, reference data (like country codes or currency rates).
+
+🎯 How to Say It in Interview
+“For performance, I’d use a cache-aside strategy with Redis for frequent queries — the app checks the cache first, and only goes to the DB on a miss. To keep data fresh, I’d use TTLs of a few minutes for analytics results, since clients value up-to-date but fast responses. For critical configuration data, a write-through strategy ensures cache and DB stay in sync. I’d also set up invalidation triggers so updates in the DB reflect in the cache immediately. This approach balances speed, accuracy, and reliability, which is key in financial analytics APIs.”
+
+
+1. Authentication & Authorization
+Authentication → Confirming who is calling the API.
+Authorization → Controlling what they can do.
+Ensure only verified users or systems can access the API.
+Use standards like OAuth2 (OAuth2 for delegated access (used in most enterprise APIs)) or JWT tokens (JWT tokens for stateless, signed identity checks.)
+Example: A client must present a valid JWT before accessing /transactions/123. JWT stands for Json Web Token
+
+
+But statelessness creates a challenge: how does the server know who’s calling it without a session?
+OAuth 2.0 solves this by providing a secure, standardized way to authenticate and authorize clients.
+Instead of passwords, clients use access tokens (often JWTs).
+This keeps APIs stateless: each request includes the token with all the info the API needs.
+
+3. JWT as the Access Token
+The JWT payload carries claims like userId, role, and exp.
+The signature ensures the token hasn’t been tampered with.
+The API validates the JWT locally with a public key — no need to query the auth server every time.
+
+4. How It Strengthens API Security
+Authentication → Token proves who the caller is.
+Authorization → Claims like role control what they can access.
+Statelessness → Token carries all info, no server sessions needed.
+Scalability → Works across multiple microservices without a central session store.
+Well‑Defined Errors → If a token is expired or invalid, API returns 401 Unauthorized in a consistent format.
+
+
+
+3. JWT as the Access Token
+The JWT payload carries claims like userId, role, and exp.
+
+The signature ensures the token hasn’t been tampered with.
+
+The API validates the JWT locally with a public key — no need to query the auth server every time.
+
+
+JWTs can be issued by the same server or a separate authentication service. In smaller apps, the API server itself may issue them. But in large-scale financial systems like L, it’s typical to use a dedicated auth service. That server issues the JWT, and all other microservices just validate it — which keeps authentication centralized, secure, and scalable
+	
+A JWT has three parts,seperated by dots: a header that describes the signing algorithm, a payload with claims like user ID, role, and expiry
+(Claims are pieces of information about the user or client that are packaged inside the JWT payload.
+They tell the API who the caller is and what they’re allowed to do), and a signature that proves the token hasn’t been tampered with. The header and payload are Base64 encoded, while the signature is created with a secret or private key of Auth server."
+
+By Design, Payload Isn’t Encrypted The JWT payload is Base64 encoded, not encrypted.
+That means anyone can decode it and see the claims.
+This is intentional: JWT is about proof of authenticity, not secrecy.
+
+2. Security Comes from the Signature
+The important part is the signature.
+Even if someone reads the payload, they can’t change it without invalidating the signature.
+
+So the server knows the claims are authentic.
+
+3. Sensitive Data Shouldn’t Go in Plain JWTs
+Don’t store things like passwords or PII in the payload.
+Only include claims needed for authorization (like userId, role, exp).
+
+4. If Confidentiality is Needed
+Use JWE (JSON Web Encryption), where the payload is encrypted as well as signed.
+That way, only the intended recipient can read it.
+
+The public key of auth server can be shared openly — even clients can have it. But that doesn’t let them forge or modify tokens, because only the private key can generate a valid signature. If they try to change the payload, the signature check will fail. The only thing they can do is read the payload, which is why we avoid putting sensitive data in a plain JWT.The public key can only verify, not sign.
+
+At L, an identity provider like Okta or a central auth service would issue the JWT signed with its private key. Each microservice — say, the sanctions screening API — has the corresponding public key. When a client calls /screenings/123 with a JWT, the screening service uses that public key to check the signature and trust the claims.
+
+The auth server signs the JWT when it’s issued.
+Other servers verify the signature locally using a known key.
+No need to call back to the auth server for every request.
+Because the JWT is digitally signed, the API trusts the content without checking back with the auth server.
+Validation is fast (just cryptographic math).
+Keeps the API stateless — no session storage, no DB lookups.
+Auth service issues a JWT when a compliance officer logs in.
+
+The token includes claims like userId=456 and role=reviewer.
+Each screening API (PEP, sanctions, adverse media) validates the JWT signature using the shared public key.
+No round-trip to the auth server is needed.
+"JWTs let APIs remain stateless because the token is signed by the auth server. Each microservice validates the signature locally using a public key, so it doesn’t need to call back to the auth server on every request. This way, we ensure both security and high performance at scale."
+
+The key benefit is statelessness. Each API server can verify the token locally using a public key — no need to query the auth server or database on every request. That makes it fast and scalable
+
+OAuth 2.0 is the framework for getting and using access tokens, while JWT is a format for the tokens themselves. In many systems, OAuth 2.0 issues JWTs as access tokens. OAuth defines the process — who issues tokens, how they’re refreshed, and what scopes they carry — and JWT provides the actual signed token that the resource server can verify without contacting the auth server."
+
+📌 OAuth 2.0 Example (Simple)
+“Imagine you want to use a fitness app that shows your Google Calendar workouts. Instead of giving the fitness app your Google password, the app redirects you to Google’s login page. You log in there, and Google gives the app an access token with permission to read your calendar. The fitness app then calls Google Calendar’s API with that token. Google checks the token, and if it’s valid, it returns your workout events. This way, the fitness app never sees your Google password — only a token.
+
+Similarly can we extend it to normal auth server and resource server in 1 application
+ you can absolutely extend that fitness app example to a normal single application where the auth server and the resource server are part of the same system. That’s actually very common in enterprise setups.
+
+📌 OAuth 2.0 in a Single Application
+User Logs In
+User enters their credentials on the app’s login page.
+The app routes this to its auth server module (could even be part of the same backend).
+Auth Server Issues Access Token
+After verifying credentials, the auth component issues an access token (often a JWT).
+
+Client Uses Token
+The app uses this token for all subsequent API calls to its own backend (the resource server).
+Authorization: Bearer <token>
+Resource Server Validates Token
+The backend validates the JWT locally (checking the signature, expiry, and claims like role).
+
+✅ Why Use OAuth 2.0 Even in a Single App
+Statelessness → no server session storage needed.
+Scalability → multiple microservices in the same app can trust the token without sharing session data.
+Future‑proofing → if you later split services or add third‑party integrations, the token model already works.
+
+Example in Plain Words
+"Even in a single app, we can separate the auth logic from the data APIs. The auth part issues a token once the user logs in, and the rest of the app’s APIs just validate that token before serving data. This keeps the system stateless and scalable, and it’s easy to extend later if we add more services."
+
+
+
+2. Encrypt All Data in Transit
+Always enforce HTTPS so credentials and data aren’t exposed.
+Example: Even simple GET requests go over TLS to prevent man‑in‑the‑middle attacks.
+Encrypt sensitive data at rest (e.g., account numbers, PII).
+
+3)Strict Input Validation & Sanitization
+Protect against injection attacks (SQL injection, XSS).
+Whitelist expected values, reject malformed inputs.
+Never trust client input blindly.
+Example: Ensure clientId is strictly numeric and within expected length before querying DB2.
+
+I add rate limiting to prevent abuse, apply least‑privilege access, and ensure every request is logged for audits. Errors are handled gracefully without exposing system details. In financial services, I see security not as a feature but as a baseline requirement for trust and compliance."
+
+
+
+Rate Limiting & Throttling
+Why
+Prevents abuse from a single client overwhelming the system.
+
+Ensures fair usage among multiple clients.
+
+Protects backend from sudden request floods (accidental or malicious).
+
+Example Behavior
+If a client makes more than 100 requests/minute:
+
+http
+Copy
+Edit
+HTTP/1.1 429 Too Many Requests
+Retry-After: 60
+Real‑World Case
+In compliance APIs, without rate limits, one rogue client could spike traffic and delay onboarding checks for thousands of other clients.
+
+4. Horizontal Scaling with Stateless Services
+Make APIs stateless so they can be deployed behind a load balancer.
+This is done with load balancers and container orchestration platforms like Kubernetes.
+APIs should handle sudden traffic spikes by adding more servers instead of overloading one.
+
+This is done with load balancers and container orchestration platforms like Kubernetes.
+
+Example: If millions of records come in at market open, auto‑scaling ensures the system stays fast and reliable.
+
+5. Asynchronous Processing
+For heavy workloads (e.g., running analytics on 10M records), accept the request and process asynchronously.
+
+Return a Job ID → client polls for completion.
+
+Example
+
+http
+Copy
+Edit
+POST /analytics/jobs
+{
+  "portfolioId": "XYZ"
+}
+Response:
+
+json
+Copy
+Edit
+{
+  "jobId": "abc123",
+  "status": "processing"
+}
+🎯 Business Impact
+Better client experience: consistent low latency.
+
+Regulatory reliability: ensures compliance checks complete on time even under heavy load.
+
+Cost efficiency: caching + rate limiting avoid unnecessary infra spend.
+
+🔑 How to Say It in Interview
+“For me, performance and scalability mean ensuring the API responds quickly and reliably under any load. I’d use pagination so clients never fetch massive datasets in one call, caching with Redis for frequent queries, and rate limiting to protect from traffic spikes. In fact, I implemented Redis caching in a sanctions screening API, which cut average latency by more than 30%. I’d also design the services stateless so they can scale horizontally in AWS or Azure, and use asynchronous processing for heavy workloads. This ensures our clients get fast responses without compromising stability.”
+
+⚡ Do you want me to also give you a Good vs Bad comparison table for Performance & Scalability (so you can glance at it before the interview to refresh)?
+
+
+
+Consistency & Clear resource modeling, uniform resource naming
+
+“APIs should be consistent and easy to use. I follow the same style across all endpoints — using plural nouns, lowercase, and hyphens — so developers always know what to expect. For example, instead of writing something like /GetClientDetails, I’d design it as /clients/123. Endpoints should represent resources rather than actions, with HTTP methods showing what to do. So, GET /clients/123 fetches a client, while POST /clients creates a new one. This approach keeps the API simple, predictable, and intuitive.
+
+Always use {id} style for identifiers, not query strings unless filtering.
+
+Example:
+
+✅ /clients/{id}
+
+✅ /clients/{id}/accounts/{accountId}
+
+❌ /getClient?id=123
+
+"I always use {id} in the path when referring to a specific resource — for example, /clients/123. Matches the idea of a resource in the URL path.
+Query strings are better for filters or optional parameters, like /clients?status=active&limit=50. This makes the API cleaner, more RESTful, and easier to use.Here, you’re asking for a list of resources, filtered by conditions.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

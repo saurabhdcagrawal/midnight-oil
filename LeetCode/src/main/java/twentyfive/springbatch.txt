@@ -1,0 +1,148 @@
+what is advantage of spring batch..what does it do
+
+Spring Batch is a powerful framework designed for batch processing in Java,
+part of the larger Spring ecosystem. It's widely used for automating large-scale,
+repetitive, and transactional processing like ETL jobs, data migrations, or scheduled reports.
+
+Robust and Scalable
+Handles large volumes of data efficiently (millions of records).
+Supports parallel processing, chunking, partitioning, and multi-threaded steps.
+
+Transaction Management
+Provides declarative transaction control, retry logic, and rollback in case of failures.
+
+Built-in Features
+Skip/Retry logic, checkpoints, job restarts, and listeners.
+
+Easily handle failures without restarting from the beginning.
+Modular and Reusable
+Jobs are broken down into steps, which can be reused and independently tested.
+Maintains detailed metadata for job executions, step status, and failures in its job repository.
+
+🔧 What Does Spring Batch Do?
+It provides a framework to define and run batch jobs consisting of:
+Job: The overall batch process (e.g., "import users from CSV").
+Step: A phase within the job (e.g., "read", "process", "write").
+ItemReader: Reads data (e.g., from DB, CSV, API).
+ItemProcessor: Applies business logic (e.g., clean, filter, transform).
+ItemWriter: Writes data (e.g., into DB, file, Kafka).
+JobRepository: Persists execution metadata for restartability and monitoring.
+
+
+Feature	Spring Batch
+AutoSys
+What it is	A Java-based batch processing framework
+A job scheduler
+Focus
+Defines how the job runs (logic, reading, processing, writing)
+Defines when and where the job runs
+Core Function	Executes ETL/data processing logic inside the app
+Triggers external scripts or jobs (e.g., shell, SQL, Java)
+Data Handling	Native support for chunking, retry, skip, checkpointing
+Not built for deep data transformation
+Job Design	You define step-by-step logic in Java/Spring
+You define commands or scripts to run
+Error Handling	Granular: retry specific items, skip logic, restart where it failed
+Mostly job-level: restart the whole job or rerun a script
+Metadata Tracking	Built-in job repository: tracks job status, step execution, etc.	Tracks at job level (success/fail), less detailed execution state
+Integration	Part of your application, tightly integrated with Spring Boot	External to your app, platform-level scheduler
+
+ou need to build the logic of a job (e.g., reading from CSV → transforming → writing to DB).
+
+You want fine-grained control over data flow, retries, skip policies.
+
+You’re working in a Spring-based microservices architecture.
+
+You need job restartability, detailed job metadata, or multi-threaded processing.
+
+✅ When to Use AutoSys:
+You already have your job logic in scripts or compiled apps and just need scheduling/orchestration.
+
+You want to trigger jobs on time-based or event-based schedules.
+
+You need cross-platform job control (Linux, Windows, SAP, etc.).
+
+Your org already uses AutoSys to manage enterprise workloads.
+
+⚡ Best of Both Worlds?
+Many teams combine them:
+
+Use Spring Batch for the actual data processing logic.
+Use AutoSys to schedule and orchestrate Spring Batch jobs
+ (via shell scripts or command-line triggers).
+✅ Why This Works Well
+Spring Batch takes care of data transformation, checkpointing, error handling.
+
+AutoSys ensures enterprise-grade scheduling, dependencies, retry policies, etc.
+
+Teams stay aligned with DevOps best practices: separate business logic (app) from orchestration
+(AutoSys).
+
+
+With Spring boot you can create robust batch processing system
+Batch processing is a technique which processes data in a large group
+instead of single element of data
+Billing->csv /Reporting..
+
+
+Spring batch
+First key component--> Job launcher-->launch to a spring batch job->initiate job
+job launcher call run method-->launch a job->Job repository
+
+Every time a record comes in
+Job--> Can chain multiple steps ->
+Step==> Item Reader(reads from source..one record at a time
+), ItemProcessor(transformation),
+ItemWriter(write to database)
+
+//job repository-->How many files we have done, how many files we need to process
+//after records are written transaction, commits,write metadata to file
+SpringBatch
+
+
+New Class TextItemProcessor implements ItemProcessor<String,String>
+@Override
+public String process(String message) throws Exception{
+    return processedMessage
+}
+
+@Bean
+protected FlatFileItemReader<String> reader(){
+//source
+}
+
+@Bean
+protected FlatFileItemWriter<String> writer(){
+//output csv
+}
+
+@Bean
+protected Step maskingStep(JobRepository jobRepo, PlatformTransactionManager manager,
+FlatFileItemReader<String> reader,TextItemProcessor processor, FlatFileItemWriter<String> writer){
+return newStepBuilder
+}
+//chunk out processing..
+
+
+//Spring batch will look for the job
+@Bean
+protected Job maskingJob(JobRepository jobRepo, Step maskingStep, BatchJobCompletedListener jobCompleted)   {
+
+}
+
+
+
+//New class
+@Component
+public class BatchJobCompletedListener implements JobExecutionListener{
+@Override
+public void afterJob(JobExecution jobExecution)
+
+}
+
+
+
+Spring Batch is a powerful framework designed for batch processing in Java,
+part of the larger Spring ecosystem. It's widely used for automating large-scale,
+repetitive, and transactional processing like ETL jobs, data migrations, or scheduled reports.
+
