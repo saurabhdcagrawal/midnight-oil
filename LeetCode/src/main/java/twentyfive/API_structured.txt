@@ -2294,35 +2294,71 @@ If a consumer fails, Kafka rebalances partitions to another consumer.
 
 Kafka is a distributed event bus that gives us parallelism, ordering, and replayability. In my last project, we partitioned a 50M record screening job by Client ID and Region into 10 Kafka partitions. Multiple worker microservices consumed the partitions in parallel, each resuming from the last committed offset if a failure occurred. This design reduced processing time by 40%, gave us fault tolerance, and allowed compliance to replay jobs when sanction lists updated."
 
+Kafka Acknowledgments and Idempotence
+=====================================
 
-📌 Acks in Kafka
+Acks in Kafka
+-------------
+
 1. Producer → Broker (Write Acknowledgment)
+-------------------------------------------
 When your screening worker (producer) sends an alert to Kafka, it waits for an ack from the broker.
 This is controlled by the acks config in the producer.
+
 acks=0 → Producer doesn’t wait. (Fastest, least reliable)
 With acks=0, you lose durability — if a message is dropped, the producer never retries because it thinks it was delivered.
+
 acks=1 → Leader broker writes message, ack sent back. (Common)
+
 acks=all (or -1) → Leader + all in-sync replicas confirm write before ack. (Most reliable; used in compliance systems)
 
-                     ↑
+
 2. Broker → Consumer (Read Acknowledgment)
+------------------------------------------
 Consumers don’t send acks like producers.
 Instead, consumers commit offsets to Kafka to signal progress.
 When a consumer processes messages from a partition, it calls:
-1) auto-commit (default) → Kafka commits offsets automatically every X ms.
-   
-auto.commit.interval.ms (default 5 seconds). Risk: if your worker crashes after processing but before auto-commit, you may reprocess the same message (duplicate alerts).
 
+Auto-Commit (Default)
+---------------------
+1) auto-commit (default) → Kafka commits offsets automatically every X ms.
+
+auto.commit.interval.ms (default 5 seconds). 
+Auto-Commit Is Time-Based, Not Processing-Based
+
+enable.auto.commit=true
+auto.commit.interval.ms=5000
+
+It means:
+Kafka will commit the latest offset every 5 seconds — regardless of whether you’ve finished processing the message or not.
+It doesn’t wait for you to finish processing before committing.
+
+What Can Go Wrong?
+------------------
+Risk: if your worker crashes after processing but before auto-commit, you may reprocess the same message (duplicate alerts).
+
+Timeline Example: Auto-commit causes data loss
+----------------------------------------------
+T0: Consumer reads Msg57
+T1: Auto-commit happens (offset=57 committed)
+T2: Msg57 is still being processed
+T3: App crashes before Msg57 is done
+T4: App restarts → sees offset=57 → starts from Msg58
+
+Result: Msg57 is LOST forever
+Because Kafka thinks 57 was processed (since it was committed).
+But your app never finished processing it.
+
+
+Manual Commit
+-------------
 2) manual commit → app explicitly commits offsets after successful processing.
 
 In Spring Kafka, you can disable auto-commit and handle commits yourself.
 This ensures a record is marked as processed only after you’ve successfully handled it (e.g., stored alert in Actimize).
 
-👉 Why important?
-
-If consumer crashes before committing, on restart it re-reads those messages.
-That’s why in AML screening, you’d use manual commit after writing alerts to DB, so no message is lost.
-
+Spring Kafka Example
+--------------------
 @KafkaListener(topics = "screening.jobs", groupId = "screening-workers")
 public void consume(ClientRecord record, Acknowledgment ack) {
     try {
@@ -2338,50 +2374,167 @@ public void consume(ClientRecord record, Acknowledgment ack) {
         log.error("Error processing record: {}", record, e);
     }
 }
+
+
 3. How It Ties to Acks
+----------------------
 Producer side → uses acks=all for broker acknowledgment.
 Consumer side → uses Acknowledgment.acknowledge() for offset commit.
 
-👉 Together, they ensure:
-Message is safely written (producer ack).
-Message is safely processed (consumer ack).
+Together, they ensure:
+- Message is safely written (producer ack).
+- Message is safely processed (consumer ack).
 
-With acks=1, the producer may send P2 before retrying P1 if the ACK for P1 is delayed or lost. That can break ordering within a partition if retries are enabled(retries + multiple in flight messages)
+With acks=1, the producer may send P2 before retrying P1 if the ACK for P1 is delayed or lost.
+That can break ordering within a partition if retries are enabled (retries + multiple in flight messages).
+
 To solve this, we enable idempotence, which adds sequence numbers so Kafka can detect and discard out-of-order retries.
 
 
-4)Idempotence (enable.idempotence=true)
-Independent of acks. Different concept
+4. Idempotence (enable.idempotence=true)
+----------------------------------------
+Independent of acks. Different concept.
 
 Adds:
-Producer ID (PID)
-Sequence numbers per partition
+- Producer ID (PID)
+- Sequence numbers per partition
+
 Guarantees no duplicates and preserves ordering, even if retries happen.
 Works with any acks, but for compliance workloads you’d pair it with acks=all.
 
-Idempotence protects ordering and duplicates. But latency may increase 
+Idempotence protects ordering and duplicates. But latency may increase.
+
+Example with Idempotence
+------------------------
 Producer → Send 57 → Leader fails → No ACK
-Producer → Send 58 → Broker expects 57 → REJECT ❌
+Producer → Send 58 → Broker expects 57 → REJECT
 Producer → Retry 57 → Broker commits → [Log: 57]
 Producer → Retry 58 → Broker commits → [Log: 57,58]
 
-If acks=0 and idempotency is true then it can lead to dataloss + log stuck
 
-acks=0 + idempotence=true
-Producer → Seq=57 → LOST ❌
-Producer → Seq=58 → Broker expects 57 → REJECT ❌
+Issue: acks=0 + idempotence=true
+--------------------------------
+Producer → Seq=57 → LOST
+Producer → Seq=58 → Broker expects 57 → REJECT
 Broker Log: stuck at last committed=56
 Producer thinks 57 succeeded (no ack)
-Ordering preserved ✅
 
-But data loss ❌
-Producer doesn’t retry 57 → log stuck
+Ordering preserved, but data loss occurs.
+Producer doesn’t retry 57 → log stuck.
 
-If we remove idempotence, it wont stall the partition .. But there will be duplicates and silent data loss
 
-What Happens Without Idempotence (and acks=0) ?
+If Idempotence Is Removed
+-------------------------
+If we remove idempotence, it won't stall the partition.
+But there will be duplicates and silent data loss.
+
+
+Scenario Without Idempotence (acks=0)
+-------------------------------------
 Producer sends P1 (lost) → Kafka never gets it.
 Producer sends P2, P3, ... → Kafka accepts them blindly because it’s not expecting any specific sequence.
 
-📌 There is no stalling.
-📌 But there’s silent data loss.
+There is no stalling.
+But there’s silent data loss.
+
+
+
+************************************************************
+*** DEAD LETTER QUEUE (DLQ) NOTES ***
+************************************************************
+
+============================================================
+1. DLQ — CONCEPT
+============================================================
+- A DLQ is a special queue (or Kafka topic) used to capture messages 
+  that could not be processed successfully after one or more retries.
+
+============================================================
+2. WHY USE A DLQ?
+============================================================
+Some messages might be:
+- Malformed (bad schema, missing fields)
+- Causing exceptions in your application logic
+- Failing due to downstream service errors (e.g., DB down, API failure)
+- Stuck in a poison pill loop (fail every time they are retried)
+
+Instead of losing or infinitely retrying them, 
+you push such messages to a DLQ for later analysis or manual handling.
+
+============================================================
+3. KAFKA DLQ MESSAGE CONTENT
+============================================================
+Kafka DLQ messages often retain:
+- Original message payload
+- Topic/partition/offset of original message
+- Exception cause (optional, in headers)
+
+Purpose:
+--------
+- Helps you replay or inspect the problematic data later.
+
+============================================================
+4. EXAMPLE FLOW
+============================================================
+1. Consumer tries to process message from alerts.topic.
+2. Processing fails even after configured retries.
+3. Error handler forwards the message to alerts.topic.DLQ.
+4. Broker persists that DLQ message.
+5. A special DLQ consumer group can subscribe to alerts.topic.DLQ 
+   and handle it separately.
+
+============================================================
+5. MESSAGE PERSISTENCE & RETENTION
+============================================================
+By default:
+- Messages are written to the broker’s log on disk.
+- If the Kafka broker restarts, data is recovered from commit log files (segment files).
+
+Retention Policy:
+-----------------
+- Time-based (retention.ms) → e.g., 7 days.
+- Size-based (retention.bytes) → e.g., 1 TB per topic.
+
+After retention expires:
+- Kafka deletes old records.
+- Unlike a DB, which typically keeps data until explicitly deleted.
+
+Conclusion:
+-----------
+- As long as the message has been written to disk and replicated,
+  a broker restart will not cause message loss.
+
+============================================================
+6. CONSUMER FAILURE & RESTART SCENARIO
+============================================================
+Timeline:
+---------
+T0: Consumer reads Msg42  
+T1: Processing fails (DB down)  
+T2: Consumer app crashes  
+T3: Kubernetes restarts the consumer pod  
+T4: Consumer re-subscribes  
+T5: Kafka sees last committed offset = 41  
+T6: Kafka re-sends Msg42  
+
+Explanation:
+------------
+- Restart happens because the app crashed or the orchestrator restarted it.
+- Re-poll happens because the offset wasn’t committed, 
+  so Kafka still considers the message unprocessed.
+
+============================================================
+7. SPRING BOOT EXAMPLE — ERROR HANDLER WITH DLQ
+============================================================
+@Bean
+public DefaultErrorHandler errorHandler(KafkaTemplate<Object, Object> template) {
+    DeadLetterPublishingRecoverer recoverer =
+        new DeadLetterPublishingRecoverer(template);
+
+    // Retry twice with 1-second interval, then send to DLQ
+    return new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 2));
+}
+
+
+
+
