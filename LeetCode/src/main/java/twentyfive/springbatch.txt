@@ -18,8 +18,7 @@ Easily handle failures without restarting from the beginning.
 Modular and Reusable
 Jobs are broken down into steps, which can be reused and independently tested.
 Maintains detailed metadata for job executions, step status, and failures in its job repository.
-
-🔧 What Does Spring Batch Do?
+What Does Spring Batch Do?
 It provides a framework to define and run batch jobs consisting of:
 Job: The overall batch process (e.g., "import users from CSV").
 Step: A phase within the job (e.g., "read", "process", "write").

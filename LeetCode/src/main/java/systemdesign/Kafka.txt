@@ -426,7 +426,7 @@ If only one partition, it will be in order
 	CreateTime:1679345577677        Partition:1     name    Saurabh
 	CreateTime:1679345585155        Partition:1     surname Agrawal
 	CreateTime:1679346621860        Partition:1     null    hello world
-	CreateTime:1679344459169        Partition:2     null    Hello my name is Saurabh from Morgan.
+	CreateTime:1679344459169        Partition:2     null    Hello my name is Saurabh from "M".
 	CreateTime:1679344472085        Partition:2     null    Bye
 
 Actual order

@@ -1,0 +1,248 @@
+================================================================================
+ DSA 4-WEEK ROADMAP (Arrays, Trees, Graphs, DP, Greedy, Heaps, Bits, etc.)
+================================================================================
+
+0) DAILY WARM-UPS / CORE TEMPLATES
+----------------------------------
+- Binary search templates
+- Prefix/suffix sums (1D/2D), diff array
+- Hashing: freq map, index map
+- Recursion templates: DFS(node), backtracking, DFS(u,parent)
+
+================================================================================
+WEEK 1 - Arrays, Strings, Hashing, Sliding Window, Stacks, Linked Lists
+================================================================================
+Day 1 - Arrays & Two Pointers
+  Warm-up   : Two Sum II                   https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/
+  Core      : Remove Duplicates            https://leetcode.com/problems/remove-duplicates-from-sorted-array/
+  Variant   : Sort Colors                  https://leetcode.com/problems/sort-colors/
+
+Day 2 - Sliding Window
+  Warm-up   : Longest Substring w/o Repeat https://leetcode.com/problems/longest-substring-without-repeating-characters/
+  Core      : Minimum Window Substring     https://leetcode.com/problems/minimum-window-substring/
+  Variant   : Longest Substring ≤ K Dist   https://leetcode.com/problems/longest-substring-with-at-most-k-distinct-characters/
+
+Day 3 - Prefix & Product/Sums
+  Warm-up   : Maximum Subarray             https://leetcode.com/problems/maximum-subarray/
+  Core      : Product Except Self          https://leetcode.com/problems/product-of-array-except-self/
+  Variant   : Range Sum Query 2D           https://leetcode.com/problems/range-sum-query-2d-immutable/
+
+Day 4 - Hashing
+  Warm-up   : Two Sum                      https://leetcode.com/problems/two-sum/
+  Core      : Group Anagrams               https://leetcode.com/problems/group-anagrams/
+  Variant   : Longest Consecutive Seq      https://leetcode.com/problems/longest-consecutive-sequence/
+
+Day 5 - Stacks & Monotonic
+  Warm-up   : Next Greater Element I       https://leetcode.com/problems/next-greater-element-i/
+  Core      : Largest Rectangle Histogram  https://leetcode.com/problems/largest-rectangle-in-histogram/
+  Variant   : Sliding Window Maximum       https://leetcode.com/problems/sliding-window-maximum/
+
+Day 6 - Linked Lists
+  Warm-up   : Reverse Linked List          https://leetcode.com/problems/reverse-linked-list/
+  Core      : Linked List Cycle II         https://leetcode.com/problems/linked-list-cycle-ii/
+  Variant   : Reverse K-Group              https://leetcode.com/problems/reverse-nodes-in-k-group/
+
+================================================================================
+WEEK 2 - Trees, Tries, BFS/DFS, Topological Sort, Union-Find
+================================================================================
+Day 1 - Tree Traversals
+  Warm-up   : Preorder Traversal           https://leetcode.com/problems/binary-tree-preorder-traversal/
+  Core      : Inorder Traversal            https://leetcode.com/problems/binary-tree-inorder-traversal/
+  Variant   : Postorder Traversal          https://leetcode.com/problems/binary-tree-postorder-traversal/
+
+Day 2 - BFS Variants
+  Warm-up   : Level Order                  https://leetcode.com/problems/binary-tree-level-order-traversal/
+  Core      : Zigzag Level Order           https://leetcode.com/problems/binary-tree-zigzag-level-order-traversal/
+  Variant   : Bottom-up Level Order        https://leetcode.com/problems/binary-tree-level-order-traversal-ii/
+
+Day 3 - BST & Serialization
+  Warm-up   : Validate BST                 https://leetcode.com/problems/validate-binary-search-tree/
+  Core      : Kth Smallest in BST          https://leetcode.com/problems/kth-smallest-element-in-a-bst/
+  Variant   : Serialize/Deserialize        https://leetcode.com/problems/serialize-and-deserialize-binary-tree/
+
+Day 4 - Paths & Tree DP
+  Warm-up   : Path Sum                     https://leetcode.com/problems/path-sum/
+  Core      : Path Sum III                 https://leetcode.com/problems/path-sum-iii/
+  Variant   : House Robber III             https://leetcode.com/problems/house-robber-iii/
+
+Day 5 - Tries
+  Warm-up   : Implement Trie               https://leetcode.com/problems/implement-trie-prefix-tree/
+  Core      : Add & Search Word (.)        https://leetcode.com/problems/add-and-search-word-data-structure-design/
+  Variant   : Word Search II               https://leetcode.com/problems/word-search-ii/
+
+Day 6 - Graphs & Union-Find
+  Warm-up   : Number of Islands            https://leetcode.com/problems/number-of-islands/
+  Core      : Course Schedule              https://leetcode.com/problems/course-schedule/
+  Variant   : Accounts Merge               https://leetcode.com/problems/accounts-merge/
+
+================================================================================
+WEEK 3 - Dynamic Programming
+================================================================================
+Day 1 - 1D DP
+  Warm-up   : Climbing Stairs              https://leetcode.com/problems/climbing-stairs/
+  Core      : House Robber                 https://leetcode.com/problems/house-robber/
+  Variant   : Decode Ways                  https://leetcode.com/problems/decode-ways/
+
+Day 2 - Knapsack
+  Warm-up   : Partition Equal Subset Sum   https://leetcode.com/problems/partition-equal-subset-sum/
+  Core      : Coin Change I                https://leetcode.com/problems/coin-change/
+  Variant   : Coin Change II               https://leetcode.com/problems/coin-change-ii/
+
+Day 3 - Interval / Palindromes
+  Warm-up   : Longest Palindromic Substr   https://leetcode.com/problems/longest-palindromic-substring/
+  Core      : Palindrome Partitioning II   https://leetcode.com/problems/palindrome-partitioning-ii/
+  Variant   : Burst Balloons               https://leetcode.com/problems/burst-balloons/
+
+Day 4 - Grid DP
+  Warm-up   : Unique Paths                 https://leetcode.com/problems/unique-paths/
+  Core      : Unique Paths II              https://leetcode.com/problems/unique-paths-ii/
+  Variant   : Edit Distance                https://leetcode.com/problems/edit-distance/
+
+Day 5 - Tree DP / Bitmask
+  Warm-up   : Max Path Sum                 https://leetcode.com/problems/binary-tree-maximum-path-sum/
+  Core      : Binary Tree Cameras          https://leetcode.com/problems/binary-tree-cameras/
+  Variant   : Bitmask DP (example)         https://leetcode.com/problems/shortest-common-supersequence/
+
+Day 6 - Wrap-Up
+  Redo a hard earlier tree DP (Path Sum III, Cameras) in both DFS & DP style.
+
+================================================================================
+WEEK 4 - Graph Shortest Paths, Greedy, Heaps, Binary Search on Answer, Bits
+================================================================================
+Day 1 - Graph Shortest Paths
+  Warm-up   : Word Ladder                  https://leetcode.com/problems/word-ladder/
+  Core      : Network Delay Time           https://leetcode.com/problems/network-delay-time/
+  Variant   : 01 Matrix (0-1 BFS)          https://leetcode.com/problems/01-matrix/
+
+Day 2 - Greedy & Intervals
+  Warm-up   : Jump Game II                 https://leetcode.com/problems/jump-game-ii/
+  Core      : Merge Intervals              https://leetcode.com/problems/merge-intervals/
+  Variant   : Min Arrows to Burst Balloons https://leetcode.com/problems/minimum-number-of-arrows-to-burst-balloons/
+
+Day 3 - Heaps
+  Warm-up   : Kth Largest in Array         https://leetcode.com/problems/kth-largest-element-in-an-array/
+  Core      : Top K Frequent Elements      https://leetcode.com/problems/top-k-frequent-elements/
+  Variant   : Merge K Sorted Lists         https://leetcode.com/problems/merge-k-sorted-lists/
+
+Day 4 - Binary Search on Answer
+  Warm-up   : Koko Eating Bananas          https://leetcode.com/problems/koko-eating-bananas/
+  Core      : Ship Packages in D Days      https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/
+  Variant   : Min Eating Speed (same Koko) https://leetcode.com/problems/koko-eating-bananas/
+
+Day 5 - Intervals / Sweep Line
+  Warm-up   : Meeting Rooms I              https://leetcode.com/problems/meeting-rooms/
+  Core      : Meeting Rooms II             https://leetcode.com/problems/meeting-rooms-ii/
+  Variant   : Skyline Problem              https://leetcode.com/problems/the-skyline-problem/
+
+Day 6 - Bits & Math
+  Warm-up   : Single Number II             https://leetcode.com/problems/single-number-ii/
+  Core      : Counting Bits                https://leetcode.com/problems/counting-bits/
+  Variant   : Power of Three               https://leetcode.com/problems/power-of-three/
+
+================================================================================
+SUMMARY
+================================================================================
+Week 1: Arrays/Strings, Hashing, Stacks, Linked Lists
+Week 2: Trees (traversals, BST, DP), Tries, Graph BFS/DFS, Union-Find
+Week 3: DP (1D, Knapsack, Interval, Grid, Tree DP, Bitmask)
+Week 4: Graph shortest paths, Greedy, Heaps, Binary-search-on-answer, Sweep Line, Bits
+================================================================================
+
+
+2nd Attempt
+
+===========================================================
+MASTER DSA + CODILITY + LEETCODE ROADMAP
+===========================================================
+
+WEEK 1 – ARRAYS & HASHING (LeetCode + Codility Warmups)
+-----------------------------------------------------------
+LeetCode:
+- Two Sum: https://leetcode.com/problems/two-sum/
+- Group Anagrams: https://leetcode.com/problems/group-anagrams/
+- Product of Array Except Self: https://leetcode.com/problems/product-of-array-except-self/
+- Maximum Subarray: https://leetcode.com/problems/maximum-subarray/
+- Maximum Product Subarray: https://leetcode.com/problems/maximum-product-subarray/
+- Encode and Decode Strings: https://leetcode.com/problems/encode-and-decode-strings/
+- Valid Sudoku: https://leetcode.com/problems/valid-sudoku/
+- Longest Consecutive Sequence: https://leetcode.com/problems/longest-consecutive-sequence/
+
+Codility Core:
+- Binary Gap (bit tricks)
+- Cyclic Rotation
+- Odd Occurrences in Array
+- Frog Jump
+- Tape Equilibrium (prefix sums)
+- Max Counters (lazy updates + arrays)
+
+===========================================================
+
+WEEK 2 – TWO POINTERS, SLIDING WINDOW & STACK/QUEUE
+-----------------------------------------------------------
+LeetCode:
+- Valid Palindrome: https://leetcode.com/problems/valid-palindrome/
+- Two Sum II: https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/
+- 3Sum: https://leetcode.com/problems/3sum/
+- Container With Most Water: https://leetcode.com/problems/container-with-most-water/
+- Trapping Rain Water: https://leetcode.com/problems/trapping-rain-water/
+- Sliding Window Maximum: https://leetcode.com/problems/sliding-window-maximum/
+- Minimum Window Substring: https://leetcode.com/problems/minimum-window-substring/
+- Valid Parentheses: https://leetcode.com/problems/valid-parentheses/
+- Min Stack: https://leetcode.com/problems/min-stack/
+
+Codility Core:
+- Passing Cars (prefix sums)
+- Genomic Range Query (sliding window / prefix sums)
+- Brackets (stack)
+- Stone Wall (stack monotonic)
+- Nesting (stack)
+
+===========================================================
+
+WEEK 3 – BINARY SEARCH, LINKED LISTS, RECURSION
+-----------------------------------------------------------
+LeetCode:
+- Binary Search: https://leetcode.com/problems/binary-search/
+- Search in Rotated Sorted Array: https://leetcode.com/problems/search-in-rotated-sorted-array/
+- Find Minimum in Rotated Sorted Array: https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/
+- Median of Two Sorted Arrays: https://leetcode.com/problems/median-of-two-sorted-arrays/
+- Reverse Linked List: https://leetcode.com/problems/reverse-linked-list/
+- Merge Two Sorted Lists: https://leetcode.com/problems/merge-two-sorted-lists/
+- Reorder List: https://leetcode.com/problems/reorder-list/
+- Add Two Numbers: https://leetcode.com/problems/add-two-numbers/
+- Word Dictionary (Trie + DFS recursion): https://leetcode.com/problems/design-add-and-search-words-data-structure/
+
+Codility Core:
+- Perm Missing Elem (math / prefix sums)
+- Count Div (binary search)
+- Min Avg Two Slice (sliding window trick)
+- Dominator (Boyer–Moore majority voting)
+- EquiLeader (prefix sums)
+
+===========================================================
+
+WEEK 4 – TREES, GRAPHS & DP
+-----------------------------------------------------------
+LeetCode:
+- Maximum Depth of Binary Tree: https://leetcode.com/problems/maximum-depth-of-binary-tree/
+- Same Tree: https://leetcode.com/problems/same-tree/
+- Subtree of Another Tree: https://leetcode.com/problems/subtree-of-another-tree/
+- Lowest Common Ancestor of a BST: https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/
+- Binary Tree Level Order Traversal: https://leetcode.com/problems/binary-tree-level-order-traversal/
+- Validate Binary Search Tree: https://leetcode.com/problems/validate-binary-search-tree/
+- Number of Islands (BFS/DFS): https://leetcode.com/problems/number-of-islands/
+- Clone Graph: https://leetcode.com/problems/clone-graph/
+- Word Ladder: https://leetcode.com/problems/word-ladder/
+- Coin Change (DP): https://leetcode.com/problems/coin-change/
+- Longest Increasing Subsequence (DP): https://leetcode.com/problems/longest-increasing-subsequence/
+
+Codility Core:
+- Fish (stack + greedy)
+- Max Profit (DP / greedy)
+- Min Abs Sum (DP)
+- Number Solitaire (DP)
+- Flood fill / Graph DFS (connectivity)
+
+
+
+

@@ -226,14 +226,14 @@ This way, the fitness app never sees your Google password — only a token.
 ## STRICT INPUT VALIDATION & SANITIZATION
 
 REQUEST VALIDATION
-
-* Use schemas or annotations for validating incoming requests.
+* Never trust client input blindly.
 * Every API request body (often JSON) should be checked against a predefined structure before your server processes it.
 * Ensures required fields are present, types are correct, and no unexpected or malicious data sneaks in.
+* Use schemas or annotations for validating incoming requests.
 * Provide structured error responses for validation errors.
 * Protect against injection attacks (SQL injection, XSS).
 * Whitelist expected values, reject malformed inputs.
-* Never trust client input blindly.
+
 
 EXAMPLE WITHOUT SCHEMA VALIDATION
 Client sends:
@@ -454,6 +454,14 @@ If a client reports an issue, you can trace their exact request using the Reques
 * Collected in real time and exposed to tools like Prometheus.
 * Grafana dashboards display latency, error rates, and traffic volume.
 
+[Your App] -- exposes --> /metrics endpoint
+	
+ Prometheus scrapes this data 
+        ↓
+   Stores in its time-series database
+    ↓
+  Visualized using Grafana dashboards
+
 ## ALERTS
 
 * If error rate > 5% in 1 min, trigger on call.
@@ -583,7 +591,7 @@ EXAMPLE FLOW
 
 CACHE-ASIDE (LAZY LOADING)
 
-* How it works: Application checks cache first. If data missing, fetch from DB → store in cache → return to client.
+* How it works: Application checks cache first. If data missing, fetch from DB → store in cache first → return to client.
 * Pros: Simple and popular (e.g., with Redis). Efficient since cache only stores what is requested.
 * Cons: First request for missing data is slow (cache miss).
 * Example: Client requests risk profile → if not in Redis, fetch from DB2 → cache for 5 minutes.
@@ -777,7 +785,6 @@ Avoid verb-heavy URIs (/getClientInfo ❌ vs /clients/{id} ✅).
 
 3. Statelessness
 Each request should contain all the information needed (especially in REST).
-
 No reliance on server-side sessions for state.
 
 4. Idempotency
@@ -820,9 +827,7 @@ Include usage examples, request/response schemas, and error codes.
 
 10. Observability
 Log key request/response metadata (without exposing sensitive info).
-
 Expose health check endpoints (/health) for monitoring.
-
 Integrate with metrics systems (Prometheus/Grafana).
 
 
@@ -1036,7 +1041,7 @@ HTTP Codes:
 |  Auth Server   |
 | (JWT Issuer)   |
 +----------------+
-       |
+       |-
        | JWT
        v
 +----------------+
@@ -1348,33 +1353,114 @@ INTERVIEW SOUNDBITE
 "In our analytics API, long‑running jobs trigger a webhook via an internal dispatcher service. The payload is signed with HMAC and sent as an HTTP POST. Clients expose a secure endpoint that verifies the signature before processing. This way, they get real‑time notifications without polling, and we maintain integrity and reliability."
 ```
 
-*********************************************************************STAR***************************************
+*********************************************************************STARQUESTIONS***************************************
 Got it 👍 — I’ll give you the STAR answer bank in **plain ASCII format** (no bold, no markdown) so you can paste directly into Notepad or your prep doc without formatting issues.
 
 ---
+
+
+******************************************************
+
+Hi, I’m Saurabh Agrawal. I’m a senior backend developer in the Financial Crimes Technology group at "M" , where I build scalable, secure Java-based microservices for sanctions, adverse media, and politically exposed person (PEP) screening. Our work ensures compliance with global AML regulations by screening millions of client records across wealth management and institutional portfolios, generating about 35,000 alerts each month. In addition to reference data we also screen transactions. And internally we use third party like RDC and Clink . For screening These screening decisions are integrated across various financial workflows; thus, our system helps the firm proactively identify and block high-risk entities and transactions that could pose reputational or regulatory risks.
+
+I specialize in building high-performance services using Java 17, Spring Boot, and Kafka. My expertise includes both synchronous and asynchronous microservices, REST and SOAP APIs, DB2, MQ, and cloud technologies, often integrating with compliance platforms like. I focus on making systems fault-tolerant, highly observable, and secure, which is critical in regulated environments.
+
+One of my most impactful projects was redesigning our batch screening platform to handle over 50 million client records. I used Spring Batch and Kafka to parallelize workloads and added robust monitoring with Grafana and Prometheus. This reduced processing time by 40%, cleared alert backlogs, and improved SLA adherence. Another key initiative I led was automating our Enhanced Due Diligence workflow. I replaced a fragile RPA-based setup with a Kafka-driven microservice that processes triggers in real time, integrates audit logging, and improves SLA compliance. This reduced manual steps by 75% and cut average case turnaround time by more than 30%.
+
+Previously, I worked in Wealth Management Technology on the Data Quality Platform for home loans. I designed event-driven microservices to reconcile and validate credit and mortgage data for CCAR stress loss testing, improving data accuracy and timeliness for risk models.
+
+Across these roles, I’ve consistently taken ownership of design and delivery. For example, in the batch screening re-architecture, I mentored junior developers on Kafka streaming patterns and performance trade-offs, and in the EDD automation, I partnered closely with compliance stakeholders to align workflows with regulatory expectations.
+
+For my next role, I’m looking to step into a broader senior position where I can contribute not only as a developer but also as an architect and mentor. I want to help design scalable, cloud-native solutions in financial services or fintech, continuing to solve complex problems while driving innovation in financial crime detection, payments screening, and compliance technology.
+
+
+
+
+
+
 
 STAR ANSWER BANK — ORDERED FOR HIRING MANAGER PREP
 
 1. Improving System Performance
    Q: Can you tell me about a time you improved the performance of a critical system?
-
-S: I was working on a global screening platform handling \~8 million client records monthly. The batch screening process was slow, leading to compliance reporting delays.
-T: I needed to optimize the system to handle tens of millions of records efficiently and meet strict SLA deadlines.
-A: - Re-architected batch screening using Spring Batch + Kafka for parallel processing.
-
-* Tuned DB2 queries and partitioning strategies.
-* Introduced monitoring with Prometheus + Grafana to detect bottlenecks.
-  R: Reduced processing time by 40%, eliminated alert backlog, and ensured SLAs were consistently met. The system now processes 50M+ records reliably.
+  In our Financial Crimes Technology group at "M" , we process around 8 million client records monthly for sanctions, PEP, and adverse media screening. The legacy reference data batch screening platform used for sanctions, negative news, and PEP screening.The problem was that our legacy system couldn’t handle increasing data volume — it was slow, brittle, and prone to timeouts, especially as client onboarding volumes spiked.
+  
+  T: I needed to redesign the batch screening system to handle over 50 million records while meeting strict compliance SLAs.
+  
+  A : I re-architected our reference data batch screening platform - proposed and implemented a solution based on Spring Batch and Kafka, where large datasets were broken down into smaller, parallelizable chunks using a ClientIdRangePartitioner. Each partition processed a specific client ID range using optimized DB2 queries with range filters. The partitioned steps acted as parallel producers to Kafka, publishing their batches into dedicated Kafka topics.We configured these topics with a higher number of partitions, which allowed downstream screening services to scale horizontally—multiple consumers could read from different partitions in parallel, achieving higher throughput and reducing bottlenecks.We added retry logic for failed messages, checkpointing to resume from the last successful DB2 offset, and added observability with Prometheus and Grafana to track performance and failures.
+  Used idempotent processing inside consumers to ensure safe retries and avoid duplicates during scale-outs.
+Implemented dead-letter queues and retry topics for transient failures (e.g., vendor API timeouts or database locks).Used rate-limiting and circuit breakers to prevent downstream systems (e.g., screening APIs or Actimize loaders) from being overwhelmed.
+  
+  R: Processing time dropped by 40%, alert backlogs were cleared, and SLA adherence improved significantly. The new design is now the backbone of our global client screening.
 
 ---
 
 2. Ensuring API Security
+
+Q: Give me an example of how you ensured APIs were secure and well-defined.
+
+S (Situation):
+Our microservices ecosystem was expanding rapidly in the Financial Crimes Technology space.
+While APIs were functional, they lacked:
+- Consistent design standards
+- Centralized entitlement control
+- A uniform authentication mechanism
+This was risky in a regulated environment — inconsistent security checks meant potential audit findings.
+
+T (Task):
+My responsibility was to create API standards that were:
+- Developer-friendly for internal teams
+- Aligned with regulatory requirements
+- Enforced security in a centralized, auditable way
+
+A (Action):
+1. **Standardized API Design**
+   - REST resource naming: lowercase, plural nouns, hyphen-separated.
+   - Consistent versioning: `/v1/`, `/v2/` to prevent breaking clients.
+   - Uniform structured error responses with standard HTTP codes.
+
+2. **Authentication & Authorization**
+   - Replaced simple **LDAP group-based access checks** (static and coarse-grained) with the firm’s **SIE (Secure Identity & Entitlement) platform**.
+   - SIE allowed:
+     - Fine-grained entitlements down to API resource and action level.
+     - Real-time entitlement updates without code changes.
+     - Full audit trail for every access decision.
+
+3. **Security Enforcement**
+   - JWT tokens issued via the firm’s identity provider (integrated with SIE for entitlements).
+   - HTTPS enforced on all endpoints.
+   - HMAC signing for sensitive outbound callbacks (e.g., AML alert notifications) to ensure message integrity.
+
+4. **Observability**
+   - Added structured logging for each access decision (who accessed, what was accessed, entitlement check result).
+   - Integrated API access logs with Splunk dashboards for security teams.
+
+R (Result):
+- APIs became predictable and secure.
+- Onboarding time for new microservices dropped by 30% due to standard templates.
+- All APIs passed regulatory audit with **zero findings**.
+- Entitlement changes could be made in minutes via SIE UI, no redeploy required.
+
+
+2. Ensuring API Security
    Q: Give me an example of how you ensured APIs were secure and well-defined.
 
-S: Our microservices were growing quickly, but APIs lacked consistent standards and security enforcement, risking audit issues.
+S: Our microservices were growing quickly, but APIs lacked consistent standards and centralized entitlement, risking audit issues.
 T: I had to design APIs that were both developer-friendly and compliant with strict financial regulations.
-A: - Standardized REST design (plural nouns, lowercase, hyphens).
-
+A: - **Standardized API Design**
+   - REST resource naming: lowercase, plural nouns, hyphen-separated.
+   - Consistent versioning: `/v1/`, `/v2/` to prevent breaking clients.
+   - Uniform structured error responses with standard HTTP codes.
+   
+   
+2. **Authentication & Authorization**
+   - Replaced simple **LDAP group-based access checks** (static and coarse-grained) with the firm’s **SIE (Secure Identity & Entitlement) platform**.
+   - SIE allowed:
+     - Fine-grained entitlements down to API resource and action level.
+     - Real-time entitlement updates without code changes.
+     - Full audit trail for every access decision.
+	 
+   
 * Added JWT-based authentication with role-based access control.
 * Enforced HTTPS and HMAC signing for sensitive callbacks.
 * Defined consistent error codes (200, 400, 401, 500) with structured JSON responses.
@@ -1398,13 +1484,13 @@ A: - Broke work into parallel streams (ingestion service, Actimize integration, 
 4. Handling Conflict with Stakeholders
    Q: Describe a time you faced pushback on your technical decision.
 
-S: While re-architecting screening jobs, some stakeholders resisted Kafka adoption, worried about complexity.
+S: While re-architecting reference data batch screening jobs, some stakeholders resisted Kafka adoption, worried about complexity.
 T: I needed to gain buy-in without delaying the project.
 A: - Created a prototype showing Kafka’s ability to process 5x the throughput.
-
-* Presented a risk analysis showing reduced SLA violations and better fault tolerance.
-* Addressed concerns with phased rollout and training.
-  R: Stakeholders approved, and Kafka became the standard event bus for our microservices. It’s now handling mission-critical jobs across compliance systems.
+	* Presented a risk analysis showing reduced SLA violations, stronger fault tolerance and better scalability
+	* Addressed concerns with phased rollout and training.
+  R: Stakeholders approved, and Kafka became the standard event bus for our microservices. 
+  It’s now handling mission-critical jobs across compliance systems.
 
 ---
 
@@ -1481,30 +1567,114 @@ A: - Worked extra hours to ensure the migration completed without data loss.
 * Shared lessons learned with my team.
   R: We avoided serious issues, and my changes improved our migration success rate in later projects. It taught me to always plan for risk and add buffers for critical tasks.
 
-******************************************************
-
-Hi, I’m Saurabh Agrawal. I’m a senior backend developer in the Financial Crimes Technology group at Morgan Stanley, where I build scalable, secure Java-based microservices for sanctions, adverse media, and politically exposed person (PEP) screening. My work ensures compliance with global AML regulations by screening millions of client records across wealth management and institutional portfolios, generating about 35,000 alerts each month. These systems help the firm proactively identify high-risk entities and block transactions that could pose reputational or regulatory risks.
-
-I specialize in building high-performance services using Java 17, Spring Boot, and Kafka. My expertise includes both synchronous and asynchronous microservices, REST and SOAP APIs, DB2, MQ, and cloud technologies, often integrating with compliance platforms like Actimize and RCM. I focus on making systems fault-tolerant, highly observable, and secure, which is critical in regulated environments.
-
-One of my most impactful projects was redesigning our batch screening platform to handle over 50 million client records. I used Spring Batch and Kafka to parallelize workloads and added robust monitoring with Grafana and Prometheus. This reduced processing time by 40%, cleared alert backlogs, and improved SLA adherence. Another key initiative I led was automating our Enhanced Due Diligence workflow. I replaced a fragile RPA-based setup with a Kafka-driven microservice that processes triggers in real time, integrates audit logging, and improves SLA compliance. This reduced manual steps by 75% and cut average case turnaround time by more than 30%.
-
-Previously, I worked in Wealth Management Technology on the Data Quality Platform for home loans. I designed event-driven microservices to reconcile and validate credit and mortgage data for CCAR stress loss testing, improving data accuracy and timeliness for risk models.
-
-Across these roles, I’ve consistently taken ownership of design and delivery. For example, in the batch screening re-architecture, I mentored junior developers on Kafka streaming patterns and performance trade-offs, and in the EDD automation, I partnered closely with compliance stakeholders to align workflows with regulatory expectations.
-
-For my next role, I’m looking to step into a broader senior position where I can contribute not only as a developer but also as an architect and mentor. I want to help design scalable, cloud-native solutions in financial services or fintech, continuing to solve complex problems while driving innovation in financial crime detection, payments screening, and compliance technology.
-
 					STAR Story — Performance & Scalability
 
-Q: Can you tell me about a time you improved the performance of a large-scale system?
 
-S: In our Financial Crimes Technology group at Morgan Stanley, we process around 8 million client records monthly for sanctions, PEP, and adverse media screening. The legacy batch screening system couldn’t handle the increasing volume, especially as onboarding surged.
-T: I needed to redesign the system to handle over 50 million records while meeting strict compliance SLAs.
-A: I re-architected the platform using Spring Batch and Kafka, partitioning workloads for parallel processing. I optimized DB2 queries, implemented fault tolerance with retries and checkpointing, and added observability with Prometheus and Grafana to track performance and failures.
-R: Processing time dropped by 40%, alert backlogs were cleared, and SLA adherence improved significantly. The new design is now the backbone of our global client screening.
 
 STAR Story — Automating Enhanced Due Diligence (EDD)
+
+
+
+ENHANCED DUE DILIGENCE — REAL-TIME & DE-DUPLICATED SCREENING
+------------------------------------------------------------
+
+S (Situation)
+-------------
+EDD was triggered on risk profile changes, but the workflow relied on Excel trackers,
+shared mailboxes, and an RPA bot that ran twice a day on the Vendor provided Screening UI. It was error-prone, slow, and hard
+to audit. We also saw duplicate alerts across Wealth and ISG, inconsistent dispositions,
+and repeated re-screening of clients already cleared. Did not take into account the screening hitory of a client Vendor payloads (RDC vs CLink) were
+in different formats, forcing teams to build one-off parsers.
+WM and ISG were having their decentralized workflows for alerts
+
+T (Task)
+--------
+Streamline and automate the EDD process end-to-end:
+- Make screening/event handling real-time.
+- Prevent re-screening when an alert/client was previously cleared (unless risk changed).
+- Centralize alert disposition in Actimize as the single system of record across Wealth + ISG.
+- Expose well-defined APIs (historical disposition, alert lookup, screening eligibility/submit).
+- Normalize heterogeneous vendor payloads behind a uniform, versioned API contract.
+- Maintain strong auditability, RBAC, and observability.
+
+A (Action)
+----------
+1) Event-Driven Core
+   - Replaced the RPA/batch with Kafka topics (e.g., `screening.requests`, `dispositions.events`)
+     and Spring Boot microservices for real-time processing and backpressure control.
+
+2) Canonical Screening Contract (vendor-agnostic)
+   - Introduced a **uniform response schema** that adapters map RDC/CLink payloads into.
+     Example (v1):
+     {
+       "schemaVersion":"1.0",
+       "alertId":"A-12345",
+       "entityId":"E-9988",
+       "entityType":"INDIVIDUAL|ORG",
+       "vendor":"RDC|CLINK",
+       "watchlistId":"WC-4321",
+       "matchScore":0.87,
+       "riskTier":"HIGH|MEDIUM|LOW",
+       "status":"OPEN|CLEARED|ESCALATED",
+       "createdAt":"2025-07-18T14:22:10Z",
+       "disposition":{
+         "state":"CLEARED|TRUE_POSITIVE|FALSE_POSITIVE|SUPPRESSED",
+         "reason":"CVIP_PREVIOUSLY_CLEARED|PROFILE_CHANGE|LIST_UPDATE",
+         "decidedBy":"uid1234",
+         "decidedAt":"2025-07-18T15:02:44Z"
+       },
+       "links":{"caseUrl":"https://actimize/.../A-12345"}
+     }
+
+3) Centralized Disposition in Actimize (single tool)
+   - Built a façade so **all dispositions happen in Actimize**, not in local tools.
+   - APIs broadcast disposition changes to downstream systems (CRM/case mgmt) via Kafka.
+
+4) APIs (clear contract + idempotency)  //whether acc/party is actively screened, hitorial alerts,get alert details, publishdispositionUpdates 
+   - **GET /dispositions/history/{entityId}?watchlistId=...**
+     → Returns last known disposition + rationale (from Actimize/CVIP), used for re-screen gating.
+   - **POST /screening/eligibility**
+     → Input: entity profile + list version. Output: ELIGIBLE/NOT_ELIGIBLE with reason
+       (e.g., PREVIOUSLY_CLEARED_NO_CHANGE). Uses a deterministic hash of screening inputs
+       (name/DOB/listVersion/normalized fields) and CVIP to detect prior clearances.
+   - **POST /screening/submit**
+     → Enqueues only when **eligible**; uses `Idempotency-Key: hash(entityId+listVersion+normalizedProfile)`
+       to prevent duplicates; publishes to `screening.requests`.
+   - **GET /alerts/{alertId}** and **GET /alerts?entityId=...**
+     → Returns canonical alert(s) regardless of vendor (RDC/CLink), via adapter layer.
+   - **POST /actimize/dispositions**
+     → Writes final disposition into Actimize (system of record), emits `dispositions.events`
+       for consumers (analytics, MI, downstream ops).
+
+5) Re-screen Prevention (CVIP + change detection)
+   - Before any submit, **eligibility** checks: “Has this exact match (same entity, same list entry,
+     same normalized attributes) already been cleared?” If yes, **suppress** unless:
+     - Watchlist entry changed (e.g., sanctions update).
+     - Material client profile change (name, address, ownership, region).
+     - New exposure (new account/region/business line).
+
+6) Security, Audit, Observability
+   - Security: JWT from firm IdP (SIE entitlements), HTTPS everywhere, HMAC on outbound callbacks.
+   - Audit: Every decision writes an immutable trail (who/what/why), including diff of inputs used
+     for eligibility hashing and CVIP lookups.
+   - Metrics: Prometheus counters for eligibility outcomes, suppress vs submit ratio, vendor adapter errors,
+     Kafka lag; Grafana dashboards; Splunk for traceability.
+
+7) Rollout & Governance
+   - Phased cutover with feature flags; parallel run vs RPA for 2 weeks.
+   - Controls documented; sign-off from Compliance/Model Governance; DR tested.
+
+R (Result)
+----------
+- Manual steps reduced by **~75%**; average case turnaround improved by **>30%**.
+- **Centralized** dispositions in Actimize (single source of truth) across Wealth + ISG,
+  replacing decentralized workflows.
+- **Re-screen prevention** eliminated redundant alerts/screens for previously cleared cases
+  unless risk materially changed, and **reduced duplicate cross-line alerts** via parent/child linkage.
+- Uniform API contract hid RDC/CLink differences, simplified client integrations, and improved
+  auditability and developer onboarding.
+- SLA adherence improved significantly; compliance reviews passed with zero critical findings.
+
 
 Q: Tell me about a time you automated a manual process.
 
@@ -1525,6 +1695,47 @@ R: The teammate ramped up quickly and became a key contributor, while stakeholde
 This way, your introduction → becomes the foundation for multiple STAR answers.
 You can start with a light intro, then naturally segue into one of these STARs when the hiring manager asks for examples.
 
+
+"Tell me about a time you reduced false positives or optimized an alerting process."
+"Can you give an example where you improved efficiency in financial crime or sanctions screening?"
+"How have you handled duplicate or redundant alerts in your screening systems?"
+"Describe a project where you consolidated data or logic across different business units."
+"Tell me about a time you improved alert quality while still meeting regulatory requirements."
+
+Our screening systems in both Institutional Securities Group (ISG) and Wealth Management portfolios were generating duplicate alerts for the same high-risk client. This happened when the client appeared in multiple business lines and jurisdictions — for example, as a beneficial owner of a corporate account in ISG and also as an individual client in Wealth Management. The client’s international presence meant they were also recorded in multiple regional portfolios, further multiplying duplicate alerts. Increase the workload on level 1 level 2 analysts
+
+T (Task):
+I needed to design a solution that would consolidate these alerts without losing critical compliance coverage, ensuring analysts still saw all relevant relationships while reducing redundant workload.
+
+A (Action):
+Analyzed the alert generation process/logic across regions and portfolios.
+Implemented a parent–child alert logic, where one primary alert was created for the client and child alerts were linked for each business line or regional instance.Built rules to suppress alerts for inactive clients, re-surfacing them only upon re-exposure.
+Incorporated CVIP-based suppression logic to prevent re-alerting on known, previously cleared matches unless a risk profile change occurred.
+
+R (Result):
+Reduced total alert volume by ~30%, directly improving analyst efficiency.
+Maintained full regulatory auditability while eliminating redundant cross-portfolio/regional alerts.
+
+
+
+CVIP here likely stands for Customer/Client/Counterparty Verified Information Profile (naming can vary by firm).
+It’s essentially a central reference record that stores a client’s verified KYC details, sanctions screening results, and prior alert dispositions.
+
+When you incorporate CVIP-based suppression logic into sanctions or PEP screening, you’re doing this:
+
+Step 1 — Look up historical alert disposition
+When the screening system flags a match, it checks the CVIP record to see if this exact match (same client, same matched watchlist entry, same attributes) has already been investigated and cleared by compliance.
+
+Step 2 — Decide whether to suppress
+If it was previously cleared and there is no material change in the client’s risk profile (e.g., name change, address change, new ownership, sanctions list update), then the system automatically suppresses creating a new alert.
+
+Step 3 — Re-alert only when relevant
+If the client’s profile changes in a way that could affect risk (for example, they become active in a new region, get a new beneficial ownership, or the matched watchlist entry changes), the system will re-surface the alert for review.
+
+Why this matters
+Without CVIP suppression, you might see the same false positive hundreds of times — e.g., every time that client transacts or is re-screened. By leveraging CVIP, you avoid re-investigating the same cleared case unless there’s a genuine reason to reassess.
+
+
 Do you want me to also build you a STAR out of your Wealth Management Data Quality Platform project? That could serve as a 4th strong story, showing variety outside financial crimes.
 
 
@@ -1534,7 +1745,7 @@ STAR Story — Wealth Management Data Quality Platform
 
 Q: Tell me about a time you built a solution to improve data quality and reliability.
 
-S: In Morgan Stanley’s Wealth Management Technology division, our home loans group needed accurate, timely data for CCAR stress loss testing. The existing data pipeline often produced incomplete or inconsistent mortgage data, which created risk for regulatory reporting.
+S: In "M" ’s Wealth Management Technology division, our home loans group needed accurate, timely data for CCAR stress loss testing. The existing data pipeline often produced incomplete or inconsistent mortgage data, which created risk for regulatory reporting.
 T: I was tasked with designing a solution that would ensure the accuracy, completeness, and timeliness of mortgage data used in credit and market risk models.
 A: I designed and developed a Data Quality Platform (DQP) using event-driven microservices. The platform reconciled and validated data in real time, automated data quality checks, and logged discrepancies for review. I also built monitoring solutions to track data integrity and ensure transparency for risk and compliance teams.
 R: The DQP significantly improved data quality, reduced manual reconciliation effort, and ensured mortgage data was reliable for CCAR stress testing. It also increased stakeholder confidence in the home loans risk models and passed regulatory audits without findings.
@@ -1694,7 +1905,7 @@ public class BatchConfig {
 }
 
 1)Reader queries the CLIENTS table.
-2)Loads records lazily (thanks to JdbcCursorItemReader).
+2)Loads records lazily (thanks to JdbcCursorItemReader).Data is fetched as-needed during execution, not all at once.
 3)Processor applies risk screening logic per record.
 Example: Runs sanctions or PEP checks.
 
@@ -2537,4 +2748,2966 @@ public DefaultErrorHandler errorHandler(KafkaTemplate<Object, Object> template) 
 
 
 
+SELECT * FROM CLIENT — JDBC Cursor and Memory Behavior
+=======================================================
 
+Overview
+--------
+Yes, reading 50 million records at once into memory (especially via JdbcCursorItemReader without proper limits) 
+can cause an OutOfMemoryError (OOM) depending on:
+
+(i) JVM heap size  
+(ii) Row size (number of columns, payload size)  
+(iii) Buffering in JDBC driver  
+
+But in real-world legacy systems, it often didn't cause an immediate crash, because:
+
+- Some jobs processed line-by-line (streamed cursor-style) instead of holding all rows in memory.
+- Or the JVM was over-provisioned with huge heap (-Xmx16G) to brute-force through it.
+- Or the job failed occasionally due to OOM or network hiccups — which is part of the story.
+
+It usually worked — but was very fragile.  
+When volumes spiked or DB/network lag occurred, it would crash with out-of-memory errors or timeout, and the entire job had to be restarted.
+
+Conclusion:
+OOM is a risk — not a certainty — but the design is inherently poor and not scalable, which supports your modern Kafka-Spring Batch design as the fix.
+
+
+Cursor-Based Streaming
+----------------------
+This means:
+- The database opens a cursor.
+- The application fetches one row (or a few) at a time in streaming fashion.
+- Processing is done per row or per small batch.
+- Memory usage remains low because the entire result set is never fully loaded.
+
+Conditions:
+- If you don’t need sorting, joining, or random access, cursor-based streaming works well.
+
+Risk:
+- Database cursor timeout risks:
+  - If processing is slow or if network glitches happen, the DB might close the cursor, leading to errors.
+- No parallelism:
+  - Reading row-by-row serially.
+
+Spring Batch Cursor Reader Example
+----------------------------------
+Example: JdbcCursorItemReader (Spring Batch)
+
+@Bean
+public ItemReader<Client> clientReader() {
+    return new JdbcCursorItemReaderBuilder<Client>()
+        .dataSource(dataSource)
+        .sql("SELECT * FROM clients")
+        .rowMapper(new ClientRowMapper())
+        .build();
+}
+
+- This creates a streaming reader.
+- It opens a database cursor under the hood.
+- Fetches one row at a time (or in small DB driver-managed batches).
+- Avoids loading all rows into memory.
+
+
+1. Database Cursor Timeout
+--------------------------
+- A JDBC cursor stays open on the database for the entire duration of the job.
+- If your processing logic (e.g., risk scoring, alert generation, API calls) is slow — say a few seconds per record — the job might run for many hours.
+- Most databases (e.g., Oracle, DB2) have timeout limits for open cursors or idle connections.
+
+Result:
+- Errors like "ORA-01013: user requested cancel of current operation" or similar cursor timeout exceptions.
+
+
+2. Memory Pressure (Downstream Buffers)
+---------------------------------------
+Even though you're not loading all 50M rows into memory, some parts of the Spring Batch pipeline still buffer data:
+
+- If you set chunk(1000), Spring Batch buffers 1000 records in memory before writing.
+- If your processor or writer gets slower (e.g., API throttling, DB latency), this buffer can back up.
+- JVM heap memory starts growing because rows are waiting to be written.
+- Eventually results in OutOfMemoryError if GC can’t keep up.
+
+
+3. Error Handling Limitations
+-----------------------------
+- With a single open cursor, if any row causes an unrecoverable exception (e.g., null pointer, DB constraint violation), the entire job fails.
+- You have to restart from scratch — and the job will read all rows again from the top unless you explicitly track processed ones.
+- Cursor doesn’t allow fine-grained checkpointing or skip/retry flexibility.
+
+
+4. Scaling Is Impossible
+------------------------
+- Cursor-based readers are sequential.
+- You can’t parallelize the job easily across multiple threads or instances.
+
+
+Legacy Consequences
+-------------------
+In legacy setups, this kind of cursor-based job often led to:
+
+- Long-running jobs.
+- No fault tolerance (restart meant starting from scratch).
+- No parallelism (one thread reading one row at a time).
+- Delayed compliance SLAs.
+
+Memory Spikes — JVM vs Database
+===============================
+
+Definition
+----------
+Memory spikes refer to sudden, temporary increases in memory usage — either on the JVM (Java Virtual Machine) side or on the Database (DB) side — that can cause performance issues or even system crashes if not controlled.
+
+
+Memory Spikes – JVM Side (Spring Batch or any Java app)
+--------------------------------------------------------
+
+These typically happen when:
+
+1. Too many records are buffered in memory
+   - Example: chunk(10000) → 10,000 records sit in memory before writing.
+   - If processing or writing is slow, next chunks may stack up in memory.
+
+2. Large objects are created per record
+   - Especially if they’re not garbage-collected fast enough.
+   - Example: Every record generates a large Alert object, maybe with JSON blobs or nested objects.
+
+3. Slow Garbage Collection (GC)
+   - Caused by long-lived references or large heaps.
+   - If memory isn’t reclaimed quickly, JVM heap grows.
+   - Leads to memory spikes or OutOfMemoryError.
+
+4. Memory leaks from poor coding
+   - Example: static maps holding onto objects
+   - Unclosed streams
+   - Oversized or unmanaged caches
+
+Why Paging Is Important
+========================
+
+1. Prevents Out of Memory (OOM) Errors
+--------------------------------------
+- Without paging, Spring Batch would try to read all 50M records at once from the database.
+- This leads to heap exhaustion, resulting in OutOfMemoryError.
+
+2. Avoids Long DB Locks or Timeouts
+------------------------------------
+- A single query fetching millions of rows:
+  - Locks more resources.
+  - Takes longer, increasing chance of timeout or network failure.
+  - Can block other users or jobs.
+
+3. Enables Scalability
+-----------------------
+- Paging allows you to process data in manageable pieces (e.g., 10,000 rows at a time).
+- Combined with chunking, each batch of data is read, processed, written, and committed — efficiently and safely.
+
+4. Better Error Recovery
+-------------------------
+- If a job fails mid-way, checkpointing with paging helps it resume from the failed page/chunk instead of restarting from scratch.
+
+
+Checkpointing: JdbcCursorItemReader vs JdbcPagingItemReader
+============================================================
+
+Checkpointing with JdbcCursorItemReader (How it works)
+-------------------------------------------------------
+- Spring Batch keeps track of how many records were read (i.e., the current item count).
+- At every commit interval (e.g., chunk(1000)), Spring Batch stores metadata in BATCH_STEP_EXECUTION_CONTEXT table:
+
+Example:
+READ_COUNT = 1000, 2000, 3000, ...
+
+On restart after failure:
+- Reopens the JdbcCursorItemReader
+- Fast-forwards (skips) already-read records (e.g., skips first 3000 rows)
+- Then continues from record 3001
+
+Limitations with JdbcCursorItemReader
+-------------------------------------
+- DB cursor must support skipping — Spring Batch internally loops and discards rows to resume from the checkpoint.
+- This is inefficient for large numbers (e.g., skipping 40M rows will take time!)
+- Cannot resume at exact row-level granularity if record order isn't deterministic.
+- If the record set changes between runs (records inserted, deleted) → resume may be inaccurate.
+- Not suitable for very large datasets (e.g., 50 million rows) — skipping is slow, and DB session may expire.
+
+Paging is Better for Checkpoints
+--------------------------------
+- JdbcPagingItemReader uses startAfter ID or OFFSET — avoids row-by-row skipping.
+- Spring Batch remembers the last primary key or offset instead of skipping.
+
+Example:
+SELECT * FROM CLIENTS WHERE id > 300000 ORDER BY id LIMIT 1000;
+→ More efficient, resumable, and scalable.
+
+Comparison Table
+----------------
+Feature                        | JdbcCursorItemReader    | JdbcPagingItemReader
+------------------------------|--------------------------|-------------------------
+Resume from checkpoint?       | Yes, by skipping rows    | Yes, via offset/key
+Efficient for large data?     | No — slow skip loop      | Yes — direct offset
+Order-sensitive?              | Needs deterministic order| More stable with sort key
+Best for < 1M records         | Yes                      | Yes
+Best for 10M+ records         | No                       | Yes
+
+
+Mechanism: How Offset or Primary Key is Remembered
+--------------------------------------------------
+- When using JdbcPagingItemReader (with a PagingQueryProvider), Spring Batch stores the last read key or offset in the BATCH_STEP_EXECUTION_CONTEXT table.
+
+What is stored in the execution context?
+----------------------------------------
+Spring Batch stores entries like:
+FETCH_PAGE = 0
+START_AFTER_VALUE = 30000
+
+This depends on your PagingQueryProvider setup. For example:
+factory.setSortKey("id");
+
+Then Spring Batch remembers the last "id" value retrieved from the previous chunk (e.g., id = 30000).
+
+Resume Behavior
+---------------
+If job fails while processing chunk id = 30001 to 31000:
+- On restart, Spring Batch uses:
+  START_AFTER_VALUE = 30000
+- It executes:
+  SELECT * FROM clients WHERE id > 30000 ORDER BY id ASC LIMIT 1000
+- It continues from where it left off — without manually skipping rows.
+
+Analogy
+-------
+- JdbcCursorItemReader: Remembers the page number but has to flip through every page to get there again.
+- JdbcPagingItemReader: Remembers the chapter and page number and jumps directly to the right spot.
+
+Summary
+-------
+- JdbcPagingItemReader uses a sort key (e.g., id) to keep track of the last read record.
+- Job execution context stores that key → re-used during restart.
+- Enables efficient, fast resumption — ideal for large-scale jobs like 50M-record screening.
+
+
+
+
+Spring Batch Kafka Publishing Job (Single-Threaded)
+===================================================
+
+Overview
+--------
+This Spring Batch job reads client records from a database in chunks (e.g., 10,000 at a time) and publishes them to Kafka using a KafkaTemplate.
+
+This is a simple, single-threaded version. It can be parallelized later.
+
+Spring Batch Kafka Publishing Example
+-------------------------------------
+
+@Configuration
+@EnableBatchProcessing
+public class BatchKafkaPublisherConfig {
+
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+
+    @Autowired
+    private DataSource dataSource;
+
+    @Autowired
+    private KafkaTemplate<String, Client> kafkaTemplate;
+
+    // === JOB ===
+    @Bean
+    public Job kafkaPublisherJob() {
+        return jobBuilderFactory.get("kafkaPublisherJob")
+            .start(publishClientsStep())
+            .build();
+    }
+
+    // === STEP ===
+    @Bean
+    public Step publishClientsStep() {
+        return stepBuilderFactory.get("publishClientsStep")
+            .<Client, Client>chunk(10000) // read 10K records at a time
+            .reader(clientReader())
+            .processor(passThroughProcessor())
+            .writer(kafkaWriter())
+            .build();
+    }
+
+    // === READER: Reads from DB ===
+    @Bean
+    public ItemReader<Client> clientReader() {
+        return new JdbcPagingItemReaderBuilder<Client>()
+            .name("clientReader")
+            .dataSource(dataSource)
+            .queryProvider(queryProvider()) // handles paging
+            .pageSize(10000)
+            .rowMapper(new ClientRowMapper())
+            .build();
+    }
+
+    @Bean
+    public PagingQueryProvider queryProvider() {
+        SqlPagingQueryProviderFactoryBean factory = new SqlPagingQueryProviderFactoryBean();
+        factory.setDataSource(dataSource);
+        factory.setSelectClause("SELECT *");
+        factory.setFromClause("FROM clients");
+        factory.setSortKey("id"); // must be sortable column
+
+        try {
+            return factory.getObject();
+        } catch (Exception e) {
+            throw new RuntimeException("Error creating paging query", e);
+        }
+    }
+
+    // === PROCESSOR (no transformation needed) ===
+    @Bean
+    public ItemProcessor<Client, Client> passThroughProcessor() {
+        return client -> client; // no transformation here
+    }
+
+    // === WRITER: Publishes to Kafka ===
+    @Bean
+    public ItemWriter<Client> kafkaWriter() {
+        return clients -> {
+            for (Client client : clients) {
+                String key = String.valueOf(client.getId()); // partition key
+                kafkaTemplate.send("screening.jobs", key, client);
+            }
+        };
+    }
+}
+
+Kafka Producer Configuration (application.yml)
+----------------------------------------------
+spring:
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      bootstrap-servers: localhost:9092
+
+Requirements
+------------
+- Client class must be serializable (e.g., Jackson-annotated for JSON).
+- Kafka ProducerFactory and KafkaTemplate<String, Client> must be configured.
+- Kafka topic "screening.jobs" must exist or be auto-created.
+
+Result
+------
+- Spring Batch reads clients from DB in chunks of 10,000.
+- Each chunk is processed in-memory and sent to Kafka.
+- One Kafka message per client.
+- Kafka key is set to client.id to support partitioning by ID.
+
+
+
+
+Spring Batch Native Parallelization
+===================================
+
+Core Concept: Partitioned Step (Master/Worker Pattern)
+------------------------------------------------------
+Spring Batch natively supports parallelization using partitioned steps.
+
+- A step is split into partitions.
+- Each partition processes a subset of data (e.g., ID ranges).
+- Partitions run in parallel using a TaskExecutor (multi-threaded).
+- Each partition runs the same "slave" step with different parameters (min/max ID).
+
+This is ideal for large jobs (e.g., 50M records) where sequential reading is too slow.
+
+How It Works
+------------
+Job
+ └── Master Step (partitioned)
+       ├── Partition 1: minId = 1, maxId = 1_000_000
+       ├── Partition 2: minId = 1_000_001, maxId = 2_000_000
+       ├── Partition 3: ...
+       └── Each runs the same slave step (in parallel)
+
+Key Components
+--------------
+1. Partitioner: splits the data by column (e.g., ID) across N partitions.
+2. Master Step: coordinates all partitions.
+3. Slave Step: the actual step that runs reader → processor → writer.
+4. TaskExecutor: runs partitions concurrently.
+
+Use Case: Parallel Kafka Publishing
+-----------------------------------
+- We partition the "clients" table by ID.
+- Each partition reads a separate ID range using JdbcPagingItemReader.
+- Each record is published to Kafka using KafkaTemplate.
+
+Example Implementation
+======================
+
+1. ColumnRangePartitioner.java
+------------------------------
+public class ColumnRangePartitioner implements Partitioner {
+
+    @Autowired
+    private DataSource dataSource;
+
+    @Override
+    public Map<String, ExecutionContext> partition(int gridSize) {
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+
+        long min = jdbcTemplate.queryForObject("SELECT MIN(id) FROM clients", Long.class);
+        long max = jdbcTemplate.queryForObject("SELECT MAX(id) FROM clients", Long.class);
+
+        long targetSize = (max - min) / gridSize + 1;
+
+        Map<String, ExecutionContext> result = new HashMap<>();
+
+        long start = min;
+        long end = start + targetSize - 1;
+
+        for (int i = 0; i < gridSize; i++) {
+            ExecutionContext context = new ExecutionContext();
+            context.putLong("minValue", start);
+            context.putLong("maxValue", Math.min(end, max));
+            result.put("partition" + i, context);
+
+            start = end + 1;
+            end += targetSize;
+        }
+
+        return result;
+    }
+}
+
+2. BatchKafkaPublisherConfig.java
+---------------------------------
+@Configuration
+@EnableBatchProcessing
+public class BatchKafkaPublisherConfig {
+
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+
+    @Autowired
+    private DataSource dataSource;
+
+    @Autowired
+    private KafkaTemplate<String, Client> kafkaTemplate;
+
+    // --- Master Job Entry Point ---
+    @Bean
+    public Job kafkaPublisherJob() {
+        return jobBuilderFactory.get("kafkaPublisherJob")
+            .start(masterStep()) // partitioned step
+            .build();
+    }
+
+    // --- Master Step: Partitioner + TaskExecutor ---
+    @Bean
+    public Step masterStep() {
+        return stepBuilderFactory.get("masterStep")
+            .partitioner("slaveStep", partitioner())
+            .step(slaveStep()) // the actual work step
+            .gridSize(4) // number of partitions.. You decide
+            .taskExecutor(new SimpleAsyncTaskExecutor()) // parallel threads
+            .build();
+    }
+
+    @Bean
+    public Partitioner partitioner() {
+        ColumnRangePartitioner partitioner = new ColumnRangePartitioner();
+        partitioner.setDataSource(dataSource);
+        return partitioner;
+    }
+
+    // --- Slave Step ---
+    @Bean
+    public Step slaveStep() {
+        return stepBuilderFactory.get("slaveStep")
+            .<Client, Client>chunk(1000)
+            .reader(clientReader(null, null))
+            .processor(passThroughProcessor())
+            .writer(kafkaWriter())
+            .build();
+    }
+
+    // --- Reader: JdbcPagingItemReader scoped to partition ---
+    @Bean
+    @StepScope
+    public JdbcPagingItemReader<Client> clientReader(
+        @Value("#{stepExecutionContext['minValue']}") Long minValue,
+        @Value("#{stepExecutionContext['maxValue']}") Long maxValue) {
+
+        return new JdbcPagingItemReaderBuilder<Client>()
+            .name("clientReader")
+            .dataSource(dataSource)
+            .queryProvider(queryProvider(minValue, maxValue))
+            .pageSize(1000)
+            .rowMapper(new ClientRowMapper())
+            .build();
+    }
+
+    @SneakyThrows
+    public PagingQueryProvider queryProvider(Long min, Long max) {
+        SqlPagingQueryProviderFactoryBean factory = new SqlPagingQueryProviderFactoryBean();
+        factory.setDataSource(dataSource);
+        factory.setSelectClause("SELECT *");
+        factory.setFromClause("FROM clients");
+        factory.setWhereClause("id >= " + min + " AND id <= " + max);
+        factory.setSortKey("id");
+        return factory.getObject();
+    }
+
+    // --- Processor (pass-through) ---
+    @Bean
+    public ItemProcessor<Client, Client> passThroughProcessor() {
+        return client -> client;
+    }
+
+    // --- Writer: Publish to Kafka ---
+    @Bean
+    public ItemWriter<Client> kafkaWriter() {
+        return clients -> {
+            for (Client client : clients) {
+                String key = String.valueOf(client.getId());
+                kafkaTemplate.send("screening.jobs", key, client);
+            }
+        };
+    }
+}
+
+3. application.yml
+------------------
+spring:
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      bootstrap-servers: localhost:9092
+
+Summary
+=======
+- Partitioned steps enable true parallel processing within Spring Batch.
+- This model is scalable, fault-tolerant, and ideal for high-volume jobs like 50M+ records.
+- Each partition handles a range of IDs using JdbcPagingItemReader with custom query bounds.
+- KafkaTemplate is thread-safe and supports concurrent publishing.
+
+Next Steps
+----------
+- Add retry logic or DLQ handler if needed.
+- Monitor with Spring Batch job repository or Grafana/Prometheus.
+- For cross-node execution: explore remote chunking or Spring Cloud Task.
+
+----------------------
+You can even make gridSize dynamic by computing it at runtime based on total row count:
+
+gridSize = (maxId - minId) / chunkSize
+
+@Value("#{jobParameters['gridSize']}")
+
+
+
+********************************************************************************************************************
+📌 GOAL: Process 50M client records efficiently with Spring Batch + Kafka
+-------------------------------------------------------------
+
+WHY NOT LEGACY WAY?
+---------------------
+❌ Legacy job fetched all 50M records in one DB query.
+   - Loaded into memory → OutOfMemoryError risk.
+   - Slow → sequential processing.
+   - Failure = restart everything from scratch.
+   - No parallelism, no retry logic, no observability.
+
+✅ New design: Spring Batch + Kafka + Partitioning + Chunking
+-------------------------------------------------------------
+================================================================================
+SPRING BATCH + KAFKA ARCHITECTURE — CLIENT SCREENING (50 MILLION RECORDS)
+================================================================================
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            ✅ ARCHITECTURE OVERVIEW                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+                                  ┌──────────────────────┐
+                                  │      JobLauncher     │
+                                  └─────────┬────────────┘
+                                            │
+                                            ▼
+                                  ┌──────────────────────────────┐
+                                  │     Spring Batch Job         │
+                                  └─────────┬────────────────────┘
+                                            │
+                         ┌──────────────────┴──────────────────┐
+                         ▼                                     ▼
+        ┌────────────────────────────┐         ┌──────────────────────────────┐
+        │  Master Step (Split Step)  │         │ ClientIdRangePartitioner     │
+        │  Uses gridSize = 5         │         │ → Divides by clientId range  │
+        └────────────────────────────┘         └──────────────────────────────┘
+                         │
+                         ▼
+               ┌────────────────────────────┐
+               │ TaskExecutorPartitionHandler│
+               │ → 5 parallel worker threads │
+               └────────────────────────────┘
+                         │
+         ┌───────────────┴───────────────┐
+         ▼                               ▼
+ ┌────────────────┐              ┌────────────────┐
+ │ Worker Step 0  │      ...     │ Worker Step 4  │
+ └────────────────┘              └────────────────┘
+         │                               │
+         ▼                               ▼
+ ┌──────────────────────────────┐  ┌──────────────────────────────┐
+ │ JdbcPagingItemReader         │  │ JdbcPagingItemReader         │
+ │ - pageSize = 10,000          │  │ - pageSize = 10,000          │
+ │ - WHERE id BETWEEN :min AND :max │ - ORDER BY id              │
+ └──────────────────────────────┘  └──────────────────────────────┘
+         │                               │
+         ▼                               ▼
+ Buffered in memory (10,000 records)  → Split into:
+         ┌──────────────────────────────┐
+         │ Chunk size = 1,000           │
+         │ → Process → Kafka → Commit   │
+         └──────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    🧠 MASTER JOB & PARTITION STRATEGY                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+1. MASTER JOB
+--------------
+- Starts Spring Batch Job: `clientPartitionedJob()`
+- Master Step uses `ClientIdRangePartitioner` to create 5 partitions:
+
+    Example Plan:
+      - Partition 0: clientId 1 to 10,000,000
+      - Partition 1: clientId 10,000,001 to 20,000,000
+      - Partition 2: clientId 20,000,001 to 30,000,000
+      - Partition 3: clientId 30,000,001 to 40,000,000
+      - Partition 4: clientId 40,000,001 to 50,000,000
+
+- Each assigned to its own thread using `SimpleAsyncTaskExecutor`.
+
+2. SPLIT / PARTITIONING LOGIC
+------------------------------
+- Implements Spring Batch's `Partitioner` interface.
+- Queries MIN and MAX client_id
+- Splits into 5 non-overlapping ranges
+- Each partition gets its own ExecutionContext:
+    → `minId`, `maxId`
+    → Injected into Reader via @StepScope
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           🔁 PAGING + CHUNKING                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+3. PAGING + CHUNKING
+----------------------
+- Reader: `JdbcPagingItemReader`
+- Uses `PagingQueryProvider`:
+     WHERE client_id BETWEEN :minId AND :maxId
+     ORDER BY client_id
+
+- Settings:
+    pageSize   = 10,000 → DB fetch size per query
+    chunkSize  = 1,000  → # of records processed & committed
+
+- 10,000 rows are buffered in memory
+  → Broken into 10 chunks of 1,000
+  → For each chunk:
+      → Read → Process → Kafka → Commit
+
+- Ensures safety, avoids OOM, and allows precise rollback
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          🔄 PRODUCER + CONSUMER FLOW                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+4. KAFKA PRODUCE (WORKER)
+--------------------------
+- Each worker thread acts as Kafka **producer**
+- For each chunk (1,000 records):
+    → Transform clients to work units
+    → Publish to Kafka topic `screening.jobs`
+
+- Kafka config:
+    Topic: `screening.jobs`
+    Partitioning strategy: by clientId (optional for ordering)
+    Each message = one work unit
+
+5. SCREENING WORKERS (CONSUMERS)
+---------------------------------
+- Microservices consume from Kafka topic
+- Belong to group `screening-workers-group`
+- Each message triggers:
+    → Screening API call (e.g., RDC, Clink)
+    → Alert generation → DB or further Kafka
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            💾 CHECKPOINTING                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+6. CHECKPOINTING
+-----------------
+- Spring Batch tracks chunk progress using `JobRepository`
+- After each successful write, a checkpoint is stored
+- If job fails:
+    → Only restarts from last **committed chunk**
+    → No data loss or duplication
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                             🚀 ADVANTAGES                                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+7. ADVANTAGES
+--------------
+✔️ Parallelism = Faster throughput (5–10x)
+✔️ Paging avoids memory blow-up
+✔️ Chunking gives fine-grained rollback and commit control
+✔️ Scalable: Easily increase partitions or consumers
+✔️ Fault-tolerant and resumable
+✔️ Kafka decouples batch and processing
+✔️ Per-partition monitoring, retry, and skip logic
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                     🔁 CHUNKING vs PAGING RELATIONSHIP                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+✳️ RELATIONSHIP: CHUNKING vs PAGING
+-------------------------------------
+- Paging controls DB fetch size → pageSize = 10,000
+- Chunking controls commit granularity → chunkSize = 1,000
+
+💡 You can set them equal, but they serve different purposes.
+Best practice: keep pageSize > chunkSize.
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         🎯 USE CASE OUTCOME                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+This architecture replaced a legacy AML screening batch system.
+
+✅ Improved processing time by 40%  
+✅ Scaled to handle 100M+ clients  
+✅ Decoupled batch + downstream alerting via Kafka  
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        🔧 CONFIGURATION SNIPPETS                             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+// ======= Master Step =======
+.stepBuilderFactory.get("masterPartitionStep")
+    .partitioner("workerStep", clientIdRangePartitioner)
+    .step(workerStep())
+    .gridSize(5)
+    .taskExecutor(new SimpleAsyncTaskExecutor())  // optional parallel execution
+
+// ======= Worker Step =======
+.chunk(1000)
+.reader(clientPagingReader(minId, maxId))
+.processor(clientProcessor())
+.writer(kafkaWriter())
+
+// ======= Reader =======
+JdbcPagingItemReader<Client>:
+    - pageSize = 10000
+    - WHERE id BETWEEN :minId AND :maxId
+
+// ======= Partitioner =======
+ClientIdRangePartitioner:
+    - Queries MIN(id), MAX(id)
+    - Creates 5 ExecutionContexts with minId/maxId ranges
+
+pageSize (Reader-level)
+Used by paging readers (like JdbcPagingItemReader).
+Controls how many records are fetched from the database per query.
+
+Example: pageSize = 10,000 → reader queries DB for 10,000 rows at a time.
+
+🔹 chunkSize (Step-level)
+Controls how many items go through read → process → write cycle before a commit.
+
+Example: chunkSize = 1,000 means:
+Read 1,000 records (from reader buffer)
+Process all 1,000
+Write all 1,000 in one go
+Then commit the transaction
+
+You may want:
+pageSize = 10,000: efficient DB calls (fewer trips to DB)
+chunkSize = 1,000: commit in smaller batches → better fault tolerance & resource usage
+
+Think of pageSize as how many groceries you bring from the warehouse
+chunkSize is how many items you bag at the counter before sealing
+
+****************************NOW FULLY PROCESSED************************
+
+================================================================================
+SPRING BATCH → KAFKA → SCREENING ENGINE → ACTIMIZE (FULL ARCHITECTURE)
+================================================================================
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         ✅ SPRING BATCH PRODUCER FLOW                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+1. Spring Batch Master Job:
+   - Divides job into 5 partitions (via ClientIdRangePartitioner)
+   - Each partition is assigned to a parallel worker thread
+
+2. Each Spring Batch Worker:
+   → Reads client records from DB using JdbcPagingItemReader
+   → Buffers 10,000 records in memory (`pageSize`)
+   → Processes records in chunks of 1,000 (`chunkSize`)
+   → Transforms each client into a screening work unit
+   → Publishes each work unit to Kafka topic `screening.jobs`:
+
+      kafkaTemplate.send("screening.jobs", clientId, workUnit);
+
+   ✅ Key: `clientId`
+   → Used by Kafka to hash and assign partition
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                             🔁 KAFKA SHARDING LOGIC                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Kafka Topic: `screening.jobs`
+Kafka Partitions: 5
+
+✔️ Kafka decides partition based on clientId:
+    partition = hash(clientId) % 5
+
+✔️ Even though Spring Batch has 5 threads:
+    → They can all write to any partition
+    → Sharding is based on **data (clientId)**, not thread ID
+
+✔️ This provides:
+    - Balanced Kafka partitions
+    - Maintained ordering per client
+    - Simpler batch logic (no partition tracking needed)
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                     🧼 KAFKA CONSUMERS (SCREENING WORKERS)                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Kafka Consumer Group: `screening-workers-group`
+Microservices consuming from `screening.jobs` topic.
+
+Each consumer instance:
+  → Consumes work units from its assigned Kafka partition
+  → For each message:
+      - Parses client screening request
+      - Invokes external APIs (e.g., RDC, Clink, WorldCheck)
+      - Combines response into alert
+
+  → If screening hit found:
+      - Writes the alert to Actimize or downstream alerting system
+
+Example Flow:
+  Kafka Message:
+     { clientId: 12345, name: "John Doe", ... }
+     ↓
+  Screening Engine:
+     → Calls RDC / Clink / WorldCheck
+     ↓
+  Alert:
+     → Alert created: "PEP Match - Medium Risk"
+     ↓
+  Store in Actimize
+
+✔️ Alerts are ingested into Actimize using APIs, MQ, or file drop.
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          🧼 IDEMPOTENCY STRATEGY (CRITICAL)                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Kafka guarantees at-least-once delivery to consumers.
+So messages may be **replayed** (on restart, retry, rebalance)
+
+✅ Idempotency is required in **screening consumers**:
+
+✔️ Recommended key:
+    workUnitId = clientId + batchId (the batchJobId already represents a timestamped job run)
+
+✔️ Idempotency Enforcement:
+    - Check if alert for this workUnitId already exists
+    - If yes → skip
+    - If no → process and store
+
+✔️ Enforce via:
+    - DB unique constraints
+    - Redis/memory cache
+    - Deduplication table or tracking service
+	
+String workUnitId = clientId + "-" + batchJobId;
+
+/***if (isAlreadyProcessed(workUnitId)) {
+    log.info("Skipping duplicate: " + workUnitId);
+    return;
+}
+
+ScreeningResult result = screeningEngine.process(clientData);
+if (result.isHit()) {
+    alertService.sendToActimize(result);
+}
+
+markAsProcessed(workUnitId); ***/
+	
+Kafka broker ensures no duplicates in the topic (from producer)
+But Kafka consumer still needs to be idempotent
+→ because message reprocessing is possible and expected	 (eg consumer crashes after processing a message but before commiting the offset,
+kafka will deliver the message to consumer again)
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                   ✅ END-TO-END PIPELINE: ARCHITECTURE SUMMARY               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+1. Data Source (DB)
+    └── 50 million client records
+
+2. Spring Batch Job
+    ├── Partitioned into 5 ranges
+    ├── Each worker:
+    │     ├─ Reads clientId range via JdbcPagingItemReader
+    │     ├─ Processes 1,000-client chunks
+    │     └─ Publishes work units to Kafka:
+    │          Topic: screening.jobs
+    │          Key: clientId
+    │          Value: WorkUnit JSON
+    └── Kafka handles sharding
+
+3. Kafka Broker
+    └── Topic: screening.jobs (5 partitions)
+    └── Distributes based on `hash(clientId)`
+
+4. Screening Consumers (Microservices)
+    └── Belong to group: screening-workers-group
+    └── Each:
+        ├─ Listens to assigned partition
+        ├─ Calls external screening APIs (RDC, Clink, etc.)
+        ├─ Creates Alert (if match)
+        └─ Sends alert to Actimize
+
+5. Actimize System
+    └── Ingests alert via:
+        - Web API
+        - MQ
+        - File drop
+    └── Triggers case creation or workflow
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                     🔄 COMPARISON: KEYED VS EXPLICIT PARTITION               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+| Strategy                  | clientId Key (Preferred)     | Explicit Partition Mapping    |
+|--------------------------|-------------------------------|-------------------------------|
+| Kafka partitioning       | Based on key hash             | Manually assigned by producer |
+| Load balancing           | ✔️ Automatic                  | ❌ Manual                     |
+| Ordering per client      | ✔️ Guaranteed                 | ❌ Must be manually grouped   |
+| Simplicity               | ✔️ Clean                      | ❌ Complex                    |
+| Scaling consumers        | ✔️ Easy                       | ✔️ Easy                       |
+| Changing partition count | ✔️ Supported                 | ❌ Breaks hardcoded mapping   |
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           ✅ FINAL RECOMMENDATION                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+✔ Use:
+   kafkaTemplate.send("screening.jobs", clientId, workUnit);
+
+✔ Let Kafka handle partitioning by clientId
+✔ Avoid explicit partition mapping
+✔ Enforce idempotency downstream in consumers
+✔ Maintain per-client ordering & scalability
+✔ Send alerts to Actimize only once after successful screening
+✔ Monitor Kafka lags and retries
+✔ Optionally add DLQ for poison messages
+
+
+================================================================================
+🧾 BATCH JOB ID (batchJobId) — STABILITY, DEDUPLICATION, AND ROW MAPPING
+================================================================================
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                      ✅ IS batchJobId COMMON ACROSS 50M ROWS?                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+✔️ YES — absolutely.
+
+A single Spring Batch job run processes all 50 million rows,
+and the same `batchJobId` should be used across:
+   - All threads
+   - All partitions
+   - All Kafka messages
+
+This allows:
+
+  ✔️ Unique job tracking
+  ✔️ Stable `workUnitId = clientId + "-" + batchJobId`
+  ✔️ Reliable idempotency (check once, skip duplicates)
+  ✔️ Per-job observability
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        🆔 EXAMPLE batchJobId VALUES                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+| Date        | Strategy           | Example batchJobId          |
+|-------------|--------------------|------------------------------|
+| 2025-08-07  | Run ID             | 20250807_run001              |
+| 2025-08-07  | UUID suffix        | 20250807_a9c3f1              |
+| 2025-08-07  | JobExecution ID    | jobExecId_12453              |
+| 2025-08-07  | Environment-specific | prod_20250807_job1         |
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                      📦 EXAMPLE workUnitId VALUES (Same Batch)              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+batchJobId = 20250807_run001
+
+| clientId | workUnitId                |
+|----------|---------------------------|
+| 12345    | 12345-20250807_run001     |
+| 67890    | 67890-20250807_run001     |
+| 99999    | 99999-20250807_run001     |
+
+✔️ All 50M rows share same `batchJobId` for this job run  
+✔️ Ensures deduplication is consistent and simple
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          🛠️ WHERE TO STORE batchJobId                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+✅ Generate ONCE — at job start  
+✅ Pass as a `JobParameter` to all steps
+
+Java Example:
+--------------
+@Bean
+public JobParameters jobParameters() {
+    Map<String, JobParameter> params = new HashMap<>();
+    params.put("batchJobId", new JobParameter("20250807_run001"));
+    return new JobParameters(params);
+}
+
+Then access in step-scoped beans:
+----------------------------------
+@Value("#{jobParameters['batchJobId']}")
+private String batchJobId;
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                             ✅ SUMMARY: batchJobId                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+| Concept                            | Answer                                  |
+|------------------------------------|------------------------------------------|
+| Is batchJobId common across 50M?   | ✅ Yes — one value per job run           |
+| Why?                               | Enables deduplication and traceability   |
+| Format examples                    | 20250807_run001, jobExecId_4321, etc.    |
+| Where generated                    | JobLauncher / job start                  |
+| Where used                         | Processors, Kafka writers, dedup logic   |
+
+================================================================================
+📎 ROW MAPPING: ASSUMPTION THAT EACH clientId → 1 ROW
+================================================================================
+
+✔️ This design assumes:
+   - One row per clientId in source DB
+   - One Kafka message per clientId
+   - One work unit per clientId
+   - One possible alert (→ Actimize) per clientId
+
+This enables:
+  ✔️ Simple `workUnitId = clientId + "-" + batchJobId`
+  ✔️ 1:1 mapping for deduplication
+  ✔️ No need to hash payloads or merge data
+
+═══════════════════════════════════════════════════════════════════════════════
+⚠️ WHAT IF A CLIENT ID HAS MULTIPLE ROWS?
+═══════════════════════════════════════════════════════════════════════════════
+
+If multiple rows exist per clientId, then:
+  ❗️ A single `clientId` would generate multiple Kafka messages
+  ❗️ Using `clientId + batchJobId` would cause duplicate workUnitIds
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                       ✅ OPTIONS FOR MULTI-ROW SCENARIOS                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+✅ OPTION 1: Add a Secondary Key
+-------------------------------
+workUnitId = clientId + "-" + rowId + "-" + batchJobId
+
+- `rowId` = primary key, account ID, address ID, etc.
+- Ensures each message has a unique workUnitId
+
+✅ OPTION 2: Hash the Payload
+-------------------------------
+String json = objectMapper.writeValueAsString(row);
+String workUnitId = clientId + "-" + batchJobId + "-" + hash(json);
+
+- Good for catching exact duplicates
+- More CPU-intensive
+- Sensitive to non-deterministic fields (e.g., timestamps)
+
+✅ OPTION 3: Aggregate Rows by clientId
+---------------------------------------
+SELECT client_id, JSON_AGG(...) FROM clients GROUP BY client_id
+
+- Sends **one message per client**
+- Easier to manage deduplication
+- Requires pre-aggregation in DB or batch layer
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              ✅ TL;DR SUMMARY                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+| Question                             | Answer                                 |
+|--------------------------------------|-----------------------------------------|
+| Does design assume 1 row per client? | ✅ Yes                                   |
+| Is that safe?                        | ✅ Yes — 1:1 clean mapping               |
+| What if not true?                    | ❗️ Adjust `workUnitId` logic            |
+| How to handle it?                    | Add rowId, hash the payload, or aggregate |
+
+
+================================================================================
+🧾 KAFKA PRODUCER: KEY VS. WORKUNIT ID — PARTITIONING & IDEMPOTENCY
+================================================================================
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                  🔑 KAFKA KEY VS. 🧾 workUnitId — PURPOSE AND USE            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Kafka messages have two important identifiers:
+
+1. 🔑 Kafka Key → used by Kafka broker for partitioning
+2. 🧾 workUnitId → used by YOU (the consumer) for idempotency tracking
+
+| Purpose              | Field Used                              | Used By         |
+|----------------------|------------------------------------------|-----------------|
+| Kafka partitioning   | `key = clientId`                         | Kafka broker    |
+| Idempotency check    | `workUnitId = clientId + "-" + batchJobId` | Consumer logic  |
+
+✔️ Kafka key = routing  
+✔️ workUnitId = deduplication
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                   ✅ PRODUCER LOGIC USING clientId AND batchJobId           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Java Code:
+----------
+
+String kafkaKey = String.valueOf(client.getId()); // Used for partitioning
+String workUnitId = client.getId() + "-" + batchJobId; // For idempotency
+
+WorkUnit workUnit = new WorkUnit(workUnitId, client);
+
+kafkaTemplate.send("screening.jobs", kafkaKey, workUnit);
+✔️ clientId ensures consistent partitioning
+✔️ workUnitId embedded in payload for downstream deduplication
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ 🧱 KAFKA PARTITIONING LOGIC ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Kafka internally computes:
+partition = hash(clientId) % number_of_partitions
+✔️ Guarantees same clientId always routes to the same Kafka partition
+✔️ Ensures ordering for all events from same client
+✔️ Allows horizontal scaling
+
+No special Kafka config needed — key is passed in:
+kafkaTemplate.send(String topic, K key, V value);
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ 📦 WORKUNIT OBJECT STRUCTURE ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+public class WorkUnit {
+    private String workUnitId;   // For idempotency
+    private Client client;       // Full client details
+
+    // Getters, Setters, Constructors
+}
+✔️ workUnitId → checked by consumer for deduplication
+✔️ client → passed to screening APIs (RDC, Clink, WorldCheck)
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ 🧾 EXAMPLE JSON PAYLOAD SENT TO KAFKA ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+{
+  "workUnitId": "123456-20250807_run001",
+  "client": {
+    "id": 123456,
+    "name": "John Doe",
+    "dob": "1980-01-01",
+    "country": "US",
+    "pep": false
+  }
+}
+✔️ Clear and unique per client per batch
+✔️ Supports both screening and idempotency
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ 🔐 CONSUMER — IDEMPOTENCY CHECK ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Consumer logic:
+
+String workUnitId = workUnit.getWorkUnitId();
+
+if (isAlreadyProcessed(workUnitId)) {
+    // skip duplicate
+    return;
+}
+
+ScreeningResult result = screenClient(workUnit.getClient());
+sendAlertToActimize(result);
+
+markAsProcessed(workUnitId);
+✔️ Idempotency is based on workUnitId
+✔️ Consumer stores processed IDs in:
+
+DB (with unique constraint)
+Redis
+Compacted Kafka topic
+
+❌ Kafka does NOT deduplicate at consumer level — your logic must do it
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ ✅ SUMMARY TABLE ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Component	Value	Purpose
+Kafka key	clientId	Kafka uses this to shard messages
+workUnitId	clientId + "-" + batchJobId	Used for deduplication by consumer
+Kafka message	WorkUnit object (JSON)	Includes both key & client data
+Payload content	client details + workUnitId	Needed for screening and alerts
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ ✅ RECOMMENDED PRACTICES ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+✔️ Use clientId as Kafka key → for partitioning and ordering
+✔️ Embed workUnitId = clientId + batchJobId in payload → for idempotency
+✔️ ❗ Avoid adding timestamp or non-deterministic data to workUnitId
+✔️ Generate batchJobId once per job run and pass via JobParameter
+✔️ Use Redis or DB to track processed workUnitIds in the consumer
+
+
+
+
+================================================================================
+🎯 SPRING BATCH — DIRECT CLIENT SCREENING INSIDE WORKER THREADS (NO KAFKA)
+================================================================================
+
+✔️ GOAL: Screen 50M client records directly in Spring Batch
+   - No Kafka
+   - No separate microservice
+   - All done within partitioned Spring Batch worker threads
+
+================================================================================
+⚙️ DESIGN OVERVIEW
+================================================================================
+
+[ MASTER JOB ]
+  - Starts Spring Batch job
+  - Launches 5 worker threads (partitions) using ClientIdRangePartitioner
+  - Each worker gets a clientId range (e.g. 1–10M, 10M–20M...)
+
+[ WORKER THREAD ]
+  - Reads client records using JdbcPagingItemReader (chunked)
+  - Calls ScreeningService for each client (simulating RDC, Clink, WorldCheck)
+  - Writes alerts to database (or Actimize)
+  - Performs idempotency check before processing (using workUnitId)
+
+================================================================================
+📦 ENTITIES INVOLVED
+================================================================================
+
+Client:
+    - id, name, dob, country
+
+Alert:
+    - workUnitId = clientId + "-" + batchJobId
+    - clientId
+    - riskLevel
+
+================================================================================
+🔐 IDEMPOTENCY LOGIC
+================================================================================
+
+workUnitId = clientId + "-" + batchJobId
+
+BEFORE screening:
+    if (alertRepository.existsByWorkUnitId(workUnitId)) {
+        SKIP
+    }
+	
+//We’re still checking idempotency even in this direct Spring Batch setup because multiple job executions may happen for the same data — either due to retries, partial failures, or manual reruns.
+
+AFTER screening:
+    alertRepository.save(alert);
+
+➡️ Ensures each client is processed once PER batch run.
+
+================================================================================
+🧱 BATCH CONFIGURATION SUMMARY
+================================================================================
+
+Job: clientScreeningJob
+  └─ Step: partitionedStep
+        └─ gridSize = 5 (parallel threads)
+        └─ partitioner = ClientIdRangePartitioner
+
+  Each partition executes:
+    Step: screeningStep
+        └─ reader = JdbcPagingItemReader (with minId, maxId)
+        └─ processor = screeningProcessor()
+        └─ writer = alertWriter()
+
+================================================================================
+🧠 EXECUTION BEHAVIOR (THREADS, CHUNKING, PAGING)
+================================================================================
+
+✔️ `gridSize = 5` → 5 parallel threads via partitioning
+✔️ `chunkSize = 1000` → processes 1,000 records at a time
+✔️ `pageSize = 10000` → reader pulls 10K records per DB fetch
+
+🔄 Each thread (partition) does:
+    - Read 10,000 clients
+    - Process in chunks of 1,000:
+        → For each client:
+            → check idempotency (workUnitId)
+            → call ScreeningService
+            → if risk != "LOW", build Alert object
+        → skip building Alert for "LOW" risk clients
+    - Write all non-null Alert objects in batch
+    - Repeat until its assigned clientId range is done
+
+✅ Even if only a subset of the 1,000 processed clients generate alerts,
+   the full 1,000 are read and processed.
+
+================================================================================
+📑 COMPONENT HIGHLIGHTS
+================================================================================
+
+@Configuration
+@EnableBatchProcessing
+public class ClientScreeningBatchConfig {
+
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+
+    @Autowired
+    private DataSource dataSource;
+
+    @Autowired
+    private AlertRepository alertRepository;
+
+    @Bean
+    public Job clientScreeningJob() {
+        return jobBuilderFactory.get("clientScreeningJob")
+            .start(partitionedStep())
+            .build();
+    }
+
+    @Bean
+    public Step partitionedStep() {
+        return stepBuilderFactory.get("partitionedStep")
+            .partitioner("screeningStep", new ClientIdRangePartitioner(dataSource))
+            .step(screeningStep())
+            .gridSize(5)
+            .taskExecutor(new SimpleAsyncTaskExecutor())
+            .build();
+    }
+
+    @Bean
+    public Step screeningStep() {
+        return stepBuilderFactory.get("screeningStep")
+            .<Client, Alert>chunk(1000)
+            .reader(clientReader(null, null))
+            .processor(screeningProcessor())
+            .writer(alertWriter())
+            .build();
+    }
+
+    @Bean
+    @StepScope
+    public JdbcPagingItemReader<Client> clientReader(
+        @Value("#{stepExecutionContext['minId']}") Long minId,
+        @Value("#{stepExecutionContext['maxId']}") Long maxId) {
+
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("minId", minId);
+        paramMap.put("maxId", maxId);
+
+        SqlPagingQueryProviderFactoryBean provider = new SqlPagingQueryProviderFactoryBean();
+        provider.setDataSource(dataSource);
+        provider.setSelectClause("SELECT *");
+        provider.setFromClause("FROM clients");
+        provider.setWhereClause("WHERE id BETWEEN :minId AND :maxId");
+        provider.setSortKey("id");
+
+        try {
+            return new JdbcPagingItemReaderBuilder<Client>()
+                .name("clientReader")
+                .dataSource(dataSource)
+                .queryProvider(provider.getObject())
+                .parameterValues(paramMap)
+                .pageSize(10000)
+                .rowMapper(new ClientRowMapper())
+                .build();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to build reader", e);
+        }
+    }
+
+    @Bean
+    public ItemProcessor<Client, Alert> screeningProcessor() {
+        return client -> {
+            String batchJobId = LocalDate.now().toString();
+            String workUnitId = client.getId() + "-" + batchJobId;
+            if (alertRepository.existsByWorkUnitId(workUnitId)) {
+                return null; // skip
+            }
+            String risk = ScreeningService.screen(client); // mock call
+            if ("LOW".equalsIgnoreCase(risk)) {
+                return null; // skip low-risk
+            }
+            return new Alert(workUnitId, client.getId(), risk);
+        };
+    }
+
+    @Bean
+    public ItemWriter<Alert> alertWriter() {
+        return items -> items.forEach(alertRepository::save);
+    }
+}
+
+================================================================================
+📍 TL;DR
+================================================================================
+
+Use this architecture when:
+- You want to skip Kafka
+- You already have screening code in Java
+- You want fast parallel processing
+
+This can screen 50M records in parallel, paged, chunked, idempotent, and stable —
+using just Spring Batch.
+
+Let me know if you'd like a Redis-backed idempotency solution, monitoring metrics, 
+or unit tests next!
+
+
+
+================================================================================
+🛡️ CIRCUIT BREAKER FOR SCREENING SERVICE (Resilience4j)
+================================================================================
+
+✔️ GOAL: Prevent job failure or slowdowns when screening API becomes unstable
+✔️ TOOL: Resilience4j CircuitBreaker wraps the ScreeningService call
+
+================================================================================
+❓ WHAT IS A CIRCUIT BREAKER?
+================================================================================
+A circuit breaker is a fault-tolerance pattern used to protect systems from repeatedly calling a failing service (e.g. a screening API).
+
+- ✅ Helps prevent failures from cascading to other parts of the job or system.
+
+================================================================================
+🚨 WHY IT'S NEEDED
+================================================================================
+If your ScreeningService.screen(client):
+- Becomes slow
+- Times out
+- Throws repeated exceptions (e.g., RDC API is down)
+
+…then your entire Spring Batch job can get bogged down or fail.
+
+================================================================================
+🧰 HOW CIRCUIT BREAKER WORKS
+================================================================================
+
+| State      | Description                                                       |
+|------------|-------------------------------------------------------------------|
+| Closed     | Calls go through normally. Errors are counted.                   |
+| Open       | Too many failures → calls are blocked for a timeout period.      |
+| Half-Open  | After timeout, allow limited test calls. If they succeed, close. |
+
+================================================================================
+🛠️ HOW TO ADD CIRCUIT BREAKER IN SPRING BATCH SCREENING JOB
+================================================================================
+
+✅ Use Resilience4j (Lightweight, simple)
+
+Add Maven dependency:
+```xml
+<dependency>
+  <groupId>io.github.resilience4j</groupId>
+  <artifactId>resilience4j-spring-boot2</artifactId>
+</dependency>
+```
+
+✅ Wrap ScreeningService with CircuitBreaker:
+```java
+@Autowired
+private CircuitBreakerRegistry circuitBreakerRegistry;
+
+@Bean
+public ItemProcessor<Client, Alert> screeningProcessor() {
+    CircuitBreaker cb = circuitBreakerRegistry.circuitBreaker("screening");
+
+    return client -> {
+        String batchJobId = LocalDate.now().toString();
+        String workUnitId = client.getId() + "-" + batchJobId;
+
+        if (alertRepository.existsByWorkUnitId(workUnitId)) return null;
+
+        return cb.executeSupplier(() -> {
+            String risk = ScreeningService.screen(client);
+            if ("LOW".equalsIgnoreCase(risk)) return null;
+            return new Alert(workUnitId, client.getId(), risk);
+        });
+    };
+}
+```
+
+================================================================================
+🧠 CONFIGURATION EXAMPLE
+================================================================================
+
+In `application.yml`:
+```yaml
+resilience4j.circuitbreaker.instances.screening:
+  registerHealthIndicator: true
+  slidingWindowSize: 20
+  minimumNumberOfCalls: 10
+  failureRateThreshold: 50
+  waitDurationInOpenState: 10s
+  permittedNumberOfCallsInHalfOpenState: 3
+```
+
+================================================================================
+✅ RESULTING BEHAVIOR IN SPRING BATCH
+================================================================================
+
+- ScreeningService failure rate goes above 50%? Circuit opens.
+- While circuit is open: `screeningProcessor()` doesn't call the API.
+- Prevents job from hammering a broken system.
+- You can log or mark skipped clients for re-processing later.
+
+================================================================================
+📌 BEST PRACTICES
+================================================================================
+
+✔️ Use separate CircuitBreaker for each external API
+✔️ Monitor circuit status via actuator endpoint (if enabled)
+✔️ Log fallback behavior
+✔️ Optional: queue clients for re-processing if circuit open
+
+================================================================================
+🧪 TESTING TIP
+================================================================================
+
+Simulate downstream API failure by throwing exception in `screen()`
+→ See if breaker opens and stops flooding calls
+
+================================================================================
+✅ TL;DR
+================================================================================
+
+- CircuitBreaker protects your job from noisy or flaky APIs
+- Easy to integrate using Resilience4j
+- Keeps processing stable under failures
+
+
+
+================================================================================
+🧾 CIRCUIT BREAKER CONFIGURATION — EXPLANATION TABLE
+================================================================================
+
+| Property                                | Description                                                             |
+|-----------------------------------------|-------------------------------------------------------------------------|
+| registerHealthIndicator: true           | Enables Spring Boot Actuator metrics                                   |
+|                                         | Endpoint: /actuator/health or /actuator/circuitbreakers/screening      |
+|-----------------------------------------|-------------------------------------------------------------------------|
+| slidingWindowSize: 20                   | Last 20 calls are tracked to calculate the failure rate                 |
+|-----------------------------------------|-------------------------------------------------------------------------|
+| minimumNumberOfCalls: 10                | At least 10 calls required before calculating failure rate              |
+|-----------------------------------------|-------------------------------------------------------------------------|
+| failureRateThreshold: 50                | If ≥50% of recent calls fail, the circuit opens                         |
+|                                         | (e.g., 10 failures out of 20 triggers opening)                          |
+|-----------------------------------------|-------------------------------------------------------------------------|
+	| waitDurationInOpenState: 10s            | After opening, circuit remains open (no calls) for 10 seconds          |
+|-----------------------------------------|-------------------------------------------------------------------------|
+| permittedNumberOfCallsInHalfOpenState: 3| In half-open, allows 3 test calls                                       |
+|                                         | If all pass → circuit closes; if any fail → circuit reopens            |
+================================================================================
+
+
+20 calls made
+11 of them failed → failure rate = 55% → threshold (50%) exceeded
+Circuit opens → no more calls for 10s
+After 10s → 3 calls allowed in half-open
+If 3 succeed → circuit closes
+If 1 fails → circuit reopens
+
+
+\================================================================
+DESIGN PATTERNS - ASCII NOTES
+=============================
+
+## WHAT ARE DESIGN PATTERNS?
+Design patterns are standard solutions to common software design problems. They are not full code implementations but templates or best practices that help you structure your code in a clean, reusable, and scalable way.
+
+
+
+## CATEGORIES
+
+1. Creational   - Object creation (e.g., Singleton, Factory< Builder)
+2. Structural   - Class/Object structure (e.g., Adapter, Decorator)
+3. Behavioral   - Object interaction (e.g., Observer, Strategy)
+
+\================================================================
+
+1. SINGLETON PATTERN
+
+---
+
+Ensures only one instance of a class is created and gives global access to it
+
+## Java Example:
+
+public class Singleton {
+private static Singleton instance;
+private Singleton() {}
+public static synchronized Singleton getInstance() {
+if (instance == null)
+instance = new Singleton();
+return instance;
+}
+}
+
+Use Case: Logger, Config, DB Connection
+
+\================================================================
+2\. FACTORY PATTERN
+-------------------
+
+Creates objects without exposing creation logic to the client.
+
+## Java Example:
+
+interface Shape { void draw(); }
+class Circle implements Shape { public void draw() { ... } }
+class Square implements Shape { public void draw() { ... } }
+
+class ShapeFactory {
+public static Shape getShape(String type) {
+if (type.equals("circle")) return new Circle();
+if (type.equals("square")) return new Square();
+return null;
+}
+}
+
+Use Case: Dynamic object creation
+
+\================================================================
+3\. STRATEGY PATTERN
+--------------------
+
+Encapsulates interchangeable algorithms.
+
+## Java Example:
+
+interface PaymentStrategy { void pay(int amount); }
+class PayPal implements PaymentStrategy { ... }
+class CreditCard implements PaymentStrategy { ... }
+
+class Checkout {
+PaymentStrategy strategy;
+Checkout(PaymentStrategy strategy) { this.strategy = strategy; }
+void process(int amt) { strategy.pay(amt); }
+}
+
+Use Case: Payment modes, sorting algorithms
+
+\================================================================
+4\. OBSERVER PATTERN
+--------------------
+
+One-to-many dependency; notify observers on state change.
+
+## Java Example:
+
+interface Observer { void update(String msg); }
+class EmailClient implements Observer {
+public void update(String msg) { ... }
+}
+
+class Subject {
+List<Observer> obs = new ArrayList<>();
+void subscribe(Observer o) { obs.add(o); }
+void notifyAll(String msg) {
+for (Observer o : obs) o.update(msg);
+}
+}
+
+Use Case: Event notification, pub-sub systems
+
+\================================================================
+5\. DECORATOR PATTERN
+---------------------
+
+Add new behavior to objects without modifying the original class.
+You want to add features without subclassing
+
+## Java Example:
+
+interface Coffee {
+    String getDescription();
+    double getCost();
+}
+
+class BasicCoffee implements Coffee {
+    public String getDescription() {
+        return "Basic Coffee";
+    }
+    public double getCost() {
+        return 2.0;
+    }
+}
+
+class MilkDecorator implements Coffee {
+    Coffee coffee;
+    MilkDecorator(Coffee coffee) {
+        this.coffee = coffee;
+    }
+    public String getDescription() {
+        return coffee.getDescription() + ", Milk";
+    }
+    public double getCost() {
+        return coffee.getCost() + 0.5;
+    }
+}
+
+class SugarDecorator implements Coffee {
+    Coffee coffee;
+    SugarDecorator(Coffee coffee) {
+        this.coffee = coffee;
+    }
+    public String getDescription() {
+        return coffee.getDescription() + ", Sugar";
+    }
+    public double getCost() {
+        return coffee.getCost() + 0.3;
+    }
+}
+🧪 Usage Example
+java
+Copy
+public class Main {
+    public static void main(String[] args) {
+        Coffee myOrder = new SugarDecorator(new MilkDecorator(new BasicCoffee()));
+        System.out.println(myOrder.getDescription()); // Basic Coffee, Milk, Sugar
+        System.out.println("Total: $" + myOrder.getCost()); // Total: $2.8
+    }
+
+Use Case: Coffee app, UI enhancements
+
+\================================================================
+6\. BUILDER PATTERN
+-------------------
+(Creational)
+Separate object construction from its representation.
+To construct complex objects step-by-step, separating the construction logic from the actual object structure. It’s especially useful when an object requires many optional fields or configurations.
+//Avoids constructor overloading hell.
+
+
+
+## Java Example:
+
+class Car {
+String engine;
+String wheels;
+}
+
+class CarBuilder {
+Car car = new Car();
+CarBuilder setEngine(String e) { car.engine = e; return this; }
+CarBuilder setWheels(String w) { car.wheels = w; return this; }
+Car build() { return car; }
+}
+
+Use Case: Complex object creation (Car, HTTP Request)
+
+
+Car myCar = new CarBuilder()
+                .setEngine("V8 Turbo")
+                .setWheels("Alloy 18-inch")
+                .build();
+
+\================================================================
+7\. ADAPTER PATTERN
+-------------------
+
+Convert the interface of a class into another the client expects.
+
+## Java Example:
+
+interface MediaPlayer { void play(String type, String name); }
+class VLCPlayer { void playVLC(String name) { ... } }
+
+class Adapter implements MediaPlayer {
+VLCPlayer vlc = new VLCPlayer();
+public void play(String type, String name) {
+if (type.equals("vlc")) vlc.playVLC(name);
+}
+}
+
+Use Case: Legacy integration, third-party APIs
+
+\================================================================
+BEST PRACTICES
+--------------
+
+* Use when solving repeatable problems.
+* Helps with modular, testable, scalable code.
+* Don’t force-fit — pick what matches your scenario.
+
+\================================================================
+
+
+========================================
+JAVA 8 & ADVANCED JAVA NOTES
+========================================
+
+CHAPTER 1 – INTRODUCTION TO JAVA 8
+----------------------------------
+1) PRE-JAVA 8
+   - Working with threads was difficult and error-prone.
+   - Java 5 & 7 improved concurrency utilities, but Java 8 went further.
+
+2) WHY JAVA 8?
+   - More concise code (less boilerplate).
+   - Easier multi-core processor utilization.
+   - Functional programming style in Java.
+   
+   ========================================
+ADVANTAGES OF JAVA 8 (WITH EXAMPLES)
+========================================
+
+1) CONCISE & READABLE CODE
+
+  - Classic Java
+  - Background
+  
+  CREATING THREADS IN JAVA
+------------------------
+Two main ways:
+
+1) Extending Thread
+   - Extend java.lang.Thread
+   - Override run()
+   - Call start() to begin
+   Example:
+       class MyThread extends Thread {
+           public void run() { System.out.println("Hello from Thread!"); }
+       }
+       new MyThread().start();
+
+2) Implementing Runnable (Preferred)
+   - Implement java.lang.Runnable
+   - Override run()
+   - Create a Thread object passing the runnable instance to the thread constructor
+   - Call start() on Thread object to begin execution
+   Example:
+       class MyRunnable implements Runnable {
+           public void run() { System.out.println("Hello from Runnable!"); }
+       }
+       new Thread(new MyRunnable()).start();
+
+Why Prefer Runnable?
+- Allows extending other classes overcoming Java's single Inheritance limitation. Here your myRunnable can extend other classes
+- Promotes better separation of concerns. Separates task (Runnable) from thread control/management (Thread) . 
+
+  
+	class MyRunnable implements Runnable {
+    public void run() {
+        System.out.println("Hello World");
+    }
+}
+	Runnable r = new MyRunnable();
+	new Thread(r).start();
+
+
+  
+   Before (Java 7):
+   ----------------
+   Runnable r = new Runnable() {  //subclass impl inline for Runnable base class {class body}, after defining Java instantaties it immediately
+       public void run() {
+           System.out.println("Hello World");
+       }
+   };
+    new Thread(r).start();
+	
+	 - Before Java 8 (lambdas), anonymous inner classes were a quick way to create one-off implementations of interfaces or abstract classes without:
+		Creating a separate .java file.
+		Defining a reusable class. (In the previous example you are not going to use myRunnable anytime) 
+   - You’re not passing a class to a constructor. You’re defining a subclass or an implementation inline &constructing one instance of it in a single expression.	
+   - Inner class -> It’s declared inside a class/method, and it’s tied to the enclosing scope.
+   - there is no class name — hence, it's anonymous
+   - Implements or extends exactly one interface/abstract class.
+   - Often used for callbacks, event listeners, or short-lived logic.
+	
+	
+   - Lambdas remove boilerplate (no need for anonymous inner classes).		
+   After (Java 8):
+   ---------------
+   Runnable r = () -> System.out.println("Hello World");
+
+----------------------------------------
+2) BETTER USE OF MULTI-CORE PROCESSORS
+   - Streams API supports parallelism out-of-the-box.
+
+   Example:
+   --------
+   List<Integer> numbers = Arrays.asList(1,2,3,4,5);
+   numbers.parallelStream()
+          .forEach(System.out::println);  // Uses multiple CPU cores
+
+----------------------------------------
+3) FUNCTIONAL PROGRAMMING IN JAVA
+   - Treat functions as first-class citizens.
+
+   Example:
+   --------
+   List<String> names = Arrays.asList("John", "Jane", "Jack");
+   names.forEach(name -> System.out.println(name.toUpperCase()));
+
+----------------------------------------
+4) ENHANCED COLLECTION PROCESSING
+   Streams lets you manipulate collections of data in a declarative way (what to do, not how to do)
+   A short definition of streams is a sequence of elements from a source. 
+   Next, you apply a series of data processing operations (chain together) on the stream i.e 
+   filter, map, limit, and collect. All these operations except collect return another stream
+   so they can be connected to form a pipeline, which can be viewed as a query on the source.
+   Finally, the collect operation starts processing the pipeline to return a result
+
+
+   Example:
+   --------
+   List<String> dishes = menu.stream()
+       .filter(d -> d.getCalories() > 300)
+       .map(Dish::getName)
+       .collect(Collectors.toList());
+
+----------------------------------------
+5) IMPROVED INTERFACE DESIGN
+   - Default & static methods in interfaces.
+
+   Example:
+   --------
+   interface MyInterface {
+       default void greet() { System.out.println("Hello"); }
+       static void help() { System.out.println("Help method"); }
+   }
+   
+  - Default methods
+	Methods inside an interface that have a method body (implementation), unlike regular abstract methods in interfaces.
+	Why introduced in Java 8
+		Before Java 8,lets say you want to rollout and update to the interface,
+		adding a new method to an interface would break all implementing classes (because they’d be forced to implement it).
+		Default methods allow you to add new methods to interfaces without breaking existing implementations → backward compatibility.
+		
+	/*
+   Java 7 - Old Class Implementation
+   ---------------------------------
+   Car implements Vehicle (Java 7 interface).
+   Vehicle only had start(), so Car implemented just that.
+	*/
+	class Car implements Vehicle {  // Java 7 style class
+		@Override
+		public void start() {
+			System.out.println("Car starting...");
+		}
+	}
+
+	/*
+	   Java 8 - Interface Update with Default Method
+	   ---------------------------------------------
+	   Added stop() method with default implementation.
+	   This avoids breaking Car or other classes written in Java 7.
+	*/
+	interface Vehicle {  // Java 8 interface
+		void start();
+
+		// Default method added in Java 8 for backward compatibility
+		default void stop() {
+			System.out.println("Vehicle stopped (default behavior).");
+		}
+	}
+
+	/*
+	   Main Test
+	*/
+	public class Main {
+		public static void main(String[] args) {
+			Vehicle myCar = new Car();
+			myCar.start();  // Car starting...
+			myCar.stop();   // Vehicle stopped (default behavior)
+		}
+	}
+	This way you can clearly see:
+
+	Car is untouched from Java 7 — it still compiles and runs without modification.
+	Vehicle was enhanced in Java 8 with a default method, and older implementations still work.
+
+   - Static methods
+    static methods that belong to the interface itself, not to its instances.
+	Usually for utility/helper methods related to the interface’s functionality.
+	interface MyInterface {
+    static void printVersion() {
+        System.out.println("Interface Version 1.0");
+    }
+}
+
+
+
+----------------------------------------
+6) SAFER NULL HANDLING
+   - Optional<T> avoids NullPointerException.
+
+   Example:
+   --------
+   Optional<String> opt = Optional.of("Java");
+   opt.ifPresent(s -> System.out.println(s.length()));
+
+----------------------------------------
+7) NEW DATE & TIME API
+   - java.time.* (immutable, thread-safe).
+
+   Example:
+   --------
+   LocalDate today = LocalDate.now();
+   LocalDate nextWeek = today.plusWeeks(1);
+
+----------------------------------------
+8) METHOD & CONSTRUCTOR REFERENCES
+   - Shorter syntax for lambda calling one method.
+
+   Example:
+   --------
+   list.forEach(System.out::println);
+
+----------------------------------------
+9) BETTER CONCURRENCY UTILITIES
+   - CompletableFuture for async programming.
+
+   Example:
+   --------
+   CompletableFuture.supplyAsync(() -> "Data")
+                    .thenAccept(System.out::println);
+
+----------------------------------------
+10) ENHANCED CODE REUSABILITY
+    - Behavior parameterization makes APIs flexible.
+
+    Example:
+    --------
+    List<Apple> greenApples = filterApples(inventory,
+        (Apple a) -> "green".equals(a.getColor()));
+
+
+
+3) KEY FEATURES
+   * Streams API → Complex data processing pipelines (parallelism for free).
+   * Behavior Parameterization → Pass code to methods (Strategy Pattern style).
+   * Lambda Expressions → Anonymous functions.
+   * Generic filter & predicate methods.
+   * Default methods in interfaces (backward compatibility).
+   * Internal iteration (think “stream of data” instead of “for loop”).
+   * Functions/methods as first-class citizens.
+
+4) STREAMS LIKE UNIX PIPELINES
+   - Source → filter → map → collect
+   - Can split work across CPU cores automatically for parallel execution.
+
+----------------------------------------
+CHAPTER 2 – BEHAVIOR PARAMETERIZATION
+----------------------------------------
+DEFINITION:
+- Ability for a method to take different behaviors as parameters.
+- Similar to STRATEGY DESIGN PATTERN:
+  * Define a family of algorithms (strategies).
+  * Encapsulate each strategy.
+  * Select strategy at runtime.
+
+BENEFITS:
+- Adaptive to changing requirements.
+- Reduces engineering effort.
+- Pass logic/behavior directly as parameters.
+
+EXAMPLE:
+List<Apple> filteredApples = filterApple(
+    inventory,
+    (Apple apple) -> "green".equals(apple.getColor())
+);
+
+inventory.sort(
+    (Apple a1, Apple a2) -> a1.getWeight().compareTo(a2.getWeight())
+);
+
+----------------------------------------
+CHAPTER 3 – LAMBDA EXPRESSIONS
+----------------------------------------
+DEFINITION:
+- Anonymous method: no name, no modifiers, no return type (inferred).
+- Syntax: (parameters) -> { body }
+
+EXAMPLES:
+() -> System.out.println("Hello");
+(a, b) -> a + b;
+(String s) -> { return s.length(); }
+s -> s.length();
+
+RULES:
+- Works only with FUNCTIONAL INTERFACES (exactly one abstract method).
+- Can replace anonymous inner classes.
+- Curly braces {} and return keyword can be omitted for single statements.
+
+BUILT-IN FUNCTIONAL INTERFACES:
+- Predicate<T>    → boolean test(T t)
+- Function<T,R>   → R apply(T t)
+- Consumer<T>     → void accept(T t)
+- Supplier<T>     → T get()
+- Operator<T>     → Same type input/output (BinaryOperator)
+
+CUSTOM FUNCTIONAL INTERFACE:
+@FunctionalInterface
+interface MyFunctionalInterface {
+    void doWork();
+}
+
+MyFunctionalInterface task = () -> System.out.println("Doing work...");
+task.doWork();
+
+----------------------------------------
+CHAPTER 4 – STREAMS API
+----------------------------------------
+PURPOSE:
+- Declarative collection processing.
+- Parallel execution without manual thread handling.
+
+PIPELINE STRUCTURE:
+Source → Intermediate Ops → Terminal Op
+- Intermediate Ops: filter, map, sorted, limit
+- Terminal Ops: collect, forEach, reduce
+
+EXAMPLE:
+List<String> names = menu.stream()
+    .filter(d -> d.getCalories() > 300)
+    .map(Dish::getName)
+    .limit(3)
+    .collect(Collectors.toList());
+
+STREAM VS COLLECTION:
+STREAM:
+- Lazily evaluated.
+- One-time traversal.
+- Internal iteration.
+COLLECTION:
+- Eagerly constructed.
+- Multiple traversals allowed.
+- External iteration.
+
+----------------------------------------
+CHAPTER 5 – DEFAULT & STATIC METHODS IN INTERFACES
+----------------------------------------
+- DEFAULT METHODS → Implementation inside interface.
+- Purpose: Backward compatibility.
+- STATIC METHODS → Utility methods in interface.
+- Multiple interfaces with same default method → must override.
+
+----------------------------------------
+CHAPTER 6 – METHOD REFERENCES (:: OPERATOR)
+----------------------------------------
+- Shorthand for lambdas calling a single method.
+- Syntax: object::methodName or ClassName::staticMethod
+
+EXAMPLE:
+list.forEach(System.out::println);
+
+----------------------------------------
+CHAPTER 7 – OPTIONAL (NULL SAFETY)
+----------------------------------------
+PURPOSE:
+- Avoid NullPointerException.
+- Run code only if value exists (ifPresent).
+
+EXAMPLE:
+Optional<String> opt = Optional.of("Java");
+opt.ifPresent(str -> System.out.println(str.length()));
+
+----------------------------------------
+CHAPTER 8 – MULTIPLE INTERFACES & INHERITANCE
+----------------------------------------
+- No multiple class inheritance in Java.
+- Multiple interface inheritance allowed.
+- Diamond problem solved via explicit override.
+
+----------------------------------------
+CHAPTER 9 – INNER CLASSES
+----------------------------------------
+TYPES:
+- Member Inner Class
+- Method-local Inner Class
+- Anonymous Inner Class
+- Static Nested Class
+
+RULES:
+- Inner classes can access outer class members.
+- Outer class can access private members of inner class via object.
+
+----------------------------------------
+CHAPTER 10 – LAMBDAS & THREADS
+----------------------------------------
+RUNNABLE WITH CLASS:
+class MyTask implements Runnable {
+    public void run() { System.out.println("Thread running..."); }
+}
+Thread t = new Thread(new MyTask());
+t.start();
+
+RUNNABLE WITH ANONYMOUS CLASS:
+new Thread(new Runnable() {
+    public void run() { System.out.println("Hello world"); }
+}).start();
+
+RUNNABLE WITH LAMBDA:
+new Thread(() -> System.out.println("Hello world")).start();
+
+----------------------------------------
+CHAPTER 11 – IO & LAMBDA COMBINATION
+----------------------------------------
+@FunctionalInterface
+interface BufferedReaderProcessor {
+    String process(BufferedReader br) throws IOException;
+}
+
+public static String processFile(BufferedReaderProcessor p) throws IOException {
+    try (BufferedReader br = new BufferedReader(new FileReader("data.txt"))) {
+        return p.process(br);
+    }
+}
+
+USAGE:
+processFile(br -> br.readLine());                 // Read 1 line
+processFile(br -> br.readLine() + br.readLine()); // Read 2 lines
+
+----------------------------------------
+CHAPTER 12 – OTHER JAVA 8 FEATURES
+----------------------------------------
+- Date & Time API (java.time, replaces Joda)
+- Constructor references: ClassName::new
+- Collectors for data aggregation
+- Parallel Streams
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SQL
+
+================================================================================
+📜 SQL LOGICAL EXECUTION ORDER — CHEAT SHEET & MEMORY HOOK
+================================================================================
+
+Step | Clause        | Role / What It Does                                 | Memory Hook
+-----+--------------+------------------------------------------------------+---------------------------
+1    | FROM         | Choose the table(s) or view(s) to pull data from     | Friendly
+2    | JOIN         | Merge data from multiple sources                     | Joey
+3    | WHERE        | Filter rows before grouping                          | Wants
+4    | GROUP BY     | Group rows into aggregates                           | Great
+5    | HAVING       | Filter groups after aggregation                      | Hot
+6    | SELECT       | Pick columns/expressions to return                   | Sandwiches
+7    | DISTINCT     | Remove duplicate rows from result                    | During
+8    | ORDER BY     | Sort results                                         | Outdoor
+9    | OFFSET       | Skip a number of rows                                | Outings
+10   | LIMIT        | Restrict rows returned                               | Lately
+
+================================================================================
+🧠 MEMORY STORY
+================================================================================
+You're planning a party:
+1. FROM — Start with your contact list
+2. JOIN — Add your partner's list
+3. WHERE — Cross off people you don't want to invite
+4. GROUP BY — Group by city or circle
+5. HAVING — Remove groups too small to invite
+6. SELECT — Choose details for invites
+7. DISTINCT — Remove duplicate names
+8. ORDER BY — Sort alphabetically or by zip code
+9. OFFSET — Skip the first few invites
+10. LIMIT — Stop after a set number of invites
+
+================================================================================
+✅ QUICK REFERENCE
+================================================================================
+Logical order ≠ Written order in SQL.
+DISTINCT happens after SELECT.
+ORDER BY is always near the end.
+OFFSET & LIMIT always applied last.
+================================================================================
+
+================================================================================
+💡 LEFT JOIN + FILTERING EXAMPLE
+================================================================================
+
+TABLE: Employee
+----------------
+EmpId | Name
+------+---------
+1     | Amish
+2     | Brijesh
+3     | Chandresh
+
+TABLE: Bonus
+------------
+EmpId | Bonus
+------+-------
+2     | 2000
+3     | 500
+
+================================================================================
+🎯 GOAL:
+================================================================================
+Find employees with bonus < 1000  
+(Including employees who have NO bonus record → treated as NULL)
+
+================================================================================
+🔍 METHOD 1 — Filter in WHERE clause
+================================================================================
+SQL:
+SELECT e.name, b.bonus
+FROM employee e
+LEFT JOIN bonus b
+  ON e.empId = b.empId
+WHERE (b.bonus < 1000 OR b.bonus IS NULL);
+
+🛠 HOW IT WORKS:
+---------------
+1. LEFT JOIN returns:
+   - Matching rows from both tables
+   - NULLs for `bonus` where no match exists
+2. WHERE filters for:
+   - b.bonus < 1000
+   - OR b.bonus IS NULL (no bonus record)
+
+Result after LEFT JOIN (before filter):
+---------------------------------------
+EmpId | Name      | Bonus
+------+-----------+------
+1     | Amish     | NULL
+2     | Brijesh   | 2000
+3     | Chandresh | 500
+
+After WHERE filter:
+-------------------
+Name      | Bonus
+----------+------
+Amish     | NULL
+Chandresh | 500
+
+================================================================================
+🔍 METHOD 2 — Filter inside ON clause
+================================================================================
+SQL:
+SELECT e.name, b.bonus
+FROM employee e
+LEFT JOIN bonus b
+  ON e.empId = b.empId
+ AND b.bonus < 1000;
+
+🛠 HOW IT WORKS:
+---------------
+1. LEFT JOIN match happens only if:
+   - EmpId matches
+   - AND bonus < 1000
+2. Rows that fail bonus < 1000 condition get NULL in `bonus` column.
+
+Result:
+-------
+Name      | Bonus
+----------+------
+Amish     | NULL
+Brijesh   | NULL   ← Bonus was 2000 → failed ON filter → NULL
+Chandresh | 500
+
+================================================================================
+📌 KEY DIFFERENCE:
+================================================================================
+- **WHERE filter** removes rows entirely from output.
+- **ON filter** keeps all rows from left table but NULLs out unmatched right table data.
+
+
+
+========================================
+DEPENDENCY INJECTION (DI) - SPRING
+========================================
+Definition:
+-----------
+- Design pattern used in Spring and other frameworks where an object (class) receives its dependencies from an external source 
+  rather than creating them itself.
+- Prevents tight coupling → improves flexibility & testability.
+
+
+How Spring Does It:
+-------------------
+- Spring uses IoC (Inversion of Control) Container.
+- Scans beans (@Service, @Component, @Repository) & injects them where needed.
+- If multiple implementations exist → use @Qualifier or @Primary.
+- No need to manually instantiate objects with new.
+
+
+========================================
+EXAMPLE 1: WITHOUT DI (TIGHTLY COUPLED)
+========================================
+@Service
+public class OrderService {
+    private PaymentService paymentService = new PaymentService();
+
+    public void processOrder() {
+        paymentService.processPayment();
+    }
+}
+
+Problems:
+---------
+- Tightly coupled → Always depends on PaymentService.
+- Difficult to change → Switching to PayPalPaymentService requires code change.
+- Hard to test → Cannot easily replace with a mock.
+
+========================================
+EXAMPLE 2: CONSTRUCTOR INJECTION (BEST PRACTICE) ✅
+========================================
+Here, PaymentService is injected instead of being created inside OrderService.
+
+@Service
+public class OrderService {
+    private final PaymentService paymentService;
+
+
+    @Autowired  // Optional in Spring Boot 2+
+    public OrderService(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+
+    public void processOrder() {
+        paymentService.processPayment();
+    }
+}
+
+Benefits:
+---------
+✔ Loose coupling → Can inject any PaymentService implementation.  
+✔ Easier testing → Pass mocks in tests:
+    PaymentService mockPaymentService = mock(PaymentService.class);
+    OrderService orderService = new OrderService(mockPaymentService);
+✔ Flexibility → Switch implementation without changing OrderService.
+✔ Immutability → `final` prevents reassignment.
+✔ Explicit dependencies → Visible in constructor.
+If a class has only one constructor, Spring will automatically use it for dependency injection — even without @Autowired.
+This reduces boilerplate for the most common DI scenario.
+@Autowired is still required for non-constructor injection.
+
+
+========================================
+EXAMPLE 3: SETTER INJECTION (OPTIONAL DEPENDENCIES)
+========================================
+If PaymentService is optional, use setter injection.
+This lets us use a default implementation if no bean is injected.
+
+@Service
+public class OrderService {
+    private PaymentService paymentService = new DefaultPaymentService(); // Default
+
+    @Autowired(required = false) // Optional dependency
+    public void setPaymentService(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+}
+
+Notes:
+------
+- If Spring finds a PaymentService bean → it will inject it via the setter.
+  If no PaymentService bean is found → it will skip injection, leaving the DefaultPaymentService instance in place.
+
+- Good for optional dependencies.
+- Can cause NullPointerException if setter not called.
+- Mutable → Dependency can change after creation. No final keyword
+
+
+
+========================================
+EXAMPLE 4: FIELD INJECTION (NOT RECOMMENDED)
+========================================
+@Service
+public class OrderService {
+    @Autowired
+    private PaymentService paymentService;
+}
+
+Drawbacks:
+----------
+✘ Hides dependencies → Not visible in constructor.  
+	No way to know what dependencies are required just by looking at the constructor.
+	From just reading the constructor: public OrderService() { } ->you can’t tell that this class depends on PaymentService.
+✘ Harder to test → Requires Spring container to inject.  Manually set the fields via Reflection 
+✘ No `final` support → Mutable field.  
+	Final fields must be initialized: At the point of declaration, or Inside the constructor
+	When you declare a field as final, it must be initialized once and cannot be reassigned after that.
+	Without final, someone could accidentally reassign the repository, potentially introducing bugs.
+✘ Poor separation of concerns.
+	Each class or component should focus on its own responsibility (business logic, data access, etc.).
+	The creation and wiring of dependencies should be handled by a different part of the system (Spring’s IoC container), not by the class itself.
+	
+
+========================================
+INTERFACE-BASED INJECTION
+========================================
+
+The dependency is provided via a method defined in an interface that the class implements.
+Not common in Spring but used in some frameworks.
+
+public interface PaymentServiceAware {
+    void setPaymentService(PaymentService paymentService);
+}
+
+@Service
+public class OrderService implements PaymentServiceAware {
+    private PaymentService paymentService;
+
+    @Override
+    public void setPaymentService(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+}
+
+Allows dynamic injection at runtime.
+
+
+
+Best Practices:
+---------------
+✔ Constructor Injection → Mandatory dependencies.  
+✔ Setter Injection → Optional dependencies.  
+✔ Avoid Field Injection.  
+✔ Use Interface Injection for scalability.
+
+========================================
+@Bean ANNOTATION
+========================================
+- Explicitly define & manage Spring beans.
+- Used for third-party classes (no @Component/@Service possible).
+	Some classes (like those from external libraries) cannot be annotated with @Component, @Service, etc.,
+	so you must manually register them as beans.
+- Registers method return value as Spring-managed bean.
+
+@Configuration
+public class AppConfig {
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate(); // Creates & registers RestTemplate
+    }
+}
+
+Why Needed for Third-Party Classes:
+-----------------------------------
+1) Component scanning only works for classes in your project.
+Spring’s component scanning (@ComponentScan) only scans packages within your application.
+Since external libraries reside outside your source code,
+Spring won't find them even if you could add @Component.
+2) Cannot modify external source code to add annotations.
+Since you don’t own third-party classes (e.g., RestTemplate, ObjectMapper), you can’t go inside those
+classes and add annotations.
+
+Use Cases:
+----------
+✅ Custom initialization/destruction logic.  
+✅ Fine-grained control over dependencies.  
+✅ Different bean scopes (prototype, request, etc.).
+
+
+You want to use ObjectMapper (from Jackson library) in your project, but you can’t annotate it with @Component because it’s from an external dependency.
+
+
+// External Class (from com.fasterxml.jackson library)
+// You CANNOT modify this class to add @Component
+// public class ObjectMapper { ... }
+
+@Configuration // Marks this as a Spring configuration class
+public class AppConfig {
+
+    @Bean // Registers ObjectMapper in the Spring context
+    public ObjectMapper objectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.findAndRegisterModules(); // Optional customization
+        mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        return mapper;
+    }
+}
+Usage in Another Class
+
+@Service
+public class JsonService {
+
+    private final ObjectMapper objectMapper;
+
+    @Autowired
+    public JsonService(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
+    public String toJson(Object obj) throws JsonProcessingException {
+        return objectMapper.writeValueAsString(obj);
+    }
+}
+
+Solution: Use @Bean in a @Configuration class — Spring will manage it like any other bean.
+
+Benefit: You can customize the bean before Spring injects it anywhere.
+========================================
+REACTIVE PROGRAMMING (Brief)
+========================================
+- Style focused on handling asynchronous data streams.
+- Uses event-driven, non-blocking architecture.
+- Popular in Spring WebFlux.
+
+
+========================================
+OBJECT-ORIENTED PROGRAMMING (OOP) CONCEPTS
+========================================
+
+OOP = Programming model where software is designed around objects 
+      (data + behavior together).
+
+========================================
+FROM UNSTRUCTURED TO OOP
+========================================
+Earlier, programmers wrote programs in an unstructured way:
+- Programs were not split into modules.
+- Often lengthy and hard to maintain.
+- Used the `goto` statement frequently → jumped between code locations.
+- This made the physical sequence of the program entirely different from the logical sequence
+
+As program size grew → very hard to understand and maintain.
+
+Then came Structured Programming improved things:
+- Top Down programming: Reduced complexity by breaking programs into smaller units (functions, procedures).
+
+
+Problems with Structured Programming:
+--------------------------------------
+- Focus is on process, not data.
+- Data often declared as global (accessible by all modules).
+- If data gets corrupted → hard to pinpoint faulty module.
+- Tight coupling between data and logic.
+
+========================================
+INTRODUCTION TO JAVA
+========================================
+- Developed by Sun Microsystems.
+- Initially for consumer devices, now used for enterprise applications.
+- Fully Object-Oriented.
+
+========================================
+FEATURE: OBJECT-ORIENTED PROGRAMMING
+========================================
+In OOP, the entire program is viewed as a number of objects (modeled on real life situations) interacting with each other 
+Each object has:
+- **State (Attributes / Data)**
+- **Behavior (Functions / Methods)**
+
+Real-world Example:
+-------------------
+- **Banking Application**
+Consider a banking application. In structured programming, the application will contain a set of functions, arrays, structures and files. 
+It would be difficult for anyone to look at this and relate it with the activities of a bank. 
+In OOP, the application will contain objects like Customer, Account and Manager that interact with each other.
+Since real life situations could be modeled well, this application is very easy to understand and maintain.
+
+Example: Car Object
+--------------------
+State:
+- Current Speed
+- Current Gear
+- Engine State (Running/Not Running)
+
+Behavior:
+- slowDown()
+- accelerate()
+- stop()
+- startEngine()
+- switchOffEngine()
+
+Key Advantage:
+--------------
+- Use an object just by knowing its functions without knowing internal details . This reduces complexity
+- Example: `Stack` object with `push()` and `pop()` methods.
+- Data may be array or linked list → user does not care.
+- One need not know this to use the Stack as long as one knows how to use the push and pop functions.
+
+
+
+========================================
+ABSTRACTION
+========================================
+Definition:
+-----------
+- The process of exposing the relevant details and hiding the irrelevant details
+- Used to reduce complexity. Helps simplify the understanding and using of any complex system
+- Achieved using abstract classes & interfaces.
+           
+Example:
+--------
+- You can drive a car without knowing how the engine works.
+- Similarly one does not have to understand the internal implementation of a software object to use it
+- You can use `printf()` in C without knowing its internal logic.
+
+In OOP:
+--------
+- Abstraction is at the **object level**.
+- Structured programming → abstraction at function/data structure level.
+- Higher abstraction level → easier to understand.
+
+Real-world Analogy:
+-------------------
+- **Car Driving**: You know how to start, steer, and brake a car but not how the engine works internally.
+- You interact with the interface (steering wheel, pedals) without knowing the mechanics.
+
+---------------------------------------
+Java Example:
+-------------
+interface Payment {
+    void pay(double amount);
+}
+class CreditCardPayment implements Payment {
+    public void pay(double amount) {
+        System.out.println("Paid $" + amount + " via Credit Card");
+    }
+}
+class PayPalPayment implements Payment {
+    public void pay(double amount) {
+        System.out.println("Paid $" + amount + " via PayPal");
+    }
+}
+
+
+========================================
+ENCAPSULATION
+========================================
+Definition:
+-----------
+- The process of binding code and data together in a module and preventing other modules from directly accessing the data
+- Preventing direct access/unauthorized access/modification to data from outside and keeps the data safe from misues.
+
+Why:
+----
+- Implemented using concept of **access specifiers** (public, private, protected).
+
+Typical Structure:
+------------------
+- State → private
+- Behavior → public
+
+Java Example:
+-------------
+public class Account {
+    private double balance; // private data
+
+    public double getBalance() { return balance; }
+    public void deposit(double amount) { balance += amount; }
+}
+
+Real-world Analogy:
+-------------------
+- **Capsule pill**: Medicine is sealed inside; you only get it in controlled dosage.
+- You don’t directly access the drug powder → only through the capsule.
+
+
+
+----------------------------------------
+ACCESS MODIFIERS:
+----------------------------------------
+- **private** → Accessible only within class.
+- **default** → Accessible within same package.
+- **protected** → Accessible in same package & subclasses (across packages).
+- **public** → Accessible everywhere.
+
+Default Example:
+----------------
+package p1;
+// Class Geeks is having Default access modifier
+
+public class Geek {
+    void display() {
+        System.out.println("Hello World!");
+    }
+}
+
+package p2;
+import p1.*;
+class GeekNew {
+    public static void main(String[] args) {
+        Geek obj = new Geek(); // Compile error → default access if Geek is default, now I added publuc
+        obj.display(); //still compile error as method has default access specifier
+    }
+}
+
+Protected Example:
+------------------
+package p1;
+public class Geek {
+    protected void display() {
+        System.out.println("GeeksforGeeks");
+    }
+}
+
+package p2;
+import p1.*;
+class GeeksSubClass extends Geek {
+    public static void main(String[] args) {
+        Geek obj = new Geek();
+        obj.display(); // Works → subclass access
+    }
+}
+
+========================================
+INHERITANCE
+========================================
+Definition:
+-----------
+- The feature by which one class acquires the properties and functionalities of another class
+- Inheritance leads to reusability of code
+
+
+Java Notes:
+-----------
+- When is a relationship exists between two classes, we use inheritance
+- The parent class is termed super class and the inherited class is the sub class
+- The keyword extends is used by the sub class to inherit the features of super class
+- A subclass cannot access the private members of its super class.        
+- Multi-level inheritance is allowed in Java but not multiple inheritance
+- A class can implement multiple interfaces
+
+
+Java Example:
+-------------
+class Vehicle {
+    public void start() {
+        System.out.println("Vehicle starting...");
+    }
+}
+
+class Car extends Vehicle {
+    public void honk() {
+        System.out.println("Car honking...");
+    }
+}
+
+Real-world Analogy:
+-------------------
+- A *Car* inherits basic functions of *Vehicle* (start/stop) but adds its own behaviour (honk).
+
+
+========================================
+POLYMORPHISM
+========================================
+Definition:
+-----------
+- Ability of the same interface to take more than one form.
+- Improves code flexibility.
+
+Types:
+------
+	1) **Static Polymorphism (Compile-time)**
+   - Method Overloading.
+   - The method to call is decided at **compile time** based on the method signature  
+    (method name + parameter list).Number/type/order of parameters must differ.
+	To find the area of a square or rectangle, separate functions are needed:
+
+   - Example:
+     int area(int side);
+     int area(int length, int breadth);
+
+2) **Dynamic Polymorphism (Runtime)**
+   - Method Overriding.Redefining a base class method in a sub class is called method overriding
+   - Decision made at runtime (Dynamic Binding).
+
+Example:
+--------
+public class Policy {
+    public void read() { /*...*/ }
+    public void write() { /*...*/ }
+}
+
+public class TermInsurancePolicy extends Policy {
+    @Override
+    public void read() { super.read(); /* extra logic */ }
+    @Override
+    public void write() { super.write(); /* extra logic */ }
+}
+
+public class EndowmentPolicy extends Policy {
+    @Override
+    public void read() { super.read(); /* extra logic */ }
+    @Override
+    public void write() { super.write(); /* extra logic */ }
+}
+
+Dynamic Dispatch:
+-----------------
+Policy policy;
+if(choice == 'T')
+    policy = new TermInsurancePolicy();
+else
+    policy = new EndowmentPolicy();
+
+policy.read();  // Calls correct subclass method at runtime
+policy.write(); // Calls correct subclass method at runtime
+
+----------------------------------------
+Dynamic Binding:
+----------------------------------------
+- Superclass reference can refer to subclass object.
+- JVM decides method call based on **object type**, not reference type.
+- Decision on which method is to be invoked is taken at runtime  and hence this is known as dynamic binding
+
+
+
+
+Real-world Analogy:
+-------------------
+- **Remote Control**: Same "play" button plays music on a speaker, plays video on a TV.
+- The command is the same, but execution differs based on the device.
+
+---------------------------------------

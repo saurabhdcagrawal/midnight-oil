@@ -1,0 +1,294 @@
+Hi, I’m Saurabh Agrawal, a lead developer in the Financial Crimes Technology group at M. I design and build scalable, secure Java-based microservices — operating in both batch and real time — for sanctions, adverse media, and politically exposed person (PEP) screening. Our services screen client reference data — millions of party and account records across our institutional, wealth management, and E*TRADE businesses — as well as transaction flows such as cash movements, payments, and securities. The screening outcomes provided by our services are delivered to critical financial workflows, enabling downstream systems to proactively block high-risk entities and transactions, ensuring compliance with global AML regulations while protecting the firm’s reputation.From a technology stack perspective, I use a modern Java stack — Java 17, Spring Boot, Kafka — along with REST/SOAP APIs, DB2, MQ, and cloud technologies to build these services for large-scale data processing.We integrate with Actimize, our case management platform, and external risk intelligence providers such as RDC, CLink — through vendor-defined APIs.
+
+
+1. Improving System Performance
+Q: Can you tell me about a time you improved the performance of a critical system?
+
+S (Situation):
+In MS’s Financial Crimes Technology group, we screen ~8 million client records monthly for sanctions, PEP, and adverse media. Our legacy reference data batch screening platform — used for sanctions, negative news, and PEP checks — was struggling with increasing data volumes. It was slow, brittle, and prone to timeouts, especially during onboarding spikes, which risked compliance SLA breaches.
+
+T (Task):
+Redesign the batch screening system to handle 50+ million records efficiently, maintain accuracy, and meet strict global compliance SLAs.
+
+A (Action):
+- Re-architected the batch screening platform using Spring Batch and Apache Kafka.
+- Implemented a ClientIdRangePartitioner to split large datasets into smaller, parallelizable partitions.
+- Each partition ran optimized DB2 range-filter queries, processing in parallel and publishing to a dedicated Kafka topic.
+- Configured Kafka topic with increased partitions, enabling horizontal scaling where multiple consumers processed messages concurrently.
+- Added checkpointing to resume from the last successful DB2 offset, ensuring resilience in case of job restarts.
+- Built idempotent consumers to safely handle retries and prevent duplicate processing.
+- Introduced dead-letter queues and retry topics for transient failures (e.g., vendor API timeouts, DB locks).
+- Implemented rate-limiting and circuit breakers to protect downstream systems like screening APIs and Actimize loaders.
+- Integrated Prometheus and Grafana dashboards to monitor throughput, latency, and error trends in real time.
+
+R (Result):
+- Reduced processing time by 40%, enabling the system to process 50M+ records without bottlenecks.
+- Cleared existing alert backlogs and achieved consistent SLA compliance.
+- The new design is now the global backbone for client screening, supporting higher volumes with improved fault tolerance and scalability.
+
+
+"Tell me about a time you reduced false positives or optimized an alerting process."
+"Can you give an example where you improved efficiency in financial crime or sanctions screening?"
+"How have you handled duplicate or redundant alerts in your screening systems?"
+"Describe a project where you consolidated data or logic across different business units."
+"Tell me about a time you improved alert quality while still meeting regulatory requirements."
+
+ENHANCED DUE DILIGENCE — REAL-TIME & DE-DUPLICATED SCREENING
+------------------------------------------------------------
+
+S (Situation)
+-------------
+- EDD triggered on risk profile changes, but workflow was fragmented:
+  - Relied on Excel trackers, shared mailboxes, and an RPA bot running twice daily on vendor-specific UIs.
+  - Error-prone, slow, hard to audit.
+  - Duplicate alerts across Wealth and ISG, inconsistent dispositioning, repeated re-screening.
+  - Vendors (RDC for PEP/adverse media, CLink for sanctions) returned different payload formats.
+  - Decentralized alert workflows in WM and ISG.
+
+T (Task)
+--------
+- Automate and standardize the EDD process:
+  - Real-time, auditable, automated screening/event handling.
+  - Prevent unnecessary re-screening for previously cleared clients unless risk changes.
+  - Centralize alert disposition in Actimize as system of record for both Wealth and ISG.
+  - Provide versioned, well-defined APIs for historical lookups, alert details, and screening eligibility.
+  - Normalize all vendor data (RDC and CLink) behind a unified API contract.
+  - Enforce robust RBAC, audit trails, and observability.
+
+A (Action)
+----------
+1) Event-Driven Core
+   - Migrated to Kafka topics (screening.requests, dispositions.events) and microservices for real-time, scalable processing.
+
+2) Unified, Canonical Screening Contract (Vendor-Agnostic)
+   - Developed a single, vendor-agnostic contract for all screening payloads (RDC and CLink).
+   - Example contract:
+     {
+       schemaVersion: "1.0",
+       alertId: "A-12345",
+       entityId: "E-9988",
+       entityType: "INDIVIDUAL|ORG",
+       vendor: "RDC|CLINK",
+       watchlistId: "WC-4321",
+       matchScore: 0.87,
+       riskTier: "HIGH|MEDIUM|LOW",
+       status: "OPEN|CLEARED|ESCALATED",
+       createdAt: "2025-07-18T14:22:10Z",
+       disposition: {
+         state: "CLEARED|TRUE_POSITIVE|FALSE_POSITIVE|SUPPRESSED",
+         reason: "CVIP_PREVIOUSLY_CLEARED|PROFILE_CHANGE|LIST_UPDATE",
+         decidedBy: "uid1234",
+         decidedAt: "2025-07-18T15:02:44Z"
+       },
+       links: { caseUrl: "https://actimize/.../A-12345" }
+     }
+
+3) Centralized Dispositioning in Actimize
+   - All alert dispositions recorded in Actimize, not local tools.
+   - API-driven disposition updates broadcast to downstream systems via Kafka.
+
+4) Re-screen Prevention (CVIP + Change Detection)
+   - Eligibility checks using the unified contract prevent re-screening unless there is a material change (e.g., sanctions update, profile change, new exposure).
+
+5) Security, Audit, Observability
+   - JWT, HTTPS, HMAC on callbacks.
+   - Immutable audit logs (who/what/why, input diffs).
+   - Prometheus/Grafana/Splunk for metrics and traceability.
+
+6) Rollout & Governance
+   - Phased, parallel run with feature flags.
+   - Controls documentation, Compliance/Model Governance sign-off, DR tested.
+
+R (Result)
+----------
+- Manual process steps reduced by ~75%; average case turnaround improved by >30%.
+- Centralized, unified dispositioning in Actimize across Wealth and ISG.
+- Re-screen prevention eliminated redundant alerts/screens unless risk changed.
+- Unified API contract simplified integration, improved auditability and onboarding.
+- SLA adherence improved; compliance reviews passed with zero critical findings.
+
+============================================================
+Modernized, RESTful API Suite (Built on Unified Contract)
+============================================================
+
+1. Screening Submission & Eligibility
+-------------------------------------
+- Check If Screening Is Needed:
+  POST /screenings/eligibility
+    Request: entityId, profile, watchlistId/listVersion, screeningType
+    Response: eligible (true/false), reason, lastDisposition
+
+- Submit for Screening (Idempotent):
+  POST /screenings
+    Request: entityId, profile, screeningType, watchlistId, Idempotency-Key
+    Response: screeningId, submittedAt, status (QUEUED, DUPLICATE, IN_PROGRESS)
+
+2. Alerts and Results
+----------------------
+- List Alerts for an Entity:
+  GET /entities/{entityId}/alerts?screeningType={type}&status={OPEN|CLEARED|ESCALATED}
+    Response: Array of canonical alert objects
+
+- Get Details of a Specific Alert:
+  GET /alerts/{alertId}
+    Response: Canonical alert object
+
+3. Disposition Management
+-------------------------
+- Submit/Update Disposition for an Alert:
+  POST /alerts/{alertId}/dispositions
+    Request: state, reason, decidedBy, notes
+    Response: Updated disposition object
+
+- Get Disposition History:
+  GET /entities/{entityId}/dispositions?watchlistId={...}
+  GET /alerts/{alertId}/dispositions
+    Response: Chronological list of disposition actions
+
+4. Screening History & Audit
+-----------------------------
+- Get Screening History for an Entity:
+  GET /entities/{entityId}/screenings?type={all|PEP|sanctions|adverse_media}&since={date}
+    Response: Array of screenings
+
+- Get Screening Event/Audit Log:
+  GET /entities/{entityId}/audit-log?since={date}
+  GET /alerts/{alertId}/audit-log
+    Response: Array of audit events
+
+5. Reference/Meta APIs
+-----------------------
+- List Supported Vendors, Screening Types, and Watchlists:
+  GET /meta/vendors
+  GET /meta/screening-types
+  GET /meta/watchlists
+    Response: Static lists, contract versions, field requirements
+
+6. Search & Bulk
+-----------------
+- Search for Entities/Alerts by Attributes:
+  GET /entities/search?name=...&dob=...&country=...&status=...
+  GET /alerts/search?matchScore>0.85&vendor=RDC&status=OPEN
+    Response: Paginated search results
+
+API Principles
+--------------
+- All APIs are versioned (/v1/), RESTful, and return consistent, canonical objects.
+- Vendor details are abstracted away.
+- Fine-grained filtering, auditing, and idempotency are built in.
+- All writes emit event streams for downstream consumers.
+- Security (JWT, RBAC), traceability, and error codes are first-class.
+
+Sample Flow
+-----------
+1. Check eligibility:      POST /screenings/eligibility
+2. Submit screening:       POST /screenings (if eligible)
+3. Review alerts:          GET /entities/{entityId}/alerts
+4. Submit disposition:     POST /alerts/{alertId}/dispositions
+5. Audit trail:            GET /entities/{entityId}/audit-log
+
+Summary
+-------
+- Unified, vendor-agnostic contract + modern RESTful API suite
+- Real-time, scalable, auditable EDD screening across RDC and CLink
+- Streamlined manual effort, eliminated redundancies, developer-friendly foundation for future integration and compliance needs
+
+
+
+
+Handling Conflict with Stakeholders
+Q: Describe a time you faced pushback on your technical decision.
+
+S: 
+- While re-architecting reference data batch screening jobs, some stakeholders resisted Kafka adoption, worried about complexity.They were anxious about the technical risks of moving off the legacy platform.
+T: 
+- I needed to gain buy-in without delaying the project.
+A:
+- Created a prototype showing Kafka’s ability to process 5x the throughput.
+- Presented a risk analysis showing reduced SLA violations, stronger fault tolerance and better scalability
+- Addressed concerns with phased rollout and training.
+R: 
+- Stakeholders approved, and Kafka became the standard event bus for our microservices. 
+- It’s now handling mission-critical jobs across compliance systems.
+
+What are your strengths?
+ - I am told I have an attention to detail. I’m also good at breaking down complex regulatory requirements into scalable technical solutions, and  
+ I’ve developed strong stakeholder communication skills from working with compliance and risk teams.
+ 
+ 
+Questions to Interviewer 
+ What kind of impact would you expect someone in this role to have in the first 3–6 months?
+ How is success measured for this position?
+ 
+ 
+ 
+In my current role, I’ve built and scaled compliance microservices that integrate with Actimize, Kafka, and external screening vendors and data sources — including L’s World-Check list.I want to move beyond being a consumer of such critical datasets to contributing to the platforms and infrastructure that power them at a global scale.LSEG is a financial data powerhouse, sitting at the intersection of global markets and advanced data analytics and I’m excited by the scale and reliability challenges here. I’d bring my experience in designing clear, consistent APIs and building scalable services that work seamlessly across different data sources.
+ 
+ 
+ Resolving a Faulty Record Production Incident Under Pressure
+During a peak processing window, a faulty client reference record with unexpected special characters in the name field started causing repeated failures in our sanctions screening pipeline. Because the message kept retrying in Kafka, it blocked the consumer thread, creating a backlog and risking SLA breaches for other transactions. I quickly identified the root cause by inspecting the DLQ and tracing the payload through our logs in Splunk. I applied a hotfix to add input sanitization and schema validation at the ingestion layer, reprocessed the faulty record in isolation, and then drained the backlog by temporarily increasing Kafka consumer concurrency. The system recovered within an hour, no SLA was breached, and I later implemented automated schema validation plus dead-letter handling for faulty records to prevent similar issues in the future.
+ 
+ 
+ 
+ 
+CVIP here likely stands for Customer/Client/Counterparty Verified Information Profile (naming can vary by firm).
+It’s essentially a central reference record that stores a client’s verified KYC details, sanctions screening results, and prior alert dispositions.
+
+When you incorporate CVIP-based suppression logic into sanctions or PEP screening, you’re doing this:
+
+Step 1 — Look up historical alert disposition
+When the screening system flags a match, it checks the CVIP record to see if this exact match (same client, same matched watchlist entry, same attributes) has already been investigated and cleared by compliance.
+
+Step 2 — Decide whether to suppress
+If it was previously cleared and there is no material change in the client’s risk profile (e.g., name change, address change, new ownership, sanctions list update), then the system automatically suppresses creating a new alert.
+
+Step 3 — Re-alert only when relevant
+If the client’s profile changes in a way that could affect risk (for example, they become active in a new region, get a new beneficial ownership, or the matched watchlist entry changes), the system will re-surface the alert for review.
+
+Why this matters
+Without CVIP suppression, you might see the same false positive hundreds of times — e.g., every time that client transacts or is re-screened. By leveraging CVIP, you avoid re-investigating the same cleared case unless there’s a genuine reason to reassess.
+
+ 2. Reducing Duplicate Alerts Across Portfolios
+
+S (Situation):
+In both our Institutional Securities Group (ISG) and Wealth Management portfolios, screening systems were generating duplicate alerts for the same high-risk client.
+If a client appeared in multiple business lines or regions — e.g., as a beneficial owner in ISG and an individual in Wealth Management — they were screened multiple times. Their presence in multiple regional portfolios (AMER, EMEA, APAC, MSIM) amplified the duplication.
+This inflated alert volumes, created repetitive investigations, and increased workload for L1/L2 analysts without adding compliance value.
+
+T (Task):
+Design and implement a global, cross-portfolio alert consolidation strategy that:
+
+Eliminates redundant alerts.
+
+Preserves complete compliance coverage and audit readiness.
+
+Works consistently across all four global regions despite differences in existing logic.
+
+A (Action):
+
+Analyzed alert generation logic across all business units and regions to identify duplication patterns.
+
+Integrated AMER, EMEA, APAC, and MSIM portfolios into a unified ISG Strategic Portfolio for consolidated screening.
+
+Implemented parent–child alert logic in Actimize (non-native, custom-built with vendor collaboration):
+
+One parent alert per unique client match.
+
+Child alerts for other business units/regions referencing the parent — suppressed unless the parent is escalated.
+
+Built suppression rules for inactive clients (no active accounts or positions), with automatic re-surfacing upon re-exposure.
+
+Added CVIP-based suppression to prevent re-alerting on known, cleared matches unless there was a material risk profile change.
+
+Aligned data standards and alert behavior globally, ensuring consistent risk thresholds and preserving auditability.
+
+R (Result):
+
+Reduced total alert volume by ~30%, significantly improving analyst efficiency.
+
+Eliminated redundant name submissions to the screening vendor, cutting processing costs.
+
+Maintained full regulatory coverage and audit readiness.
+
+Secured compliance buy-in through simulations and risk-threshold calibration, ensuring smooth adoption.
+

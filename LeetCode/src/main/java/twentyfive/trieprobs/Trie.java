@@ -1,6 +1,7 @@
-package main.java.twentyfive;
-import java.util.Map;
+package main.java.twentyfive.trieprobs;
+
 import java.util.HashMap;
+import java.util.Map;
 /*
 A Trie (pronounced "try") or Prefix Tree is a tree data structure used to efficiently retrieve a key from a dataset of strings
 */
