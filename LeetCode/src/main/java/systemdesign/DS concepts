@@ -18,14 +18,16 @@ machines in existing pool.
 Vertical Scaling-> Needs downtime, limited by server capacity of single server.. Increase the resources of a machine , Eg CPU, RAM , Storage
 
 Good examples of horizontal scaling are Cassandra and MongoDB as they both provide an easy way to scale horizontally by adding more machines to
-meet growing needs. Similarly, a good example of vertical scaling is MySQL as it allows for an easy way to scale vertically by switching from smaller to bigger machines. However, this process often involves downtime.
+meet growing needs. Similarly, a good example of vertical scaling is MySQL as it allows for an easy way to scale vertically by switching from smaller to bigger machines. 
+However, this process often involves downtime.
 
 2) A system is Reliable if it continues to deliver services -work correctly (performing the correct function at desired level of performance- even in the face of adversity- if one or more of its hardware or software components fail or if a human makes error
 It is achieved with the help of redundancy of data and software components
 The system should continue to work correctly (performing the correct function at the desired level of performance)
 even in the face of adversity (hardware or software faults, and even human error)
 If the server carrying the user’s shopping cart fails, another server that has the exact replica of the
-shopping cart should replace it. Obviously, redundancy has a cost and a reliable system has to pay that to achieve such resilience for services by eliminating every single point of failure.
+shopping cart should replace it. Obviously, redundancy has a cost and a reliable system has to pay that to achieve such resilience for services by
+ eliminating every single point of failure.
 
 
 3) Availability is how long a system is available to do its function
@@ -153,15 +155,21 @@ CAP theorem
 In presence of network partition, choose consistency or availability. In a DS system only 2 of 3 are guaranteed.
 
 
-Consistency->All clients/nodes see the same data at the same time..Consistency means that every time a client reads data, it sees the most recent write. In other words, all nodes in the system always have the same view of data.If you update a value in one part of the system, every subsequent read (regardless of which node you contact) will reflect that update immediately. This ensures that all users and processes are working with the same data.In a banking system, if you transfer funds from your account, you expect that every time you check your balance—whether through a mobile app or an ATM—the updated balance (after the transfer) is what you see.
+Consistency->All clients/nodes see the same data at the same time..Consistency means that every time a client reads data, it sees the most recent write. 
+In other words, all nodes in the system always have the same view of data.If you update a value in one part of the system, every subsequent read (regardless of which 
+node you contact) will reflect that update immediately. This ensures that all users and processes are working with the same data.In a banking system, 
+if you transfer funds from your account, you expect that every time you check your balance—whether through a mobile app or an ATM—the updated balance 
+(after the transfer) is what you see.
 
 Availability-> In presence of network partition, non-failing nodes on either sides, respond to every request
-Availability means that every request made to the system receives a response, regardless of whether that response reflects the most recent write. Essentially, the system is always "up" and responsive.
-Even if some parts of the system are experiencing issues or delays, the system still processes requests and returns some answer. However, this answer might sometimes be based on outdated information.
+Availability means that every request made to the system receives a response, regardless of whether that response reflects the most recent write. 
+Essentially, the system is always "up" and responsive.
+Even if some parts of the system are experiencing issues or delays, the system still processes requests and returns some answer. 
+However, this answer might sometimes be based on outdated information.
 
-Partition tolerance->System should continue to operate and function even if there is a network partition
-leading to a communication breakdown between the nodes
-Partition tolerance is a property of distributed systems that enables them to continue operating even when there are network failures that split the system into isolated segments (or partitions). 
+Partition tolerance->System should continue to operate and function even if there is a network partition leading to a communication breakdown between the nodes
+Partition tolerance is a property of distributed systems that enables them to continue operating even when there are network failures that split the system into 
+isolated segments (or partitions). 
 In other words, even if some nodes in the system cannot communicate with others due to network issues, the system as a whole remains functional.
 
 The CAP theorem states that in a distributed system, you can only achieve two out of three properties:
@@ -183,7 +191,8 @@ If consistency is critical, choose CP and tolerate temporary unavailability.
 If availability is more important, choose AP and allow temporary inconsistencies.
 True CA systems do not exist in distributed networks because partitions are unavoidable. 🚀
 
-Consistency + Availability..partition tolerance is avoidable hence this usecase is invalid
+Consistency + Availability..
+partition tolerance is avoidable hence this usecase is invalid
 
 
 We cannot build a general data store that is continually available, sequentially consistent, and tolerant to any partition
@@ -205,22 +214,39 @@ MongoDB choose availability over consistency but otherwise choose consistency ov
 
 Bloom filters??
 Quorum--> In a distributed system with data replicated across different nodes,
-quorum is the minimum number of nodes on which distributed operation(read/write) is performed to ensure that operation can be committed
-and called successful
-
+quorum is the minimum number of nodes on which distributed operation(read/write) is performed to ensure that operation can be committed and called successful
+A quorum is a subset of nodes in a distributed system that must agree on a particular decision or action before it is considered valid.
 What value should we choose for a quorum? More than half of the number of nodes in the cluster:
 (N/2+1) where N is the total number of nodes in the cluster
 Quorum is achieved when nodes follow the below protocol: R + W > N where:
 N = nodes in the quorum group
 W = minimum write nodes
 R = minimum read nodes
+How quorum is used in read/write operations?
+R+W>N (Reads and writes must intersect)
+Ensures strong consistency
 This will guarantee that every read will see at least one copy of latest value written
+
+Consider a distributed database with 5 nodes. The Read Quorum is set to 3.
+ When a read request is made, the system must read from at least 3 nodes and collect their responses to fulfill the request. 
+ This ensures that the data read is consistent across the majority of nodes.
+
+
+Consider a distributed database with 5 nodes, the Write Quorum is set to 3. When a write request is made, the system must 
+receive acknowledgments from at least 3 nodes confirming the write operation. This ensures that the data is written to a majority of nodes, maintaining consistency
+
+Membership Quorum
+In a distributed system, a membership quorum is a group of nodes that must all agree on changes to the system's membership before they are considered true
+. Say, for example, that we have a distributed system with ten nodes and a group of six nodes. 
+When a node joins or leaves the system, the change is only true if at least six other nodes agree with it.
+
+In distributed systems, quorum-based systems are an essential mechanism for maintaining consistency and availability
 
 Read more--
 Reading
 (N=3, W=1, R=3): fast write, slow read, not very durable
 (N=3, W=3, R=1): slow write, fast read, durable
-
+N=3,W=2,R=2
 Leader&follower:Quorum (slow) Leader and follower is an alternate to quorum based DS approach
 
 Heartbeating is one of the mechanisms for detecting failures in a distributed system.
@@ -420,6 +446,84 @@ Loose Decoupling(Small services to be designed and stored in container)
 Fully distributed
 Easy to Scale
 
+
+Consistent hashing is a popular technique used in distributed systems to address the challenge of efficiently distributing keys or data elements
+ across multiple nodes/servers in a network. 
+Consistent hashing's primary objective is to reduce the number of remapping operations necessary when adding or removing nodes from the network,
+ which contributes to the stability and dependability of the system.
+ 
+Consistent hashing can be used in to share the burden among nodes and lessen the effects of node failures.
+For example, when a new node is added to the network, only a small number of keys are remapped to the new node, which helps to reduce the overhead associated with the addition.
+Similarly, when a node fails, only a small number of keys are affected, which helps to minimize the impact of the failure on the system as a whole.  
+Consistent hashing is also useful in ensuring data availability and consistency in a distributed system.
+
+Let's say we have 5 nodes in the ring and say node 3 fails, then the range of the next server node widens and any request coming in all of this range, goes to the new server node. 
+This shows that due to use of consistent hashing only a small portion of keys are affected.
+
+Step 1: Choose a Hash Function:
+Select a hash function that produces a uniformly distributed range of hash values. Common choices include MD5, SHA-1, or SHA-256.
+
+Step 2: Define the Hash Ring:
+Represent the range of hash values as a ring. This ring should cover the entire possible range of hash values and be evenly distributed.
+
+We use a hash function that maps both nodes and keys into a ring of size 0–99.
+
+Step 3:
+Place nodes on the ring:
+Assign each node in the system a position on the hash ring. This is typically done by hashing the node's identifier using the chosen hash function.
+hash(A) = 20
+
+hash(B) = 50
+
+hash(C) = 80
+
+So the ring looks like this:
+
+0 ------------------20(A)---------50(B)---------80(C)-----------99       (wraps around to 0)
+
+Step 4: Key Mapping:
+When a key needs to be stored or retrieved, hash the key using the chosen hash function to obtain a hash value.
+Find the position on the hash ring where the hash value falls.
+Walk clockwise on the ring to find the first node encountered. This node becomes the owner of the key.
+Let’s hash three keys:
+hash(k1) = 10 → clockwise → goes to A (at 20)
+hash(k2) = 55 → clockwise → goes to C (at 80)
+hash(k3) = 90 → wraps around → goes to A (at 20)
+
+Step 5: If a new node is added..
+Suppose hash(D) = 60.
+Now the ring is:
+
+0 --20(A)--50(B)--60(D)--80(C)--99
+
+Recompute ownership:
+A: [0–20) + [81–99]
+B: [21–50)
+D: [51–60) ← new
+C: [61–80)
+
+Which keys move?
+k2 (hash=55) was at C, but now 55 falls in [51–60) → moves to D.
+
+Other keys stay put.
+Only local keys moved (just k2). Not all keys were reshuffled.
+
+Step 6: Node Removals:
+When a node is removed, identify its position on the hash ring.
+Identify the range of keys that will be affected by the removal. This typically involves finding the successor node on the ring.
+Update the ring to exclude the removed node and remap the affected keys to the successor node.
+Step 7: Load Balancing:
+Periodically check the load on each node by monitoring the number of keys it owns.
+If there is an imbalance, consider redistributing some keys to achieve a more even distribution.
+
+Common uses: distributed caches (Memcached “Ketama”), Dynamo-style databases (Amazon Dynamo, Cassandra, Riak)
+
+Load balancing: Even as the volume of data grows and evolves over time, consistent hashing maintains the system's efficiency and responsiveness 
+by distributing the network's workload among its nodes in a balanced way.
+Scalability: Because consistent hashing is so scalable, it can adjust to variations in the number of nodes or volume of data being processed
+ with negligible to no impact on the system's overall performance.
+Minimal Remapping: By minimizing the amount of keys that need to be remapped whenever a node is added or withdrawn, 
+consistent hashing makes sure that the system remains stable and reliable even as the network evolves
 
 
 
