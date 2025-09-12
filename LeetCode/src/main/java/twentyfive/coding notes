@@ -76,3 +76,8 @@ maxDepth(4)	1 + max(maxDepth(null), maxDepth(null))
     //form a linear chain
     //Also visited array needs O(N) space
     //While your DFS approach works well, a BFS approach using a queue could be considered to avoid deep recursion in cases of large inputs.
+
+ 9)
+ int[] char_set = new int[256]; assumes extended ASCII. In Java, char is UTF-16 (0..65535). If s ever has non-ASCII, char_set[r_index] will throw.
+
+ Minimal fix: size to 65536 (or use a Map<Character,Integer>).

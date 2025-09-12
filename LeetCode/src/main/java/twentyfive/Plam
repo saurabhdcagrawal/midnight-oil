@@ -13,30 +13,30 @@
 WEEK 1 - Arrays, Strings, Hashing, Sliding Window, Stacks, Linked Lists
 ================================================================================
 Day 1 - Arrays & Two Pointers
-  Warm-up   : Two Sum II                   https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/
-  Core      : Remove Duplicates            https://leetcode.com/problems/remove-duplicates-from-sorted-array/
-  Variant   : Sort Colors                  https://leetcode.com/problems/sort-colors/
+  Warm-up   : Two Sum II                   https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/->08/16,09/06
+  Core      : Remove Duplicates            https://leetcode.com/problems/remove-duplicates-from-sorted-array/->08/17,09/06
+  Variant   : Sort Colors                  https://leetcode.com/problems/sort-colors/ ->08/17
 
 Day 2 - Sliding Window
-  Warm-up   : Longest Substring w/o Repeat https://leetcode.com/problems/longest-substring-without-repeating-characters/
+  Warm-up   : Longest Substring w/o Repeat https://leetcode.com/problems/longest-substring-without-repeating-characters/ 08/20
   Core      : Minimum Window Substring     https://leetcode.com/problems/minimum-window-substring/
   Variant   : Longest Substring ≤ K Dist   https://leetcode.com/problems/longest-substring-with-at-most-k-distinct-characters/
-
+              Minimum Size SubArray Sum    https://leetcode.com/problems/minimum-size-subarray-sum/ 08/18
 Day 3 - Prefix & Product/Sums
-  Warm-up   : Maximum Subarray             https://leetcode.com/problems/maximum-subarray/
+  Warm-up   : Maximum Subarray             https://leetcode.com/problems/maximum-subarray/ ->08/16
   Core      : Product Except Self          https://leetcode.com/problems/product-of-array-except-self/
   Variant   : Range Sum Query 2D           https://leetcode.com/problems/range-sum-query-2d-immutable/
 
 Day 4 - Hashing
-  Warm-up   : Two Sum                      https://leetcode.com/problems/two-sum/
-  Core      : Group Anagrams               https://leetcode.com/problems/group-anagrams/
+  Warm-up   : Two Sum                      https://leetcode.com/problems/two-sum/ ->08/16,09/06
+  Core      : Group Anagrams               https://leetcode.com/problems/group-anagrams/ ->08/17
   Variant   : Longest Consecutive Seq      https://leetcode.com/problems/longest-consecutive-sequence/
 
 Day 5 - Stacks & Monotonic
-  Warm-up   : Next Greater Element I       https://leetcode.com/problems/next-greater-element-i/
+  Warm-up   : Next Greater Element I       https://leetcode.com/problems/next-greater-element-i/ -> 08/16
   Core      : Largest Rectangle Histogram  https://leetcode.com/problems/largest-rectangle-in-histogram/
   Variant   : Sliding Window Maximum       https://leetcode.com/problems/sliding-window-maximum/
-
+                                            https://leetcode.com/problems/daily-temperatures/description/
 Day 6 - Linked Lists
   Warm-up   : Reverse Linked List          https://leetcode.com/problems/reverse-linked-list/
   Core      : Linked List Cycle II         https://leetcode.com/problems/linked-list-cycle-ii/
@@ -74,7 +74,7 @@ Day 6 - Graphs & Union-Find
   Warm-up   : Number of Islands            https://leetcode.com/problems/number-of-islands/
   Core      : Course Schedule              https://leetcode.com/problems/course-schedule/
   Variant   : Accounts Merge               https://leetcode.com/problems/accounts-merge/
-
+                                            https://leetcode.com/problems/flood-fill/description/
 ================================================================================
 WEEK 3 - Dynamic Programming
 ================================================================================
@@ -158,10 +158,10 @@ MASTER DSA + CODILITY + LEETCODE ROADMAP
 WEEK 1 – ARRAYS & HASHING (LeetCode + Codility Warmups)
 -----------------------------------------------------------
 LeetCode:
-- Two Sum: https://leetcode.com/problems/two-sum/
-- Group Anagrams: https://leetcode.com/problems/group-anagrams/
+- Two Sum: https://leetcode.com/problems/two-sum/ Already covered above
+- Group Anagrams: https://leetcode.com/problems/group-anagrams/ Already covered above
 - Product of Array Except Self: https://leetcode.com/problems/product-of-array-except-self/
-- Maximum Subarray: https://leetcode.com/problems/maximum-subarray/
+- Maximum Subarray: https://leetcode.com/problems/maximum-subarray/ ->08/16
 - Maximum Product Subarray: https://leetcode.com/problems/maximum-product-subarray/
 - Encode and Decode Strings: https://leetcode.com/problems/encode-and-decode-strings/
 - Valid Sudoku: https://leetcode.com/problems/valid-sudoku/
@@ -180,8 +180,8 @@ Codility Core:
 WEEK 2 – TWO POINTERS, SLIDING WINDOW & STACK/QUEUE
 -----------------------------------------------------------
 LeetCode:
-- Valid Palindrome: https://leetcode.com/problems/valid-palindrome/
-- Two Sum II: https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/
+- Valid Palindrome: https://leetcode.com/problems/valid-palindrome/ ->08/16
+- Two Sum II: https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/ ->08/16
 - 3Sum: https://leetcode.com/problems/3sum/
 - Container With Most Water: https://leetcode.com/problems/container-with-most-water/
 - Trapping Rain Water: https://leetcode.com/problems/trapping-rain-water/
