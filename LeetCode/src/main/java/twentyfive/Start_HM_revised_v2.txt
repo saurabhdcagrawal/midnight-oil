@@ -1,0 +1,414 @@
+============================================================
+HIRING MANAGER INTERVIEW — REVISED Q&A (v2)
+============================================================
+
+Q1: Tell me about yourself
+==========================
+
+"I'm a Lead Backend Engineer in financial crimes technology, designing and owning large-scale screening systems for sanctions, PEP, and adverse media checks across tens of millions of client records.
+
+These systems are mission-critical — they prevent the firm from onboarding sanctioned entities and are central to managing regulatory and operational risk.
+
+Our platform sits between upstream business systems and downstream vendor screening platforms like Clink (sanctions) and RDC (adverse media). I design vendor-agnostic APIs and canonical data contracts so that screening behavior is consistent, auditable, and scalable — regardless of the underlying vendor.
+
+Over the past few years, my role has evolved from building services to owning systems end-to-end. I operate at the intersection of engineering, business, and external vendors — converting ambiguity into structured decisions by making assumptions explicit and evaluating trade-offs around scale, correctness, and auditability.
+
+For example, I led our Bridger vendor migration where vendor access was delayed and behavior was unclear. Instead of blocking, I shifted to a validation-driven approach — using controlled tests, targeted demos, and incremental iterations to de-risk the design early. That saved us roughly 4 weeks of potential rework.
+
+I combine hands-on technical depth with architectural thinking, and I'm looking for roles where I can take broader ownership — driving system design, influencing cross-team decisions, and building scalable systems that hold up under real-world constraints."
+
+Q2: Tell me about your current architecture
+============================================
+
+"At a high level, the architecture sits between upstream business systems and downstream vendor screening platforms.
+
+Ingestion Layer: Upstream systems — onboarding, client lifecycle, account updates — send client and account data to our platform for screening.
+
+Orchestration Layer: Our platform exposes APIs with well-defined, vendor-agnostic data contracts that standardize how screening requests are submitted and how results are interpreted. Based on the use case, we route to either a real-time flow (e.g., onboarding) or a batch flow (periodic re-screening).
+
+Batch Processing Layer: For large-volume batch runs, we use Spring Batch with a ClientIdRangePartitioner that splits tens of millions of records into ID-range partitions. Each partition runs in a parallel worker thread, reads from the database, and publishes messages to a shared Kafka topic. This gives us producer-side parallelism.
+
+Event Layer (Kafka): The Kafka topic itself is partitioned (e.g., 10 partitions), providing the second layer of parallelism. Kafka consumers process messages independently — each consumer reads from one partition, invokes downstream vendor APIs (Clink or RDC), and handles results.
+
+Resilience: Consumers are idempotent, with retry mechanisms (exponential backoff + jitter) and dead-letter queues (DLQ) for transient failures. We also apply rate limiting and circuit breakers to protect downstream vendor systems.
+
+Normalization & Alerting: Vendor responses are normalized into a canonical format, alerts are generated in Actimize, and reconciliation processes ensure what we received from vendors matches what we expect over time.
+
+Observability: Prometheus and Grafana provide real-time monitoring of throughput, latency, error rates, and backlog trends.
+
+Key Design Principle: The core platform is generic — variability is pushed to the edges. APIs return consistent data; consuming systems apply their own filtering or business logic. This avoids tight coupling and allows the system to scale across multiple lines of business.
+
+Two layers of parallelism (important to articulate):
+1) Spring Batch = producer-side parallelism (DB reading + Kafka publishing)
+2) Kafka consumers = processing-side parallelism (vendor API calls)
+
+Spring Batch workers do NOT call vendors directly. They only publish to Kafka. Each Kafka consumer is a microservice instance that calls Clink/RDC independently."
+
+Q3: What are your key strengths?
+=================================
+
+"I'd summarize my strengths in three areas:
+
+1. Structured Problem Solving in Ambiguity:
+I excel at working through ambiguous problem spaces. Rather than jumping to implementation, I focus on understanding constraints and converting unclear inputs into well-defined decisions. For example, during the Bridger migration, vendor behavior was unknown and contracts were delayed — I broke the problem down, validated critical behaviors through controlled testing, and designed the architecture incrementally rather than locking it early.
+
+2. Engineering Judgment in Regulated Systems:
+I proactively identify risks and propose safer, more sustainable approaches. For example, during a POC where the business pushed for a 20-million-record manual data extract, I reframed the discussion — quantified the scale and risks, and proposed a smaller representative dataset that validated the same hypotheses. That saved roughly 3 weeks of manual effort and avoided long-term data handling risk.
+
+3. Driving Clarity Across Systems and Teams:
+Technically, this means designing clean APIs with well-defined boundaries and canonical data contracts. From a collaboration standpoint, it means making assumptions, trade-offs, and system behavior explicit through documentation. For example, I led an AI-assisted initiative where I used an LLM to extract and document legacy SQL population logic that was previously understood by only a few individuals — turning tribal knowledge into something transparent and queryable.
+
+Overall, my strength is combining technical depth with structured thinking and clear communication to build systems that scale and hold up under real-world constraints."
+
+Q4: Driving clarity / Process improvement / AI usage / Legacy systems
+======================================================================
+
+"A big part of my impact has been improving clarity in complex screening systems involving multiple vendors and stakeholders.
+
+The Problem:
+We had significant tribal knowledge around screening behavior — edge cases, population logic, vendor-specific nuances — leading to repeated confusion, misalignment, and slow onboarding. We estimated new engineers needed 6-8 weeks just to understand the population rules, and compliance teams regularly raised questions that required pulling in senior engineers to answer.
+
+The Initiative:
+I led an AI-assisted modernization effort targeting legacy SQL-based screening population logic embedded in database objects that had evolved over years. The logic was complex, undocumented, and difficult to interpret — especially around inclusion/exclusion rules like 401k retirement filters, role-based eligibility, and relationship joins.
+
+Layer 1 — Semantic Extraction:
+I used Claude Sonnet to programmatically analyze the legacy SQL and extract structured representations of table lineage, join relationships, inclusion/exclusion logic, and business rules — creating a semantic abstraction layer over the code.
+
+Layer 2 — Queryable Reasoning Agent:
+On top of that structured output, I designed an internal Microsoft 365 GPT-based agent that allowed stakeholders to ask targeted questions conversationally — for example, 'Why are 401k retirement accounts excluded?' or 'Which roles are included in sanctions screening?'
+
+Architecture:
+It followed a RAG-style pattern — LLM-based semantic extraction first, then an agent layer for contextual reasoning and Q&A, with validation against source SQL to minimize hallucination. We implemented guardrails including source citation and confidence scoring.
+
+Impact:
+- Engineer onboarding time for population logic reduced from ~6 weeks to ~2 weeks
+- Compliance Q&A cycles reduced by roughly 60%
+- Turned deeply embedded, opaque logic into something transparent and queryable
+- Both engineering and compliance teams could now reason about screening behavior independently
+
+Key Lesson:
+Systems don't just need to scale technically — knowledge needs to scale as well. Since then, I've been proactive about making system behavior explicit from the start."
+
+Q5: Tell me a time you faced conflict / influenced decisions
+============================================================= 
+
+Story 1 — Influencing POC Scope (Vendor Integration)
+-----------------------------------------------------
+
+"During a vendor integration, there was a push from the business side to manually extract data for ~20 million clients to support a POC.
+
+The ask came quickly, and the expectation was to proceed. But from an engineering and operational perspective, it introduced significant risk in scalability and data handling — we estimated roughly 3 weeks of manual effort, plus ongoing data governance concerns.
+
+Instead of pushing back directly, I reframed the discussion. I broke down what we were actually trying to validate with the POC and quantified the scale and risks of the proposed approach. I then proposed an alternative — a smaller, representative dataset of ~50K records already available — that would validate the same hypotheses without the risk.
+
+I also clarified the difference between what's acceptable for a POC versus a production-ready solution, aligning expectations early.
+
+This shifted the conversation from positions to trade-offs. The team aligned on the safer approach, we avoided ~3 weeks of unnecessary effort, and still achieved the POC objective within the original timeline.
+
+Takeaway: Influencing decisions is less about saying no and more about making assumptions and trade-offs explicit so everyone can make informed choices."
+
+Story 2 — Influencing API / Data Contract Design (EDD)
+-------------------------------------------------------
+
+"I designed APIs and data contracts for an Enhanced Due Diligence workflow focused on real-time screening.
+
+During design, there was a push to tailor APIs for specific consumer use cases — embedding filtering and business logic directly into the API layer. While that would have worked short-term, I recognized it would tightly couple the API to individual consumers and make it harder to scale.
+
+I proposed keeping the API generic and pushing filtering/interpretation logic to the edges. I explained the trade-offs clearly: embedding logic reduces initial consumer effort but increases long-term complexity, reduces reusability, and makes cross-team changes riskier. A generic API requires slightly more upfront effort but yields a far more scalable and maintainable system.
+
+The team aligned. The API now serves 4 different consuming systems without any core modifications — each applies its own business logic on the response.
+
+Takeaway: Design clean boundaries — keep core systems stable and push variability to the edges."
+
+Story 3 — Influencing Real-time vs Batch Design
+-------------------------------------------------
+
+"During pipeline design, there was a push to make most flows real-time to improve responsiveness.
+
+I recognized that pushing everything real-time would increase complexity, operational risk, and infrastructure cost without clear value for all scenarios.
+
+I broke down the use cases and evaluated where real-time genuinely added value (high-risk onboarding — ~5% of total volume) versus where batch was sufficient (periodic re-screening — ~95% of volume). I presented the trade-off: responsiveness vs. system complexity, failure handling overhead, and infrastructure cost.
+
+I proposed a hybrid approach — real-time only for critical paths, batch for the rest. This reduced the real-time infrastructure footprint by roughly 80% compared to the original all-real-time proposal.
+
+Takeaway: Influence decisions by grounding them in system behavior, data, and trade-offs — not preferences."
+
+Q6: How do you handle ambiguity?
+=================================
+
+"When I encounter ambiguity, I follow a structured approach:
+
+1. Define knowns vs. unknowns — Convert vague asks into specific, answerable questions.
+2. Present options with clear trade-offs — Scale, risk, effort, long-term impact — so decisions are made consciously, not by default.
+3. Align on scope and priorities early — Clarify what we're solving now vs. what can be deferred, to avoid over-engineering or building on unvalidated assumptions.
+4. Anchor to system principles — Scalability, auditability, and correctness, especially in regulated environments.
+5. Document decisions — So the same ambiguity doesn't resurface and institutional knowledge is preserved.
+
+For example, during the EDD API design, requirements from different consumers were conflicting and unclear. Instead of trying to build for every scenario, I mapped out what was known (common data needs), what was unknown (consumer-specific filtering), and proposed a clean boundary: the API would return canonical data, and consumers would own their own interpretation. That turned a vague, contested requirement into a clear, agreed-upon contract within two working sessions.
+
+This approach helps teams move forward with clarity and confidence instead of assumptions."
+
+Q7: Tell me a challenging time / Biggest challenge
+====================================================
+
+"The biggest challenge I worked on was migrating our screening system from RDC to Bridger in a highly regulated environment.
+
+The complexity wasn't purely technical — it was dealing with ambiguity around vendor behavior while the platform was still being onboarded and contract signing was delayed. We didn't have production environment access, and the vendor's documentation was incomplete.
+
+Approach:
+- To avoid blocking, I adapted by getting access to a SaaS instance, setting up targeted demos, and asking specific questions to validate key behaviors early — result persistence, incremental update handling, duplicate match surfacing.
+- I shifted from assumption-driven design to validation-driven design. Instead of locking the architecture early, I broke the problem into components and validated critical behaviors through controlled testing and incremental iterations.
+- In parallel, I designed safeguards — reconciliation processes and audit controls — so the system could detect and handle inconsistencies and prove correctness.
+- I made deliberate trade-offs — limiting real-time processing to high-risk scenarios and keeping the rest batch-based to reduce complexity while dependencies were being validated.
+
+Result:
+We continued progress despite onboarding delays, avoided risky assumptions, and ensured the system remained auditable and compliant. When full vendor access arrived, we had less than 10% rework on the core architecture — compared to what could have been a near-complete redesign if we had built on unvalidated assumptions.
+
+Takeaway: The biggest challenges are about managing uncertainty — not eliminating it upfront, but designing systems that validate and adapt as reality becomes clearer."
+
+Q8: Tell me a time you had to adapt to a process or change
+============================================================
+
+"During our RDC-to-Bridger migration, midway through the project we realized vendor onboarding was delayed — contracts weren't finalized and the platform wasn't fully available. Our original plan of building directly against the production environment was no longer viable.
+
+Instead of pausing, I adapted on three fronts:
+
+1. Vendor engagement: Worked with the vendor to get SaaS instance access and scheduled targeted demos to validate specific behaviors (result handling, updates, matching logic).
+
+2. Architecture shift: Made the design more vendor-agnostic, decoupling from Bridger-specific assumptions. This meant if we ever needed to switch vendors again, the core platform wouldn't need to change.
+
+3. Process shift: Introduced a validation-driven workflow — testing key scenarios early rather than locking down architecture upfront. We ran controlled experiments against the SaaS instance to validate our assumptions before committing to design decisions.
+
+Result: The team kept making progress despite uncertainty. We reduced the risk of rework and compliance gaps, avoided delays in overall delivery, and built a system that was inherently more adaptable.
+
+Takeaway: Adapting the process early — especially in ambiguous, external-dependency-heavy environments — is critical to keeping projects on track. The adaptation itself (vendor-agnostic design) became a permanent architectural advantage."
+
+Q9: How is your approach to system design?
+===========================================
+
+"My approach to system design is constraint-first and iterative. Here's how I think about it:
+
+1. Start with constraints, not solutions.
+I first understand the regulatory, scale, and auditability requirements. In financial crimes tech, every design decision must balance performance with the ability to trace and explain outcomes. For example, before designing our batch pipeline, I mapped out SLA requirements (24-hour processing window for 50M records), compliance needs (full audit trail), and failure tolerance expectations.
+
+2. Define clear boundaries and contracts.
+I design canonical, vendor-agnostic data contracts and clean API boundaries. The core platform remains generic and stable; variability is pushed to the edges. This is what allowed our EDD APIs to serve 4 different consumers without core changes.
+
+3. Separate concerns by flow type.
+I evaluate which flows need to be real-time (e.g., high-risk onboarding — ~5% of volume) vs. batch (periodic re-screening — ~95%), applying the right pattern to each and avoiding unnecessary complexity.
+
+4. Design for parallelism and decoupling.
+I use partitioning (Spring Batch with ClientIdRangePartitioner) for producer-side parallelism and Kafka for event-driven distribution and consumer-side parallelism. This gives two independent scaling dimensions — we can scale data extraction and processing separately.
+
+5. Build resilience into the architecture.
+Idempotent consumers, retry with exponential backoff and jitter, dead-letter queues, rate limiting, circuit breakers, and reconciliation processes — all designed so the system behaves predictably under load and failure.
+
+6. Embed observability from day one.
+Prometheus, Grafana, and structured logging for throughput, latency, error trends, and SLA compliance monitoring. We set up alerts for backlog growth rate and p99 latency thresholds before going to production.
+
+7. Validate, don't assume.
+Especially with external vendors, I take a validation-driven approach — controlled tests, targeted demos, and incremental iterations rather than locking the architecture based on assumptions.
+
+The key principle that ties it all together: design for what you know, build safeguards for what you don't, and keep the core stable so the system can evolve without constant rewrites."
+
+Q10: Tell me a prod issue
+===========================
+
+"During a high-volume screening run, we started seeing delays and a growing backlog in our processing pipeline. Within about 2 hours, the backlog grew to over 400K unprocessed messages, and p99 latency spiked from ~200ms to over 12 seconds. This directly impacted our SLA for client screening, and downstream systems were getting overwhelmed.
+
+Containment (Immediate):
+I slowed incoming processing by reducing the Spring Batch partition count and prioritized critical flows (high-risk onboarding) so we could stabilize the system and prevent the backlog from growing further.
+
+Root Cause Analysis:
+Under peak load, the system was sending too many parallel requests to downstream vendor services, causing timeouts. Those timeouts triggered retries, which further increased load — creating a feedback loop (retry storm). Essentially, our retry strategy was amplifying the problem instead of recovering from it.
+
+Fix:
+- Introduced rate limiting to control concurrent outbound requests (capped at 50 concurrent calls per consumer instance)
+- Adjusted the retry strategy — exponential backoff with jitter and a max-retry cap of 3 — so the system wouldn't amplify problems under load
+- Added circuit breakers (half-open state with health probes) to fail fast when downstream services were degraded
+- Improved monitoring and alerting — added Prometheus metrics for retry rate, backlog growth rate, and downstream response time, with Grafana alerts that trigger before SLA risk
+
+Result:
+Stabilized the system within 45 minutes of containment, cleared the full backlog within 4 hours, and avoided SLA breach. The retry storm pattern has not recurred since.
+
+Takeaway: It's not just about handling high volume — it's about ensuring the system behaves predictably under load. Retries without backpressure can turn a minor downstream hiccup into a cascading failure. Now, resilience patterns (rate limiting, circuit breakers, capped retries) are part of our standard service template."
+
+Q11: What is your weakness / area of improvement?
+===================================================
+
+Option A (Recommended — pick ONE in the interview):
+Internalizing ambiguity instead of pushing ownership
+-----------------------------------------------------
+
+"An area I've actively worked on is not internalizing ambiguity too much.
+
+In the past, when requirements were unclear, I would step in to structure the problem and drive it forward — even when ownership or decision boundaries weren't clearly defined. While that helped drive progress, I realized it increased cognitive load on me and unintentionally reinforced a pattern where others relied on me to resolve ambiguity.
+
+For example, during our vendor migration, when API behavior wasn't fully clear, I initially started reverse-engineering it myself — writing test harnesses, documenting edge cases, building compatibility layers. That was useful, but it wasn't scalable and it created a single point of dependency.
+
+I realized that approach doesn't scale and introduces risk. So I shifted to pushing clarity upstream earlier — aligning on ownership, decision rights, and expectations before diving deep into solutioning. I started validating assumptions explicitly with vendors through structured sessions, running controlled tests, and documenting behavior collaboratively rather than in isolation.
+
+That's made execution more scalable and reduced unnecessary dependency on me specifically."
+
+Option B:
+Substance over visibility
+---------------------------
+
+"I tend to focus more on substance than visibility — I like the work to speak for itself.
+
+But I've realized that in larger organizations, especially at senior levels, it's important to actively communicate impact so stakeholders understand the value and direction.
+
+For example, after the AI-assisted documentation initiative, I initially didn't proactively share the results beyond my immediate team. A colleague suggested I present it at an architecture forum. When I did, it generated interest from two other teams who adopted the same approach for their legacy systems.
+
+Since then, I've been more intentional about summarizing outcomes, highlighting key contributions, and making my work visible in the right forums — leadership reviews, architecture guilds, and cross-team syncs."
+
+Option C:
+Pushback not always anchored to leadership context
+----------------------------------------------------
+
+"I'm comfortable challenging ideas and pushing back when something doesn't feel scalable or aligned, and I do that with data and reasoning.
+
+One thing I've learned is that in hierarchical environments, pushback is more effective when it's explicitly anchored to leadership goals. Earlier, I would sometimes focus purely on the technical argument — 'this won't scale' or 'this introduces risk' — which, while valid, could come across as resistance rather than alignment.
+
+I've been improving by framing my inputs in the context of broader organizational objectives. For example, instead of saying 'this approach is risky,' I now frame it as 'given our goal of reducing SLA breaches by Q3, here's an approach that gets us there with lower risk.' That small reframe has made my pushback significantly more effective."
+
+Q12: How did you scale the system?
+====================================
+
+"In our Financial Crimes Technology group, we screen ~20 million client records monthly for sanctions, PEP, and adverse media. Our legacy batch platform was slow, prone to timeouts, and risked breaching compliance SLAs during onboarding spikes. The goal was to redesign for 50+ million records with strict 24-hour processing SLAs.
+
+I approached scale at multiple layers:
+
+1. Separated real-time and batch flows.
+Real-time only for latency-sensitive scenarios like onboarding (~5% of volume); batch for large-volume periodic screening (~95%). This avoided unnecessary real-time complexity and reduced infrastructure cost.
+
+2. Producer-side parallelism (Spring Batch).
+Partitioned the dataset using ClientIdRangePartitioner (client ID ranges). For 50M records with gridSize=5, each partition handles ~10M records in parallel. Each worker thread reads from the database and publishes to Kafka.
+
+3. Decoupled via Kafka.
+All Spring Batch workers publish to the SAME Kafka topic (e.g., screening-events), which itself has multiple partitions (e.g., 10). This decouples data extraction from screening processing, allowing each side to scale independently.
+
+4. Consumer-side parallelism (Kafka consumers).
+Parallel consumers — one per Kafka partition — process messages independently and call downstream vendor APIs (Clink/RDC). Consumer count scales with Kafka partition count. With 10 partitions, we run 10 parallel consumers.
+
+5. Resilience at scale.
+- Idempotent consumers for safe retries
+- Exponential backoff with jitter + max 3 retries
+- Dead-letter queues for poison messages and transient failures
+- Rate limiting (50 concurrent calls per consumer) and circuit breakers to protect downstream systems
+- Spring Batch checkpointing for failure recovery (resume from last successful chunk)
+
+6. Stable, generic APIs.
+Core APIs and data contracts remain generic; variability pushed to the edges. As consumers and use cases grew, the core system required zero modifications.
+
+7. Observability.
+Prometheus and Grafana for real-time monitoring of throughput, latency, error trends, retry rates, and SLA compliance. Alerts on backlog growth rate and p99 thresholds.
+
+Results:
+- Processing time reduced by ~40%
+- Alert backlogs eliminated
+- Scaled from 20M to 50M+ records reliably
+- Zero SLA breaches post-redesign
+- Platform became the backbone for global client screening across Wealth and ISG
+
+Key insight: The goal wasn't just scaling throughput — it was scaling safely. Every design decision balanced performance with auditability and correctness in a regulated environment."
+
+============================================================
+ARCHITECTURE DIAGRAM (ASCII)
+============================================================
+
+            +------------------------------+
+            |   Upstream Systems           |
+            | (Onboarding, Client Updates) |
+            +--------------+---------------+
+                           |
+                           v
+            +------------------------------+
+            |   Screening Orchestration    |
+            |   (APIs + Data Contracts)    |
+            +--------------+---------------+
+                           |
+             +-------------+-------------+
+             |                           |
+             v                           v
+  +----------------------+     +----------------------+
+  |  Real-Time Flow      |     |   Batch Flow         |
+  | (Onboarding Checks)  |     | (Periodic Screening) |
+  +----------+-----------+     +----------+-----------+
+             |                            |
+             |                            v
+             |              +--------------------------+
+             |              | Spring Batch Job         |
+             |              | + Partitioning           |
+             |              | (ClientIdRangePartitioner)|
+             |              +----------+---------------+
+             |                         |
+             |        +----------------+----------------+
+             |        v                v                v
+             |   +----------+    +----------+    +----------+
+             |   |Partition1|    |Partition2|    |PartitionN|
+             |   +----+-----+    +----+-----+    +----+-----+
+             |        |               |               |
+             |        +------+--------+------+--------+
+             |               v               v
+             |        +------------------------------+
+             |        |     Kafka Topic              |
+             |        | (Partitioned for scaling)    |
+             |        +------------+-----------------+
+             |                     |
+             v                     v
+    +------------------------------------------+
+    |   Kafka Consumers (Parallel Workers)     |
+    |  - Idempotent Processing                 |
+    |  - Retry + DLQ                           |
+    |  - Rate Limiting + Circuit Breakers      |
+    +------------------+-----------------------+
+                       |
+                       v
+    +------------------------------------------+
+    |     Vendor Screening Systems             |
+    |  - Clink (Sanctions)                     |
+    |  - RDC (Adverse Media)                   |
+    +------------------+-----------------------+
+                       |
+                       v
+    +------------------------------------------+
+    |  Results Processing + Alert Generation   |
+    |  - Actimize                              |
+    |  - Audit + Reconciliation                |
+    +------------------+-----------------------+
+                       |
+                       v
+    +------------------------------------------+
+    | Observability & Monitoring               |
+    | - Prometheus / Grafana                   |
+    | - Retry rate, backlog, p99 alerts        |
+    +------------------------------------------+
+
+============================================================
+PARALLELISM MENTAL MODEL
+============================================================
+
+[Spring Batch Partitions]  <-- Producer-side parallelism
+   |     |     |
+   v     v     v
+  Kafka Topic (10 partitions)  <-- Distribution layer
+   |  |  |  |  |
+   v  v  v  v  v
+[Consumers in parallel]  <-- Processing-side parallelism
+   |
+   v
+[Clink / RDC APIs]  <-- External vendor calls
+
+Key rules:
+- Spring Batch workers do NOT call vendors. They only publish to Kafka.
+- Consumer parallelism = number of Kafka partitions (max).
+- Each consumer is a microservice instance that calls vendors independently.
+- Spring Batch = speeds up data extraction
+- Kafka = decouples + buffers + distributes
+- Consumers = actual screening processing
+
+
+============================================================
+END OF DOCUMENT
+============================================================
