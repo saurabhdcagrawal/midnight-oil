@@ -1,0 +1,623 @@
+===============================================================
+     HIRING MANAGER INTERVIEW PREP — FINAL (CONVERSATIONAL)
+                  Financial Crimes Technology
+===============================================================
+
+Q1: TELL ME ABOUT YOURSELF (90 seconds)
+---------------------------------------------------------------
+I'm a Lead Backend Engineer working in financial crimes tech.
+My team builds the screening systems that check clients against
+sanctions lists, adverse media, and PEP databases — we process
+tens of millions of records every month.
+
+What I actually do day-to-day is sit in the middle — between
+the upstream business systems that send us client data, and the
+downstream vendors that do the actual screening. I make sure
+that whole flow is reliable, auditable, and doesn't break when
+things change on either end.
+
+Over the last few years I've moved from building individual
+services to owning full systems end-to-end. I've gotten pretty
+good at working through situations where requirements are
+unclear — figuring out what we actually need to solve, making
+trade-offs visible, and keeping things moving.
+
+One example: we had a vendor migration where we had no
+production access and incomplete docs. Instead of waiting, I
+ran controlled tests on a sandbox instance, validated the
+critical behaviors we needed, and designed around what we knew
+— which saved us roughly 4 weeks of potential rework later.
+
+I'm looking for a role where I can take broader ownership —
+system design, cross-team decisions, and building things that
+hold up under real constraints.
+
+---------------------------------------------------------------
+
+Q2: TELL ME ABOUT YOUR ARCHITECTURE (75 seconds)
+---------------------------------------------------------------
+At a high level it's an orchestration layer — we sit between
+upstream business systems and downstream screening vendors.
+
+Upstream systems like onboarding and client lifecycle send us
+data. We expose clean APIs with consistent contracts so that
+no matter which vendor is underneath — Clink for sanctions,
+RDC for adverse media — the consuming systems always see the
+same interface.
+
+For processing we split into two paths:
+- Real-time for time-sensitive flows like onboarding
+- Batch for large-volume periodic re-screening
+
+For batch, we use Spring Batch to split the dataset into
+parallel chunks by client ID range. Each chunk reads from the
+database and publishes to Kafka. Then separate consumer
+services pick up from Kafka and call the vendors.
+
+So there are two layers of parallelism:
+1. Spring Batch splits the data and publishes — that's the
+   producer side
+2. Kafka consumers process independently — that's the
+   processing side
+
+Important: the batch workers never call vendors directly.
+They just publish to Kafka. The consumers handle vendor calls.
+
+The core platform stays generic — consuming systems apply
+their own business logic. That's what lets it scale across
+multiple use cases without changing the core.
+
+---------------------------------------------------------------
+
+Q3: WHAT ARE YOUR KEY STRENGTHS? (75 seconds)
+---------------------------------------------------------------
+Three things I'd highlight:
+
+First — working through unclear situations. I don't jump
+straight to building. I focus on understanding what the
+actual constraints are, making the unknowns visible, and
+turning vague asks into specific decisions. During our vendor
+migration, requirements were all over the place — I broke it
+down, validated what we needed through testing, and built
+incrementally rather than locking in early.
+
+Second — catching risks early in regulated environments. I
+proactively flag things that could bite us later — scale,
+compliance, data handling. For example, the business once
+wanted to extract 20 million client records for a quick POC.
+I pushed back, showed the risks, and proposed a 50K sample
+that validated the same things — saved about 3 weeks of
+manual work.
+
+Third — turning complexity into clarity. Technically that
+means clean APIs and clear contracts. On the team side it
+means documenting decisions, making behavior explicit, and
+reducing the stuff that only lives in people's heads.
+
+---------------------------------------------------------------
+
+Q4: PROCESS IMPROVEMENT / AI / LEGACY SYSTEMS (90 seconds)
+---------------------------------------------------------------
+One of the things I'm most proud of is turning tribal
+knowledge into something everyone could actually use.
+
+The problem was we had really complex screening logic buried
+in legacy SQL — hundreds of lines of stored procedures and
+database objects. It was undocumented, and only a handful of
+people actually understood it. New engineers needed 6 to 8
+weeks just to get their heads around the population rules.
+Compliance teams were constantly pinging senior engineers
+with questions.
+
+So I built a two-layer system to fix that.
+
+First layer: I used an LLM to analyze the legacy SQL and pull
+out a structured representation — table relationships,
+inclusion and exclusion rules, business logic like 401k
+retirement filters and role-based eligibility.
+
+Second layer: On top of that, I built an internal chat agent
+so stakeholders could just ask questions in plain English —
+things like "why are 401k accounts excluded?" or "which roles
+get screened for sanctions?" — and get real answers backed by
+the actual source logic.
+
+The impact was real:
+- Onboarding time for new engineers dropped from 6-8 weeks
+  to about 2 weeks
+- Compliance Q&A back-and-forth dropped by around 60%
+- Both teams could now answer their own questions without
+  pulling in a senior engineer every time
+
+The lesson for me was: systems don't just need to scale
+technically — the knowledge around them needs to scale too.
+
+---------------------------------------------------------------
+
+Q5: CONFLICT / INFLUENCING DECISIONS (90 seconds)
+---------------------------------------------------------------
+STORY 1 — POC Data Extract (20M records)
+
+The business wanted to manually pull data for 20 million
+clients to run a vendor POC. The ask came fast and the
+expectation was just to do it.
+
+From where I was sitting, that was a huge amount of manual
+work — roughly 3 weeks — plus real data handling risk, all
+for something we could validate with a much smaller sample.
+
+Instead of just saying no, I broke down what we were actually
+trying to prove with the POC, showed the risks of the full
+extract, and proposed using a 50K representative sample we
+already had. Same validation, fraction of the effort.
+
+The team came around. We hit the POC goal on time without
+the overhead.
+
+The takeaway for me: influencing isn't about saying no. It's
+about making the trade-offs visible so people can decide
+with the full picture.
+
+---------------------------------------------------------------
+
+STORY 2 — API Design (Enhanced Due Diligence)
+
+We were designing APIs for a new due diligence workflow and
+there was pressure to bake consumer-specific logic right into
+the API — filtering, business rules, the works.
+
+I could see where that was going. Short term it's easier for
+the first consumer, but long term every new use case would
+need the API to change.
+
+I proposed keeping the API generic and letting each consumer
+handle its own logic on the response. Took a bit more work
+upfront for consumers, but the API itself stays stable.
+
+That API now serves 4 different consuming systems with zero
+core changes. Each one just applies its own logic to what
+it gets back.
+
+The takeaway: keep the core stable. Push the variability to
+the edges.
+
+---------------------------------------------------------------
+
+STORY 3 — Real-Time vs Batch
+
+There was a push to make almost everything real-time for
+better responsiveness.
+
+I looked at the actual use cases and found that only about
+5% of our volume — high-risk onboarding — actually needed
+real-time. The other 95% was periodic re-screening where
+batch was perfectly fine.
+
+Going all-real-time would've added a lot of complexity and
+infrastructure cost for very little gain on the bulk of the
+work.
+
+I proposed a hybrid: real-time only where it genuinely
+mattered, batch for the rest. That cut the real-time
+infrastructure footprint by about 80%.
+
+The takeaway: ground decisions in what the system actually
+needs, not what sounds better.
+
+---------------------------------------------------------------
+
+Q6: HOW DO YOU HANDLE AMBIGUITY? (75 seconds)
+---------------------------------------------------------------
+I try to follow the same pattern every time:
+
+1. Write down what I know vs what I don't. Turns vague
+   situations into specific questions that can actually be
+   answered.
+
+2. Show the options with trade-offs. Not just one answer —
+   here are the paths, here's what each costs in terms of
+   risk, effort, and long-term complexity.
+
+3. Agree early on what we're solving now vs what can wait.
+   Saves a lot of over-engineering.
+
+4. In regulated systems specifically — keep auditability
+   and correctness front and center in every decision.
+
+5. Write it down. So the same question doesn't come up again
+   six months later.
+
+Real example: during our EDD API design, different consumers
+had conflicting requirements and nothing was clearly defined.
+Instead of trying to design for every possible scenario, I
+mapped out what was common across all of them, what was
+specific to each, and proposed a clean split. We went from
+a contested mess to an agreed contract in two working
+sessions.
+
+---------------------------------------------------------------
+
+Q7: BIGGEST CHALLENGE (90 seconds)
+---------------------------------------------------------------
+The toughest thing I've worked through was migrating our
+screening system from one vendor to another — from RDC to
+Bridger — in a regulated environment.
+
+The hard part wasn't the technical work. It was that we had
+almost no visibility into how the new vendor actually
+behaved. Contracts weren't signed yet, we had no production
+access, and the documentation was incomplete.
+
+What I did was shift the approach entirely. Instead of
+designing based on what we assumed the vendor would do, I
+got access to a sandbox environment, set up targeted demo
+sessions, and tested the specific behaviors we needed to
+understand — how it handled duplicate matches, incremental
+updates, result persistence.
+
+I also built safeguards in from the start — reconciliation
+processes and audit controls — so we could catch and explain
+any inconsistencies.
+
+And I kept the architecture vendor-agnostic so we weren't
+locked into Bridger-specific assumptions.
+
+When we finally got full access, we had less than 10% rework
+on the core design. Without that approach it could've been
+a near-complete rebuild.
+
+The lesson: the hardest challenges are about managing
+uncertainty — not waiting until you have perfect information,
+but designing so you can learn and adapt as you go.
+
+---------------------------------------------------------------
+
+Q8: ADAPTING TO CHANGE (75 seconds)
+---------------------------------------------------------------
+Same migration — midway through we found out vendor
+onboarding was delayed. Contracts weren't final, the
+platform wasn't fully available. Our original plan of
+building against production was off the table.
+
+Instead of pausing everything, I adapted on three fronts:
+
+1. Got sandbox access from the vendor and scheduled
+demos to keep validating what we needed.
+
+2. Redesigned to be more vendor-agnostic — no hard
+   assumptions about Bridger-specific behavior baked in.
+
+3. Changed the process — validate key scenarios early
+   through controlled tests rather than locking architecture
+   first and finding out later it was wrong.
+
+The team kept moving. We avoided a big pile of rework and
+compliance gaps. And the vendor-agnostic design ended up
+being a permanent benefit — not just a workaround.
+
+---------------------------------------------------------------
+
+Q9: APPROACH TO SYSTEM DESIGN (90 seconds)
+---------------------------------------------------------------
+I start with constraints, not solutions.
+
+Before I think about architecture, I want to understand:
+what are the scale requirements, what does compliance need,
+what does failure look like, what are the SLAs?
+
+In our case — 50 million records in a 24-hour window, full
+audit trail, zero tolerance for missed matches.
+
+From there I think about:
+
+Boundaries: Keep the core platform generic. Push variability
+to the edges. That's what let our APIs serve 4 different
+consumers without a single core change.
+
+Flow types: Not everything needs to be real-time. Separate
+what genuinely needs low latency from what can run in batch.
+
+Parallelism: Two layers — Spring Batch for splitting and
+publishing data, Kafka consumers for processing. Each side
+scales independently.
+
+Resilience: Idempotent consumers, retry with backoff, dead
+letter queues, rate limiting, circuit breakers. All designed
+in upfront, not bolted on after something breaks.
+
+Observability: Prometheus and Grafana set up before go-live
+— alerts on backlog growth and p99 latency, not just errors.
+
+And validate, don't assume — especially with vendors. Run
+controlled tests early rather than locking in assumptions.
+
+The principle I keep coming back to: design for what you
+know, build safeguards for what you don't, and keep the
+core stable so you're not constantly rewriting it.
+
+---------------------------------------------------------------
+
+Q10: PRODUCTION ISSUE (75 seconds)
+---------------------------------------------------------------
+During a high-volume screening run, our pipeline started
+falling behind. Within about 2 hours we had over 400K
+unprocessed messages backed up, and p99 latency went from
+around 200ms to over 12 seconds. We were heading toward an
+SLA breach.
+
+First thing I did was slow the ingestion down — reduced the
+Spring Batch partition count — and prioritized the
+critical flows so we stopped digging the hole deeper.
+
+Root cause: under peak load we were firing too many parallel
+requests at the vendors. They started timing out. Those
+timeouts triggered retries. The retries added more load.
+Classic retry storm — our own retry logic was making things
+worse.
+
+The fix:
+- Capped concurrent outbound calls at 50 per consumer
+- Added exponential backoff with jitter and a hard cap of
+  3 retries so failures didn't amplify
+- Added circuit breakers so we'd fail fast when vendors
+  were struggling instead of piling on
+- Added Prometheus metrics for retry rate and backlog growth
+  so we'd catch it earlier next time
+
+We stabilized within 45 minutes and cleared the full backlog
+within 4 hours. No SLA breach.
+
+The lesson: high volume isn't the problem — unpredictable
+behavior under load is. Retries without limits can turn a
+small vendor hiccup into a full cascade. These patterns are
+now standard in every service we build.
+
+---------------------------------------------------------------
+
+Q11: WEAKNESSES / AREAS OF IMPROVEMENT (90 seconds)
+---------------------------------------------------------------
+Three honest ones:
+
+First — I used to absorb too much ambiguity myself. When
+things were unclear I'd just go figure it out, even when
+it wasn't really my problem to own. It helped short-term
+but created a dependency on me and wasn't scalable.
+
+Now I push clarity upstream earlier — align on who owns
+what before I go deep. During our vendor migration I was
+reverse-engineering API behavior on my own when I should
+have been pulling the vendor in to answer those questions
+directly. I course-corrected, but I could've done it sooner.
+
+Second — my pushback used to be purely logical. I'd say
+"this won't scale" or "this is risky" and expect that to
+land. In hierarchical environments that comes across as
+resistance rather than alignment.
+
+Now I frame it around the org's goals. Instead of "this
+is risky" it's "given we need to hit X by Q3, here's an
+approach that gets us there with less risk." Same point,
+lands much better.
+
+Third — I tend to let the work speak for itself. I
+don't naturally broadcast what I'm doing or what the impact was.
+At senior levels that's a gap — stakeholders need to know.
+
+I've been more deliberate about it — sharing outcomes in
+the right forums, not just doing the work quietly.
+
+---------------------------------------------------------------
+
+Q12: HOW DID YOU SCALE THE SYSTEM? (90 seconds)
+---------------------------------------------------------------
+We went from screening 20 million records a month to 50
+million plus, while cutting processing time by 40%.
+
+Here's how I approached it:
+
+Real-time vs batch split: Only onboarding — about 5% of
+volume — needed real-time. Everything else runs in batch.
+That alone kept the system much simpler.
+
+Spring Batch partitioning: We split the dataset by client
+ID ranges. With 50 million records split into 5 partitions,
+each partition handles about 10 million records in parallel.
+Each partition reads from the DB and publishes to Kafka.
+
+Kafka for decoupling: All partitions publish to the same
+Kafka topic which has 10 partitions of its own. That
+separates data extraction from processing completely —
+each side scales on its own.
+
+Consumer parallelism: One consumer per Kafka partition,
+each calling vendors independently. 10 partitions means
+10 parallel consumers.
+
+Resilience: Idempotent consumers, retry with backoff, dead
+letter queues, rate limiting at 50 concurrent calls per
+consumer, circuit breakers, and Spring Batch checkpointing
+so we can resume from the last successful chunk on failure.
+
+Results:
+- Processing time down 40%
+- No more alert backlogs
+- Handles 50M+ records reliably
+- Zero SLA breaches since the redesign
+- Now the core platform for global client screening
+
+The point wasn't just throughput — it was scaling safely.
+In a regulated environment you can't just go fast, you have
+to be able to explain every decision and outcome.
+
+---------------------------------------------------------------
+
+Q13: MENTORING / DEVELOPING SOMEONE (75 seconds)
+---------------------------------------------------------------
+During our Bridger POC I used the LexID validation work as
+a real training opportunity.
+
+LexID is the vendor's entity identifier — it's how Bridger
+deduplicates matches and how we track dispositions. Getting
+it right matters a lot.
+
+Instead of figuring it out alone, I brought two mid-level
+engineers in with me. I walked them through the first round
+of test scenarios against the sandbox — showing them how to
+validate the behavior, what edge cases to look for, how to
+think about the canonical mapping.
+
+Then I handed them ownership of the LexID-to-alert mapping
+design. I gave them the constraints, they proposed a design,
+I challenged it, they iterated.
+
+Within 6 weeks they went from zero LexID exposure to
+independently owning the entity resolution piece of the
+full integration. One of them wrote the LexID reference doc
+that the compliance team uses to this day.
+
+POC work is genuinely one of the best places to develop
+engineers — the scope is contained, the stakes are real,
+and the learning is hands-on.
+
+---------------------------------------------------------------
+
+Q14: TELL ME ABOUT A FAILURE (90 seconds)
+---------------------------------------------------------------
+When I joined this team, most of the team and the lead were
+based in India. I expected a proper handover — walkthroughs,
+knowledge transfer, someone showing me how the system worked.
+
+That didn't happen. Everyone was busy, time zones made
+real-time calls hard, and there was no formal onboarding.
+
+I waited too long hoping it would sort itself out. That
+was the failure — I assumed context would come to me.
+
+After a few weeks I stopped waiting and just started digging.
+I traced the flows end-to-end myself, read through the
+legacy SQL logic, and set up async conversations to fill
+in the gaps. I documented everything as I went.
+
+And honestly that deep dive found real problems. The
+inclusion and exclusion rules in the legacy scoping logic
+weren't applied consistently — some clients were being
+over-screened, generating false positives in a live
+regulated system. These weren't theoretical issues.
+
+Within a couple of months I had deeper system knowledge
+than I would've gotten from a passive handover — because
+I had to actually reason through why things were built
+the way they were.
+
+The lesson: don't wait for context. Go get it. That's
+shaped how I work now — it's why I drive documentation
+proactively, why I led the AI knowledge initiative, and
+why I make sure engineers on my team have a real onboarding
+path from day one.
+
+---------------------------------------------------------------
+
+ARCHITECTURE DIAGRAM
+---------------------------------------------------------------
+          Upstream Systems
+        (Onboarding, etc.)
+                |
+                v
+     Screening Orchestration APIs
+          (Consistent Contracts)
+            |           |
+     Real-Time       Batch
+            |           |
+     Onboarding    Spring Batch
+     Checks        + Partitioning
+                       |
+                  Kafka Topic
+                 (Distribution)
+                       |
+                Kafka Consumers
+               (Parallel Workers)
+                  Idempotent
+                 Retry + DLQ
+                       |
+          +------------+------------+
+          v                         v
+       Clink                      RDC
+    (Sanctions)             (Adverse Media)
+          |                         |
+          +------------+------------+
+                       v
+            Results Processing
+            Actimize + Audit
+             Reconciliation
+                       |
+                       v
+          Prometheus + Grafana
+            (Observability)
+
+---------------------------------------------------------------
+
+PARALLELISM — QUICK REFERENCE
+---------------------------------------------------------------
+Spring Batch Partitions  <-- splits data, publishes to Kafka
+   |      |      |
+   v      v      v
+Kafka Topic (10 partitions)  <-- distributes the work
+   |   |   |   |   |
+   v   v   v   v   v
+Kafka Consumers  <-- call vendors independently
+
+Rules to remember:
+- Batch workers ONLY publish to Kafka. Never call vendors.
+- Max consumer parallelism = number of Kafka partitions
+- Spring Batch = fast data extraction
+- Kafka = decoupling and distribution
+- Consumers = actual screening work
+
+---------------------------------------------------------------
+
+KEY PRINCIPLES (one-liners)
+---------------------------------------------------------------
+1. Decouple vendors from consumers
+   → API stays consistent regardless of which vendor is live
+
+2. Push variability to the edges
+   → Core stays stable. Consumers own their own logic.
+
+3. Validate, don't assume
+   → Especially with vendors — test early, lock late
+
+4. Design for reliability at scale
+   → Idempotent, retries with limits, DLQs, circuit breakers
+
+5. Performance AND auditability
+   → In regulated systems you need both. Not one or the other.
+
+---------------------------------------------------------------
+
+QUESTIONS TO ASK THEM
+---------------------------------------------------------------
+1. What are the biggest scaling challenges you're facing?
+2. How do you balance speed of delivery vs auditability?
+3. When have you had to push back on an architecture decision?
+4. What does success look like in the first 90 days here?
+5. How does the team handle incomplete or changing requirements?
+6. Can you walk me through a recent design decision and the
+   trade-offs involved?
+
+---------------------------------------------------------------
+
+DELIVERY REMINDERS
+---------------------------------------------------------------
+- Aim for 60-90 seconds per answer. Stop and let them probe.
+- Use the numbers: 400K backlog, 200ms to 12s, 45 mins,
+  40% faster, 50M records, 10% rework, 3 weeks saved, 60%
+  fewer Q&A cycles.
+- If you go blank: "That's a good question — let me think
+  through it..." buys you 5 seconds and sounds confident.
+- Lead with impact. Process details come after if they ask.
+- For Q11 (weaknesses): pick ONE to lead with. Have the
+  others ready if they push.
+
+===============================================================
+END
+===============================================================
