@@ -1,4 +1,14 @@
-Hi, I’m Saurabh Agrawal, a lead developer in the Financial Crimes Technology group at M. I design and build scalable, secure Java-based microservices — operating in both batch and real time — for sanctions, adverse media, and politically exposed person (PEP) screening. Our services screen client reference data — millions of party and account records across our institutional, wealth management, and E*TRADE businesses — as well as transaction flows such as cash movements, payments, and securities. The screening outcomes provided by our services are delivered to critical financial workflows, enabling downstream systems to proactively block high-risk entities and transactions, ensuring compliance with global AML regulations while protecting the firm’s reputation.From a technology stack perspective, I use a modern Java stack — Java 17, Spring Boot, Kafka — along with REST/SOAP APIs, DB2, MQ, and cloud technologies to build these services for large-scale data processing.We integrate with Actimize, our case management platform, and external risk intelligence providers such as RDC, CLink — through vendor-defined APIs.
+Hi, I’m Saurabh Agrawal, a lead developer in the Financial Crimes Technology group at M. Enterprise screening sanctions.. sanctions - economic.. 
+I design and build scalable, secure Java-based microservices — operating in both batch and real time — for sanctions, adverse media, and politically exposed person (PEP) 
+screening. Our services screen client reference data — millions of party and account records across our institutional, wealth management, and E*TRADE businesses —
+ as well as transaction flows such as cash movements, payments, and securities. 
+ The screening outcomes provided by our services are delivered to critical financial workflows, enabling downstream systems
+ to proactively block high-risk entities and transactions, ensuring compliance with global AML regulations while protecting the firm’s reputation.
+ From a technology stack perspective, I use a modern Java stack — Java 17, Spring Boot, Kafka — along with REST/SOAP APIs, DB2, MQ, and cloud technologies to build
+ these services for large-scale data processing.We integrate with Actimize, our case management platform, and external risk intelligence providers such as RDC, CLink — 
+ through vendor-defined APIs.
+
+
 
 
 1. Improving System Performance

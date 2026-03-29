@@ -5,68 +5,58 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class SolutionTopologicalSort {
-
-    public final int WHITE = 0;
-    public final int GRAY = 1;
-    public final int BLACK = 2;
-    // Each node and edge is visited once, so the time complexity of the DFS is O(V + E)
-    /*  This is an implementation of Topological Sort using Depth-First Search (DFS) to solve the problem of finding the course order for a set of courses with prerequisites. Here's how it works:  */
-
-    //While traversing the nodes of a graph
-    //if you encounter a node that is already ongoing DFS traversal then it means there is a cycle
-    //in the graph
-    // Node A → Node B → Node C → Node A (back edge)
-/*Adjacency List: O(V + E) for storing the graph.
-Visited Map: O(V) for tracking the state of each course.
-Recursion Stack: In the worst case, the recursion depth is O(V)
-(if the graph is a tree or has no cycles */
+class SolutionToplogicalSort {
+    private static int WHITE=0;
+    private static int GREY=1;
+    private static int BLACK=2;
 
     public int[] findOrder(int numCourses, int[][] prerequisites) {
-        Map<Integer, Integer> visited = new HashMap<Integer, Integer>();
-        List<Integer> result = new ArrayList<Integer>();
-        for (int i = 0; i < numCourses; i++)
-            visited.put(i, WHITE);
-        List<Integer>[] adjList = new List[numCourses];
-        for (int i = 0; i < numCourses; i++)
-            adjList[i] = new ArrayList<Integer>();
-        for (int i = 0; i < prerequisites.length; i++) {
-            adjList[prerequisites[i][0]].add(prerequisites[i][1]);
+
+        int[] color = new int[numCourses];
+        List<Integer>[] adjList= new List[numCourses];
+        List<Integer> result = new ArrayList<>(numCourses);
+
+        for(int i=0;i<numCourses;i++)
+            adjList[i]= new ArrayList<>();
+
+        for(int[] p:prerequisites){
+            int a =  p[0];
+            int b =  p[1];
+            adjList[a].add(b);
         }
-        for (int i = 0; i < numCourses; i++) {
-            if (visited.get(i) == WHITE) {
-                boolean flag = dfs(i, visited, adjList, result);
-                if (!flag)
+
+        for(int i=0;i<numCourses;i++){
+            if(color[i]==WHITE){
+                boolean flag = dfs(i,color,adjList,result);
+                if(!flag)
                     return new int[]{};
             }
         }
 
-        int[] resultArr = new int[result.size()];
-        for (int i = 0; i < result.size(); i++)
-            resultArr[i] = result.get(i);
-
-        return resultArr;
-
-    }
-
-    public boolean dfs(int i, Map<Integer, Integer> visited, List<Integer>[] adjList, List<Integer> result) {
-        if (visited.get(i) == GRAY)
-            return false;
-        visited.put(i, GRAY);
-
-        for (int j = 0; j < adjList[i].size(); j++) {
-            int neighbor = adjList[i].get(j);
-            if (visited.get(neighbor) != BLACK) {
-                boolean flag = dfs(neighbor, visited, adjList, result);
-                if (!flag)
-                    return false;
-            }
+        int[] result_arr = new int[numCourses];
+        for(int i=0;i<numCourses;i++){
+            result_arr[i]=result.get(i);
         }
-        visited.put(i, BLACK);
-        result.add(i);
-        return true;
-
+        return result_arr;
     }
+
+    public boolean dfs(int course, int[] color, List<Integer>[]adjList,List<Integer> result){
+        if(color[course]==GREY)
+            return false;
+        if(color[course]==BLACK)
+            return true;
+        color[course]=GREY;
+        for(int i=0;i<adjList[course].size();i++){
+            int neighbor=adjList[course].get(i);
+            boolean flag = dfs(neighbor,color,adjList,result);
+            if(!flag)
+                return false;
+        }
+        color[course]=BLACK;
+        result.add(course);
+        return true;
+    }
+
 /**************************************************************************/
     //Every edge and vertex is vsited once,, we use a visited array to mark
     //a vertex once it is visited

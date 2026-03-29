@@ -42,7 +42,8 @@ If the load balancer sends the request to another server → it won’t recogniz
 This is why it’s considered bad for scalability.
 
 
- The problem is it doesn’t scale well in a load-balanced environment. That’s why JWT is better — it removes the need for a session store by making the token itself carry the user’s identity and permissions."
+ The problem is it doesn’t scale well in a load-balanced environment. That’s why JWT is better — 
+ it removes the need for a session store by making the token itself carry the user’s identity and permissions."
 
 Problems:
 
@@ -88,11 +89,14 @@ JWT avoids that by embedding user info (claims) right in the token, so the serve
 You still don’t have to log in on every request, but now the API stays stateless and scales better.
 
 🎤 Interview Soundbite
-"The main reason we use sessions is so users don’t have to log in on every request. Instead of sending credentials each time, the server creates a session after login and uses a session ID to identify the user. JWT takes this further — it removes the need for a session store by letting the token itself carry the user’s identity, while still avoiding repeated logins."
+"The main reason we use sessions is so users don’t have to log in on every request.
+ Instead of sending credentials each time, the server creates a session after login and uses a session ID to identify the user.
+ JWT takes this further — it removes the need for a session store by letting the token itself carry the user’s identity, while still avoiding repeated logins."
 
 
 
-“For APIs to be reliable and scalable, statelessness is key. I prefer token-based authentication like JWT, so each request carries its own context — this way, the system can scale horizontally across AWS or Azure clusters without sticky sessions.
+“For APIs to be reliable and scalable, statelessness is key. I prefer token-based authentication like JWT, so each request carries its own context — 
+this way, the system can scale horizontally across AWS or Azure clusters without sticky sessions.
 
 
 3. Versioning
@@ -456,7 +460,7 @@ Instead of passwords, clients use access tokens (often JWTs).
 This keeps APIs stateless: each request includes the token with all the info the API needs.
 
 3. JWT as the Access Token
-The JWT payload carries claims like userId, role, and exp.
+The JWT payload carries claims like userId, role, and expiry.
 The signature ensures the token hasn’t been tampered with.
 The API validates the JWT locally with a public key — no need to query the auth server every time.
 
@@ -470,18 +474,21 @@ Well‑Defined Errors → If a token is expired or invalid, API returns 401 Unau
 
 
 3. JWT as the Access Token
-The JWT payload carries claims like userId, role, and exp.
+The JWT payload carries claims like userId, role, and expiry.
 
 The signature ensures the token hasn’t been tampered with.
 
 The API validates the JWT locally with a public key — no need to query the auth server every time.
 
 
-JWTs can be issued by the same server or a separate authentication service. In smaller apps, the API server itself may issue them. But in large-scale financial systems like L, it’s typical to use a dedicated auth service. That server issues the JWT, and all other microservices just validate it — which keeps authentication centralized, secure, and scalable
+JWTs can be issued by the same server or a separate authentication service.
+ In smaller apps, the API server itself may issue them. But in large-scale financial systems like L, it’s typical to use a dedicated auth service.
+ That server issues the JWT, and all other microservices just validate it — which keeps authentication centralized, secure, and scalable
 	
 A JWT has three parts,seperated by dots: a header that describes the signing algorithm, a payload with claims like user ID, role, and expiry
 (Claims are pieces of information about the user or client that are packaged inside the JWT payload.
-They tell the API who the caller is and what they’re allowed to do), and a signature that proves the token hasn’t been tampered with. The header and payload are Base64 encoded, while the signature is created with a secret or private key of Auth server."
+They tell the API who the caller is and what they’re allowed to do), and a signature that proves the token hasn’t been tampered with. 
+The header and payload are Base64 encoded, while the signature is created with a secret or private key of Auth server."
 
 By Design, Payload Isn’t Encrypted The JWT payload is Base64 encoded, not encrypted.
 That means anyone can decode it and see the claims.
@@ -501,9 +508,14 @@ Only include claims needed for authorization (like userId, role, exp).
 Use JWE (JSON Web Encryption), where the payload is encrypted as well as signed.
 That way, only the intended recipient can read it.
 
-The public key of auth server can be shared openly — even clients can have it. But that doesn’t let them forge or modify tokens, because only the private key can generate a valid signature. If they try to change the payload, the signature check will fail. The only thing they can do is read the payload, which is why we avoid putting sensitive data in a plain JWT.The public key can only verify, not sign.
+The public key of auth server can be shared openly — even clients can have it. 
+But that doesn’t let them forge or modify tokens, because only the private key can generate a valid signature.
+ If they try to change the payload, the signature check will fail. 
+ The only thing they can do is read the payload, which is why we avoid putting sensitive data in a plain JWT.The public key can only verify, not sign.
 
-At L, an identity provider like Okta or a central auth service would issue the JWT signed with its private key. Each microservice — say, the sanctions screening API — has the corresponding public key. When a client calls /screenings/123 with a JWT, the screening service uses that public key to check the signature and trust the claims.
+At L, an identity provider like Okta or a central auth service would issue the JWT signed with its private key. 
+Each microservice — say, the sanctions screening API — has the corresponding public key.
+ When a client calls /screenings/123 with a JWT, the screening service uses that public key to check the signature and trust the claims.
 
 The auth server signs the JWT when it’s issued.
 Other servers verify the signature locally using a known key.
@@ -516,28 +528,41 @@ Auth service issues a JWT when a compliance officer logs in.
 The token includes claims like userId=456 and role=reviewer.
 Each screening API (PEP, sanctions, adverse media) validates the JWT signature using the shared public key.
 No round-trip to the auth server is needed.
-"JWTs let APIs remain stateless because the token is signed by the auth server. Each microservice validates the signature locally using a public key, so it doesn’t need to call back to the auth server on every request. This way, we ensure both security and high performance at scale."
+"JWTs let APIs remain stateless because the token is signed by the auth server. 
+Each microservice validates the signature locally using a public key, so it doesn’t need to call back to the auth server on every request. 
+This way, we ensure both security and high performance at scale."
 
-The key benefit is statelessness. Each API server can verify the token locally using a public key — no need to query the auth server or database on every request. That makes it fast and scalable
+The key benefit is statelessness. Each API server can verify the token locally using a public key — no need to query the auth server or database on every request. 
+That makes it fast and scalable
 
-OAuth 2.0 is the framework for getting and using access tokens, while JWT is a format for the tokens themselves. In many systems, OAuth 2.0 issues JWTs as access tokens. OAuth defines the process — who issues tokens, how they’re refreshed, and what scopes they carry — and JWT provides the actual signed token that the resource server can verify without contacting the auth server."
+OAuth 2.0 is the framework for getting and using access tokens, while JWT is a format for the tokens themselves. 
+In many systems, OAuth 2.0 issues JWTs as access tokens. OAuth defines the process — who issues tokens, how they’re refreshed, 
+and what scopes they carry — and JWT provides the actual signed token that the resource server can verify without contacting the auth server."
+
 
 📌 OAuth 2.0 Example (Simple)
-“Imagine you want to use a fitness app that shows your Google Calendar workouts. Instead of giving the fitness app your Google password, the app redirects you to Google’s login page. You log in there, and Google gives the app an access token with permission to read your calendar. The fitness app then calls Google Calendar’s API with that token. Google checks the token, and if it’s valid, it returns your workout events. This way, the fitness app never sees your Google password — only a token.
+“Imagine you want to use a fitness app that shows your Google Calendar workouts. 
+Instead of giving the fitness app your Google password, the app redirects you to Google’s login page. 
+You log in there, and Google gives the app an access token with permission to read your calendar. 
+The fitness app then calls Google Calendar’s API with that token. Google checks the token, and if it’s valid,
+ it returns your workout events. This way, the fitness app never sees your Google password — only a token.
 
 Similarly can we extend it to normal auth server and resource server in 1 application
- you can absolutely extend that fitness app example to a normal single application where the auth server and the resource server are part of the same system. That’s actually very common in enterprise setups.
+ you can absolutely extend that fitness app example to a normal single application where the auth server and the resource server are part of the same system. 
+ That’s actually very common in enterprise setups.
 
 📌 OAuth 2.0 in a Single Application
 User Logs In
 User enters their credentials on the app’s login page.
 The app routes this to its auth server module (could even be part of the same backend).
+
 Auth Server Issues Access Token
 After verifying credentials, the auth component issues an access token (often a JWT).
 
 Client Uses Token
 The app uses this token for all subsequent API calls to its own backend (the resource server).
 Authorization: Bearer <token>
+
 Resource Server Validates Token
 The backend validates the JWT locally (checking the signature, expiry, and claims like role).
 
@@ -547,7 +572,122 @@ Scalability → multiple microservices in the same app can trust the token witho
 Future‑proofing → if you later split services or add third‑party integrations, the token model already works.
 
 Example in Plain Words
-"Even in a single app, we can separate the auth logic from the data APIs. The auth part issues a token once the user logs in, and the rest of the app’s APIs just validate that token before serving data. This keeps the system stateless and scalable, and it’s easy to extend later if we add more services."
+"Even in a single app, we can separate the auth logic from the data APIs. 
+The auth part issues a token once the user logs in, and the rest of the app’s APIs just validate that token before serving data. 
+This keeps the system stateless and scalable, and it’s easy to extend later if we add more services."
+
+
+A JWT has 3 parts:
+header.payload.signature
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTYiLCJuYW1lIjoiU2F1cmFiaCIsImlhdCI6MTUxNjIzOTAyMn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+Decoded header
+{
+  "alg": "HS256",
+  "typ": "JWT"
+}
+Decoded payload
+{
+  "sub": "user123",
+  "role": "ADMIN",
+  "email": "saurabh@example.com",
+  "iat": 1710000000,
+  "exp": 1710003600
+}
+
+HTTP headers are key-value pairs sent with a request or response.
+They carry metadata such as authentication, content type, accepted response type, cookies, caching rules, and tracing information.
+
+HTTP Request
+│
+├── Request Line
+│   ├── Method: GET / POST / PUT / DELETE
+│   ├── Path: /api/players/123
+│   └── Version: HTTP/1.1
+│
+├── Headers
+│   ├── Host: example.com
+│   ├── Authorization: Bearer <jwt-token>
+│   ├── Content-Type: application/json
+│   ├── Accept: application/json
+│   ├── User-Agent: PostmanRuntime/7.43.0
+│   ├── Cookie: JSESSIONID=abc123
+│   ├── Cache-Control: no-cache
+│   ├── Accept-Language: en-US
+│   └── X-Correlation-Id: 7f9c-1234
+│
+├── Blank Line
+│
+└── Body
+    └── { "name": "Saurabh" }
+
+Eg:
+POST /api/players HTTP/1.1
+Host: example.com
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: application/json
+Accept: application/json
+User-Agent: PostmanRuntime/7.43.0
+Cookie: JSESSIONID=abc123
+Cache-Control: no-cache
+Accept-Language: en-US
+X-Correlation-Id: 7f9c-1234
+
+{
+  "firstName": "David",
+  "lastName": "Aardsma"
+}
+
+
+1. Host
+Which server the request is going to.
+Host: example.com
+
+2. Authorization
+Credentials for authentication.
+Authorization: Bearer <jwt-token>
+Other example:
+Authorization: Basic dXNlcjpwYXNz
+
+3. Content-Type
+Format of the request body.
+Content-Type: application/json
+Other values:
+text/plain
+application/xml
+multipart/form-data
+
+4. Accept
+What response format the client wants back.
+Accept: application/json
+
+5. User-Agent
+Who is sending the request.
+User-Agent: Mozilla/5.0
+
+6. Cookie
+Session or browser cookie data.
+Cookie: JSESSIONID=abc123
+
+7. Cache-Control
+Caching instructions.
+Cache-Control: no-cache
+
+8. Accept-Language
+Preferred language for response.
+Accept-Language: en-US
+
+9. Custom headers
+Apps often add their own.
+X-Correlation-Id: 7f9c-1234
+X-Client-Id: mobile-app
+These are often used for:
+tracing
+debugging
+tenant/client identification
+
+
+
 
 
 

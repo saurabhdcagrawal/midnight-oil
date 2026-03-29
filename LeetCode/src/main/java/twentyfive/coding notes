@@ -1,3 +1,14 @@
+BFS --> scan a tree level by level in a top down fashion.
+Starting with the root node, visiting nodes with higher levels first and then those with lower levels
+
+DFS-> exploring as far down a branch as possible before backtracking
+Starts with root node, proceeds to leaf and then returns to explore other branches
+
+BST -> A binary tree is called a BST (binary search tree) if for every node the following conditions are met
+    The left subtree only contains nodes with keys less than the node's key
+    The  right subtree only contains nodes with keys greater than the node's key
+    Both the left subtree and right subtree themselves are BST's
+
 0) To convert string number or character number to integer
 'c'-0;
 Character.valueOf

@@ -38,17 +38,17 @@ Day 5 - Stacks & Monotonic
   Variant   : Sliding Window Maximum       https://leetcode.com/problems/sliding-window-maximum/
                                             https://leetcode.com/problems/daily-temperatures/description/
 Day 6 - Linked Lists
-  Warm-up   : Reverse Linked List          https://leetcode.com/problems/reverse-linked-list/
-  Core      : Linked List Cycle II         https://leetcode.com/problems/linked-list-cycle-ii/
+  Warm-up   : Reverse Linked List          https://leetcode.com/problems/reverse-linked-list/11/15
+  Core      : Linked List Cycle II         https://leetcode.com/problems/linked-list-cycle-ii/11/15
   Variant   : Reverse K-Group              https://leetcode.com/problems/reverse-nodes-in-k-group/
 
 ================================================================================
 WEEK 2 - Trees, Tries, BFS/DFS, Topological Sort, Union-Find
 ================================================================================
 Day 1 - Tree Traversals
-  Warm-up   : Preorder Traversal           https://leetcode.com/problems/binary-tree-preorder-traversal/
-  Core      : Inorder Traversal            https://leetcode.com/problems/binary-tree-inorder-traversal/
-  Variant   : Postorder Traversal          https://leetcode.com/problems/binary-tree-postorder-traversal/
+  Warm-up   : Preorder Traversal           https://leetcode.com/problems/binary-tree-preorder-traversal/ 09/13,11/15
+  Core      : Inorder Traversal            https://leetcode.com/problems/binary-tree-inorder-traversal/ 09/13.11/15
+  Variant   : Postorder Traversal          https://leetcode.com/problems/binary-tree-postorder-traversal/ 09/13,11/15
 
 Day 2 - BFS Variants
   Warm-up   : Level Order                  https://leetcode.com/problems/binary-tree-level-order-traversal/
@@ -56,8 +56,8 @@ Day 2 - BFS Variants
   Variant   : Bottom-up Level Order        https://leetcode.com/problems/binary-tree-level-order-traversal-ii/
 
 Day 3 - BST & Serialization
-  Warm-up   : Validate BST                 https://leetcode.com/problems/validate-binary-search-tree/
-  Core      : Kth Smallest in BST          https://leetcode.com/problems/kth-smallest-element-in-a-bst/
+  Warm-up   : Validate BST                 https://leetcode.com/problems/validate-binary-search-tree/ 09/13
+  Core      : Kth Smallest in BST          https://leetcode.com/problems/kth-smallest-element-in-a-bst/ 09/13
   Variant   : Serialize/Deserialize        https://leetcode.com/problems/serialize-and-deserialize-binary-tree/
 
 Day 4 - Paths & Tree DP
@@ -66,15 +66,27 @@ Day 4 - Paths & Tree DP
   Variant   : House Robber III             https://leetcode.com/problems/house-robber-iii/
 
 Day 5 - Tries
-  Warm-up   : Implement Trie               https://leetcode.com/problems/implement-trie-prefix-tree/
+      Warm-up   : Implement Trie               https://leetcode.com/problems/implement-trie-prefix-tree/
   Core      : Add & Search Word (.)        https://leetcode.com/problems/add-and-search-word-data-structure-design/
   Variant   : Word Search II               https://leetcode.com/problems/word-search-ii/
 
 Day 6 - Graphs & Union-Find
-  Warm-up   : Number of Islands            https://leetcode.com/problems/number-of-islands/
-  Core      : Course Schedule              https://leetcode.com/problems/course-schedule/
+  Warm-up   : Number of Islands            https://leetcode.com/problems/number-of-islands/ 09/15
+  Core      : Course Schedule              https://leetcode.com/problems/course-schedule/ 09/18
   Variant   : Accounts Merge               https://leetcode.com/problems/accounts-merge/
                                             https://leetcode.com/problems/flood-fill/description/
+
+
+ Other graph
+ https://leetcode.com/problems/clone-graph/
+ https://leetcode.com/problems/number-of-connected-components-in-an-undirected-graph/description/
+ https://leetcode.com/problems/course-schedule-ii/
+ https://leetcode.com/problems/graph-valid-tree/description/
+ https://leetcode.com/problems/walls-and-gates/
+ LinkedLists
+ https://leetcode.com/problems/add-two-numbers/editorial/
+
+
 ================================================================================
 WEEK 3 - Dynamic Programming
 ================================================================================
@@ -116,12 +128,12 @@ Day 1 - Graph Shortest Paths
 
 Day 2 - Greedy & Intervals
   Warm-up   : Jump Game II                 https://leetcode.com/problems/jump-game-ii/
-  Core      : Merge Intervals              https://leetcode.com/problems/merge-intervals/
-  Variant   : Min Arrows to Burst Balloons https://leetcode.com/problems/minimum-number-of-arrows-to-burst-balloons/
-
+  Core      : Merge Intervals              https://leetcode.com/problems/merge-intervals/ 11/25
+  Variant   : Min Arrows to Burst Balloons https://leetcode.com/problems/minimum-number-of-arrows-to-burst-balloons/ 11/25
+  Insert Intervals...                      https://leetcode.com/problems/insert-interval/ 11/25
 Day 3 - Heaps
-  Warm-up   : Kth Largest in Array         https://leetcode.com/problems/kth-largest-element-in-an-array/
-  Core      : Top K Frequent Elements      https://leetcode.com/problems/top-k-frequent-elements/
+  Warm-up   : Kth Largest in Array         https://leetcode.com/problems/kth-largest-element-in-an-array/ 09/15,11/15
+  Core      : Top K Frequent Elements      https://leetcode.com/problems/top-k-frequent-elements/ 09/15,11/15
   Variant   : Merge K Sorted Lists         https://leetcode.com/problems/merge-k-sorted-lists/
 
 Day 4 - Binary Search on Answer
@@ -130,14 +142,17 @@ Day 4 - Binary Search on Answer
   Variant   : Min Eating Speed (same Koko) https://leetcode.com/problems/koko-eating-bananas/
 
 Day 5 - Intervals / Sweep Line
-  Warm-up   : Meeting Rooms I              https://leetcode.com/problems/meeting-rooms/
-  Core      : Meeting Rooms II             https://leetcode.com/problems/meeting-rooms-ii/
+  Warm-up   : Meeting Rooms I              https://leetcode.com/problems/meeting-rooms/ 11/25
+  Core      : Meeting Rooms II             https://leetcode.com/problems/meeting-rooms-ii/ 11/25
   Variant   : Skyline Problem              https://leetcode.com/problems/the-skyline-problem/
+  MergeIntervals                           https://leetcode.com/problems/merge-intervals/description/ 11/25
 
 Day 6 - Bits & Math
   Warm-up   : Single Number II             https://leetcode.com/problems/single-number-ii/
   Core      : Counting Bits                https://leetcode.com/problems/counting-bits/
   Variant   : Power of Three               https://leetcode.com/problems/power-of-three/
+  Pure math
+  Count of primes less than n              https://leetcode.com/problems/count-primes/
 
 ================================================================================
 SUMMARY
@@ -161,7 +176,7 @@ LeetCode:
 - Two Sum: https://leetcode.com/problems/two-sum/ Already covered above
 - Group Anagrams: https://leetcode.com/problems/group-anagrams/ Already covered above
 - Product of Array Except Self: https://leetcode.com/problems/product-of-array-except-self/
-- Maximum Subarray: https://leetcode.com/problems/maximum-subarray/ ->08/16
+- Maximum Subarray: https://leetcode.com/problems/maximum-subarray/ ->08/16,11/23
 - Maximum Product Subarray: https://leetcode.com/problems/maximum-product-subarray/
 - Encode and Decode Strings: https://leetcode.com/problems/encode-and-decode-strings/
 - Valid Sudoku: https://leetcode.com/problems/valid-sudoku/
@@ -180,15 +195,15 @@ Codility Core:
 WEEK 2 – TWO POINTERS, SLIDING WINDOW & STACK/QUEUE
 -----------------------------------------------------------
 LeetCode:
-- Valid Palindrome: https://leetcode.com/problems/valid-palindrome/ ->08/16
-- Two Sum II: https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/ ->08/16
+- Valid Palindrome: https://leetcode.com/problems/valid-palindrome/ ->08/16,11/21
+- Two Sum II: https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/ ->08/16, 11/21
 - 3Sum: https://leetcode.com/problems/3sum/
 - Container With Most Water: https://leetcode.com/problems/container-with-most-water/
 - Trapping Rain Water: https://leetcode.com/problems/trapping-rain-water/
 - Sliding Window Maximum: https://leetcode.com/problems/sliding-window-maximum/
 - Minimum Window Substring: https://leetcode.com/problems/minimum-window-substring/
-- Valid Parentheses: https://leetcode.com/problems/valid-parentheses/
-- Min Stack: https://leetcode.com/problems/min-stack/
+- Valid Parentheses: https://leetcode.com/problems/valid-parentheses/ 11/15
+- Min Stack: https://leetcode.com/problems/min-stack/ 11/22
 
 Codility Core:
 - Passing Cars (prefix sums)
@@ -224,18 +239,18 @@ Codility Core:
 WEEK 4 – TREES, GRAPHS & DP
 -----------------------------------------------------------
 LeetCode:
-- Maximum Depth of Binary Tree: https://leetcode.com/problems/maximum-depth-of-binary-tree/
-- Same Tree: https://leetcode.com/problems/same-tree/
-- Subtree of Another Tree: https://leetcode.com/problems/subtree-of-another-tree/
+- Maximum Depth of Binary Tree: https://leetcode.com/problems/maximum-depth-of-binary-tree/ 11/21
+- Same Tree: https://leetcode.com/problems/same-tree/ 11/21
+- Subtree of Another Tree: https://leetcode.com/problems/subtree-of-another-tree/ 11/21
 - Lowest Common Ancestor of a BST: https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/
-- Binary Tree Level Order Traversal: https://leetcode.com/problems/binary-tree-level-order-traversal/
+- Binary Tree Level Order Traversal: https://leetcode.com/problems/binary-tree-level-order-traversal/ 11/20
 - Validate Binary Search Tree: https://leetcode.com/problems/validate-binary-search-tree/
-- Number of Islands (BFS/DFS): https://leetcode.com/problems/number-of-islands/
+- Number of Islands (BFS/DFS): https://leetcode.com/problems/number-of-islands/ 11/22
 - Clone Graph: https://leetcode.com/problems/clone-graph/
 - Word Ladder: https://leetcode.com/problems/word-ladder/
 - Coin Change (DP): https://leetcode.com/problems/coin-change/
 - Longest Increasing Subsequence (DP): https://leetcode.com/problems/longest-increasing-subsequence/
-
+- Rotting Oranges: https://leetcode.com/problems/rotting-oranges/11/23
 Codility Core:
 - Fish (stack + greedy)
 - Max Profit (DP / greedy)
@@ -246,3 +261,73 @@ Codility Core:
 
 
 
+Complexity
+
+O(n) for building the map
+O(mLogK) where m is the number of unique elements m<=n..worst case k==n; o(nLogK)
+Space O(n) for map + O(K) for heap O(n+K) which simplifies to O(n)
+
+Example answer in an interview
+“We use a hash map to store frequencies, which takes O(n) in the worst case when all elements are distinct.
+The priority queue holds at most k elements, so that’s O(k), and the result array is also O(k).
+That’s O(n + k) space, which simplifies to O(n) since k ≤ n.”
+
+
+//Number of connected components
+Time
+O(E) to create adj List
+O(V) dfs we go over every edge again so O(E+V)
+Space
+O(E+V) to store adj List
+O(V) visited node
+O(V) recursion stack worst case a long chain graph)
+O(E+V) total
+prev was an Integer, which is immutable.
+
+In Java, primitive values (and wrappers like Integer) are passed by value.
+When you do prev = root.val; inside recursion, you’re only reassigning the local copy.
+The caller’s prev never changes.
+→ ❌ That’s why recursion “loses” the updated state unless you:
+Make prev a class variable (shared across all calls), or
+Wrap it in a mutable holder (like AtomicInteger[] prev = new AtomicInteger[1]), or
+Return it explicitly through recursion
+
+//Topological sort
+
+Time complexity
+Build adjacency list going over every edge O(V)
+dfs.. for every vertex, going over every edge.. O(E+V)
+building result O(V)
+total O(E+V)
+
+
+Space Complexity
+Build adjacency list O(E+V) .. for every edge and every vertex
+for color array O(V)
+for result O(V)
+recursion stack worse case O(V) for long chain graph
+Total O(E+V)
+
+LinkedList most problems recursion O(1) space complexity and stack is O(m+n) or O(N)
+//LinkedList define
+//LinkedList reversal
+//LinkedList loop1 & loop 2
+//PlusOne
+//https://leetcode.com/problems/add-two-numbers/
+//Palindrome
+//Add 2 linkedLists
+//Intersection of 2 LinkedLists
+//merge 2 sortedLists
+//Merge K Sorted Lists
+  Variant   : Reverse K-Group              https://leetcode.com/problems/reverse-nodes-in-k-group/
+
+//Java passes object references by value, so the same List object is shared across all recursive calls.
+    //DFS is a general strategy, not a specific order.
+    //DFS explores as far down a branch as possible before backtracking.
+    //Inorder,PostOrder,PreOrder
+    //parent first operations
+    //Copy a tree
+    //serialize/deserialize a tree
+    //tree problems can be solved via DFS, BFS.. in DFS usually O(N) time complexity,
+    //space complexity O(H)..O(logN) balanced tree and O(N) skewed tree worst case
+//sorted array think of binary search
