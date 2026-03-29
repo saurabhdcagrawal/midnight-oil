@@ -40,7 +40,7 @@ Key Design Principle: The core platform is generic — variability is pushed to 
 
 Two layers of parallelism (important to articulate):
 1) Spring Batch = producer-side parallelism (DB reading + Kafka publishing)
-2) Kafka consumers = processing-side parallelism (vendor API calls)
+2) Kafka consumers = processing-side parallelism
 
 Spring Batch workers do NOT call vendors directly. They only publish to Kafka. Each Kafka consumer is a microservice instance that calls Clink/RDC independently."
 
@@ -312,6 +312,34 @@ Results:
 - Platform became the backbone for global client screening across Wealth and ISG
 
 Key insight: The goal wasn't just scaling throughput — it was scaling safely. Every design decision balanced performance with auditability and correctness in a regulated environment."
+
+Q13: Tell me about a time you mentored or developed someone on your team
+==========================================================================
+
+"During the Bridger POC, I used LexID validation as a training opportunity. LexID is the vendor's entity resolution identifier — critical for deduplication and dispositioning.
+
+Instead of figuring out LexID behavior alone, I brought two mid-level engineers in. I walked them through the first round of structured test scenarios against the SaaS instance — showing how to validate vendor behavior against our assumptions. Then I handed them ownership of the next batch, including edge cases like partial matches and entity merges.
+
+I also had them own the LexID-to-canonical-alert mapping design. I gave constraints, they proposed, I challenged, they iterated.
+
+Within 6 weeks, they went from no LexID exposure to independently owning entity resolution for the full integration. One of them authored the LexID reference document that compliance now uses.
+
+POCs are one of the best training opportunities — contained scope, real stakes, hands-on learning."
+
+Q14: Tell me about a failure or a time something didn't go as expected
+========================================================================
+
+"When I joined the financial crimes screening team, the bulk of the team and the lead were based in India. I expected a collaborative ramp-up — codebase walkthroughs, knowledge transfer on screening logic, vendor integrations, processes.
+
+That didn't happen. The team was busy, time zones made real-time collaboration hard, and there wasn't a formal onboarding path. I waited a bit too long hoping it would materialize.
+
+Once I recognized it wasn't going to happen on its own, I shifted. I started reverse-engineering the codebase — tracing flows end-to-end, reading the legacy SQL population logic, and setting up targeted async conversations instead of waiting for broad walkthroughs. I documented what I learned as I went.
+
+And that deep dive actually uncovered real issues that had been missed. I found inconsistencies in the legacy scoping logic where inclusion/exclusion rules weren't applied uniformly — causing over-screening of some clients and more false positives. These weren't hypothetical risks — they were live gaps in a regulated system.
+
+Within a couple of months, I had deep system understanding — arguably deeper than passive onboarding would have given me, because I had to reason through why things were built a certain way. And the bugs I found validated that approach — sometimes fresh eyes going through the system methodically catch things that familiarity misses.
+
+The lesson: don't wait for context — go get it. That experience shaped how I operate now. It's why I drive clarity proactively, why I led the AI-assisted documentation initiative to make screening logic queryable, and why I structure onboarding deliberately for engineers joining my team — like the LexID training during the Bridger POC."
 
 ============================================================
 ARCHITECTURE DIAGRAM (ASCII)
