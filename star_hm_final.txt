@@ -1,7 +1,17 @@
 ===============================================================
      HIRING MANAGER INTERVIEW PREP — FINAL (CONVERSATIONAL)
-                  Financial Crimes Technology
+              Financial Crimes Technology | Intuit
 ===============================================================
+
+INTUIT VALUES — KEEP THESE IN MIND FOR EVERY ANSWER
+---------------------------------------------------------------
+Customer Obsession  → Your work protects real customers
+Be Bold             → You pushed back, took a stand
+We Care & Give Back → You grew your team, not just yourself
+Do What's Right     → Compliance, integrity, hard calls
+Strong Opinions, Weakly Held → You had a view, shared it,
+                               adapted when needed
+---------------------------------------------------------------
 
 Q1: TELL ME ABOUT YOURSELF (90 seconds)
 ---------------------------------------------------------------
@@ -15,6 +25,11 @@ the upstream business systems that send us client data, and the
 downstream vendors that do the actual screening. I make sure
 that whole flow is reliable, auditable, and doesn't break when
 things change on either end.
+
+And ultimately this work matters because if our systems fail —
+real clients get delayed during onboarding, real regulatory
+risks get missed, and the firm's customer trust takes a hit.
+That's the stake behind every design decision I make.
 
 Over the last few years I've moved from building individual
 services to owning full systems end-to-end. I've gotten pretty
@@ -31,6 +46,8 @@ critical behaviors we needed, and designed around what we knew
 I'm looking for a role where I can take broader ownership —
 system design, cross-team decisions, and building things that
 hold up under real constraints.
+
+[Intuit angle: Customer obsession + Be bold]
 
 ---------------------------------------------------------------
 
@@ -124,13 +141,20 @@ the actual source logic.
 
 The impact was real:
 - Onboarding time for new engineers dropped from 6-8 weeks
-  to about 2 weeks
+to about 2 weeks
 - Compliance Q&A back-and-forth dropped by around 60%
 - Both teams could now answer their own questions without
   pulling in a senior engineer every time
 
+And the customer impact was real too — faster onboarding
+and fewer compliance delays meant clients got through the
+process faster with fewer false holds.
+
 The lesson for me was: systems don't just need to scale
 technically — the knowledge around them needs to scale too.
+
+[Intuit angle: Customer obsession + Be bold (built something
+new, not just maintained)]
 
 ---------------------------------------------------------------
 
@@ -158,6 +182,8 @@ The takeaway for me: influencing isn't about saying no. It's
 about making the trade-offs visible so people can decide
 with the full picture.
 
+[Intuit angle: Be bold + Strong opinions, weakly held]
+
 ---------------------------------------------------------------
 
 STORY 2 — API Design (Enhanced Due Diligence)
@@ -181,6 +207,8 @@ it gets back.
 The takeaway: keep the core stable. Push the variability to
 the edges.
 
+[Intuit angle: Strong opinions, weakly held + Be bold]
+
 ---------------------------------------------------------------
 
 STORY 3 — Real-Time vs Batch
@@ -203,6 +231,9 @@ infrastructure footprint by about 80%.
 
 The takeaway: ground decisions in what the system actually
 needs, not what sounds better.
+
+[Intuit angle: Be bold + Customer obsession — real-time
+where it actually impacts the customer experience]
 
 ---------------------------------------------------------------
 
@@ -270,6 +301,9 @@ The lesson: the hardest challenges are about managing
 uncertainty — not waiting until you have perfect information,
 but designing so you can learn and adapt as you go.
 
+[Intuit angle: Be bold + Do what's right — maintained
+auditability even under pressure]
+
 ---------------------------------------------------------------
 
 Q8: ADAPTING TO CHANGE (75 seconds)
@@ -306,7 +340,7 @@ what are the scale requirements, what does compliance need,
 what does failure look like, what are the SLAs?
 
 In our case — 50 million records in a 24-hour window, full
-audit trail, zero tolerance for missed matches.
+audition trail, zero tolerance for missed matches.
 
 From there I think about:
 
@@ -343,7 +377,8 @@ During a high-volume screening run, our pipeline started
 falling behind. Within about 2 hours we had over 400K
 unprocessed messages backed up, and p99 latency went from
 around 200ms to over 12 seconds. We were heading toward an
-SLA breach.
+SLA breach — which would've directly impacted client
+onboarding and delayed real customers.
 
 First thing I did was slow the ingestion down — reduced the
 Spring Batch partition count — and prioritized the
@@ -365,12 +400,16 @@ The fix:
   so we'd catch it earlier next time
 
 We stabilized within 45 minutes and cleared the full backlog
-within 4 hours. No SLA breach.
+within 4 hours. No SLA breach. No customer impact.
 
 The lesson: high volume isn't the problem — unpredictable
 behavior under load is. Retries without limits can turn a
 small vendor hiccup into a full cascade. These patterns are
 now standard in every service we build.
+
+[Intuit angle: Customer obsession — an SLA breach = real
+customers delayed. Do what's right — fixed it properly,
+not just a quick patch]
 
 ---------------------------------------------------------------
 
@@ -475,9 +514,14 @@ independently owning the entity resolution piece of the
 full integration. One of them wrote the LexID reference doc
 that the compliance team uses to this day.
 
+I make sure every engineer on my team has a real ramp-up
+path — not the sink-or-swim experience I had when I joined.
 POC work is genuinely one of the best places to develop
 engineers — the scope is contained, the stakes are real,
 and the learning is hands-on.
+
+[Intuit angle: We care and give back — team growth,
+not just personal output]
 
 ---------------------------------------------------------------
 
@@ -515,108 +559,9 @@ proactively, why I led the AI knowledge initiative, and
 why I make sure engineers on my team have a real onboarding
 path from day one.
 
----------------------------------------------------------------
-
-ARCHITECTURE DIAGRAM
----------------------------------------------------------------
-          Upstream Systems
-        (Onboarding, etc.)
-                |
-                v
-     Screening Orchestration APIs
-          (Consistent Contracts)
-            |           |
-     Real-Time       Batch
-            |           |
-     Onboarding    Spring Batch
-     Checks        + Partitioning
-                       |
-                  Kafka Topic
-                 (Distribution)
-                       |
-                Kafka Consumers
-               (Parallel Workers)
-                  Idempotent
-                 Retry + DLQ
-                       |
-          +------------+------------+
-          v                         v
-       Clink                      RDC
-    (Sanctions)             (Adverse Media)
-          |                         |
-          +------------+------------+
-                       v
-            Results Processing
-            Actimize + Audit
-             Reconciliation
-                       |
-                       v
-          Prometheus + Grafana
-            (Observability)
-
----------------------------------------------------------------
-
-PARALLELISM — QUICK REFERENCE
----------------------------------------------------------------
-Spring Batch Partitions  <-- splits data, publishes to Kafka
-   |      |      |
-   v      v      v
-Kafka Topic (10 partitions)  <-- distributes the work
-   |   |   |   |   |
-   v   v   v   v   v
-Kafka Consumers  <-- call vendors independently
-
-Rules to remember:
-- Batch workers ONLY publish to Kafka. Never call vendors.
-- Max consumer parallelism = number of Kafka partitions
-- Spring Batch = fast data extraction
-- Kafka = decoupling and distribution
-- Consumers = actual screening work
-
----------------------------------------------------------------
-
-KEY PRINCIPLES (one-liners)
----------------------------------------------------------------
-1. Decouple vendors from consumers
-   → API stays consistent regardless of which vendor is live
-
-2. Push variability to the edges
-   → Core stays stable. Consumers own their own logic.
-
-3. Validate, don't assume
-   → Especially with vendors — test early, lock late
-
-4. Design for reliability at scale
-   → Idempotent, retries with limits, DLQs, circuit breakers
-
-5. Performance AND auditability
-   → In regulated systems you need both. Not one or the other.
-
----------------------------------------------------------------
-
-QUESTIONS TO ASK THEM
----------------------------------------------------------------
-1. What are the biggest scaling challenges you're facing?
-2. How do you balance speed of delivery vs auditability?
-3. When have you had to push back on an architecture decision?
-4. What does success look like in the first 90 days here?
-5. How does the team handle incomplete or changing requirements?
-6. Can you walk me through a recent design decision and the
-   trade-offs involved?
-
----------------------------------------------------------------
-
-DELIVERY REMINDERS
----------------------------------------------------------------
-- Aim for 60-90 seconds per answer. Stop and let them probe.
-- Use the numbers: 400K backlog, 200ms to 12s, 45 mins,
-  40% faster, 50M records, 10% rework, 3 weeks saved, 60%
-  fewer Q&A cycles.
-- If you go blank: "That's a good question — let me think
-  through it..." buys you 5 seconds and sounds confident.
-- Lead with impact. Process details come after if they ask.
-- For Q11 (weaknesses): pick ONE to lead with. Have the
-  others ready if they push.
+[Intuit angle: Do what's right — flagged real compliance
+issues. We care and give back — changed how I onboard
+others as a result]
 
 ===============================================================
 END
