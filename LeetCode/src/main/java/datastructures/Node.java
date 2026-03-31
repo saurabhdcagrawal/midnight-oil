@@ -324,8 +324,39 @@ that node.*/
     // 5->7->8->10->12
 
 
-
     public static Node getIntersectionNode(Node headA, Node headB) {
+
+        int lengthA=getLengthOfList(headA);
+        int lengthB=getLengthOfList(headB);
+
+        while(lengthA>lengthB){
+            headA=headA.next;
+            lengthA--;
+        }
+
+        while(lengthB>lengthA){
+            headB=headB.next;
+            lengthB--;
+        }
+
+        while(headA!=headB){
+            headA=headA.next;
+            headB=headB.next;
+        }
+
+        return headA;
+    }
+
+    public static int getLengthOfList(Node n){
+        int length=0;
+        while(n!=null){
+            length++;
+            n=n.next;
+        }
+        return length;
+    }
+    @Deprecated
+    /*public static Node getIntersectionNode(Node headA, Node headB) {
         int aLength = 0, bLength = 0;
         Node p1 = headA;
         Node p2 = headB;
@@ -352,18 +383,18 @@ that node.*/
 
         for (int i = 0; i < lengthDiff; i++)
             longerNode = longerNode.next;
-       /* while(lengthDiff>0){
+       *//* while(lengthDiff>0){
             lengthDiff--;
             longerNode=longerNode.next;
         }
-        */
+        *//*
 
         while (longerNode != shorterNode) {
             longerNode = longerNode.next;
             shorterNode = shorterNode.next;
         }
         return shorterNode;
-    }
+    }*/
 
     public Node getIntersectionNodeOptimum(Node headA, Node headB) {
         Node pA=headA;

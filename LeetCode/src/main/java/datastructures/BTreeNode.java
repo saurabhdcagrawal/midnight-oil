@@ -363,14 +363,14 @@ public class BTreeNode{
     }
 
     public static int findMinimumElement(BTreeNode root) {
-     if (root==null) return -1;
+
          while (root.left != null) {
              root = root.left;
          }
          return root.data;
      }
     public static int findMaximumElement(BTreeNode root) {
-        if (root==null) return -1;
+
         while (root.right != null) {
             root = root.right;
         }
@@ -459,7 +459,21 @@ public class BTreeNode{
 
     }
 
+    //AI says better way is
 
+    public static boolean validateIsBSTImprov(BTreeNode root){
+        if (root==null)
+            return true;
+        if(root.left!=null){
+            if(findMaximumElement(root.left)>= root.data) return false;
+            if(!validateIsBSTImprov(root.left)) return false; //fail fast
+        }
+        if(root.right!=null){
+            if(findMinimumElement(root.right)<=root.data) return false;
+            if(!validateIsBSTImprov(root.right)) return false; //fail fast
+        }
+        return true;
+    }
 //preorder traversal
     public static boolean isStructurallyIdentical(BTreeNode root1 ,BTreeNode root2){
         if (root1==null&& root2==null)
