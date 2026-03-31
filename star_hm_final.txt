@@ -1,9 +1,9 @@
 ===============================================================
      HIRING MANAGER INTERVIEW PREP — FINAL (CONVERSATIONAL)
-              Financial Crimes Technology | Intuit
+             
 ===============================================================
 
-INTUIT VALUES — KEEP THESE IN MIND FOR EVERY ANSWER
+ VALUES — KEEP THESE IN MIND FOR EVERY ANSWER
 ---------------------------------------------------------------
 Customer Obsession  → Your work protects real customers
 Be Bold             → You pushed back, took a stand
@@ -47,7 +47,7 @@ I'm looking for a role where I can take broader ownership —
 system design, cross-team decisions, and building things that
 hold up under real constraints.
 
-[Intuit angle: Customer obsession + Be bold]
+[[HC] angle: Customer obsession + Be bold]
 
 ---------------------------------------------------------------
 
@@ -153,7 +153,7 @@ process faster with fewer false holds.
 The lesson for me was: systems don't just need to scale
 technically — the knowledge around them needs to scale too.
 
-[Intuit angle: Customer obsession + Be bold (built something
+[[HC] angle: Customer obsession + Be bold (built something
 new, not just maintained)]
 
 ---------------------------------------------------------------
@@ -182,7 +182,7 @@ The takeaway for me: influencing isn't about saying no. It's
 about making the trade-offs visible so people can decide
 with the full picture.
 
-[Intuit angle: Be bold + Strong opinions, weakly held]
+[[HC] angle: Be bold + Strong opinions, weakly held]
 
 ---------------------------------------------------------------
 
@@ -207,7 +207,7 @@ it gets back.
 The takeaway: keep the core stable. Push the variability to
 the edges.
 
-[Intuit angle: Strong opinions, weakly held + Be bold]
+[[HC] angle: Strong opinions, weakly held + Be bold]
 
 ---------------------------------------------------------------
 
@@ -232,7 +232,7 @@ infrastructure footprint by about 80%.
 The takeaway: ground decisions in what the system actually
 needs, not what sounds better.
 
-[Intuit angle: Be bold + Customer obsession — real-time
+[[HC] angle: Be bold + Customer obsession — real-time
 where it actually impacts the customer experience]
 
 ---------------------------------------------------------------
@@ -301,7 +301,7 @@ The lesson: the hardest challenges are about managing
 uncertainty — not waiting until you have perfect information,
 but designing so you can learn and adapt as you go.
 
-[Intuit angle: Be bold + Do what's right — maintained
+[[HC] angle: Be bold + Do what's right — maintained
 auditability even under pressure]
 
 ---------------------------------------------------------------
@@ -407,7 +407,7 @@ behavior under load is. Retries without limits can turn a
 small vendor hiccup into a full cascade. These patterns are
 now standard in every service we build.
 
-[Intuit angle: Customer obsession — an SLA breach = real
+[[HC] angle: Customer obsession — an SLA breach = real
 customers delayed. Do what's right — fixed it properly,
 not just a quick patch]
 
@@ -520,7 +520,7 @@ POC work is genuinely one of the best places to develop
 engineers — the scope is contained, the stakes are real,
 and the learning is hands-on.
 
-[Intuit angle: We care and give back — team growth,
+[[HC] angle: We care and give back — team growth,
 not just personal output]
 
 ---------------------------------------------------------------
@@ -559,7 +559,7 @@ proactively, why I led the AI knowledge initiative, and
 why I make sure engineers on my team have a real onboarding
 path from day one.
 
-[Intuit angle: Do what's right — flagged real compliance
+[[HC] angle: Do what's right — flagged real compliance
 issues. We care and give back — changed how I onboard
 others as a result]
 
