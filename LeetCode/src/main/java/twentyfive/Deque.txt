@@ -1,0 +1,286 @@
+A lot of Java developers get confused by Deque because they learn:
+
+Stack
+Queue
+LinkedList
+Deque
+ArrayDeque
+
+as separate things, when they're really related.
+
+Think of Deque as:
+Double Ended Queue
+
+Meaning:
+
+Front <-----> Back
+
+You can insert/remove from BOTH ends.
+
+Normal Queue
+
+Only:
+
+enqueue at back
+dequeue at front
+
+Example:
+
+1 2 3
+^     ^
+front back
+
+Operations:
+
+offer()
+poll()
+Stack
+
+Only:
+
+push/pop from same end
+
+Example:
+
+push(1)
+push(2)
+push(3)
+3
+2
+1
+
+LIFO
+
+Deque does BOTH
+Deque<Integer> dq = new ArrayDeque<>();
+Add at front
+dq.offerFirst(10);
+10
+Add at back
+dq.offerLast(20);
+10 20
+Add at front again
+dq.offerFirst(5);
+5 10 20
+Remove from front
+dq.pollFirst();
+
+removes:
+
+5
+
+remaining:
+
+10 20
+Remove from back
+dq.pollLast();
+
+removes:
+
+20
+
+remaining:
+
+10
+Why Deque is perfect for sliding windows
+
+Let's use your rate limiter.
+
+Window:
+
+3600 seconds
+
+User events:
+
+100
+200
+300
+4000
+
+Store:
+
+Deque<Integer> timestamps
+
+Initially:
+
+100
+200
+300
+
+New event:
+
+4000
+
+Window start:
+
+4000 - 3600
+=
+400
+
+Everything before:
+
+400
+
+must go.
+
+Because timestamps are increasing:
+
+oldest events are always at the FRONT.
+
+100 200 300
+^
+oldest
+
+So:
+
+while(dq.peekFirst() < 400){
+    dq.pollFirst();
+}
+
+removes:
+
+100
+200
+300
+
+Now:
+
+(empty)
+
+Add:
+
+dq.offerLast(4000);
+
+Now:
+
+4000
+
+Done.
+
+Why not TreeSet?
+
+Your instinct was:
+
+TreeSet<Integer>
+
+because:
+
+Need window query
+Need sorted timestamps
+
+Reasonable.
+
+But when timestamps arrive in order:
+
+100
+200
+300
+4000
+5000
+6000
+
+they are ALREADY sorted.
+
+You don't need:
+
+TreeSet
+
+to sort them.
+
+Just keep them in arrival order.
+
+Sliding Window Mental Model
+
+Always picture:
+
+|-------------------|
+window
+
+moving through time.
+
+For user:
+
+100
+200
+300
+400
+500
+600
+
+At timestamp:
+
+700
+
+window might be:
+
+400 -> 700
+
+Everything before:
+
+400
+
+gets removed from FRONT.
+
+New timestamp goes to BACK.
+
+That is exactly what a deque does efficiently.
+
+The 4 methods you actually need
+
+For interviews, memorize ONLY these:
+
+offerLast(x)
+
+add to back
+
+pollFirst()
+
+remove from front
+
+peekFirst()
+
+look at front
+
+size()
+
+current count
+
+That's enough to solve:
+
+sliding window
+rate limiter
+moving averages
+recent events
+hit counter
+For your rate limiter
+
+The entire solution becomes:
+
+Map<Integer, Deque<Integer>> userEvents;
+
+When event arrives:
+
+Deque<Integer> q = userEvents.get(userId);
+
+Remove expired:
+
+while(!q.isEmpty() &&
+      q.peekFirst() <= timestamp-windowDuration){
+    q.pollFirst();
+}
+
+Check limit:
+
+if(q.size() >= maxAllowed)
+    return false;
+
+Accept:
+
+q.offerLast(timestamp);
+return true;
+
+Once you see a deque as:
+
+oldest ---> newest
+
+instead of another random Java collection, sliding-window problems become much easier to recognize.

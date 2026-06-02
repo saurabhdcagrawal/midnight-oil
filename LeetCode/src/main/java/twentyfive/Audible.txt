@@ -1,0 +1,924 @@
+General questions to ask interviewers once a problem is provided:
+
+1) What is the maximum constraint on the input size (N)?
+Why you ask: If (N <= 10^3), an (O(N^2)) solution might pass. 
+If (N <= 10^6), you are immediately restricted to an (O(N)) or (O(N log N)) algorithm.
+
+2)What is the data range of the values inside the array/stream?
+Why you ask: If integers can be negative, standard sliding window approaches or prefix sum assumptions break. If the range is extremely tight (e.g., ages 0–100), you can use an (O(N)) Counting Sort instead of a general (O(N log N)) sort.
+
+Stream/Static
+3)Is this dataset static and entirely loaded into memory, or is this a continuous, unbounded data stream?
+Why you ask: If it is a stream, you cannot call Arrays.sort(). You must maintain state dynamically using structures like a min/max heap, a sliding window deque, or an online algorithm.
+
+4)Are the incoming events or timestamps guaranteed to arrive in chronological order, or do we need to handle out-of-order/late-arriving data?
+Why you ask: If data arrives out of order, you must implement a buffering or sorting mechanism before processing, which shifts your space complexity requirements.
+
+Edge Cases and System Failures: This proves you build fault-tolerant production systems.
+5) How should the system behave if the input is completely empty (null or length 0)?
+Why you ask: Shows you handle defensive guardrails from the first line of code.
+
+6) Are duplicate elements or identical IDs permitted in the input, and if so, how should they impact the final output?
+Why you ask: Instantly uncovers whether you need to introduce an atomic deduplication step using a hash set or a map before running your core logic.
+
+1)Listen & Rephrase: Repeat the problem back to them in your own words using an Audible-specific use case (e.g., "Just to clarify, we are reconciling overlapping intervals of user listening logs to calculate total session duration...")
+2)Fire the Checklist: Ask 2 or 3 targeted questions from the categories above.
+3)State Your Constraints: Summarize the rules you just established (e.g., "Great, so since \(N\) is up to \(10^{6}\) and the data stream is static, I will target an \(O(N \log N)\) time complexity using an array-backed collection to keep memory localized.").
+4)Code: Only now do you touch the digital whiteboard.
+
+Problem ""Audible is scaling its live-audio broadcasting platform. You are ingested a continuous batch of raw streaming telemetry logs. Each log event represents a single user's unique playback connection session and is formatted as an array of two primitive integers: [join_time, leave_time]. Both entries are Unix epochs in milliseconds.Because these logs are collected across distributed edge servers globally, the array arrives completely unsorted. Write a highly optimized, production-grade component to find the maximum number of concurrent listeners that were tuned into live streams at any single point in time across the platform.Due to strict system performance requirements on high-throughput microservices, your solution must minimize garbage collection overhead, operate with optimal time "
+
+
+
+class Solution {
+    public int[][] merge(int[][] intervals) {
+        
+        List<int[]> mergedIntervals = new LinkedList<>();
+        if(intervals==null||intervals.length<=1)
+            return intervals;
+        Arrays.sort(intervals,(a,b)->Integer.compare(a[0],b[0]));
+
+        int[] currentInterval= intervals[0];
+        mergedIntervals.add(currentInterval);
+
+        for(int i=1;i<intervals.length;i++){
+             if(currentInterval[1]>=intervals[i][0]) {
+                currentInterval[1]=Math.max(currentInterval[1],intervals[i][1]);
+             }
+             else{
+                mergedIntervals.add(intervals[i]);
+                currentInterval=intervals[i];
+             }
+        }
+
+        return mergedIntervals.toArray(new int[mergedIntervals.size()][]);
+
+    }
+}
+
+
+
+Problem: ""Audible is scaling its live-audio broadcasting platform. You are ingested a continuous batch of raw streaming telemetry logs. Each log event represents a single user's unique playback connection session and is formatted as an array of two primitive integers: [join_time, leave_time]. Both entries are Unix epochs in milliseconds.Because these logs are collected across distributed edge servers globally, the array arrives completely unsorted. Write a highly optimized, production-grade component to find the maximum number of concurrent listeners that were tuned into live streams at any single point in time across the platform.Due to strict system performance requirements on high-throughput microservices, your solution must minimize garbage collection overhead, operate with optimal time"
+
+
+
+
+
+Saurabh:
+"Is this streaming data currently held static and loaded in memory? Or is it a continuous unbounded stream?"The L6 Impact: This proved you instantly recognized the massive difference between batch processing and active stream windowing. Clarifying it was static gave you the green light to safely utilize a sorting-based pipeline."What is the maximum constraint on the number of streaming session logs?"The L6 Impact: You explicitly forced the interviewer to establish the scale boundary (\(10^{6}\)). This mathematically eliminated brute-force nested loops (\(O(N^2)\)) before writing code, forcing an optimal \(O(N \log N)\) or \(O(N)\) architecture."Is the data sorted already?"The L6 Impact: You refused to make lazy assumptions about production data cleanliness. Confirming it was unsorted perfectly justified your initial array sorting and ingestion phase.
+
+Actual:
+
+"How do we handle inclusive vs. exclusive boundaries when timestamps match exactly?"
+"Before I write out the logic, I want to clarify a critical edge case regarding timestamp intersections. If an existing log's exit time matches an incoming log's join time down to the exact millisecond—say, one session ends at 5000 and the next starts at 5000—should we treat this as an inclusive overlap where both require an active resource for that transition moment, or an exclusive hand-off where the resource is cleared out first?"
+
+"Is there any possibility of duplicate tracking logs hitting our system due to network retry logic at the gateway layer?"
+"Are the timestamps guaranteed to be structurally valid, or must we account for malformed logs where leave_time occurs before join_time
+
+public int minMeetingRooms(int[][] intervals) {
+        
+        if(intervals==null||intervals.length==0)
+            return 0;
+        
+        int maxConcurrentRooms=0;
+        Arrays.sort(intervals,(a,b)->Integer.compare(a[0],b[0]));
+        PriorityQueue<Integer> minHeap= new PriorityQueue<Integer>();
+
+        for(int i=0;i<intervals.length;i++){
+            while(!minHeap.isEmpty() && intervals[i][0]>=minHeap.peek()){
+                minHeap.poll();
+            }
+
+            minHeap.add(intervals[i][1]);
+            System.out.println("Concurrent meeting rooms at this time" + minHeap.size());
+
+            maxConcurrentRooms=Math.max(maxConcurrentRooms,minHeap.size());
+        }
+
+        return maxConcurrentRooms;
+    }
+
+
+
+1. The Global Peak is Correct:
+When the system hits its absolute busiest bottleneck of the day (e.g., 50,000 concurrent log events), your heap will correctly swell to a size of 50,000 nodes. Because it never shrinks down properly after that, it preserves that highest number all the way to the final return minHeap.size(); line. This is why it passes static test suites.
+2. The Micro-Snapshots are Distorted
+If you pause the loop execution at any random timestamp after the global peak has passed, the value of minHeap.size() will be completely incorrect. It will show an artificially inflated number of active users because of the "ghost baggage" nodes left un-cleared by the if constraint.
+
+
+
+Questions
+
+THE SCENARIO: Dynamic Content Stream Throttle (Audible Gateway Optimizer)Audible's metadata gateway ingests a continuous, real-time stream of characters S representing tracking telemetry payloads from user devices.To prevent downstream memory allocation spikes, our cloud processing containers must isolate the longest contiguous segment of this text stream that contains at most K distinct metadata characters.Your objective is to write an optimized algorithm that scans the stream S and returns the maximum length of a valid contiguous window under this resource constraint.Example 1: If S = "eceba" and K = 2, the longest valid segment is "ece", so the algorithm should return 3.Example 2: If S = "aa" and K = 1, the longest valid segment is "aa", so the algorithm should return 2
+
+
+
+Question I asked
+
+"Is the dataset limited to lowercase alphabets or does it span the full ASCII spectrum?
+The L6 Impact: This directly determined your physical data structure choice [INDEX]. If it had been limited to lowercase alphabets, a size-26 array would suffice. Confirming it spanned the full ASCII spectrum allowed you to confidently size your primitive tracking array to exactly 128 (or 256) to prevent array index out-of-bounds crashes [INDEX].
+"What is the maximum constraint on the input size / size of the string?
+"The L6 Impact: This mathematically eliminated a brute-force nested-loop approach (\(O(N^2)\)), which would have instantly timed out under high volume (\(10^{5}\)). It fully justified your selection of an optimized two-pointer sliding window algorithm [INDEX].
+How should the system handle the output when \(K = 0\)?"
+l: "If K = 0, it means the processing container cannot allocate space for any unique character tracking. The system must immediately return 0."
+
+
+Improvised
+
+"Is the input stream strictly bound to standard 8-bit ASCII characters, or do we need to support multi-byte Unicode/UTF-8 encodings (like emojis or multi-lingual metadata arrays)?"
+
+If they say yes to UTF-8, your architectural pivot is to swap the primitive array for a HashMap<Character, Integer> to handle the variable character space safely.
+
+"What is the expected character density? For example, if the total number of unique characters in the entire string is mathematically less than or equal to \(K\), can we implement a short-circuit bypass?"
+
+class Solution {
+    public int lengthOfLongestSubstringKDistinct(String s, int k) {
+        if(s==null||s.isEmpty()||k==0)
+            return 0;
+
+        int[] char_set = new int[128];
+        int distinctChars=0;
+        int i=0,j=0;
+        int lengthOfLongestSubstringKDistinct=0;
+        while(j<s.length()){
+            char c = s.charAt(j);
+            char_set[c]++;
+            if(char_set[c]==1)
+                distinctChars++;
+
+            while(distinctChars>k){
+                char l = s.charAt(i);
+                char_set[l]--;
+                if(char_set[l]==0)
+                    distinctChars--;
+                i++;
+            }
+            lengthOfLongestSubstringKDistinct=Math.max(lengthOfLongestSubstringKDistinct,j-i+1);
+            j++;
+        }
+        return lengthOfLongestSubstringKDistinct;
+    }
+
+    /*public int countDistinctChars(int [] char_set){
+        int unique=0;
+        for(int i=0;i<char_set.length;i++){
+            if(char_set[i]>=1)
+            unique++;
+        }
+        return unique;
+    }*/
+}
+
+
+
+class LRUCache {
+
+    DLLNode front;
+    DLLNode end;
+    Map<Integer,DLLNode> lruMap;
+    int capacity;
+    class DLLNode{
+        int key;
+        int value;
+        DLLNode next;
+        DLLNode prev;
+        public DLLNode(){};
+        public DLLNode(int key, int value){
+            this.key=key;
+            this.value=value;
+        }
+    }
+
+    public LRUCache(int capacity) {
+        this.capacity=capacity;
+        lruMap= new HashMap<>();
+        front = new DLLNode();
+        end= new DLLNode();
+        front.next=end;
+        end.prev=front;
+    }
+    
+    public int get(int key) {
+        if(lruMap.containsKey(key)){
+            DLLNode node = lruMap.get(key);
+            bringNodeToFront(node);
+            return node.value;
+        }
+        return -1;
+    }
+    
+    public void put(int key, int value) {
+        if(lruMap.containsKey(key)){
+            DLLNode node =lruMap.get(key);
+            node.value=value;
+            bringNodeToFront(node);
+        }
+        else{
+            DLLNode node = new DLLNode(key,value);
+            lruMap.put(key,node);
+            addNodeToFront(node);
+            if(lruMap.size()>capacity){
+                evictLRUCache();
+            }
+        }
+    }
+    
+    //end<- p1<-front
+    public void addNodeToFront(DLLNode node){
+      DLLNode temp= front.next;
+      front.next=node;
+      node.prev=front;     
+      node.next=temp;
+      temp.prev=node;     
+    }
+
+    public void bringNodeToFront(DLLNode node){
+        removeNode(node);
+        addNodeToFront(node);
+    }
+
+    public void removeNode(DLLNode node){
+        node.prev.next=node.next;
+        node.next.prev=node.prev;
+    }
+    
+    public void evictLRUCache(){
+        DLLNode tailNode = end.prev;
+        removeNode(tailNode);
+        lruMap.remove(tailNode.key);
+
+    }
+   
+}
+
+/**
+ * Your LRUCache object will be instantiated and called as such:
+ * LRUCache obj = new LRUCache(capacity);
+ * int param_1 = obj.get(key);
+ * obj.put(key,value);
+ */
+
+
+"To achieve O(1) get and put, I'll combine a HashMap and a Doubly Linked List. The HashMap gives O(1) access to nodes by key. The Doubly Linked List maintains recency order, with the most recently used item near the head and the least recently used near the tail. On every get or update, I'll move the node to the front. When capacity is exceeded, I'll evict the node at the tail."
+
+Why doubly linked list instead of singly linked list?
+Because when moving a node to the front, we need O(1) removal.
+
+With a singly linked list:
+
+remove(current) requires finding the previous node first.
+That becomes O(n).
+Doubly linked list gives:
+
+node.prev.next = node.next;
+node.next.prev = node.prev;
+
+in O(1).
+
+Why use dummy head and tail nodes?
+	Dummy nodes eliminate edge cases for inserting and deleting at the boundaries. Every real node always has both a previous and next node, simplifying the logic and reducing bugs.
+
+
+The current implementation is not thread-safe because both the HashMap and doubly linked list can be modified concurrently, causing corruption or inconsistent state. The simplest fix is synchronizing get and put operations so modifications to DLL and map become atomic. A better approach is using a ReentrantLock to protect all modifications to both data structures. ConcurrentHashMap alone is insufficient because the linked list updates are still unsafe.
+
+
+ReentrantLock is superior to the synchronized keyword because it gives you fine-grained programmatic control over thread orchestration.While synchronized is an "all-or-nothing" structural block built into the Java language, ReentrantLock is a flexible API class that allows you to avoid thread starvation, prevent deadlocks, and handle heavy traffic pipelines gracefully
+
+private final ReentrantLock lock = new ReentrantLock();
+
+private int get(int key){
+lock.lock();
+try{
+//All code here
+}
+finally{
+lock.unlock();
+}
+
+}
+
+
+/*void logSession(int userId, int timestamp, String activityType): Logs an event for a user at a given epoch second timestamp.
+int getUniqueUserCount(int startTime, int endTime): Returns the total number of unique users who performed at least one activity within the inclusive time window [startTime, endTime].
+List<String> getTopActivities(int startTime, int endTime, int k): Returns the top k most frequent activityType strings executed within that same inclusive window [startTime, endTime], sorted in descending order of frequency.*/
+
+
+// "static void main" must be defined in a public class.
+/*This solution optimizes locating the time range, but query performance is still proportional to the number of events in the window. If query volume became large, I would maintain pre-aggregated time buckets—for example hourly activity counts.*/
+
+For analytics-heavy workloads, I'd maintain pre-aggregated minute or hourly buckets for activity counts and potentially user aggregates.
+
+
+/*Since all queries are time-range based, I chose TreeMap instead of HashMap. TreeMap keeps timestamps sorted and allows efficient range retrieval using subMap(startTime, true, endTime, true) rather than scanning all timestamps.*/
+
+public class EventExercise {
+    TreeMap<Integer,List<Event>>log;
+    class Event{
+        int userId;
+        String activityType;
+        public Event(){};
+        public Event(int userId, String activityType){
+            this.userId=userId;
+            this.activityType=activityType;
+        }
+    }
+    
+    public EventExercise(){
+        log= new TreeMap<>();
+    }
+    // O(log T) where T is number of distinct timestamps. 
+    public void logSession(int userId, int timestamp, String activityType){    
+        if(!log.containsKey(timestamp))
+            log.put(timestamp, new ArrayList<Event>());
+        
+        List<Event> arrList= log.get(timestamp);
+        arrList.add(new Event(userId,activityType));
+    }
+    
+    //O(log T + E)
+    // T number of distinct timestamps
+    // E is number of distinct events
+    public int getUniqueUserCount(int startTime, int endTime){
+        Set<Integer> unqUsers= new HashSet<Integer>();
+        Map<Integer,List<Event>> logSlice= log.subMap(startTime,true,endTime,true);
+        for(Integer t : logSlice.keySet()){
+            List<Event> events = log.get(t);
+            for(Event e:events){
+                unqUsers.add(e.userId);
+            }
+        }
+        return unqUsers.size();
+    } 
+    
+    ////O(logT + E + AlogK) where T number of distinct time stamps, E is number of events in the queried timestamp,
+    // A is number of unique activity in queried timestamp, 
+     public List<String> getTopActivities(int startTime, int endTime, int k){
+        Map<Integer,List<Event>> logSlice= log.subMap(startTime,true,endTime,true);
+        Map<String,Integer> activityMap= new HashMap<>();
+        for(Map.Entry<Integer,List<Event>> entry: logSlice.entrySet()){
+            for(Event e:entry.getValue()){
+                activityMap.put(e.activityType, activityMap.getOrDefault(e.activityType,0)+1);
+            }
+        }
+        
+        PriorityQueue<String> pq = new PriorityQueue<>((a,b)->Integer.compare(activityMap.get(a),activityMap.get(b)));
+        
+        for(String activity: activityMap.keySet()){
+            pq.add(activity);
+            if(pq.size()>k)
+                pq.poll();
+        }
+        
+        List<String> result= new ArrayList<String>();
+        while(!pq.isEmpty()){
+            result.add(pq.poll());
+        }
+        Collections.reverse(result);
+        return result;
+    }
+    
+    
+}   
+
+
+Token based rate limiter
+
+
+// "static void main" must be defined in a public class.
+
+/*
+Implement a class StreamRateLimiter that exposes two methods:
+Constructor: public StreamRateLimiter(int windowDuration, int maxAllowed)
+Execution Hook: public boolean shouldProcessEvent(int timestamp, int userId)
+Returns true if the event is within bounds and should be executed.Returns false if the user has broken the rate threshold within the sliding window (the event is dropped and logged as a risk).
+*/
+
+
+
+public class StreamRateLimiter {
+    //5 transactions per 3600 seconds..
+    //continuos streaming
+    //how many number of users.. how many events
+    //assuming timestamp in seconds and window duration in seconds
+    //as monotonically increasing
+    //do we consider lower bound whle computing maxAllowed .. 5000, 1400
+    
+    Map<Integer,Deque<Integer>> eventLog;
+    //Map<UserId, Deque<TimeStamp>)
+    int windowDuration;
+    int maxAllowed;
+    
+    public StreamRateLimiter(int windowDuration, int maxAllowed){
+        eventLog= new HashMap<>();
+        this.windowDuration = windowDuration;
+        this.maxAllowed= maxAllowed;
+    }
+    //Timestam O(windowDuration)?
+    public boolean shouldProcessEvent(int timestamp, int userId){
+        //300, 200 100//
+        //offerFirst(add) from back, pop ()
+        //offerLast, pollFirst, pollLast
+        if(!eventLog.containsKey(userId))
+            eventLog.put(userId, new ArrayDeque<Integer>());
+        
+        Deque<Integer> sw = eventLog.get(userId);
+        //is lowerBound inclusive(<) or exclusive (<=)
+        while(!sw.isEmpty() && sw.peekFirst()<=timestamp-windowDuration)
+            userEvents.pollFirst();
+        
+        if(userEvents.size()>=maxAllowed)
+            return false;
+        
+        userEvents.offerLast(timestamp);
+        return true;
+    }
+    
+}
+/*A single invocation may remove many expired timestamps, so an individual call can take O(n) in the worst case. However, each timestamp is inserted once and removed at most once. Over N events, we perform at most N insertions and N removals, giving O(N) total work. Therefore the amortized cost per event is O(1)."*/
+
+
+
+
+// "static void main" must be defined in a public class.
+
+//public int[] determineBootSequence(int numServices, int[][] dependencies)
+public class StreamLimiter {
+    
+    public static int WHITE=0;
+    public static int GRAY=1;
+    public static int BLACK=2;
+    
+    public int[] determineBootSequence(int numServices, int[][] dependencies){
+        //"I'm modeling each service as a vertex and dependencies as directed edges. Since service A depends on service B, B must boot before A. I'll perform a topological sort and detect cycles using DFS colors (WHITE, GRAY, BLACK)."
+        //eg is service 1 is dependent on service 2 we have an edge from S1->S2
+        //"I'm interpreting dependency [A,B] as service A depends on service B, so I create edge A→B and add nodes in post-order."
+        //"I intentionally modeled the edge from a service to its dependency. Since DFS adds nodes in post-order, a service is added only after all of its dependencies have been added. That naturally produces a valid boot sequence without needing a final reverse."
+     //Topological sort is generally not unique. Any ordering that respects dependencies is valid.   
+    
+		/*
+		WHITE = never seen
+		GRAY = currently exploring this DFS path
+		BLACK = completely processed
+		The critical insight:Encountering a GRAY node means we've found a back edge to a node already in the current recursion stack, which implies a cycle.
+		*/
+		
+        List<Integer>[] adjList= new List[numServices];
+        for(int i=0;i<numServices;i++){
+            adjList[i]= new ArrayList<Integer>();
+        }
+        
+        //O(E) build adjacency graph
+        //Time Complexity:O(E+V) for DFS => every node and edge is touched once=> O(E+V)
+        //Space Complexity: O(E+V) for adjList
+        //Visited array O(V), recursion stack O(V)..So overall => O(E+V)
+        for(int i=0;i<dependencies.length;i++){
+            adjList[dependencies[i][0]].add(dependencies[i][1]);
+        }
+        
+        int[] visited = new int[numServices];
+        List<Integer> bootSequence= new ArrayList<Integer>();
+        //not needed cmment
+        /*for(int i=0;i<numServices;i++){
+            visited[i]=WHITE;
+        }*/
+        
+        for(int i=0;i<numServices;i++){
+            if(visited[i]==WHITE){
+                boolean flag= dfs(i,adjList,visited, bootSequence);
+                if(!flag)
+                    return new int[]{};
+            }
+        }
+        int [] result= new int[numServices];
+        for(int i=0;i<result.length;i++){
+            result[i]=bootSequence.get(i);
+        }
+        return result;
+    }
+    
+    public boolean dfs (int service,List<Integer>[]adjList, int[] visited, List<Integer> bootSequence){
+        if(visited[service]==GRAY)
+            return false;
+        visited[service]=GRAY;
+        for(int i=0;i<adjList[service].size();i++){
+            int neighbor=adjList[service].get(i);
+            if(visited[neighbor]!=BLACK){
+                boolean flag =dfs(neighbor,adjList,visited,bootSequence);
+                if(!flag)
+                    return false;
+            }
+        }
+        visited[service]=BLACK;
+        bootSequence.add(service);
+        return true;
+    }
+    
+    public static void main(String[] args) {
+        System.out.println("Hello World!");
+    }
+}
+
+
+
+class Solution {
+    //keep max at front, remove from back...
+    /*Why remove from the back?
+    /*I would say:The front of my deque always contains the largest element in the current window. The back contains smaller candidate elements. When a larger element arrives, I remove smaller elements from the back because they can never become the maximum in any future window. When an element leaves the sliding window, I remove it from the front if its index is no longer valid. Therefore the front of the deque always contains the maximum for the current window.
+    That explanation is 100% correct and matches your natural visualization:
+    back <-- front
+    small <-- large*/
+	//This is a monotonic decreasing deque
+    /*A single call can be O(N) in the worst case if many expired timestamps are removed at once. However, each timestamp enters the deque once and leaves once, so across N events there are at most 2N deque operations. Therefore the amortized complexity of shouldProcessEvent() is O(1).*/
+    public int[] maxSlidingWindow(int[] nums, int k) {
+        int n = nums.length;
+        int[] result= new int[n-k+1];
+        Deque<Integer> dq= new ArrayDeque<Integer>();
+        for(int i=0;i<n;i++){
+            //4,3,2    
+            while(!dq.isEmpty() && dq.peekFirst()<=i-k)
+                  dq.pollFirst();
+            
+            //4,3,2,1
+            while(!dq.isEmpty() && nums[i]>nums[dq.peekLast()]){
+                dq.pollLast();
+            }
+            dq.offerLast(i);
+            //
+            if(i>=k-1){
+                result[i-k+1]=nums[dq.peekFirst()];
+            }
+                  
+        }
+        return result;
+
+    }
+}
+
+class Solution {
+    public int[] dailyTemperatures(int[] temperatures) {
+        int n = temperatures.length;
+        int[] result = new int[n];
+        Stack<Integer> st = new Stack<>();
+
+        for(int j = n - 1; j >= 0; j--) {
+
+            while(!st.isEmpty() &&
+                  temperatures[j] >= temperatures[st.peek()]) {
+                st.pop();
+            }
+
+            if(!st.isEmpty()) {
+                result[j] = st.peek() - j;
+            }
+
+            st.push(j);
+        }
+        return result;
+    }
+}
+
+
+"I recognized this as a Next Greater Element problem. I process temperatures from right to left and maintain a monotonic decreasing stack of temperature indices. Any temperature less than or equal to the current temperature can never serve as the next warmer day for future elements, so I remove it. The remaining stack top gives me the nearest warmer temperature. Since each index is pushed and popped at most once, the solution runs in O(N) time."
+
+
+
+Examples:
+
+Sliding Window Maximum
+Rate Limiter
+Moving Average
+Monotonic Queue
+Question 2
+
+Do I need next/previous greater/smaller?
+
+If YES:
+
+Stack
+
+Examples:
+
+Daily Temperatures
+Next Greater Element
+Stock Span
+Largest Rectangle in Histogram
+Trapping Rain Water
+Funny fact
+
+A stack is actually just a restricted deque.
+
+Deque<Integer> dq = new ArrayDeque<>();
+
+can be used as:
+
+push()
+pop()
+peek()
+
+and behave exactly like a stack.
+
+In modern Java interviews, many people write:
+
+Deque<Integer> stack = new ArrayDeque<>();
+
+instead of:
+
+Stack<Integer> stack = new Stack<>();
+
+because Stack is an older synchronized class.
+
+Audible interview cheat code
+
+When you see:
+
+Next greater
+Next smaller
+Previous greater
+Previous smaller
+Nearest
+Closest
+First element on left/right
+
+Immediately think:
+
+Monotonic Stack
+
+When you see:
+
+Sliding window
+Last K elements
+Last N seconds
+Rate limiter
+Moving average
+Rolling metrics
+
+Immediately think:
+
+Deque
+
+That's the fastest way to identify these during an interview.
+
+
+
+class Solution {
+    // if N is the total number of piles
+    //M is the max number of bananas in a given pile across the the total piles
+    //TC:O(N)+ O(NlogM)
+    //SC:O(1)
+    public int minEatingSpeed(int[] piles, int h) {
+            int lo=1, hi =piles[0];
+            for(int i=1;i<piles.length;i++){
+                hi=Math.max(hi,piles[i]);
+            }
+
+            while(lo<hi){
+                int mid = lo +(hi-lo)/2;
+                int t = timeElapsed(piles, mid);
+                if(t>h){
+                    lo=mid+1;
+                }
+                else
+                    hi=mid;
+            }
+        return lo;
+    }
+
+
+    public int timeElapsed(int[] piles, int speed){
+        int timeElapsed=0;
+        for(int i=0;i<piles.length;i++){
+            timeElapsed+=Math.ceil((double)piles[i]/speed);
+        }
+        return timeElapsed;
+    }
+}
+
+
+This is one of the biggest binary search insights that people miss.
+
+There are actually two families of binary search.
+
+Pattern 1: Search for an exact value
+
+Examples:
+
+Binary Search
+Search Insert Position
+Search in Rotated Array
+
+Question:
+
+Is mid the answer?
+
+If yes:
+
+return mid;
+
+Immediately.
+
+Template:
+
+while(lo <= hi){
+
+    int mid = lo + (hi-lo)/2;
+
+    if(nums[mid] == target)
+        return mid;
+
+    else if(nums[mid] < target)
+        lo = mid + 1;
+
+    else
+        hi = mid - 1;
+}
+
+Notice:
+
+while(lo <= hi)
+
+Because we must examine every possible candidate.
+
+Pattern 2: Search for a boundary
+
+Examples:
+
+Koko Eating Bananas
+Find Peak Element
+First Bad Version
+Capacity To Ship Packages
+Minimum Days To Make Bouquets
+
+Question:
+
+What is the FIRST valid answer?
+
+or
+
+Where does the transition happen?
+
+Example:
+
+Speed
+
+1 2 3 4 5 6 7
+
+F F F T T T T
+      ^
+   answer
+
+You don't know exactly where.
+
+You're searching for the boundary.
+
+Then:
+
+while(lo < hi)
+
+and never return mid.
+
+Instead:
+
+if(valid(mid))
+    hi = mid;
+else
+    lo = mid + 1;
+
+Eventually:
+
+lo == hi
+
+They converge.
+
+Return:
+
+return lo;
+Find Peak Element
+
+Peak problem is secretly a boundary problem.
+
+Suppose:
+
+1 3 5 7 6 4 2
+
+Look at:
+
+nums[mid] < nums[mid+1]
+
+This tells us:
+
+ascending
+
+or
+
+descending
+
+There is a transition.
+
+We don't know where.
+
+We keep shrinking.
+
+Eventually:
+
+lo == hi
+
+That point is a peak.
+
+So:
+
+while(lo < hi)
+Audible Interview Trick
+
+Ask yourself:
+
+Can I know the answer when I see mid?
+
+Example:
+
+Search target 7
+
+At mid:
+
+nums[mid] == 7
+
+Done.
+
+Use:
+
+while(lo <= hi)
+
+Return mid.
+
+Or am I searching for a boundary?
+
+Example:
+
+minimum eating speed
+peak
+first bad version
+minimum capacity
+
+At mid:
+
+Is this valid?
+
+You don't know if it's the first valid.
+
+So don't return.
+
+Shrink.
+
+Use:
+
+while(lo < hi)
+
+Return after convergence.
+
+Quick memory trick
+Exact search
+Can mid itself be THE answer?
+
+Use:
+
+while(lo <= hi)
+return mid;
+Optimization / minimum / maximum / first / last
+
+Keywords:
+
+minimum
+maximum
+first
+last
+smallest
+largest
+peak
+capacity
+speed
+days
+
+Usually:
+
+while(lo < hi)
+
+and
+
+return lo;
+
+after convergence.
+
+For interviews, if you hear "minimum speed", "minimum capacity", "first bad version", "peak", your brain should immediately think:
+
+Boundary search → while(lo < hi) → converge → return lo
+
+
+
+Pattern 1: Sliding Window & Two Pointers (High-Scale Stream Analytics)Problem 1.1: Concurrent Log Processing & Peak Telemetry (Meeting Rooms II Variant)System Analogy: Tracking peak parallel socket connections or concurrent playback streams to size infrastructure.Core Challenge: Given an array of interval pairs representing the [start_time, end_time] of user playback sessions, determine the minimum number of dedicated servers required to ensure zero stream drops.Problem 1.2: Sliding Window Maximum Bitrate Tracking (LeetCode 239)System Analogy: Dynamic adaptive bitrate streaming where the player monitors network drops over a strict temporal window.Core Challenge: Given an array of real-time network throughput metrics and a window size k, find the maximum available bitrate in each moving window step in \(O(N)\) linear time.Problem 1.3: Longest Substring Without Repeating Characters (LeetCode 340 / 3)System Analogy: Parsing incoming event-driven telemetry headers or validation tokens to find unique continuous sequences.Core Challenge: Find the length of the longest continuous data slice that contains at most k distinct event types.Pattern 2: Monotonic Stacks & Queues (Pipeline Deficit & Buffer Analysis)Problem 2.1: Trapped Transaction Backlog Volume (Trapping Rain Water Variant)System Analogy: Calculating the capacity needed for asynchronous MQ/Kafka dead-letter buffers during downstream service outages.Core Challenge: Given an array representing fluctuating processing capacities of sequential nodes, calculate the total volume of message backlog that will collect across the topology during a burst.Problem 2.2: Next Greater Transaction Spike (Next Greater Element)System Analogy: Real-time fraud detection identifying sudden, unexpected metric escalations following a period of baseline stability.Core Challenge: For each transaction in a streaming sequence, find the next immediate transaction that exceeds its volume in a single linear \(O(N)\) pass.Pattern 3: Heaps & Priority Queues (Heavy-Hitters & Scheduling Engines)Problem 3.1: Top 'K' Most Played Audiobooks (Top K Frequent Elements Variant)System Analogy: Real-time analytics dashboard displaying trending audiobooks globally across millions of concurrent edge connections.Core Challenge: Given a continuous stream of incoming audiobook IDs, design a memory-bounded cache that can instantly return the top k most active IDs in \(O(N \log K)\) time.Problem 3.2: Minimum Latency Task Scheduler (LeetCode 621)System Analogy: Distributed event execution pipeline that must enforce cooling-off periods or rate limits between identical operations to protect downstream databases.Core Challenge: Given a char array of task types and a cooling-off integer n, find the minimum total CPU execution slots required to finish all tasks in the optimal sequence.Pattern 4: Graph Traversals & Topological Sort (Distributed Orchestration)Problem 4.1: Microservice Initialization & Deadlock Detection (Course Schedule II Variant)System Analogy: Dependency injection container parsing configurations to boot a complex multi-service backend mesh.Core Challenge: Given a list of system components and their hard architectural prerequisites, output the exact linear sequence needed to safely initialize the system without introducing circular dependency deadlocks.Problem 4.2: Network Delay Time in Microservice Meshes (LeetCode 743)System Analogy: Real-time trace routing calculating maximum RPC propagation delay across a distributed network topology.Core Challenge: Given a list of directed network travel times between service nodes, determine the minimum time it takes for a broadcast signal to reach all nodes in the mesh.Pattern 5: Intervals & Segment Tracking (Data De-duplication & Merging)Problem 5.1: Audible Gateway Optimizer (Merge Intervals / LeetCode 56 Variant)System Analogy: De-duplicating overlapping audio slice requests or combining overlapping batch retry intervals to minimize database read overhead.Core Challenge: Given a collection of numerical intervals, merge all overlapping ranges into an optimal, array of mutually exclusive intervals.🚀 How to Execute This LoopWe will systematically review these problems code-first, line-by-line. Select your target starting point to activate our 4-Step Interview Framework:Clarify & Scope: We will extract unstated constraints (e.g., character boundaries, maximum array lengths, k = 0 edge-cases).Propose & Proclaim: We will defend the optimal Big-O strategy before typing code.Clean Execution: We will write modular, senior-grade logic with explicit variable names.Test & Refine: We will dry-run the logic manually against brutal boundary conditions.Reply with "Let's start with Problem [X.X]" to begin.
+
+
+
+
+
+
+
+
