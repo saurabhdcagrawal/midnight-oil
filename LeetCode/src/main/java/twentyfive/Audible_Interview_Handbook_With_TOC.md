@@ -9766,6 +9766,233 @@ DFS + Wildcards
 ```
 
 ---
+# 211. Design Add and Search Words Data Structure
+
+## Pattern Recognition
+
+Keywords:
+
+```text
+Dictionary
+Wildcard
+.
+Any Character
+Autocomplete
+Prefix Search
+```
+
+Think:
+
+```text
+Trie + DFS
+```
+
+---
+
+## Core Idea
+
+Normal Trie search follows a single path.
+
+When we encounter:
+
+```text
+.
+```
+
+we must try:
+
+```text
+ALL possible children
+```
+
+from the current Trie node.
+
+This turns the search into a DFS over the Trie.
+
+---
+
+## Implementation
+
+```java
+public boolean search(String word) {
+    return search(root,word);
+}
+
+public boolean search(TrieNode node,String word) {
+
+    if(word!=null && word.length()==0) // b** or word fully consumed
+        return node.isEnd;
+
+    for(int i=0;i<word.length();i++) {
+
+        char ch = word.charAt(i);
+
+        if(ch=='.') {
+
+            for(Character k: node.children.keySet()) {
+
+                TrieNode child = node.children.get(k);
+
+                boolean result =
+                    search(child,word.substring(i+1));
+
+                if(result)
+                    return true;
+            }
+
+            return false; // if none of the paths succeeds
+        }
+        else {
+
+            if(!node.children.containsKey(ch))
+                return false;
+
+            node = node.children.get(ch);
+        }
+    }
+
+    return node.isEnd; // bad or *ad or **d
+}
+```
+
+---
+
+## Why `return node.isEnd`?
+
+```java
+return node.isEnd; // bad or *ad or **d
+```
+
+The path existing is not enough.
+
+Example:
+
+```text
+cadbury exists
+cad does not exist
+```
+
+The path:
+
+```text
+c -> a -> d
+```
+
+exists, but:
+
+```text
+d.isEnd = false
+```
+
+Therefore:
+
+```java
+search("cad")
+```
+
+must return:
+
+```text
+false
+```
+
+while:
+
+```java
+startsWith("cad")
+```
+
+returns:
+
+```text
+true
+```
+
+A Trie must distinguish between:
+
+```text
+Prefix Exists
+```
+
+and
+
+```text
+Complete Word Exists
+```
+
+---
+
+## Why `return false` after wildcard expansion?
+
+```java
+return false; // if none of the paths succeeds
+```
+
+Example:
+
+```text
+.xy
+```
+
+Trie contains:
+
+```text
+bad
+dad
+mad
+```
+
+Wildcard expansion tries:
+
+```text
+bxy -> false
+dxy -> false
+mxy -> false
+```
+
+Since:
+
+```text
+false OR false OR false = false
+```
+
+the wildcard search must immediately return:
+
+```text
+false
+```
+
+Once all wildcard branches fail, there is no valid match remaining.
+
+---
+
+## Interview Sound Bite
+
+A normal Trie search follows a single path. A wildcard introduces multiple possible paths, so we recursively explore every child node and succeed if any branch matches the remaining suffix.
+
+---
+
+## Complexity
+
+Let:
+
+```text
+L = word length
+```
+
+Normal search:
+
+```text
+O(L)
+```
+
+Wildcard search worst case:
+
+```text
+O(26^L)
+```
+
+because each wildcard can branch into multiple child nodes.
 
 ## Search Suggestions System
 
