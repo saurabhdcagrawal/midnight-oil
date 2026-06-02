@@ -8312,6 +8312,1289 @@ The algorithm.
 
 That single habit dramatically improves interview performance.
 
+# Chapter 13: Trees & Binary Search Trees
+
+## Pattern Recognition
+
+When you hear:
+
+```text
+Parent
+Child
+Ancestor
+Descendant
+Root
+Subtree
+Depth
+Height
+Path
+```
+
+Think:
+
+```text
+Tree
+```
+
+---
+
+# Core Tree Traversals
+
+## Preorder Traversal
+
+Order:
+
+```text
+Root
+Left
+Right
+```
+
+LeetCode:
+
+```text
+144. Binary Tree Preorder Traversal
+```
+
+Use Cases:
+
+```text
+Serialization
+Tree Copy
+```
+
+---
+
+## Inorder Traversal
+
+Order:
+
+```text
+Left
+Root
+Right
+```
+
+LeetCode:
+
+```text
+94. Binary Tree Inorder Traversal
+```
+
+Key Insight:
+
+For BST:
+
+```text
+Inorder Traversal Produces Sorted Order
+```
+
+---
+
+## Postorder Traversal
+
+Order:
+
+```text
+Left
+Right
+Root
+```
+
+LeetCode:
+
+```text
+145. Binary Tree Postorder Traversal
+```
+
+Use Cases:
+
+```text
+Delete Tree
+Dependency Processing
+```
+
+---
+
+## Level Order Traversal
+
+Order:
+
+```text
+Level By Level
+```
+
+Think:
+
+```text
+BFS + Queue
+```
+
+LeetCode:
+
+```text
+102. Binary Tree Level Order Traversal
+```
+
+Complexity:
+
+```text
+Time  O(N)
+Space O(N)
+```
+
+---
+
+# BFS Must-Know Problems
+
+## BFS Pattern Recognition
+
+Keywords:
+
+```text
+Level Order
+Minimum Steps
+Shortest Path
+Nearest
+Spread
+Infection
+Grid
+Matrix
+```
+
+Think:
+
+```text
+Breadth First Search
+```
+
+---
+
+# 102. Binary Tree Level Order Traversal
+
+Pattern:
+
+```text
+Tree BFS
+```
+
+Recognition:
+
+```text
+Level By Level Processing
+```
+
+Complexity:
+
+```text
+Time  O(N)
+Space O(N)
+```
+
+Interview Sound Bite:
+
+> BFS naturally processes nodes level by level, making it ideal for level-order traversal problems.
+
+---
+
+# 200. Number of Islands
+
+Pattern:
+
+```text
+Grid Traversal
+Connected Components
+```
+
+Recognition:
+
+```text
+Grid
+Island
+Connected Region
+```
+
+Think:
+
+```text
+BFS or DFS
+```
+
+Core Idea:
+
+```text
+Every unvisited land cell starts a new island traversal.
+```
+
+Complexity:
+
+```text
+Time  O(M×N)
+Space O(M×N)
+```
+
+Interview Sound Bite:
+
+> Every unvisited land cell represents a new connected component. BFS explores the entire island before moving on.
+
+---
+
+# 994. Rotten Oranges
+
+Pattern:
+
+```text
+Multi-Source BFS
+```
+
+Recognition:
+
+```text
+Spread
+Infection
+Minimum Time
+Propagation
+```
+
+Core Idea:
+
+Start BFS from:
+
+```text
+All Rotten Oranges
+```
+
+Each BFS level:
+
+```text
+Represents One Minute
+```
+
+Complexity:
+
+```text
+Time  O(M×N)
+Space O(M×N)
+```
+
+Interview Sound Bite:
+
+> Since all rotten oranges spread simultaneously, they all enter the queue initially. Each BFS layer corresponds to one minute of spread.
+
+---
+
+# 1091. Shortest Path in Binary Matrix
+
+Pattern:
+
+```text
+Shortest Path BFS
+```
+
+Recognition:
+
+```text
+Shortest Path
+Minimum Steps
+Grid
+```
+
+Core Idea:
+
+For an:
+
+```text
+Unweighted Graph
+```
+
+BFS naturally discovers nodes in shortest-distance order.
+
+Complexity:
+
+```text
+Time  O(M×N)
+Space O(M×N)
+```
+
+Interview Sound Bite:
+
+> Because every move has equal cost, BFS guarantees the shortest path.
+
+---
+
+# 127. Word Ladder
+
+Pattern:
+
+```text
+State Space BFS
+```
+
+Recognition:
+
+```text
+Minimum Transformations
+Shortest Sequence
+```
+
+Core Idea:
+
+Treat:
+
+```text
+Word = Node
+Transformation = Edge
+```
+
+Use BFS to find:
+
+```text
+Minimum Number of Transformations
+```
+
+Complexity:
+
+```text
+Time O(N × WordLength × 26)
+```
+
+depends on implementation.
+
+Interview Sound Bite:
+
+> Word Ladder is a shortest-path problem where words are graph nodes and valid transformations are graph edges.
+
+---
+
+# BFS Master Set
+
+These five problems cover the majority of BFS interview patterns:
+
+```text
+102. Binary Tree Level Order Traversal
+200. Number of Islands
+994. Rotten Oranges
+1091. Shortest Path in Binary Matrix
+127. Word Ladder
+```
+
+Covered Concepts:
+
+```text
+Tree BFS
+Grid BFS
+Connected Components
+Multi-Source BFS
+Shortest Path BFS
+State Space BFS
+```
+
+---
+
+# Binary Search Tree (BST)
+
+## Property
+
+For every node:
+
+```text
+Left < Root < Right
+```
+
+---
+
+# Validate BST
+
+LeetCode:
+
+```text
+98. Validate Binary Search Tree
+```
+
+Recognition:
+
+```text
+BST Validation
+Range Constraints
+```
+
+Key Insight:
+
+Pass:
+
+```text
+(min,max)
+```
+
+bounds during DFS.
+
+Complexity:
+
+```text
+Time  O(N)
+Space O(H)
+```
+
+---
+
+# Kth Smallest Element in BST
+
+LeetCode:
+
+```text
+230. Kth Smallest Element in BST
+```
+
+Recognition:
+
+```text
+BST
+Sorted Order
+```
+
+Key Insight:
+
+```text
+Inorder Traversal = Sorted Order
+```
+
+Complexity:
+
+```text
+Time  O(N)
+Space O(H)
+```
+
+---
+
+# Lowest Common Ancestor
+
+LeetCode:
+
+```text
+236. Lowest Common Ancestor of Binary Tree
+235. Lowest Common Ancestor of BST
+```
+
+Recognition:
+
+```text
+Ancestor
+Common Parent
+```
+
+Interview Sound Bite:
+
+> The first node where the paths to p and q diverge is the Lowest Common Ancestor.
+
+---
+
+# Maximum Depth of Binary Tree
+
+LeetCode:
+
+```text
+104. Maximum Depth of Binary Tree
+```
+
+Recognition:
+
+```text
+Height
+Depth
+Longest Root-To-Leaf Path
+```
+
+Pattern:
+
+```text
+DFS
+```
+
+Complexity:
+
+```text
+Time  O(N)
+Space O(H)
+```
+
+---
+
+# Diameter of Binary Tree
+
+LeetCode:
+
+```text
+543. Diameter of Binary Tree
+```
+
+Recognition:
+
+```text
+Longest Path
+```
+
+Key Insight:
+
+```text
+Diameter Through Node
+=
+Left Height + Right Height
+```
+
+Complexity:
+
+```text
+Time  O(N)
+Space O(H)
+```
+
+---
+
+# Audible Mapping
+
+Examples:
+
+```text
+Content Category Hierarchy
+Book Category Tree
+Service Dependency Hierarchy
+Organization Structure
+```
+
+These naturally map to trees.
+
+---
+
+# Tree Recognition Cheat Sheet
+
+Keywords:
+
+```text
+Parent
+Child
+Depth
+Height
+Ancestor
+Subtree
+Path
+```
+
+Think:
+
+```text
+Tree Traversal
+```
+
+Keywords:
+
+```text
+Level By Level
+Minimum Steps
+Shortest Path
+Nearest
+Spread
+```
+
+Think:
+
+```text
+BFS
+```
+
+Keywords:
+
+```text
+BST
+Sorted
+Kth Smallest
+```
+
+Think:
+
+```text
+Inorder Traversal
+```
+
+---
+
+# Must-Know LeetCode List
+
+```text
+104. Maximum Depth of Binary Tree
+102. Binary Tree Level Order Traversal
+98. Validate Binary Search Tree
+230. Kth Smallest Element in BST
+236. Lowest Common Ancestor
+543. Diameter of Binary Tree
+
+200. Number of Islands
+994. Rotten Oranges
+1091. Shortest Path in Binary Matrix
+127. Word Ladder
+```
+
+# Chapter 14: Linked Lists
+
+## Pattern Recognition
+
+When you hear:
+
+```text id="r9g4uh"
+Reverse
+Cycle
+Middle
+Merge
+Reorder
+Nth Node
+Pointer Manipulation
+```
+
+Think:
+
+```text id="n8ql5u"
+Linked List
+```
+
+---
+
+# Why Linked Lists Matter
+
+Unlike arrays:
+
+```text id="kgp98m"
+Array
+```
+
+provides:
+
+```text id="ahxyq7"
+O(1) Index Access
+```
+
+while:
+
+```text id="knkn5x"
+Linked List
+```
+
+provides:
+
+```text id="q8f1vl"
+Efficient Insertions
+Efficient Deletions
+```
+
+when node references are known.
+
+---
+
+# Core Mental Model
+
+Node Structure:
+
+```java id="6m6l7h"
+class ListNode {
+
+    int val;
+
+    ListNode next;
+}
+```
+
+Visual:
+
+```text id="1nx5zm"
+1 -> 2 -> 3 -> 4 -> null
+```
+
+Every problem usually comes down to:
+
+```text id="grmz5o"
+Moving Pointers
+```
+
+---
+
+# Fast & Slow Pointer Pattern
+
+## Recognition
+
+Keywords:
+
+```text id="3c8ymx"
+Middle
+Cycle
+Halfway
+Nth Node
+```
+
+Think:
+
+```text id="c2vkfc"
+Fast + Slow Pointer
+```
+
+---
+
+# 876. Middle of the Linked List
+
+## Pattern
+
+Fast & Slow Pointer
+
+---
+
+## Core Idea
+
+```java id="lcf1vr"
+slow = slow.next;
+fast = fast.next.next;
+```
+
+When:
+
+```text id="w9iyb9"
+fast reaches end
+```
+
+Then:
+
+```text id="rmyfnw"
+slow is at middle
+```
+
+---
+
+## Complexity
+
+```text id="zpxz4q"
+Time  O(N)
+Space O(1)
+```
+
+---
+
+## Interview Sound Bite
+
+> Moving one pointer twice as fast guarantees the slow pointer reaches the midpoint when the fast pointer reaches the end.
+
+---
+
+# 141. Linked List Cycle
+
+## Pattern
+
+Fast & Slow Pointer
+
+---
+
+## Recognition
+
+Keywords:
+
+```text id="hwrz5z"
+Loop
+Cycle
+Circular
+```
+
+---
+
+## Core Idea
+
+If a cycle exists:
+
+```text id="lqf9zm"
+Fast and Slow pointers must eventually meet.
+```
+
+---
+
+## Complexity
+
+```text id="hgc1hb"
+Time  O(N)
+Space O(1)
+```
+
+---
+
+# 142. Linked List Cycle II
+
+## Pattern
+
+Cycle Detection
+
+---
+
+## Follow-Up
+
+Find:
+
+```text id="s8mkqr"
+Cycle Starting Node
+```
+
+not just whether a cycle exists.
+
+---
+
+## Interview Sound Bite
+
+> Once fast and slow meet, moving one pointer to the head and advancing both one step at a time leads them to the cycle entry point.
+
+---
+
+# Reverse Linked List
+
+## LeetCode
+
+```text id="dq8v8v"
+206. Reverse Linked List
+```
+
+---
+
+## Pattern
+
+Pointer Manipulation
+
+---
+
+## Core Variables
+
+```java id="0iw7zj"
+prev
+curr
+next
+```
+
+---
+
+## Visualization
+
+Before:
+
+```text id="stz95s"
+1 -> 2 -> 3 -> null
+```
+
+After:
+
+```text id="yjlwmc"
+3 -> 2 -> 1 -> null
+```
+
+---
+
+## Complexity
+
+```text id="m3oz4u"
+Time  O(N)
+Space O(1)
+```
+
+---
+
+## Interview Sound Bite
+
+> Reversal is simply redirecting pointers while preserving access to the remaining list.
+
+---
+
+# 92. Reverse Linked List II
+
+## Recognition
+
+Keywords:
+
+```text id="7kh4zt"
+Reverse Portion
+Reverse Between
+```
+
+Think:
+
+```text id="j0hgqe"
+Reverse + Reconnect
+```
+
+---
+
+# Merge Two Sorted Lists
+
+## LeetCode
+
+```text id="j21r6v"
+21. Merge Two Sorted Lists
+```
+
+---
+
+## Pattern
+
+Two Pointers
+
+---
+
+## Core Idea
+
+Use:
+
+```text id="qjlwm7"
+Dummy Node
+```
+
+to simplify edge cases.
+
+---
+
+## Complexity
+
+```text id="hjlwm8"
+Time  O(M+N)
+Space O(1)
+```
+
+---
+
+## Interview Sound Bite
+
+> A dummy node eliminates special handling for the head of the merged list.
+
+---
+
+# 23. Merge K Sorted Lists
+
+## Pattern
+
+Heap
+
+---
+
+## Recognition
+
+Keywords:
+
+```text id="fjlwm9"
+Multiple Sorted Lists
+K Lists
+```
+
+Think:
+
+```text id="pjlwm1"
+Priority Queue
+```
+
+---
+
+## Complexity
+
+```text id="xjlwm2"
+Time O(N log K)
+```
+
+---
+
+## Interview Sound Bite
+
+> At any time we only care about the smallest current node among K lists, making a heap ideal.
+
+---
+
+# 143. Reorder List
+
+## Recognition
+
+Keywords:
+
+```text id="djlwm3"
+Reorder
+Alternate Ends
+```
+
+---
+
+## Pattern
+
+Three-Step Problem
+
+```text id="mjlwm4"
+Find Middle
+Reverse Second Half
+Merge
+```
+
+---
+
+## Interview Sound Bite
+
+> Most complex linked-list problems are combinations of simpler patterns.
+
+---
+
+# 19. Remove Nth Node From End
+
+## Pattern
+
+Two Pointers
+
+---
+
+## Recognition
+
+Keywords:
+
+```text id="zjlwm5"
+Nth From End
+```
+
+---
+
+## Core Idea
+
+Maintain:
+
+```text id="tjlwm6"
+Gap of N Nodes
+```
+
+between pointers.
+
+---
+
+## Complexity
+
+```text id="ujlwm7"
+Time  O(N)
+Space O(1)
+```
+
+---
+
+# 160. Intersection of Two Linked Lists
+
+## Pattern
+
+Pointer Alignment
+
+---
+
+## Recognition
+
+Keywords:
+
+```text id="vjlwm8"
+Intersection
+Common Node
+```
+
+---
+
+## Core Idea
+
+Pointer A:
+
+```text id="wjlwm9"
+ListA -> ListB
+```
+
+Pointer B:
+
+```text id="xjlwm0"
+ListB -> ListA
+```
+
+Eventually:
+
+```text id="yjlwm1"
+Meet At Intersection
+```
+
+---
+
+## Complexity
+
+```text id="zjlwm2"
+Time  O(N)
+Space O(1)
+```
+
+---
+
+# Dummy Node Pattern
+
+One of the most important linked-list techniques.
+
+Used in:
+
+```text id="ajlwm3"
+21. Merge Two Sorted Lists
+19. Remove Nth Node
+92. Reverse Linked List II
+```
+
+Benefits:
+
+```text id="bjlwm4"
+Cleaner Logic
+Fewer Edge Cases
+```
+
+---
+
+# Audible Mapping
+
+Examples:
+
+```text id="cjlwm5"
+Playback History
+Recently Played Books
+LRU Cache
+Recent Searches
+```
+
+Linked Lists frequently appear in:
+
+```text id="djlwm6"
+Caching
+History Tracking
+Pointer-Based Data Structures
+```
+
+---
+
+# LRU Connection
+
+Remember:
+
+```text id="ejlwm7"
+LRU Cache
+=
+HashMap
++
+Doubly Linked List
+```
+
+This chapter directly supports:
+
+```text id="fjlwm8"
+Chapter 8: LRU Cache
+```
+
+---
+
+# Linked List Recognition Cheat Sheet
+
+Keywords:
+
+```text id="gjlwm9"
+Middle
+Cycle
+Halfway
+```
+
+Think:
+
+```text id="hjlwm0"
+Fast & Slow Pointer
+```
+
+---
+
+Keywords:
+
+```text id="ijlmw1"
+Reverse
+Reverse Portion
+```
+
+Think:
+
+```text id="jjlmw2"
+Pointer Manipulation
+```
+
+---
+
+Keywords:
+
+```text id="kjlmw3"
+Merge Sorted Lists
+K Sorted Lists
+```
+
+Think:
+
+```text id="ljlmw4"
+Two Pointers
+or
+Heap
+```
+
+---
+
+Keywords:
+
+```text id="mjlmw5"
+Nth From End
+```
+
+Think:
+
+```text id="njlmw6"
+Two Pointer Gap
+```
+
+---
+
+# Must-Know LeetCode List
+
+```text id="ojlmw7"
+876. Middle of the Linked List
+
+141. Linked List Cycle
+142. Linked List Cycle II
+
+206. Reverse Linked List
+92. Reverse Linked List II
+
+21. Merge Two Sorted Lists
+23. Merge K Sorted Lists
+
+143. Reorder List
+
+19. Remove Nth Node From End
+
+160. Intersection of Two Linked Lists
+```
+
+---
+
+# Audible Interview Set
+
+If time is limited, prioritize:
+
+```text id="pjlmw8"
+206. Reverse Linked List
+141. Linked List Cycle
+876. Middle of Linked List
+21. Merge Two Sorted Lists
+143. Reorder List
+```
+
+These five cover:
+
+```text id="qjlmw9"
+Pointer Manipulation
+Fast & Slow Pointer
+Reversal
+Merge
+Multi-Step Linked List Design
+```
+
 # Chapter 15: Trie & Autocomplete
 
 ## Pattern Recognition
