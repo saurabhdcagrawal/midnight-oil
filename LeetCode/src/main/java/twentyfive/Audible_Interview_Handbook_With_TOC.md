@@ -9680,7 +9680,6 @@ ca
 ```
 
 Trie stores prefixes efficiently.
-
 ---
 
 # Trie Node
@@ -9688,12 +9687,11 @@ Trie stores prefixes efficiently.
 ```java
 class TrieNode {
 
-    TrieNode[] children =
-        new TrieNode[26];
-
+    Map<Character,TrieNode> children = new HashMap<>();
     boolean isWord;
 }
 ```
+Using a HashMap stores only existing children. An array of size 26 allocates space for every node regardless of usage. HashMap is more memory efficient and supports arbitrary character sets(support for ASCII,Unicode), while arrays provide slightly faster lookup for fixed alphabets.
 
 ---
 
