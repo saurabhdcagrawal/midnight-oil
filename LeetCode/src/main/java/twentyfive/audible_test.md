@@ -8312,3 +8312,656 @@ The algorithm.
 
 That single habit dramatically improves interview performance.
 
+# Chapter 15: Trie & Autocomplete
+
+## Pattern Recognition
+
+Keywords:
+
+```text
+Prefix
+Dictionary
+Autocomplete
+Suggestions
+Search
+```
+
+Think:
+
+```text
+Trie
+```
+
+---
+
+# Why Trie?
+
+Suppose:
+
+```text
+cat
+car
+care
+card
+```
+
+Common Prefix:
+
+```text
+ca
+```
+
+Trie stores prefixes efficiently.
+
+---
+
+# Trie Node
+
+```java
+class TrieNode {
+
+    TrieNode[] children =
+        new TrieNode[26];
+
+    boolean isWord;
+}
+```
+
+---
+
+# Core Operations
+
+## Insert
+
+```java
+insert(word)
+```
+
+Complexity:
+
+```text
+O(length)
+```
+
+---
+
+## Search
+
+```java
+search(word)
+```
+
+Complexity:
+
+```text
+O(length)
+```
+
+---
+
+## Starts With
+
+```java
+startsWith(prefix)
+```
+
+Complexity:
+
+```text
+O(length)
+```
+
+---
+
+# Must-Know Problems
+
+## Implement Trie
+
+LeetCode:
+
+```text
+208. Implement Trie
+```
+
+---
+
+## Design Add and Search Words
+
+LeetCode:
+
+```text
+211. Design Add and Search Words
+```
+
+Introduces:
+
+```text
+DFS + Wildcards
+```
+
+---
+
+## Search Suggestions System
+
+LeetCode:
+
+```text
+1268. Search Suggestions System
+```
+
+Very Audible-Relevant.
+
+---
+
+## Word Search II
+
+LeetCode:
+
+```text
+212. Word Search II
+```
+
+Combines:
+
+```text
+Trie + Backtracking
+```
+
+---
+
+# Autocomplete Design
+
+Question:
+
+User types:
+
+```text
+ha
+```
+
+Need:
+
+```text
+harry potter
+happy place
+half blood prince
+```
+
+Quickly.
+
+Recognition:
+
+```text
+Prefix Query
+```
+
+Think:
+
+```text
+Trie
+```
+
+---
+
+# Audible Mapping
+
+Examples:
+
+```text
+Book Search
+Author Search
+Narrator Search
+Autocomplete Suggestions
+```
+
+These are among the most realistic Audible-style applications of Trie.
+
+---
+
+# Interview Sound Bite
+
+> Trie trades memory for speed by storing common prefixes only once, allowing prefix lookups in O(length of prefix).
+
+---
+
+# Must-Know LeetCode List
+
+208. Implement Trie
+209. Design Add and Search Words
+210. Search Suggestions System
+211. Word Search II
+
+```
+```
+# Chapter 17: Design a HashMap
+
+## Pattern Recognition
+
+Keywords:
+
+```text
+Build HashMap
+Dictionary
+Key Value Store
+Lookup
+Hash Function
+Collision
+```
+
+Think:
+
+```text
+Hash Table
+```
+
+---
+
+# Goal
+
+Implement:
+
+```java
+put(key,value)
+get(key)
+remove(key)
+```
+
+Without using:
+
+```java
+HashMap
+```
+
+---
+
+# Mental Model
+
+HashMap is essentially:
+
+```text
+Array of Buckets
+```
+
+Example:
+
+```text
+Index
+
+0
+1
+2
+3
+4
+5
+...
+```
+
+---
+
+# Hash Function
+
+Convert:
+
+```text
+Key
+```
+
+into:
+
+```text
+Bucket Index
+```
+
+Example:
+
+```java
+index = key % bucketCount;
+```
+
+---
+
+# Why Hashing Works
+
+Many keys:
+
+```text
+100
+200
+300
+```
+
+Map into:
+
+```text
+Fixed Bucket Array
+```
+
+Allowing:
+
+```text
+Near O(1) Lookup
+```
+
+---
+
+# Collision
+
+Problem:
+
+```java
+1 % 10 = 1
+11 % 10 = 1
+21 % 10 = 1
+```
+
+All land in:
+
+```text
+Bucket 1
+```
+
+---
+
+# Collision Resolution
+
+## Chaining
+
+Each bucket stores:
+
+```java
+LinkedList<Entry>
+```
+
+Example:
+
+```text
+Bucket[1]
+
+1 -> 11 -> 21
+```
+
+---
+
+# Entry Structure
+
+```java
+class Entry {
+
+    int key;
+    int value;
+
+    Entry next;
+}
+```
+
+---
+
+# put()
+
+## Step 1
+
+Find bucket.
+
+```java
+index = hash(key);
+```
+
+---
+
+## Step 2
+
+Search linked list.
+
+If found:
+
+```text
+Update Value
+```
+
+Else:
+
+```text
+Insert New Entry
+```
+
+---
+
+# get()
+
+Find bucket.
+
+Traverse chain.
+
+If found:
+
+```java
+return value;
+```
+
+Else:
+
+```java
+return -1;
+```
+
+---
+
+# remove()
+
+Find bucket.
+
+Remove node from linked list.
+
+---
+
+# Complexity
+
+Average Case:
+
+```text
+Put O(1)
+Get O(1)
+Remove O(1)
+```
+
+---
+
+# Worst Case
+
+All keys collide.
+
+Bucket:
+
+```text
+1 -> 11 -> 21 -> 31 -> ...
+```
+
+Complexity:
+
+```text
+O(N)
+```
+
+---
+
+# Rehashing
+
+Problem:
+
+Too many collisions.
+
+---
+
+## Load Factor
+
+Formula:
+
+```text
+entries / buckets
+```
+
+Example:
+
+```text
+75 entries
+100 buckets
+
+Load Factor = 0.75
+```
+
+---
+
+## When Load Factor Grows
+
+Create:
+
+```text
+Larger Bucket Array
+```
+
+Example:
+
+```text
+100 -> 200 buckets
+```
+
+Reinsert all keys.
+
+This is:
+
+```text
+Rehashing
+```
+
+---
+
+# Java 8 Improvement
+
+Before Java 8:
+
+```text
+Collision Bucket
+=
+Linked List
+```
+
+---
+
+## After Threshold
+
+Convert bucket to:
+
+```text
+Balanced Tree
+```
+
+Reducing:
+
+```text
+O(N)
+```
+
+to:
+
+```text
+O(log N)
+```
+
+for heavy collisions.
+
+---
+
+# Design HashMap LeetCode
+
+```text
+706. Design HashMap
+```
+
+Must Know.
+
+---
+
+# HashSet Relationship
+
+HashSet internally uses:
+
+```text
+HashMap
+```
+
+Only keys matter.
+
+Values are ignored.
+
+---
+
+# ConcurrentHashMap Discussion
+
+Senior-Level Follow-Up.
+
+Question:
+
+> How would you make this thread-safe?
+
+Options:
+
+```text
+synchronized
+ConcurrentHashMap
+Lock Striping
+```
+
+---
+
+# Interview Sound Bite
+
+> A HashMap trades memory for speed by distributing keys across buckets using a hash function. Good hash distribution keeps bucket sizes small and provides near O(1) lookup, insertion, and deletion.
+
+---
+
+# Audible Mapping
+
+Examples:
+
+```text
+User Lookup
+Book Metadata Lookup
+Session Lookup
+Cache Index
+```
+
+All naturally map to HashMap.
+
+---
+
+# Recognition Cheat Sheet
+
+Need:
+
+```text
+Fast Lookup
+Key Value Mapping
+Frequency Counting
+Caching
+```
+
+Think:
+
+```text
+HashMap
+```
+
+---
+
+# Must-Know LeetCode List
+
+706. Design HashMap
+707. Design HashSet
+708. Two Sum
+709. Group Anagrams
+710. Top K Frequent Elements
+711. Subarray Sum Equals K
+
+```
+```
+
