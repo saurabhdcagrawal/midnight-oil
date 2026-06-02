@@ -8718,6 +8718,7 @@ These five problems cover the majority of BFS interview patterns:
 102. Binary Tree Level Order Traversal
 200. Number of Islands
 994. Rotten Oranges
+286. Walls and Gates
 1091. Shortest Path in Binary Matrix
 127. Word Ladder
 ```
