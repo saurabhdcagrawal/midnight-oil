@@ -2789,7 +2789,7 @@ When you hear:
 * Schedule
 * Next Available Resource
 * Streaming Top K
-
+* Median of a data Stream
 Immediately think:
 
 ```text
@@ -3155,6 +3155,220 @@ Minimum end time
 This is exactly what heaps are designed for.
 
 ---
+
+# 295. Find Median from Data Stream
+
+## Pattern Recognition
+
+Keywords:
+
+```text
+Median
+Running Median
+Data Stream
+Continuous Input
+Online Processing
+```
+
+Think:
+
+```text
+Two Heaps
+```
+
+---
+
+## Core Idea
+
+The median splits the dataset into:
+
+```text
+Lower Half
+Upper Half
+```
+
+We maintain:
+
+```text
+Max Heap -> Lower Half
+Min Heap -> Upper Half
+```
+
+The heap peaks always contain the middle element(s).
+
+Example:
+
+```text
+1 2 3 4 5
+
+Max Heap = [2,1]
+Min Heap = [3,4,5]
+
+Median = 3
+```
+
+Example:
+
+```text
+1 2 3 4
+
+Max Heap = [2,1]
+Min Heap = [3,4]
+
+Median = (2 + 3) / 2
+```
+
+---
+
+## Key Invariants
+
+```text
+1. maxHeap stores lower half
+
+2. minHeap stores upper half
+
+3. maxHeap.size() >= minHeap.size()
+
+4. Size difference <= 1
+
+5. maxHeap.peek() <= minHeap.peek()
+```
+
+---
+
+## Implementation
+
+```java
+class MedianFinder {
+
+    PriorityQueue<Integer> minHeap;
+    PriorityQueue<Integer> maxHeap;
+
+    public MedianFinder() {
+
+        minHeap = new PriorityQueue<>();
+
+        maxHeap =
+            new PriorityQueue<>((a,b) -> Integer.compare(b,a));
+    }
+
+    public void addNum(int num) {
+
+        // maxHeap stores lower half
+        // minHeap stores upper half
+
+        // top of maxHeap = largest element in lower half
+        // top of minHeap = smallest element in upper half
+
+        // median will always be at one or both peaks
+
+        maxHeap.add(num);
+
+        // push largest element of lower half
+        // into upper half
+        minHeap.add(maxHeap.poll());
+
+        // ensure maxHeap has either:
+        // same number of elements
+        // OR one extra element
+
+        if(minHeap.size() > maxHeap.size()) {
+            maxHeap.add(minHeap.poll());
+        }
+    }
+
+    public double findMedian() {
+
+        if(maxHeap.size() > minHeap.size())
+            return maxHeap.peek();
+
+        return ((double)maxHeap.peek()
+                + (double)minHeap.peek()) / 2.0;
+    }
+}
+```
+
+---
+
+## Why This Works
+
+Every inserted value is forced through both heaps:
+
+```text
+Insert
+   ↓
+maxHeap
+   ↓
+minHeap
+   ↓
+Rebalance
+```
+
+This automatically preserves:
+
+```text
+maxHeap.peek() <= minHeap.peek()
+```
+
+without needing explicit comparisons.
+
+The median therefore always remains at the heap peaks.
+
+---
+
+## Interview Sound Bite
+
+We maintain two heaps: a max heap for the lower half and a min heap for the upper half. Every inserted value is pushed through both heaps, which naturally preserves the lower-half/upper-half ordering. Rebalancing ensures the heap sizes differ by at most one, allowing O(log N) insertion and O(1) median retrieval.
+
+---
+
+## Complexity
+
+```text
+addNum()      O(log N)
+
+findMedian()  O(1)
+```
+
+---
+
+## Recognition Cheat Sheet
+
+Keywords:
+
+```text
+Median
+Running Median
+Stream
+Continuous Input
+Online Processing
+```
+
+Think:
+
+```text
+Two Heaps
+
+Max Heap -> Lower Half
+Min Heap -> Upper Half
+```
+
+---
+
+## Related Problems
+
+```text
+215. Kth Largest Element in an Array
+
+347. Top K Frequent Elements
+
+23. Merge K Sorted Lists
+
+295. Find Median from Data Stream
+```
+
+
+
 
 # Heap Operations Cheat Sheet
 
