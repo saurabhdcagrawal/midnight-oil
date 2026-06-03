@@ -8623,7 +8623,12 @@ Space O(M×N)
 
 Interview Sound Bite:
 
-> Since all rotten oranges spread simultaneously, they all enter the queue initially. Each BFS layer corresponds to one minute of spread.
+> Since all rotten oranges spread simultaneously, they all enter the queue initially. Each BFS layer corresponds to one minute of spread.We need to add position of all rotting oranges in a queue and start BFS from those positions. The first time an orange is reached, the earliest it can rot.Every level corresponds to unit time of rot thats why
+we need level markers in this problem.
+
+Time  O(M*N)
+Space O(M*N)
+```
 
 ---
 
@@ -8742,21 +8747,6 @@ Instead of running BFS from every room to find the nearest gate,
 start BFS from all gates simultaneously.
 
 The first time an empty room is reached is guaranteed to be the shortest distance to any gate.
-
-Time  O(M*N)
-Space O(M*N)
-```
-A note on Rotting Oranges
-```text
-MultiSource BFS.
-
-We need to add position of all rotting oranges in a queue and start BFS from those positions.
-
-The 
-
-We need level markers. Every level represents minute/unit of time elapsed.
-
-The first time an orange is reached, the earliest it can rot.
 
 Time  O(M*N)
 Space O(M*N)
