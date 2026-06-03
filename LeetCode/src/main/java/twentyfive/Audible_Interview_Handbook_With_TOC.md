@@ -8746,6 +8746,21 @@ The first time an empty room is reached is guaranteed to be the shortest distanc
 Time  O(M*N)
 Space O(M*N)
 ```
+A note on Rotting Oranges
+```text
+MultiSource BFS.
+
+We need to add position of all rotting oranges in a queue and start BFS from those positions.
+
+The 
+
+We need level markers. Every level represents minute/unit of time elapsed.
+
+The first time an orange is reached, the earliest it can rot.
+
+Time  O(M*N)
+Space O(M*N)
+```
 
 
 ---
