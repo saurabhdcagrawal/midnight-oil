@@ -10237,6 +10237,367 @@ LeetCode:
 
 Very Audible-Relevant.
 
+# 1268. Search Suggestions System
+
+## Pattern Recognition
+
+Keywords:
+
+```text
+Autocomplete
+Search Suggestions
+Typeahead
+Prefix Search
+Dictionary
+```
+
+Think:
+
+```text
+Trie
+```
+
+---
+
+## Core Idea
+
+Naive Approach:
+
+```text
+Build Trie
+
+For every typed prefix:
+
+    DFS entire subtree
+
+    Collect matching products
+
+    Sort
+
+    Return first 3
+```
+
+Optimized Approach:
+
+```text
+1. Sort products once.
+
+2. While inserting into the Trie,
+   store up to 3 suggestions at every node.
+
+3. During search,
+   simply return the precomputed suggestions.
+```
+
+This eliminates:
+
+```text
+DFS
+Sorting during query
+Repeated subtree traversal
+```
+
+---
+
+## Key Insight
+
+Sort products first:
+
+```java
+Arrays.sort(products);
+```
+
+Example:
+
+```text
+mobile
+moneypot
+monitor
+mouse
+mousepad
+```
+
+While inserting products:
+
+```text
+Prefix: "mo"
+
+Products arrive in sorted order:
+
+mobile
+moneypot
+monitor
+mouse
+mousepad
+```
+
+Store only first 3:
+
+```text
+mobile
+moneypot
+monitor
+```
+
+Since insertion is already lexicographical:
+
+```text
+No DFS needed
+No sorting needed during search
+```
+
+---
+
+## Implementation
+
+```java
+class Solution {
+
+    TrieNode root;
+
+    public static int K = 3;
+
+    public Solution() {
+        root = new TrieNode();
+    }
+
+    public void addProductsToDictionary(String product) {
+
+        TrieNode node = root;
+
+        for(int i=0;i<product.length();i++) {
+
+            char ch = product.charAt(i);
+
+            if(!node.children.containsKey(ch))
+                node.children.put(ch, new TrieNode());
+
+            node = node.children.get(ch);
+
+            if(node.suggestions!=null &&
+               node.suggestions.size()<K)
+                node.suggestions.add(product);
+        }
+    }
+
+    public List<String> getTopKSuggestionsUsingSearchWordPrefix(
+            String prefix) {
+
+        TrieNode node = root;
+
+        for(int i=0;i<prefix.length();i++) {
+
+            char ch = prefix.charAt(i);
+
+            if(!node.children.containsKey(ch))
+                return new ArrayList<String>();
+
+            node = node.children.get(ch);
+        }
+
+        return node.suggestions;
+    }
+
+    // O(NlogN) => N product list
+    public List<List<String>> suggestedProducts(
+            String[] products,
+            String searchWord) {
+
+        Arrays.sort(products);
+
+        // O(NL)
+        // L = max/average product length
+        for(String product : products) {
+            addProductsToDictionary(product);
+        }
+
+        List<List<String>> result =
+            new ArrayList();
+
+        TrieNode node = root;
+
+        // O(S)
+        // S = searchWord length
+
+        // Total:
+        // O(NlogN) + O(NL) + O(S)
+
+        for(char ch : searchWord.toCharArray()) {
+
+            if(node == null ||
+               !node.children.containsKey(ch)) {
+
+                result.add(
+                    new ArrayList<String>());
+
+                node = null;
+            }
+            else {
+
+                node = node.children.get(ch);
+
+                result.add(
+                    new ArrayList(node.suggestions));
+            }
+        }
+
+        return result;
+    }
+}
+
+class TrieNode {
+
+    public Map<Character,TrieNode> children =
+        new HashMap<>();
+
+    public List<String> suggestions =
+        new ArrayList();
+}
+```
+
+---
+
+## Why Store Suggestions at Every Node?
+
+Instead of:
+
+```text
+Search Prefix
+↓
+DFS Subtree
+↓
+Collect Products
+↓
+Sort
+↓
+Take Top 3
+```
+
+we do:
+
+```text
+Search Prefix
+↓
+Return node.suggestions
+```
+
+Query becomes:
+
+```text
+O(S)
+```
+
+instead of traversing entire subtrees.
+
+---
+
+## Why Sort Products First?
+
+Because products are inserted in lexicographical order:
+
+```text
+mobile
+moneypot
+monitor
+mouse
+mousepad
+```
+
+the first 3 products reaching a Trie node are automatically:
+
+```text
+Top 3 lexicographically smallest suggestions
+```
+
+Therefore:
+
+```java
+if(node.suggestions.size() < K)
+    node.suggestions.add(product);
+```
+
+is sufficient.
+
+No additional sorting is required.
+
+---
+
+## Why `node = null`?
+
+Once a prefix fails:
+
+```text
+mousez
+```
+
+all future prefixes must fail:
+
+```text
+mouseza
+mousezab
+mousezabc
+```
+
+Setting:
+
+```java
+node = null;
+```
+
+allows us to immediately return:
+
+```text
+[]
+[]
+[]
+```
+
+for all remaining characters without additional Trie lookups.
+
+---
+
+## Complexity
+
+Let:
+
+```text
+N = number of products
+L = average/max product length
+S = searchWord length
+```
+
+Build:
+
+```text
+Sort Products: O(N log N)
+
+Build Trie:    O(NL)
+```
+
+Query:
+
+```text
+O(S)
+```
+
+Total:
+
+```text
+O(N log N + NL + S)
+```
+
+Space:
+
+```text
+O(NL)
+```
+
+---
+
+## Interview Sound Bite
+
+Sort products first. While inserting into the Trie, store up to three products at every prefix node. Since products are inserted in lexicographical order, the first three products reaching a node are automatically the lexicographically smallest suggestions. During search, simply walk the Trie once and return the precomputed suggestions stored at each node, giving O(S) query time.
+
 ---
 
 ## Word Search II
