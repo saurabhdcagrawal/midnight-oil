@@ -8623,7 +8623,7 @@ Space O(M×N)
 
 Interview Sound Bite:
 
-> Since all rotten oranges spread simultaneously, they all enter the queue initially. Each BFS layer corresponds to one minute of spread.We need to add position of all rotting oranges in a queue and start BFS from those positions. The first time an orange is reached, the earliest it can rot.Every level corresponds to unit time of rot thats why
+> Since all rotten oranges spread simultaneously, they all enter the queue initially. Each BFS layer corresponds to one minute of spread. We need to add position of all rotting oranges in a queue and start BFS from those positions. The first time an orange is reached, the earliest it can rot. Every level corresponds to unit time of rot thats why
 we need level markers in this problem.
 
 Time  O(M*N)
