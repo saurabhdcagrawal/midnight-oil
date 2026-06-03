@@ -8735,6 +8735,7 @@ State Space BFS
 ```
 
 A note on Walls & Gates
+```text
 Walls and Gates is a Multi-Source BFS problem.
 
 Instead of running BFS from every room to find the nearest gate,
@@ -8744,6 +8745,9 @@ The first time an empty room is reached is guaranteed to be the shortest distanc
 
 Time  O(M*N)
 Space O(M*N)
+```
+
+
 ---
 
 # Binary Search Tree (BST)
