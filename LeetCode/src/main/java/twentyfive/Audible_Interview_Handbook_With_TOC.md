@@ -8734,6 +8734,16 @@ Shortest Path BFS
 State Space BFS
 ```
 
+A note on Walls & Gates
+Walls and Gates is a Multi-Source BFS problem.
+
+Instead of running BFS from every room to find the nearest gate,
+start BFS from all gates simultaneously.
+
+The first time an empty room is reached is guaranteed to be the shortest distance to any gate.
+
+Time  O(M*N)
+Space O(M*N)
 ---
 
 # Binary Search Tree (BST)
