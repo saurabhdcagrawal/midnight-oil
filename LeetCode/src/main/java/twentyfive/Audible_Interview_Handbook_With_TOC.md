@@ -10352,106 +10352,55 @@ No sorting needed during search
 
 ```java
 class Solution {
+    public static int K=3;
+	TrieNode root;
 
-    TrieNode root;
-
-    public static int K = 3;
-
-    public Solution() {
-        root = new TrieNode();
+    public Solution(){
+        root= new TrieNode();
     }
 
-    public void addProductsToDictionary(String product) {
-
-        TrieNode node = root;
-
-        for(int i=0;i<product.length();i++) {
-
-            char ch = product.charAt(i);
-
+//O(L) where L is max lenght of product
+    public void addProductsToDictionary(String product){
+        TrieNode node=root;
+        for(char ch :product.toCharArray()){
             if(!node.children.containsKey(ch))
-                node.children.put(ch, new TrieNode());
-
-            node = node.children.get(ch);
-
-            if(node.suggestions!=null &&
-               node.suggestions.size()<K)
-                node.suggestions.add(product);
+                node.children.put(ch,new TrieNode());
+            node= node.children.get(ch);
+            if(node.suggestions.size()<K)
+                node.suggestions.add(product);    
         }
     }
 
-    public List<String> getTopKSuggestionsUsingSearchWordPrefix(
-            String prefix) {
-
-        TrieNode node = root;
-
-        for(int i=0;i<prefix.length();i++) {
-
-            char ch = prefix.charAt(i);
-
-            if(!node.children.containsKey(ch))
-                return new ArrayList<String>();
-
-            node = node.children.get(ch);
-        }
-
-        return node.suggestions;
-    }
-
-    // O(NlogN) => N product list
-    public List<List<String>> suggestedProducts(
-            String[] products,
-            String searchWord) {
-
+    public List<List<String>> suggestedProducts(String[] products, String searchWord) {
+        //N number of products we have O(Nlog N)
         Arrays.sort(products);
-
-        // O(NL)
-        // L = max/average product length
-        for(String product : products) {
+        //O(NL);
+        for(String product: products){
             addProductsToDictionary(product);
         }
 
-        List<List<String>> result =
-            new ArrayList();
-
+        List<List<String>> result = new ArrayList();
         TrieNode node = root;
-
-        // O(S)
-        // S = searchWord length
-
-        // Total:
-        // O(NlogN) + O(NL) + O(S)
-
-        for(char ch : searchWord.toCharArray()) {
-
-            if(node == null ||
-               !node.children.containsKey(ch)) {
-
-                result.add(
-                    new ArrayList<String>());
-
-                node = null;
+        //O(S)
+        //Total : O(NL)+O(S)+O(NlogN)
+        for(char ch: searchWord.toCharArray()){
+            if(node== null || !node.children.containsKey(ch)){
+                result.add(new ArrayList<String>());
+                node=null;
             }
-            else {
-
-                node = node.children.get(ch);
-
-                result.add(
-                    new ArrayList(node.suggestions));
+            else{
+                node= node.children.get(ch);
+                result.add(new ArrayList<>(node.suggestions));
             }
         }
-
         return result;
     }
 }
 
-class TrieNode {
 
-    public Map<Character,TrieNode> children =
-        new HashMap<>();
-
-    public List<String> suggestions =
-        new ArrayList();
+class TrieNode{
+    public Map<Character,TrieNode> children = new HashMap<>();
+    public List<String> suggestions= new ArrayList();
 }
 ```
 
@@ -10597,6 +10546,7 @@ O(NL)
 ## Interview Sound Bite
 
 Sort products first. While inserting into the Trie, store up to three products at every prefix node. Since products are inserted in lexicographical order, the first three products reaching a node are automatically the lexicographically smallest suggestions. During search, simply walk the Trie once and return the precomputed suggestions stored at each node, giving O(S) query time.
+
 
 ---
 
