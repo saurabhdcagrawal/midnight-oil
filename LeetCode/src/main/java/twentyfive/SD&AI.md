@@ -685,67 +685,271 @@ Reporting
 
 ## PART IV - AI SYSTEMS DESIGN
 
-### Chapter 14 - AI Fundamentals
-
-What Is An LLM?
-
-Tokens
-
-Context Window
-
-Temperature
-
-Latency
-
-Cost
-
-Hallucinations
-
-Deterministic vs Probabilistic Systems
-
-Interview Sound Bite:
-
-"I treat LLMs as probabilistic services."
+# AI Systems Design Handbook - Expanded Version
 
 ---
 
-### Chapter 15 - AI Architecture Patterns
+# Chapter 14 - AI Fundamentals
 
-AI As Enrichment Layer
+## What Is An LLM?
 
-AI + Rules
+An LLM (Large Language Model) is a transformer-based deep learning model trained on massive text corpora to predict the next token in a sequence.
 
-Human In The Loop
+Through large-scale training, it learns language structure and can perform tasks such as:
 
-AI Summaries
+* Summarization
+* Classification
+* Information Extraction
+* Question Answering
+* Reasoning
 
-AI Categorization
+### Interview Answer
 
-AI Search
+An LLM is a transformer-based deep learning model trained on large text corpora to predict the next token in a sequence. In production systems, I treat an LLM as an external probabilistic service rather than a deterministic system component.
 
-AI Recommendations
+---
 
-Interview Sound Bite:
+## Deterministic vs Probabilistic Systems
+
+Traditional Software:
+
+Input
+↓
+Logic
+↓
+Output
+
+Same Input
+→ Same Output
+
+Deterministic
+
+LLM Systems:
+
+Prompt
+↓
+Model
+↓
+Response
+
+Same Prompt
+→ Different Outputs Possible
+
+Probabilistic
+
+### Interview Sound Bite
+
+"I treat LLMs as external services that generate probabilistic outputs."
+
+---
+
+## AI Native vs AI Augmented Systems
+
+### AI Native
+
+AI is the core engine of the product.
+
+Examples:
+
+* ChatGPT
+* Grammarly
+* AI Coding Assistants
+
+Characteristics:
+
+* AI is in the critical path
+* Product depends on models
+* Architecture revolves around prompts, embeddings, vector search, and retrieval pipelines
+
+Removing AI breaks the product.
+
+---
+
+### AI Augmented
+
+AI is an enhancement layer.
+
+Examples:
+
+* Banking app with chatbot
+* Compliance platform with AI summaries
+* Fraud system with AI explanations
+
+Removing AI does not break the core product.
+
+### Interview Sound Bite
+
+"An AI-native application is designed around models from the ground up, whereas AI augmentation adds intelligence to an existing deterministic system."
+
+Our screening platform is AI-augmented, not AI-native.
+
+---
+
+## LLM Limitations
+
+* Hallucinations
+* Inconsistency
+* Latency
+* Cost
+* Prompt Sensitivity
+
+### Interview Sound Bite
+
+"I design assuming AI can be wrong and add validation and fallback mechanisms."
+
+---
+
+# Chapter 15 - AI Architecture Patterns
+
+## Standard AI Integration Architecture
+
+Client
+↓
+Backend
+↓
+Prompt Builder
+↓
+LLM API
+↓
+Validation Layer
+↓
+Response + Fallback
+
+### Components
+
+* Prompt Builder
+* LLM API
+* Validation Layer
+* Logging
+* Monitoring
+* Caching
+* Fallback Logic
+
+### Interview Sound Bite
+
+"I treat AI as an external service that enriches the system rather than being in the critical path."
+
+---
+
+## Pattern 1 - AI As Enrichment Layer
+
+Examples:
+
+* Transaction Categorization
+* Adverse Media Summaries
+* Risk Summaries
+* Merchant Normalization
+
+### Sound Bite
 
 "AI should enrich systems rather than own correctness-sensitive decisions."
 
 ---
 
-### Chapter 16 - Retrieval Augmented Generation (RAG)
+## Pattern 2 - AI Plus Rules
 
-#### Problem
+Rules:
 
-Hallucinations
+* Deterministic
+* Explainable
+* Auditable
 
-Outdated Knowledge
+AI:
 
-Enterprise Data Access
+* Handles ambiguity
+* Handles fuzzy matching
+* Handles unstructured information
 
-Customer Specific Context
+### Sound Bite
+
+"Rules provide explainability. AI handles ambiguity."
 
 ---
 
-#### Architecture
+## Pattern 3 - Human In The Loop
+
+AI Output
+↓
+Confidence Check
+↓
+Human Review
+↓
+Decision
+
+Used In:
+
+* AML
+* Fraud
+* Compliance
+* Healthcare
+* Legal
+
+---
+
+## Pattern 4 - AI Plus Validation
+
+Input
+↓
+LLM
+↓
+Validation Layer
+↓
+Approved Output
+
+Validation Techniques:
+
+* Schema Validation
+* Structured Outputs
+* Confidence Thresholds
+* Business Rule Verification
+* Human Review
+
+---
+
+# Chapter 16 - Retrieval Augmented Generation (RAG)
+
+## What Is RAG?
+
+RAG = Retrieval Augmented Generation
+
+RAG combines:
+
+Retrieval
++
+Generation
+
+Retrieval:
+Find relevant data
+
+Generation:
+Generate an answer using that data
+
+RAG = LLM + External Knowledge Retrieval
+
+---
+
+## Why RAG Exists
+
+Without RAG:
+
+User Query
+↓
+Prompt
+↓
+LLM
+↓
+Answer
+
+Problems:
+
+* Hallucinations
+* Outdated Knowledge
+* No Enterprise Data
+* No Customer Context
+
+---
+
+With RAG:
 
 User Query
 ↓
@@ -759,203 +963,458 @@ Prompt Construction
 ↓
 LLM
 ↓
-Response
+Grounded Answer
+
+### Interview Sound Bite
+
+"Without RAG, the model relies entirely on training data. With RAG, we retrieve relevant context at query time and ground the response."
 
 ---
 
-#### Concepts
+## Why RAG Is Powerful
 
+* Reduces Hallucinations
+* Uses Up-To-Date Data
+* Supports Enterprise Knowledge
+* Supports Private Data
+* Avoids Frequent Retraining
+
+---
+
+## RAG Pipeline
+
+Raw Documents
+↓
 Chunking
-
-Embeddings
-
-Vector Databases
-
+↓
+Embedding Model
+↓
+Vector Creation
+↓
+Vector Database
+↓
 Retrieval
-
-Grounding
-
-Evaluation
-
----
-
-#### RAG vs Fine Tuning
-
-RAG = Knowledge
-
-Fine Tuning = Behavior
+↓
+Prompt Construction
+↓
+LLM
+↓
+Answer
 
 ---
 
-#### Interview Sound Bite
+## Embeddings
 
-"RAG grounds the model with enterprise knowledge."
+Embeddings convert text into vectors.
+
+Purpose:
+
+* Semantic Search
+* Similarity Matching
+* Retrieval
+
+Example:
+
+"wire transfer"
+
+and
+
+"bank transfer"
+
+have similar embeddings despite different wording.
 
 ---
 
-### Chapter 17 - Prompt Engineering
+## RAG In Compliance Systems
 
-Role Prompting
+Data Sources:
 
-Few Shot Prompting
+* Transactions
+* Alerts
+* Adverse Media
+* Watchlists
 
-Context Injection
+Without RAG:
 
-Structured Outputs
+The model relies on generic knowledge.
 
-Prompt Evaluation
+With RAG:
 
-Prompt Lifecycle
+The model receives actual enterprise data.
 
-Production Prompt Design
+### Interview Sound Bite
 
-Interview Sound Bite:
+"In compliance systems, decisions must be based on actual data rather than model memory."
+
+---
+
+## RAG vs Fine Tuning
+
+### Use RAG When
+
+* Knowledge changes frequently
+* Enterprise documents
+* Customer-specific information
+* Compliance data
+
+### Use Fine Tuning When
+
+* Behavior changes
+* Consistent output style
+* Domain-specific reasoning
+* Structured output optimization
+
+### Interview Sound Bite
+
+"RAG is for knowledge. Fine-tuning is for behavior."
+
+---
+
+# Chapter 17 - Prompt Engineering
+
+## What Prompt Engineering Really Means
+
+Prompt engineering is the process of designing structured inputs to guide LLM behavior.
+
+This includes:
+
+* Roles
+* Context
+* Instructions
+* Constraints
+* Output Formats
+* Examples
+
+### Prompt Lifecycle
+
+Design
+↓
+Test
+↓
+Evaluate
+↓
+Refine
+↓
+Repeat
+
+### Interview Sound Bites
+
+"Prompt engineering is programming in natural language."
 
 "Prompts are the control plane for LLM behavior."
 
----
-
-### Chapter 18 - AI Reliability
-
-Hallucination Reduction
-
-Grounding
-
-Validation
-
-Confidence Thresholds
-
-Fallbacks
-
-Human Review
-
-Evaluation Pipelines
-
-Monitoring
-
-Interview Sound Bite:
-
-"We design assuming AI can be wrong."
+"We don't just ask questions. We define contracts."
 
 ---
 
-### Chapter 19 - AI Agents
+## Production Prompt Structure
 
-Agent Architecture
-
-Tool Calling
-
-Planning
-
-Memory
-
-Multi Agent Systems
-
-MCP
-
-Approval Gates
-
-Agent Reliability
+Role
++
+Context
++
+Instructions
++
+Constraints
++
+Output Format
 
 ---
 
-### Chapter 20 - AI In Compliance, AML and Screening
+## Prompting Techniques
 
-Adverse Media Summaries
+### Role Prompting
 
-Risk Summaries
+You are a financial compliance analyst.
 
-Alert Prioritization
+---
 
-Entity Resolution
+### Few Shot Prompting
 
-Name Matching
+Input A → Output A
 
-Case Investigation Assistants
+Input B → Output B
 
-Compliance Guardrails
+---
 
-Interview Sound Bite:
+### Context Injection
+
+Retrieved enterprise data inserted into prompt.
+
+---
+
+### Structured Outputs
+
+{
+"risk_level":"HIGH",
+"confidence":0.92
+}
+
+---
+
+## Production AML Prompt Example
+
+SYSTEM:
+
+You are a financial compliance analyst specializing in AML and sanctions screening.
+
+Analyze only the supplied data.
+
+Do not make assumptions.
+
+Return UNKNOWN if information is insufficient.
+
+OUTPUT:
+
+{
+"risk_level":"",
+"reason":"",
+"key_factors":[],
+"confidence":0.0
+}
+
+### Benefits
+
+* Reduced Hallucination
+* Machine Readable Output
+* Easier Validation
+* Production Ready Integration
+
+### Interview Sound Bite
+
+"We treat prompts as contracts rather than free-form text."
+
+---
+
+# Chapter 18 - AI Reliability
+
+## Hallucination Prevention
+
+Techniques:
+
+* RAG
+* Grounding
+* Validation Layers
+* Structured Outputs
+* Confidence Thresholds
+* Human Review
+* Fallback Responses
+
+### Interview Answer
+
+To reduce hallucinations, I ground the model using retrieved context, enforce structured outputs, validate outputs against source data, add fallback mechanisms, and route high-risk decisions to human review.
+
+---
+
+## AI Evaluation Framework
+
+Metrics:
+
+* Accuracy
+* Precision
+* Recall
+* Latency (P95/P99)
+* Cost Per Request
+* Human Feedback
+
+### Interview Sound Bite
+
+"AI systems require evaluation pipelines, not just prompts."
+
+---
+
+# Chapter 20 - AI In Compliance, AML And Screening
+
+## AI Use Cases
+
+### Adverse Media Summarization
+
+Input:
+News Articles
+
+Output:
+Risk Summary
+
+---
+
+### Entity Matching
+
+Improve fuzzy matching between:
+
+* Client Names
+* Watchlists
+* Adverse Media Entities
+
+---
+
+### Risk Summaries
+
+Generate explainable summaries for analysts.
+
+---
+
+### Alert Prioritization
+
+Rank alerts by risk.
+
+---
+
+### Case Investigation Assistants
+
+Provide conversational access to:
+
+* Alerts
+* Transactions
+* Media
+* Historical Cases
+
+### Interview Sound Bite
 
 "AI assists analysts. It does not replace regulatory controls."
 
 ---
 
-### Chapter 21 - AI Assisted SQL Modernization
+# Chapter 21 - AI Assisted SQL Modernization Project
 
-#### Problem
+## Problem
+
+Legacy screening population logic existed inside SQL procedures and database objects.
+
+Challenges:
+
+* Years of accumulated logic
+* Poor documentation
+* Complex joins
+* Inclusion / Exclusion rules
+* 401k retirement exclusions
+* Role-based eligibility rules
+
+---
+
+## Architecture
 
 Legacy SQL
-
-Undocumented Business Logic
-
-Complex Inclusion / Exclusion Rules
-
-Knowledge Silos
-
----
-
-#### Architecture
-
-SQL
 ↓
-Semantic Extraction
+LLM Semantic Extraction Layer
 ↓
-Knowledge Layer
+Structured Knowledge Layer
 ↓
 AI Agent
+↓
+User Questions
 
 ---
 
-#### Semantic Extraction
+## Semantic Extraction Layer
 
-Table Lineage
+Using an LLM, we extracted:
 
-Business Rules
+* Table Lineage
+* Relationship Mapping
+* Join Dependencies
+* Inclusion Rules
+* Exclusion Rules
+* Business Semantics
 
-Relationship Discovery
+Key Concepts:
 
-Rule Extraction
-
----
-
-#### Guardrails
-
-Validation
-
-Structured Outputs
-
-Restricted Scope
-
-Verification Against Source SQL
+* Semantic Extraction
+* Code Interpretation
+* Knowledge Abstraction Layer
 
 ---
 
-#### Impact
+## Agent Layer
 
-Reduced Manual Analysis
+Users could ask:
 
-Improved Transparency
+* Why are 401k accounts excluded?
+* Which roles participate in screening?
+* How is eligibility determined?
 
-Faster Knowledge Transfer
+The agent answered using extracted knowledge rather than requiring SQL expertise.
 
-Business Rule Discovery
+---
+
+## Why Not Traditional Parsing?
+
+Traditional parsers provide syntax.
+
+The LLM extracted business intent and semantic meaning.
+
+### Interview Answer
+
+"Parsing gives syntax structure, but it doesn't capture business semantics. The LLM helped interpret intent and business rules."
 
 ---
 
-#### 90 Second Interview Story
+## Hallucination Controls
 
-Problem
-
-Solution
-
-Architecture
-
-Validation
-
-Impact
+* Structured Outputs
+* Validation Against SQL
+* Restricted Scope
+* Agent Operates On Extracted Knowledge
+* Human Review For Critical Cases
 
 ---
+
+## Scaling Strategy
+
+Batch SQL Analysis
+↓
+Structured Knowledge Cache
+↓
+Independent Agent Layer
+
+The extraction layer runs offline.
+
+The reasoning layer scales independently.
+
+---
+
+## 90 Second Interview Story
+
+I worked on an AI-assisted modernization initiative for a legacy screening system where business logic was embedded in complex SQL stored procedures and database objects.
+
+The logic had evolved over time, was poorly documented, and difficult for engineers and business users to interpret.
+
+To solve this, we introduced an AI-assisted analysis layer using an LLM to extract structured representations of:
+
+* Table relationships
+* Join dependencies
+* Business rules
+* Inclusion and exclusion logic
+
+This created a knowledge abstraction layer over the legacy system.
+
+On top of that, we built an AI agent that allowed users to query this logic conversationally.
+
+Architecturally, the solution used a two-layer design:
+
+1. Semantic extraction layer
+2. Agent reasoning layer
+
+We also implemented guardrails and validation against source SQL to reduce hallucination risk.
+
+The result was significantly improved transparency and reduced dependency on SQL experts for understanding complex screening rules.
+
+---
+
+## Strong Interview Phrases
+
+* Semantic Extraction
+* Knowledge Abstraction Layer
+* RAG-Style Pattern
+* Separation Of Model Responsibilities
+* Guardrails To Reduce Hallucination
+* AI Assisted Modernization
+* Deterministic Validation
+* Layered AI Architecture
+* Conversational Access To Business Logic
+* AI As An Enrichment Layer
+
+```
+```
 
 ## PART V - INTERVIEW SOUND BITES
 
