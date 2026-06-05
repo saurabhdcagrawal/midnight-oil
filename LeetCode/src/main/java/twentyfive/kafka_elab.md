@@ -135,7 +135,7 @@
 
 ---
 
-## PART XI - MY SCREENING PLATFORM
+## PART XI - REAL WORLD FINANCIAL CRIMES ARCHITECTURES
 
 ### Page 11
 
@@ -143,7 +143,25 @@
 55. Kafka Design Decisions
 56. Lessons Learned
 
----
+### Page 12
+
+57. Production Pitfalls
+58. Consumer Lag
+59. Hot Partitions
+60. Rebalancing Storms
+61. Replay Failures
+
+### Page 13
+
+123. Enterprise Screening Architecture
+
+### Page 14
+
+134. My 50M Client Screening Platform
+
+### Page 15
+
+151. Staff Engineer & VP Discussions
 
 # PAGE 1
 
@@ -9265,6 +9283,29 @@ Consumer Lag
 
 # End Of Page 12
 
+---
+
+# From Kafka Concepts To Real Production Systems
+
+Everything covered so far:
+
+- Topics
+- Partitions
+- Consumer Groups
+- Reliability
+- Idempotency
+- DLQ
+- Replay
+
+was applied directly in the Financial Crimes screening platform described in the following chapters.
+
+The next sections demonstrate how Kafka was used to process over 50 million client records, integrate with RDC and Bridger, generate approximately 35,000 monthly alerts, support sanctions, PEP and adverse media screening, and provide replayable, fault-tolerant processing for regulatory workloads.
+
+The goal is to connect Kafka theory with real-world architecture decisions.
+
+---
+
+
 ## Next Page
 
 ### Page 13 – Kafka Interview Sound Bites & Executive-Level Discussion
@@ -10035,35 +10076,22 @@ Consumer Lag
 
 # End Of Kafka Handbook
 
-## Total Coverage
+# From Kafka Concepts To Real Production Systems
 
-```text
-Streaming Fundamentals
+Everything covered so far:
 
-Kafka Fundamentals
+- Topics
+- Partitions
+- Consumer Groups
+- DLQ
+- Replay
+- Idempotency
+- Reliability
 
-Kafka Architecture
+was applied directly in the Financial Crimes screening platform described in the next chapters.
 
-Partitions & Parallelism
+The following chapters demonstrate how these Kafka concepts were used to process 50M+ client records, integrate with RDC and Bridger, generate 35K monthly alerts, and support regulatory screening workloads.
 
-Reliability & Replication
-
-Idempotency
-
-DLQ
-
-Replay
-
-Spring Kafka
-
-Interview Questions
-
-50M Screening Architecture
-
-Production Pitfalls
-
-Executive Discussion
-```
 # PART XII – ENTERPRISE SCREENING ARCHITECTURE
 
 # PAGE 13
