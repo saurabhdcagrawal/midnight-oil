@@ -1322,7 +1322,8 @@ Offset 1 → Msg2
 Offset 2 → Msg3
 Offset 3 → Msg4
 ```
-
+Producer sends message to broker, broker appends it to a specific partition log
+and assigns it a Unique sequential Offset is assigned to verify it was successfully stored.
 New records are always added at the end.
 
 ---
@@ -1362,7 +1363,6 @@ Partition Log
 Offset Assigned
 
 ---
-
 ## Consumer Flow
 
 Consumer
