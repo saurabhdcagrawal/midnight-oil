@@ -3878,7 +3878,7 @@ PID = 101
 Each message receives:
 
 ```text
-Sequence Number
+Sequence Number . A sequence number is assigned per partition
 ```
 
 ---
