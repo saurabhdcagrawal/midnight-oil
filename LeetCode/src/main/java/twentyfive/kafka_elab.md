@@ -4036,21 +4036,38 @@ The producer notices `Msg2` timed out, packs it into a retry request, and ships 
 When `enable.idempotence=true`, the producer client automatically stamps every message with a **Producer ID (PID)** and a monotonically increasing **Sequence Number** (tracked strictly *per partition*).
 
 ### 🛠️ How Sequence Numbers Repair the Pipeline:
-1. Producer pipelines `Msg1 (Seq 0)`, `Msg2 (Seq 1)`, and `Msg3 (Seq 2)` over the network simultaneously.
-2. `Msg2 (Seq 1)` is delayed or dropped by a switch bottleneck.
-3. `Msg3 (Seq 2)` arrives at the broker partition leader first.
-4. **The Broker Intercepts:** The broker looks at its in-memory tracking map for that specific PID on that partition. It sees the last successfully written message was `Seq 0`.
-5. **The Rejection:** The broker notices the sequence gap (`Incoming Seq 2` != `Expected Seq 1`). It fiercely **rejects** Msg3 with an `OutOfOrderSequenceException`.
-6. **The Recovery:** The broker refuses to advance its log until the gap is filled. The producer receives the rejection, pauses the pipeline, flushes the delayed `Msg2 (Seq 1)`, and then safely resends `Msg3 (Seq 2)`.
+1. Producer sends Msg1 (Seq 0), Msg2 (Seq 1), and Msg3 (Seq 2).
+2. Msg2 is delayed due to a network issue.
+3. Msg3 reaches the broker before Msg2.
+4. Broker expects Seq 1 but receives Seq 2.
+5. Broker rejects Msg3 because a sequence gap exists.
+6. Producer resends Msg2, then Msg3.
 
-```text
-[Offset 0: Msg1 (Seq 0)] ──> [Offset 1: Msg2 (Seq 1)] ──> [Offset 2: Msg3 (Seq 2)]  ✅ ORDER PRESERVED
-```
+Result:
+
+Msg1 (Seq 0)
+↓
+Msg2 (Seq 1)
+↓
+Msg3 (Seq 2)
+
+✅ Ordering Preserved
 
 ---
 
 ### 🎯 Interview Sound Bite
-> *"Idempotence is fundamentally a dual-purpose safety feature. While its primary marketing name implies duplicate prevention, its internal mechanism of tracking sequence numbers per partition acts as a strict structural gatekeeper on the broker, ensuring that pipelined network requests can never mutate partition order during asynchronous retries."*
+> "Kafka idempotency helps detect:
+• Duplicate Messages
+• Out-Of-Order Messages
+• Missing Sequence Numbers (Sequence Gaps)
+
+A sequence gap may indicate:
+• Message Delayed
+• Message Dropped
+• Message Retry In Progress
+• Network Issue
+• Broker Issue
+• Message Loss"
 
 ---
 
