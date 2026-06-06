@@ -3975,67 +3975,237 @@ Kafka tracks Producer IDs and Sequence Numbers. If a retry contains a previously
 ---
 # 49. Idempotency And Ordering
 
-### The Intuitive (But Incomplete) Mental Model
-If a distributed network operated strictly under a **Synchronous Stop-and-Wait** model (`Send P1 → Wait for ACK → Send P2`), ordering could never break. If Packet 2 failed, the producer would simply retry Packet 2 before Packet 3 was ever even created. 
+## The Intuitive (But Incomplete) Mental Model
 
-However, high-performance distributed systems intentionally break this simple model to maximize network throughput.
+If a distributed network operated strictly under a **Synchronous Stop-and-Wait** model:
+
+```text
+Send Packet 1
+↓
+Wait For ACK
+↓
+Send Packet 2
+↓
+Wait For ACK
+↓
+Send Packet 3
+```
+
+ordering could never break.
+
+If Packet 2 failed, the producer would simply retry Packet 2 before Packet 3 was ever created.
+
+However, high-performance distributed systems intentionally break this simple model to maximize throughput.
 
 ---
 
-### Architectural Side-by-Side Comparison
+## Sequential vs Pipelined Producer Model
 
-#### 1. The Strict Sequential Model (Synchronous)
-* **Configuration:** `max.in.flight.requests.per.connection = 1`
-* **Mechanics:** 
-  1. Producer sends Packet 1.
-  2. Producer completely halts and waits.
-  3. Broker writes Packet 1 to disk and sends back an ACK.
-  4. Producer receives the ACK, unblocks, and only then sends Packet 2.
-* **Why Ordering Never Breaks:** There is only ever **one packet** active on the wire. Packet 3 cannot leapfrog Packet 2 because Packet 3 does not physically exist yet. If Packet 2 fails, it is retried while the network pipeline is completely empty.
-* **The Catch:** It is incredibly slow. Your throughput is strictly bottlenecked by network round-trip time (RTT).
+| Characteristic               | Strict Sequential Model                   | Pipelined Model                           |
+| ---------------------------- | ----------------------------------------- | ----------------------------------------- |
+| Configuration                | `max.in.flight.requests.per.connection=1` | `max.in.flight.requests.per.connection=5` |
+| Producer Behavior            | Send one batch and wait for ACK           | Send multiple batches without waiting     |
+| Throughput                   | Lower                                     | Higher                                    |
+| Network Utilization          | Poor                                      | Excellent                                 |
+| Ordering Risk During Retries | None                                      | Possible                                  |
+| Typical Usage                | Rare                                      | Common Production Configuration           |
 
-#### 2. The Pipelined Model (Asynchronous Reality)
-* **Configuration:** `max.in.flight.requests.per.connection = 5` (Default)
-* **Mechanics:** To avoid wasting time waiting for network signals to travel back and forth across the wire, the producer streams packets continuously.
-  1. Producer blasts Packet 1, Packet 2, and Packet 3 into the network pipe back-to-back.
-  2. All three packets travel through the internet or data center routing switches simultaneously.
-* **Why Ordering Breaks Here:** Because multiple packets are on the wire at the same time, a transient network glitch can delay Packet 2 (causing packet loss or TCP retries) while allowing Packet 3 to reach the broker instantly. The broker accepts Packet 3, and only *afterward* does the producer realize Packet 2 failed and triggers a retry.
+---
+
+## 1. The Strict Sequential Model (Synchronous)
+
+**Configuration**
+
+```text
+max.in.flight.requests.per.connection = 1
+```
+
+### How It Works
+
+1. Producer sends Packet 1.
+2. Producer completely halts and waits.
+3. Broker writes Packet 1 and sends an ACK.
+4. Producer receives the ACK and only then sends Packet 2.
+
+### Why Ordering Never Breaks
+
+There is only ever **one packet** on the wire.
+
+Example:
+
+```text
+Packet1
+Packet2
+Packet3
+```
+
+If Packet2 fails:
+
+```text
+Packet1 ACK
+↓
+Packet2 Failed
+↓
+Retry Packet2
+↓
+Packet2 ACK
+↓
+Send Packet3
+```
+
+Packet3 cannot leapfrog Packet2 because Packet3 was never transmitted.
+
+Ordering remains intact.
+
+### Drawback
+
+```text
+Poor Throughput
+
+Poor Network Utilization
+
+Higher Latency
+```
+
+The producer spends most of its time waiting.
+
+---
+
+## 2. The Pipelined Model (Asynchronous Reality)
+
+**Configuration**
+
+```text
+max.in.flight.requests.per.connection = 5
+```
+
+### How It Works
+
+To avoid wasting time waiting for network round trips, the producer continuously streams requests.
+
+```text
+Packet1
+Packet2
+Packet3
+Packet4
+Packet5
+```
+
+are transmitted immediately.
+
+All packets are moving through the network simultaneously.
+
+### Why?
+
+Instead of:
+
+```text
+Send
+Wait
+
+Send
+Wait
+
+Send
+Wait
+```
+
+Kafka performs:
+
+```text
+Send
+Send
+Send
+Send
+Send
+```
+
+This dramatically increases throughput.
 
 ---
 
 ## ⚠️ The Great Kafka Ordering Myth
-The famous phrase **"Kafka guarantees ordering within a partition"** comes with a major technical catch. Without setting idempotence to true (or strictly limiting in-flight requests to 1), Kafka **does NOT** guarantee ordering if network errors or retries occur. 
 
-The baseline ordering guarantee *only* applies to flawless, uninterrupted network flights.
+The famous statement:
 
-### 💥 Scenario: Order Scrambling Without Idempotence
-
-**1. Intended Sequence:**
 ```text
-[Msg1] ──> [Msg2] ──> [Msg3]
+Kafka Guarantees Ordering Within A Partition
 ```
 
-**2. Network Incident:**
-`Msg2` encounters router congestion or dropped packets, forcing a transport-layer pause.
+comes with an important caveat.
 
-**3. The Broker Log State:**
-The broker receives `Msg1` and appends it. It then receives `Msg3` while `Msg2` is still stuck on the wire. It blindly appends `Msg3`.
-```text
-[Offset 0: Msg1] ──> [Offset 1: Msg3]
-```
-
-**4. The Retroactive Retry:**
-The producer notices `Msg2` timed out, packs it into a retry request, and ships it again. The broker receives it late and appends it to the tail end:
-```text
-[Offset 0: Msg1] ──> [Offset 1: Msg3] ──> [Offset 2: Msg2]  ❌ ORDER BROKEN
-```
+Without idempotency (or limiting in-flight requests to 1), retries can introduce ordering anomalies.
 
 ---
 
-## 🛡️ The Hidden Benefit: Idempotency Enforces Order
-When `enable.idempotence=true`, the producer client automatically stamps every message with a **Producer ID (PID)** and a monotonically increasing **Sequence Number** (tracked strictly *per partition*).
+## Scenario: Order Scrambling Without Idempotency
 
-### 🛠️ How Sequence Numbers Repair the Pipeline:
+### Intended Sequence
+
+```text
+Msg1
+↓
+Msg2
+↓
+Msg3
+```
+
+### Network Incident
+
+```text
+Msg2 Delayed
+```
+
+### Broker Receives
+
+```text
+Msg1
+↓
+Msg3
+```
+
+### Producer Retries Msg2
+
+Final Log:
+
+```text
+Offset 0 → Msg1
+
+Offset 1 → Msg3
+
+Offset 2 → Msg2
+```
+
+❌ Ordering Broken
+
+---
+
+## 🛡️ Hidden Benefit: Idempotency Preserves Ordering
+
+Most engineers think idempotency only prevents duplicates.
+
+In reality, it also protects ordering.
+
+When:
+
+```text
+enable.idempotence=true
+```
+
+Kafka assigns:
+
+```text
+Producer ID (PID)
+
+Sequence Numbers
+```
+
+to every message.
+
+---
+
+## How Sequence Numbers Repair The Pipeline
+
 1. Producer sends Msg1 (Seq 0), Msg2 (Seq 1), and Msg3 (Seq 2).
 2. Msg2 is delayed due to a network issue.
 3. Msg3 reaches the broker before Msg2.
@@ -4043,151 +4213,55 @@ When `enable.idempotence=true`, the producer client automatically stamps every m
 5. Broker rejects Msg3 because a sequence gap exists.
 6. Producer resends Msg2, then Msg3.
 
-Result:
+Final Result:
 
-Msg1 (Seq 0)
-↓
-Msg2 (Seq 1)
-↓
-Msg3 (Seq 2)
+```text
+Offset 0 → Msg1 (Seq 0)
+
+Offset 1 → Msg2 (Seq 1)
+
+Offset 2 → Msg3 (Seq 2)
+```
 
 ✅ Ordering Preserved
 
 ---
 
-### 🎯 Interview Sound Bite
-> "Kafka idempotency helps detect:
-• Duplicate Messages
-• Out-Of-Order Messages
-• Missing Sequence Numbers (Sequence Gaps)
+## Why Kafka Needs Sequence Numbers
+
+Kafka idempotency helps detect:
+
+```text
+Duplicate Messages
+
+Out-Of-Order Messages
+
+Missing Sequence Numbers (Sequence Gaps)
+```
 
 A sequence gap may indicate:
-• Message Delayed
-• Message Dropped
-• Message Retry In Progress
-• Network Issue
-• Broker Issue
-• Message Loss"
+
+```text
+Message Delayed
+
+Message Retry In Progress
+
+Network Issue
+
+Broker Issue
+
+Message Loss
+```
+
+---
+
+## Interview Sound Bite
+
+> Idempotency is not just duplicate prevention. Kafka uses Producer IDs and Sequence Numbers to detect duplicate messages, identify out-of-order records, and detect sequence gaps during retry scenarios.
 
 ---
 
 # 50. Idempotency Requirements
-
-When you set `enable.idempotence=true`, modern Kafka clients automatically override and enforce the following cluster settings to guarantee safety:
-
-```text
-acks = all
-retries = Integer.MAX_VALUE
-max.in.flight.requests.per.connection <= 5
-```
-
-## 🧩 Why These Interdependent Settings?
-
-To preserve the absolute matrix of **Ordering, Durability, and Retry Safety**, these three properties must act as a unit:
-
-* **`acks=all` (Durability):** Ensures that the message is replicated to the In-Sync Replica (ISR) pool and locked below the **High-Watermark** before an ACK is returned. This prevents a failing leader from losing acknowledged sequences during an unclean failover.
-* **`retries=Integer.MAX_VALUE` (Retry Safety):** Ensures that transient network drops never cause the producer to simply give up on a missing sequence number, which would create an un-fillable hole in the broker's sequence map.
-* **`max.in.flight.requests.per.connection=5` (Performance & Order):** Explicitly destroys old synchronous behavior to keep performance incredibly high, while trusting the broker's sequence-validation cache to catch and sort out any parallel flight errors.
-
----
-
-### 🙋‍♂️ Interview Favorite Question
-**Question:** Can idempotency work if we set `acks=0`?
-
-**Answer:** **Absolutely not.** If `acks=0`, the broker never sends a network response back to the producer. Without response loops, the producer can never receive an `OutOfOrderSequenceException`, cannot track whether a batch succeeded or failed, and cannot coordinate smart retries. The broker would be forced to process incoming data blindly, rendering sequence tracking completely useless.
-
-
-## Hidden Benefit Of Idempotency
-
-Most engineers think idempotency only prevents duplicates.
-
-In reality, it also protects ordering.
-
----
-
-Without Idempotency:
-
-```text
-Msg1
-Msg2
-Msg3
-```
-
-Network issue:
-
-```text
-Msg2 Delayed
-```
-
-Arrival:
-
-```text
-Msg1
-Msg3
-Msg2
-```
-
-Ordering violated.
-
----
-
-With Idempotency Enabled
-
-Each producer record receives a sequence number.
-
-Example:
-
-```text
-Msg1 → Seq=1
-
-Msg2 → Seq=2
-
-Msg3 → Seq=3
-```
-
-Broker tracks:
-
-```text
-Expected Sequence = 2
-```
-
-If:
-
-```text
-Seq=3
-```
-
-arrives before:
-
-```text
-Seq=2
-```
-
-the broker detects the inconsistency and prevents invalid ordering.
-
----
-
-## Why Kafka Needs Sequence Numbers
-
-Sequence numbers allow the broker to identify:
-
-```text
-Duplicates
-
-Missing Records
-
-Out Of Order Records
-```
-
-This is one of the core mechanisms behind Kafka's idempotent producer implementation.
-
----
-
-### Interview Sound Bite
-
-Idempotency improves both duplicate prevention and ordering guarantees.
-
----
 
 When idempotency is enabled:
 
@@ -4195,11 +4269,7 @@ When idempotency is enabled:
 enable.idempotence=true
 ```
 
-Kafka automatically enforces safe producer settings.
-
----
-
-## Kafka Automatically Configures
+Kafka automatically enforces:
 
 ```text
 acks=all
@@ -4227,19 +4297,17 @@ Retry Safety
 
 ### acks=all
 
-Ensures the producer receives acknowledgement only after all ISR replicas have persisted the record.
-
 Provides:
 
 ```text
 Maximum Durability
 ```
 
+The producer receives acknowledgement only after all ISR replicas have persisted the record.
+
 ---
 
 ### retries=Integer.MAX_VALUE
-
-Allows Kafka to safely retry transient failures.
 
 Provides:
 
@@ -4247,11 +4315,11 @@ Provides:
 Reliable Delivery
 ```
 
+Kafka can safely retry transient failures.
+
 ---
 
 ### max.in.flight.requests.per.connection<=5
-
-Allows pipelining for performance while remaining compatible with Kafka's idempotent sequencing mechanism.
 
 Provides:
 
@@ -4261,22 +4329,26 @@ High Throughput
 Ordering Protection
 ```
 
+Kafka can pipeline requests while remaining compatible with broker-side sequence validation.
+
 ---
 
 ## The Key Realization
 
-Modern Kafka producers do not operate as:
+Modern producers do not operate as:
 
 ```text
 Send
 Wait
+
 Send
 Wait
+
 Send
 Wait
 ```
 
-Instead they operate as:
+They operate as:
 
 ```text
 Send
@@ -4287,8 +4359,6 @@ Send
 ```
 
 using request pipelining.
-
----
 
 This improves:
 
@@ -4322,21 +4392,9 @@ to ensure retries do not introduce duplicates or ordering violations.
 
 ## Interview Favorite
 
-Question:
+**Question:** Can idempotency work with `acks=0`?
 
-Can idempotency work with:
-
-```text
-acks=0
-```
-
-?
-
-Answer:
-
-```text
-No
-```
+**Answer:** No.
 
 The producer never receives acknowledgement from the broker.
 
@@ -4354,7 +4412,7 @@ and therefore cannot safely implement idempotent behavior.
 
 ---
 
-# Quick Revision Sheet
+## Quick Revision Sheet
 
 ```text
 max.in.flight=1
