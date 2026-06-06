@@ -3406,7 +3406,7 @@ NOT:
 ```text
 Processing Based
 ```
-
+The consumer automatically sends the commit request to the broker based on a time interval rather than your code's processing success (logic).
 ---
 
 ## Failure Scenario
