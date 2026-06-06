@@ -4134,7 +4134,8 @@ Kafka Guarantees Ordering Within A Partition
 
 comes with an important caveat.
 
-Without idempotency (or limiting in-flight requests to 1), retries can introduce ordering anomalies.
+Without setting idempotence to true (or strictly limiting in-flight requests to 1), Kafka **does NOT** guarantee ordering if network errors or retries occur. 
+The baseline ordering guarantee *only* applies to flawless, uninterrupted network flights.
 
 ---
 
