@@ -2752,6 +2752,7 @@ Answer:
 
 Because enforcing global ordering would require coordination, buffering, and synchronization across partitions, eliminating Kafka's scalability advantages.
 A way to do that would be just have a single partition but thats precisely what we said , we wouldnt be able to take advantage of kafka's parallelism
+So clearly there is a trade-off between strict ordering and scalability. Kafka achieves the best balance by providing ordering guarantees within a partition instead of global ordering
 
 ---
 
