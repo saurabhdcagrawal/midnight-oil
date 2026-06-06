@@ -3236,6 +3236,25 @@ The producer already received ACK.
 
 But the message is gone.
 
+Why acks=1 can still lose data
+- With acks=1 the leader sends an ACK to the producer as soon as it has written the record to its local log — it does not wait for followers to replicate that write.
+- If the leader crashes (software crash, hardware failure, or disk loss) before followers have appended the record, the new leader may not have that record and the write is lost — even though the producer already received an ACK.
+
+Failure timeline (example)
+- T1: Producer sends message
+- T2: Leader writes message to its log and sends ACK to the producer
+- T3: Followers have not finished replication
+- T4: Leader crashes before replication completes
+- Result: The message is missing from the new leader → data loss
+
+Different perspectives
+- Cluster: The message only existed on a single physical disk that is now unavailable.
+- Producer: It received an ACK for a write the cluster later “forgot.”
+- Consumer: No consumer could have read the message anyway, because Kafka’s high watermark prevents reading uncommitted (not-yet-replicated) data.
+
+Takeaway / Best practice
+- Acknowledging a write before it is replicated to a majority (or to the configured in-sync replicas) is unsafe for systems that require zero data loss (RPO = 0).
+- For stronger durability use acks=all combined with an appropriate min.insync.replicas (e.g., replication.factor=3 and min.insync.replicas=2). In that configuration, the leader will only ACK after the required followers have appended the record, preventing the scenario above.
 ---
 
 ### 🎯 Interview Favorite
@@ -3247,6 +3266,7 @@ Why can data still be lost with acks=1?
 Answer:
 
 Because the leader may acknowledge before followers replicate. If the leader crashes before replication completes, the acknowledged message can be lost.
+
 
 ---
 
