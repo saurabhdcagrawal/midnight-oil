@@ -3878,7 +3878,7 @@ PID = 101
 Each message receives:
 
 ```text
-Sequence Number . A sequence number is assigned per partition
+Sequence Number . A sequence number is assigned per partition. The producer client library assigns the sequence number, not the broker.
 ```
 
 ---
@@ -4016,7 +4016,7 @@ Broker knows:
 Expected Sequence = 2
 ```
 
-Unexpected messages are handled appropriately.
+Unexpected messages are handled appropriately. Without setting idempotence to true (or limiting in-flight requests), Kafka does NOT guarantee strict ordering in a partition if network errors or retries occur.The famous phrase "Kafka guarantees ordering within a partition" comes with a major technical catch that confuses many developers. It only applies to successful, uninterrupted network flights.
 
 ---
 
@@ -4051,6 +4051,10 @@ Retry Safety
 ```
 
 ---
+The Realization: Modern producers do not wait for an ACK before sending the next batch. They pipeline them in parallel.
+max.in.flight.requests.per.connection=5 explicitly destroys that synchronous behavior in favor of performance.
+The Risk: This parallel pipeline breaks native partition ordering during network retries.
+The Fix: Idempotence must be enabled so the broker can re-sort and validate the sequence numbers of those parallel requests as they arrive 
 
 ### Interview Favorite
 
