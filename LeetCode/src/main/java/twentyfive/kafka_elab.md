@@ -3865,7 +3865,7 @@ Producer ID (PID)
 to every producer.
 
 ---
-
+This means multiple concurrent producers can write to the same partition
 ## Example
 
 ```text
