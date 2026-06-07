@@ -6413,7 +6413,7 @@ However:
 Data Loss Still Occurs
 ```
 
-because Seq57 was never delivered and the producer never knew it failed.
+because Seq57 was never delivered and the producer never knew it failed. Producer doesn’t retry 57 → log stuck.
 
 ---
 
@@ -12301,6 +12301,239 @@ Kafka allows those changes without rewriting upstream systems.
 ---
 
 # 140. VP-Level Discussion
+
+# Interview Question: How Does Kafka Provide Durability?
+
+## Question
+
+How does Kafka ensure that messages are not lost even when brokers fail?
+
+---
+
+## Answer
+Durability is a fundamental data safety guarantee that ensures once a system confirms a write operation was successful, the data is permanently saved and will not be lost, even if the system suffers a total power failure, software crash, or server reboot.
+	
+Higher durability always costs performance. Waiting for data to hit physical disks on multiple machines across a network takes significantly more time than simply confirming a write the moment it hits a single server's RAM.	
+	
+	
+Kafka provides durability through a combination of:
+
+```text
+Persistent Log Storage
+
+Replication
+
+In-Sync Replicas (ISR)
+
+Leader Election
+
+Producer Acknowledgements
+```
+
+---
+
+### 1. Persistent Log Storage
+
+Kafka stores messages on disk inside partition logs.
+
+```text
+Producer
+   ↓
+Broker
+   ↓
+Partition Log
+```
+
+Because messages are persisted to disk:
+
+```text
+Broker Restart
+≠
+Data Loss
+```
+
+---
+
+### 2. Replication
+
+Each partition can be replicated across multiple brokers.
+
+Example:
+
+```text
+Partition-0
+
+Leader   → Broker1
+
+Follower → Broker2
+
+Follower → Broker3
+```
+
+Configuration:
+
+```properties
+replication.factor=3
+```
+
+This means the same data exists on multiple brokers.
+
+---
+
+### 3. In-Sync Replicas (ISR)
+
+Kafka maintains a set of replicas that are fully caught up with the leader.
+
+```text
+ISR
+=
+In Sync Replicas
+```
+
+Example:
+
+```text
+Broker1 (Leader)
+Broker2 (ISR)
+Broker3 (ISR)
+```
+
+Only replicas in the ISR are considered safe for failover.
+
+---
+
+### 4. Producer Acknowledgements
+
+The most important durability setting is:
+
+```properties
+acks=all
+```
+
+Flow:
+
+```text
+Producer
+   ↓
+Leader Writes Record
+   ↓
+Followers Replicate
+   ↓
+ISR Confirms
+   ↓
+ACK Returned
+```
+
+This ensures that the producer receives success only after replication is complete.
+
+---
+
+### 5. Leader Election
+
+If a broker fails:
+
+```text
+Broker1 (Leader)
+↓
+Failure
+```
+
+Kafka elects a new leader from the ISR.
+
+```text
+Broker2
+↓
+New Leader
+```
+
+Because the new leader already contains replicated data, Kafka can continue processing without losing acknowledged records.
+
+---
+
+### 6. min.insync.replicas
+
+Example:
+
+```properties
+replication.factor=3
+min.insync.replicas=2
+```
+
+Meaning:
+
+```text
+At Least Two Replicas
+Must Be Available
+```
+
+before Kafka accepts writes.
+
+This prevents unsafe acknowledgements.
+
+---
+
+## Production Configuration
+
+For maximum durability:
+
+```properties
+acks=all
+enable.idempotence=true
+replication.factor=3
+min.insync.replicas=2
+retries=Integer.MAX_VALUE
+```
+
+Benefits:
+
+```text
+High Durability
+
+Leader Failover Protection
+
+Safe Retries
+
+Duplicate Protection
+
+Ordering Protection
+```
+
+---
+
+## Important Distinction
+
+```text
+Durability
+≠
+Idempotency
+```
+
+Durability protects against:
+
+```text
+Broker Failure
+
+Leader Failure
+
+Data Loss
+```
+
+Idempotency protects against:
+
+```text
+Duplicate Messages
+
+Out-Of-Order Messages
+
+Sequence Gaps
+```
+
+---
+
+## Interview Sound Bite
+
+Kafka provides durability through persistent log storage, replication, ISR validation, leader election, and producer acknowledgements. In production, durability is typically achieved using `acks=all`, `replication.factor=3`, and `min.insync.replicas=2`, ensuring that messages are replicated to multiple brokers before acknowledgements are returned.
+
 
 ## What Business Value Does Kafka Deliver?
 
