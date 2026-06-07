@@ -4001,20 +4001,20 @@ However, high-performance distributed systems intentionally break this simple mo
 
 ## Sequential vs Pipelined Producer Model
 
-| Characteristic               | Strict Sequential Model                   | Pipelined Model                           |
-| ---------------------------- | ----------------------------------------- | ----------------------------------------- |
-| Configuration                | `max.in.flight.requests.per.connection=1` | `max.in.flight.requests.per.connection=5` |
-| Producer Behavior            | Send one batch and wait for ACK           | Send multiple batches without waiting     |
-| Throughput                   | Lower                                     | Higher                                    |
-| Network Utilization          | Poor                                      | Excellent                                 |
-| Ordering Risk During Retries | None                                      | Possible                                  |
-| Typical Usage                | Rare                                      | Common Production Configuration           |
+| Characteristic | Strict Sequential Model | Pipelined Model |
+|---------------|-------------------------|----------------|
+| Configuration | `max.in.flight.requests.per.connection=1` | `max.in.flight.requests.per.connection=5` |
+| Producer Behavior | Send one batch and wait for ACK | Send multiple batches without waiting |
+| Throughput | Lower | Higher |
+| Network Utilization | Poor | Excellent |
+| Ordering Risk During Retries | None | Possible |
+| Typical Usage | Rare | Common Production Configuration |
 
 ---
 
 ## 1. The Strict Sequential Model (Synchronous)
 
-**Configuration**
+### Configuration
 
 ```text
 max.in.flight.requests.per.connection = 1
@@ -4073,7 +4073,7 @@ The producer spends most of its time waiting.
 
 ## 2. The Pipelined Model (Asynchronous Reality)
 
-**Configuration**
+### Configuration
 
 ```text
 max.in.flight.requests.per.connection = 5
@@ -4134,8 +4134,9 @@ Kafka Guarantees Ordering Within A Partition
 
 comes with an important caveat.
 
-Without setting idempotence to true (or strictly limiting in-flight requests to 1), Kafka **does NOT** guarantee ordering if network errors or retries occur. 
-The baseline ordering guarantee *only* applies to flawless, uninterrupted network flights.
+Without setting idempotence to true (or limiting in-flight requests to 1), Kafka does **NOT** guarantee strict ordering during retry scenarios.
+
+The baseline ordering guarantee applies only to successful, uninterrupted network flights.
 
 ---
 
@@ -4181,7 +4182,7 @@ Offset 2 → Msg2
 
 ---
 
-## 🛡️ Hidden Benefit: Idempotency Preserves Ordering
+## Hidden Benefit: Idempotency Preserves Ordering
 
 Most engineers think idempotency only prevents duplicates.
 
@@ -4217,7 +4218,7 @@ to every message.
 Final Result:
 
 ```text
-Offset 0 → Msg1 (Seq 0)
+Off	set 0 → Msg1 (Seq 0)
 
 Offset 1 → Msg2 (Seq 1)
 
@@ -4262,6 +4263,51 @@ Message Loss
 
 ---
 
+## Quick Revision Sheet
+
+```text
+max.in.flight=1
+=
+Strict Ordering
+
+max.in.flight=5
+=
+Pipelined Throughput
+
+Pipelining
+=
+Multiple Requests On Wire
+
+Risk
+=
+Retry Reordering
+
+Idempotency
+=
+Duplicate Protection
+
+Hidden Benefit
+=
+Ordering Protection
+
+PID
+=
+Producer Identity
+
+Sequence Numbers
+=
+Ordering Validation
+
+Sequence Gap
+=
+Missing Expected Sequence
+
+enable.idempotence=true
+=
+Safe Retries
+```
+---
+
 # 50. Idempotency Requirements
 
 When idempotency is enabled:
@@ -4270,7 +4316,7 @@ When idempotency is enabled:
 enable.idempotence=true
 ```
 
-Kafka automatically enforces:
+Kafka automatically enforces safe producer settings.
 
 ```text
 acks=all
@@ -4284,7 +4330,7 @@ max.in.flight.requests.per.connection<=5
 
 ## Why These Settings?
 
-To preserve:
+These settings work together to preserve:
 
 ```text
 Ordering
@@ -4294,9 +4340,11 @@ Durability
 Retry Safety
 ```
 
+Removing any one of them weakens Kafka's guarantees.
+
 ---
 
-### acks=all
+## acks=all
 
 Provides:
 
@@ -4304,11 +4352,21 @@ Provides:
 Maximum Durability
 ```
 
-The producer receives acknowledgement only after all ISR replicas have persisted the record.
+The producer receives an ACK only after all In-Sync Replicas (ISR) have persisted the record.
+
+Benefits:
+
+```text
+Protection Against Leader Failure
+
+Higher Durability
+
+Safer Retries
+```
 
 ---
 
-### retries=Integer.MAX_VALUE
+## retries=Integer.MAX_VALUE
 
 Provides:
 
@@ -4316,11 +4374,23 @@ Provides:
 Reliable Delivery
 ```
 
-Kafka can safely retry transient failures.
+Transient failures should not immediately cause message loss.
+
+Examples:
+
+```text
+Temporary Network Failure
+
+Broker Restart
+
+Leader Election
+```
+
+Kafka automatically retries until the operation succeeds or becomes unrecoverable.
 
 ---
 
-### max.in.flight.requests.per.connection<=5
+## max.in.flight.requests.per.connection<=5
 
 Provides:
 
@@ -4330,13 +4400,23 @@ High Throughput
 Ordering Protection
 ```
 
-Kafka can pipeline requests while remaining compatible with broker-side sequence validation.
+Multiple requests can be in flight simultaneously while remaining compatible with Kafka's sequence-number validation.
+
+This allows Kafka to combine:
+
+```text
+Performance
+
+Ordering
+
+Duplicate Protection
+```
 
 ---
 
 ## The Key Realization
 
-Modern producers do not operate as:
+Modern Kafka producers do not operate as:
 
 ```text
 Send
@@ -4349,7 +4429,7 @@ Send
 Wait
 ```
 
-They operate as:
+Instead they operate as:
 
 ```text
 Send
@@ -4371,134 +4451,835 @@ Network Utilization
 Latency
 ```
 
-but introduces ordering risks during retry scenarios.
+but introduces retry-related ordering risks.
 
----
-
-## How Kafka Fixes The Problem
-
-Kafka combines:
+Idempotency solves this using:
 
 ```text
-Producer ID (PID)
+Producer IDs (PID)
 
 Sequence Numbers
 
 Broker Validation
 ```
 
-to ensure retries do not introduce duplicates or ordering violations.
-
 ---
 
-### 🙋‍♂️ Interview Favorite Question
+## Why acks=0 Breaks Idempotency
 
-**Question:** Can idempotency work with `acks=0`?
-
-**Answer:** **No.** 
-
-* **Fire-and-Forget:** `acks=0` means the producer sends data blindly and never waits for a reply.
-* **No Feedback Loop:** Idempotence requires a two-way conversation. Without an ACK path, the broker cannot send back errors like `OutOfOrderSequenceException` [DEV Community Kafka Producer Acks Guide].
-* **The Result:** The producer can never detect duplicates or gaps, completely disabling the idempotency engine [DEV Community Kafka Producer Acks Guide].
-
-# 51. Failure Scenario #1
-
-## Without Idempotency
-
-Timeline:
+Many engineers incorrectly assume:
 
 ```text
-Producer Sends Msg57
-Broker Writes Msg57
-ACK Lost
-Producer Retries
-Broker Writes Msg57 Again
-```
-
-Result:
-
-```text
-Duplicate Message
-```
-
----
-
-# Failure Scenario #2
-
-## With Idempotency
-
-Timeline:
-
-```text
-Producer Sends Msg57
-Broker Writes Msg57
-ACK Lost
-Producer Retries
-Broker Detects Duplicate Sequence Number
-```
-
-Result:
-
-```text
-One Copy Stored
-```
-
----
-
-### 🎯 Interview Sound Bite
-
-Idempotency eliminates duplicates caused by producer retries.
-
----
-
-# 52. Exactly Once Semantics (EOS)
-
-## Interview Trap
-
-Many candidates say:
-
-```text
-Kafka Guarantees Exactly Once
-```
-
-This is incomplete.
-
----
-
-## Reality
-
-Kafka guarantees:
-
-```text
-Exactly Once Producer Writes
-```
-
-when:
-
-```properties
 enable.idempotence=true
 ```
 
+automatically makes delivery safe.
+
+It does not.
+
+Idempotency requires acknowledgements.
+
 ---
 
-Consumer processing still requires:
+### Failure Scenario
+
+Producer state:
 
 ```text
-Idempotent Consumers
-Transactions
+Last Successful Sequence = 56
+```
+
+Producer sends:
+
+```text
+Seq57
+Seq58
+```
+
+Network issue:
+
+```text
+Seq57 Lost
+```
+
+Producer never receives an ACK because:
+
+```text
+acks=0
 ```
 
 ---
 
-### Better Answer
+Broker receives:
 
-Kafka can provide exactly-once semantics when idempotent producers, transactions, and properly designed consumers are used together.
+```text
+Seq58
+```
+
+Broker state:
+
+```text
+Expected Sequence = 57
+```
+
+Result:
+
+```text
+OutOfOrderSequenceException
+```
+
+The broker rejects Seq58 because Seq57 never arrived.
 
 ---
 
-# 53. Idempotent Consumers
+### What Happens?
 
-## Important
+```text
+Producer → Seq57 (Lost)
+
+Producer → Seq58
+
+Broker Expected → Seq57
+
+Broker Received → Seq58
+
+Reject
+```
+
+Broker log remains:
+
+```text
+Last Committed Sequence = 56
+```
+
+---
+
+### Important Observation
+
+```text
+Ordering Preserved
+```
+
+because Kafka refuses to accept Seq58.
+
+However:
+
+```text
+Data Loss Still Occurs
+```
+
+because Seq57 was lost and the producer never received an acknowledgement telling it to retry.
+
+---
+
+## Key Principle
+
+```text
+Idempotency
+≠
+Durability
+```
+
+Idempotency solves:
+
+```text
+Duplicate Messages
+
+Out-Of-Order Messages
+
+Sequence Gaps
+```
+
+Idempotency does NOT solve:
+
+```text
+Data Loss
+
+Leader Failure
+
+Missing Acknowledgements
+```
+
+For durability Kafka still requires:
+
+```text
+acks=all
+
+ISR Replication
+
+Reliable Retries
+```
+
+---
+
+## Interview Favorite
+
+### Question
+
+Can idempotency work with:
+
+```text
+acks=0
+```
+
+?
+
+### Answer
+
+```text
+No
+```
+
+The producer never receives acknowledgements.
+
+Without acknowledgements, the producer cannot reliably determine:
+
+```text
+Success
+
+Failure
+
+Retry Requirements
+```
+
+and therefore cannot safely coordinate idempotent retries.
+
+---
+
+## Interview Sound Bite
+
+> Idempotency protects against duplicates and ordering violations, but it cannot prevent data loss when acknowledgements are disabled.
+
+---
+
+## Quick Revision Sheet
+
+```text
+enable.idempotence=true
+=
+Duplicate Protection
+
+acks=all
+=
+Durability
+
+retries=Integer.MAX_VALUE
+=
+Reliable Delivery
+
+max.in.flight<=5
+=
+Safe Pipelining
+
+PID
+=
+Producer Identity
+
+Sequence Numbers
+=
+Ordering Validation
+
+acks=0
+=
+No Durability
+
+Idempotency
+≠
+Durability
+```
+---
+# 51. Exactly Once Semantics (EOS)
+
+## The Fundamental Problem
+
+Even with idempotent producers, distributed systems can still process the same business event multiple times.
+
+Example:
+
+```text
+Producer
+    ↓
+Kafka
+    ↓
+Consumer
+```
+
+Consumer processes:
+
+```text
+Payment Event
+```
+
+but crashes before committing its offset.
+
+After restart:
+
+```text
+Kafka Redelivers Event
+```
+
+The same payment may be processed again.
+
+Result:
+
+```text
+Duplicate Side Effects
+```
+
+Examples:
+
+```text
+Duplicate Alert
+
+Duplicate Email
+
+Duplicate Trade
+
+Duplicate Payment
+```
+
+---
+
+## What Is Exactly Once Semantics?
+
+Exactly Once Semantics (EOS) ensures:
+
+```text
+Each Message
+
+Affects The Final System State
+
+Exactly Once
+```
+
+even when failures occur.
+
+---
+
+## Common Misconception
+
+Many engineers assume:
+
+```text
+Exactly Once
+=
+Message Delivered Once
+```
+
+This is incorrect.
+
+Kafka may still:
+
+```text
+Retry
+
+Redeliver
+
+Reprocess
+```
+
+messages.
+
+EOS means:
+
+```text
+Business Outcome Happens Once
+```
+
+not necessarily:
+
+```text
+Physical Delivery Happens Once
+```
+
+---
+
+## Evolution Of Kafka Guarantees
+
+### At Most Once
+
+```text
+Process Once
+
+May Lose Data
+```
+
+Example:
+
+```text
+Message Lost
+↓
+Never Retried
+```
+
+Result:
+
+```text
+Data Loss
+```
+
+---
+
+### At Least Once
+
+```text
+Never Lose Data
+
+May Process Multiple Times
+```
+
+Example:
+
+```text
+Process Event
+↓
+Crash
+↓
+Retry Event
+```
+
+Result:
+
+```text
+Duplicate Processing
+```
+
+---
+
+### Exactly Once
+
+```text
+No Data Loss
+
+No Duplicate Effects
+```
+
+Result:
+
+```text
+Correct Final State
+```
+
+---
+
+## How Kafka Implements EOS
+
+EOS is built using:
+
+```text
+Idempotent Producer
+
+Transactions
+
+Offset Coordination
+```
+
+All three are required.
+
+---
+
+## Component 1: Idempotent Producer
+
+Provides:
+
+```text
+Duplicate Prevention
+
+Ordering Protection
+```
+
+using:
+
+```text
+Producer ID (PID)
+
+Sequence Numbers
+```
+
+However:
+
+```text
+Idempotency Alone
+≠
+Exactly Once
+```
+
+---
+
+## Component 2: Kafka Transactions
+
+Kafka transactions allow multiple writes to succeed or fail together.
+
+Example:
+
+```text
+Write Event A
+
+Write Event B
+
+Commit Offsets
+```
+
+Either:
+
+```text
+Everything Commits
+```
+
+or:
+
+```text
+Everything Rolls Back
+```
+
+---
+
+## Why Transactions Matter
+
+Without transactions:
+
+```text
+Write Output Event
+↓
+Crash
+↓
+Offset Not Committed
+```
+
+After restart:
+
+```text
+Input Event Reprocessed
+```
+
+Result:
+
+```text
+Duplicate Output Event
+```
+
+---
+
+With transactions:
+
+```text
+Output Event
++
+Offset Commit
+```
+
+become one atomic operation.
+
+---
+
+## Atomic Commit
+
+Transaction:
+
+```text
+Read Input
+
+Process
+
+Write Output
+
+Commit Offset
+```
+
+Everything succeeds together.
+
+---
+
+If failure occurs:
+
+```text
+Read Input
+
+Process
+
+Crash
+```
+
+Transaction aborts.
+
+Nothing becomes visible.
+
+---
+
+## Transaction Coordinator
+
+Kafka uses a:
+
+```text
+Transaction Coordinator
+```
+
+to manage transaction state.
+
+Responsibilities:
+
+```text
+Track Open Transactions
+
+Commit Transactions
+
+Abort Transactions
+
+Recover After Failures
+```
+
+---
+
+## Read Committed Isolation
+
+Consumers can be configured with:
+
+```text
+isolation.level=read_committed
+```
+
+This ensures consumers only see:
+
+```text
+Committed Transactions
+```
+
+and never see:
+
+```text
+Aborted Data
+```
+
+---
+
+## Example
+
+Transaction begins:
+
+```text
+Event A
+
+Event B
+
+Event C
+```
+
+Producer crashes.
+
+Transaction aborts.
+
+Consumers configured with:
+
+```text
+read_committed
+```
+
+see:
+
+```text
+Nothing
+```
+
+because the transaction never committed.
+
+---
+
+## EOS Processing Flow
+
+```text
+Input Topic
+      ↓
+Consumer
+      ↓
+Business Logic
+      ↓
+Output Topic
+      ↓
+Commit Offset
+```
+
+All steps occur inside one Kafka transaction.
+
+---
+
+## Banking Example
+
+Input:
+
+```text
+Transfer $100
+```
+
+Without EOS:
+
+```text
+Transfer Processed
+↓
+Crash
+↓
+Transfer Processed Again
+```
+
+Potential result:
+
+```text
+Double Debit
+```
+
+---
+
+With EOS:
+
+```text
+Transfer
++
+Offset Commit
+```
+
+occur atomically.
+
+Result:
+
+```text
+Single Business Outcome
+```
+
+---
+
+## What EOS Does NOT Solve
+
+EOS does not automatically protect:
+
+```text
+External Databases
+
+REST APIs
+
+Email Systems
+
+Third Party Services
+```
+
+Kafka transactions only cover:
+
+```text
+Kafka Resources
+```
+
+---
+
+## The Database Problem
+
+Example:
+
+```text
+Consume Event
+↓
+Update Oracle
+↓
+Crash Before Offset Commit
+```
+
+Kafka may replay the event.
+
+Database update may occur twice.
+
+---
+
+Solution:
+
+```text
+Idempotent Consumers
+
+Deduplication Tables
+
+Business Keys
+```
+
+---
+
+## Interview Favorite
+
+### Question
+
+Does Kafka EOS guarantee that my database update happens exactly once?
+
+### Answer
+
+```text
+No
+```
+
+Kafka transactions only guarantee exactly-once processing within Kafka itself.
+
+External systems still require idempotent handling.
+
+---
+
+## Interview Sound Bite
+
+> Exactly Once Semantics is achieved by combining idempotent producers, Kafka transactions, and offset coordination. It guarantees a single business outcome within Kafka, even if messages are retried or reprocessed.
+
+---
+
+## Quick Revision Sheet
+
+```text
+At Most Once
+=
+Possible Data Loss
+
+At Least Once
+=
+Possible Duplicates
+
+Exactly Once
+=
+Single Business Outcome
+
+EOS
+=
+Idempotency + Transactions
+
+PID
+=
+Producer Identity
+
+Sequence Numbers
+=
+Duplicate Protection
+
+Transaction Coordinator
+=
+Manages Transactions
+
+read_committed
+=
+Hide Aborted Records
+
+Kafka EOS
+=
+Kafka Resources Only
+
+External DB
+=
+Still Needs Idempotency
+```
+---
+
+# 52. Idempotent Consumers
+
+## Why Producer Idempotency Is Not Enough
+
+A common misconception is:
+
+```text
+enable.idempotence=true
+```
+
+solves duplicate processing throughout the entire system.
+
+This is incorrect.
 
 Producer idempotency protects:
 
@@ -4509,81 +5290,680 @@ Kafka Log
 It does NOT protect:
 
 ```text
-Database
-Email
-External APIs
+Databases
+
+REST APIs
+
+Email Systems
+
+Notification Services
+
+Third-Party Systems
+```
+
+---
+
+## The Consumer Problem
+
+Consider:
+
+```text
+Consumer Receives Msg57
+↓
+Business Logic Executes
+↓
+Generate Alert
+↓
+Application Crashes
+↓
+Offset Not Committed
+```
+
+Kafka sees:
+
+```text
+Offset Never Committed
+```
+
+and redelivers the message.
+
+```text
+Consumer Receives Msg57 Again
+```
+
+The business operation executes twice.
+
+Result:
+
+```text
+Duplicate Alert
+```
+
+---
+
+## Real World Example
+
+Message:
+
+```json
+{
+  "alertId":"12345",
+  "clientId":"ABC"
+}
+```
+
+Consumer processes:
+
+```text
+Generate Actimize Alert
+```
+
+Application crashes before:
+
+```text
+Offset Commit
+```
+
+Kafka retries:
+
+```text
+Same Message
+```
+
+Without protection:
+
+```text
+Actimize Alert Created Twice
+```
+
+---
+
+## Why Kafka Does This
+
+Kafka is designed around:
+
+```text
+At-Least-Once Delivery
+```
+
+The broker's priority is:
+
+```text
+Do Not Lose Data
+```
+
+not:
+
+```text
+Prevent Duplicate Processing
+```
+
+Therefore duplicates are expected.
+
+Consumers must be designed accordingly.
+
+---
+
+## What Is An Idempotent Consumer?
+
+An idempotent consumer ensures:
+
+```text
+Processing The Same Message
+
+One Time
+OR
+One Hundred Times
+```
+
+produces:
+
+```text
+The Same Final Outcome
+```
+
+---
+
+## Business Key Pattern
+
+The most common approach is to use a unique business identifier.
+
+Examples:
+
+```text
+transactionId
+
+paymentId
+
+alertId
+
+tradeId
+
+clientId + businessDate
 ```
 
 ---
 
 Example:
 
-Consumer receives:
-
 ```text
-Msg57
+AlertId = 12345
 ```
 
-Processes:
+Before processing:
 
 ```text
-Generate Alert
+Has Alert 12345 Already Been Processed?
 ```
 
-Application crashes before offset commit.
+If:
+
+```text
+No
+```
+
+Process.
+
+If:
+
+```text
+Yes
+```
+
+Ignore.
 
 ---
 
-Kafka retries:
+## Deduplication Table Pattern
 
-```text
-Msg57
-```
+Consumer stores processed identifiers.
 
-Again.
+Example:
 
----
-
-Without protection:
-
-```text
-Alert Generated Twice
-```
-
----
-
-### Solution
-
-Use unique business keys.
-
-Examples:
-
-```text
-alertId
-transactionId
-clientId + date
+```sql
+CREATE TABLE processed_messages
+(
+    message_id VARCHAR(100)
+    PRIMARY KEY
+);
 ```
 
 ---
 
-### 🎯 Interview Sound Bite
+Processing Flow:
 
-Producer idempotency protects Kafka. Consumer idempotency protects downstream systems.
+```text
+Receive Message
+↓
+Check Table
+↓
+Already Exists?
+```
+
+If:
+
+```text
+Yes
+```
+
+Ignore.
+
+If:
+
+```text
+No
+```
+
+Process Message
+↓
+Insert Message ID
+↓
+Commit
+```
 
 ---
 
-# 54. Idempotency Matrix
+## Database Unique Constraint Pattern
 
-| Configuration          | Duplicate Risk | Durability |
-| ---------------------- | -------------- | ---------- |
-| acks=0                 | Very High      | Very Low   |
-| acks=1                 | Medium         | Medium     |
-| acks=all               | Low            | High       |
-| acks=all + idempotence | Lowest         | Highest    |
+Another common approach:
+
+```sql
+UNIQUE(alert_id)
+```
 
 ---
 
-## Production Recommendation
+Example:
+
+```sql
+INSERT INTO alerts
+(
+   alert_id,
+   client_id
+)
+```
+
+If Kafka retries:
+
+```sql
+INSERT alert_id=12345
+```
+
+again:
+
+```text
+Database Rejects Duplicate
+```
+
+---
+
+Benefits:
+
+```text
+Simple
+
+Reliable
+
+Database Enforced
+```
+
+---
+
+## UPSERT Pattern
+
+Many systems use:
+
+```sql
+MERGE
+
+UPSERT
+
+INSERT ... ON CONFLICT
+```
+
+instead of plain inserts.
+
+---
+
+Example:
+
+```sql
+INSERT INTO alerts(alert_id,status)
+VALUES('12345','OPEN')
+
+ON CONFLICT(alert_id)
+DO NOTHING;
+```
+
+Result:
+
+```text
+Duplicate Message
+↓
+No Duplicate Record
+```
+
+---
+
+## External API Challenge
+
+Databases are easy.
+
+External APIs are harder.
+
+Example:
+
+```text
+Kafka Event
+↓
+Send Email
+```
+
+Application crashes.
+
+Kafka retries.
+
+```text
+Send Email Again
+```
+
+Result:
+
+```text
+Customer Receives Two Emails
+```
+
+---
+
+## Solution For External Systems
+
+Include an idempotency key.
+
+Example:
+
+```http
+POST /payments
+
+Idempotency-Key: TXN-12345
+```
+
+The receiving service stores:
+
+```text
+Request ID
+
+Previous Result
+```
+
+and rejects duplicates.
+
+---
+
+## Consumer Transaction Pattern
+
+Ideal Flow:
+
+```text
+Receive Message
+↓
+Execute Business Logic
+↓
+Persist Deduplication Key
+↓
+Commit Database Transaction
+↓
+Commit Kafka Offset
+```
+
+This minimizes duplicate side effects.
+
+---
+
+## Exactly Once vs Idempotent Consumers
+
+Many engineers assume:
+
+```text
+Kafka EOS
+=
+No Consumer Duplicates
+```
+
+Not necessarily.
+
+Kafka EOS protects:
+
+```text
+Kafka Topics
+```
+
+It does NOT automatically protect:
+
+```text
+Oracle
+
+DB2
+
+Actimize
+
+REST APIs
+
+External Systems
+```
+
+Those systems still require:
+
+```text
+Consumer Idempotency
+```
+
+---
+
+## My Screening Architecture Example
+
+Message:
+
+```text
+Screen Client 12345
+```
+
+Consumer:
+
+```text
+Adverse Media Service
+```
+
+Generates:
+
+```text
+Screening Alert
+```
+
+Without consumer idempotency:
+
+```text
+Same Client Screened Twice
+↓
+Duplicate Alert
+↓
+Analyst Confusion
+```
+
+With consumer idempotency:
+
+```text
+Duplicate Event
+↓
+Existing Alert Detected
+↓
+Ignore
+```
+
+---
+
+## Interview Favorite
+
+### Question
+
+If Kafka producer idempotency is enabled, do I still need idempotent consumers?
+
+### Answer
+
+```text
+Yes
+```
+
+Producer idempotency protects Kafka from duplicate writes.
+
+Consumer idempotency protects downstream systems from duplicate processing.
+
+Both are required for reliable distributed systems.
+
+---
+
+## Interview Sound Bite
+
+> Producer idempotency protects Kafka. Consumer idempotency protects databases, APIs, and business operations.
+
+---
+
+## Quick Revision Sheet
+
+```text
+Producer Idempotency
+=
+Protects Kafka Log
+
+Consumer Idempotency
+=
+Protects Downstream Systems
+
+At Least Once Delivery
+=
+Duplicates Possible
+
+Business Key
+=
+Deduplication Identifier
+
+Dedup Table
+=
+Track Processed Messages
+
+Unique Constraint
+=
+Database Protection
+
+UPSERT
+=
+Safe Retry Pattern
+
+Idempotency Key
+=
+External API Protection
+
+Best Practice
+=
+Idempotent Producer
++
+Idempotent Consumer
+
+---
+
+# 53. Idempotency Matrix
+
+## Why This Matrix Matters
+
+Many Kafka interview questions are really trade-off questions.
+
+The interviewer is often testing whether you understand the relationship between:
+
+```text
+Durability
+
+Ordering
+
+Duplicate Protection
+
+Performance
+```
+
+rather than simply memorizing configuration values.
+
+---
+
+## Configuration Comparison
+
+| Configuration | Duplicate Risk | Ordering Risk | Durability | Throughput |
+|--------------|---------------|--------------|------------|------------|
+| `acks=0` | Very High | High | Very Low | Highest |
+| `acks=1` | Medium | Medium | Medium | High |
+| `acks=all` | Low | Low | High | Lower |
+| `acks=all + idempotence=true` | Lowest | Lowest | Highest | High |
+
+---
+
+## Configuration Analysis
+
+### acks=0
+
+Producer sends:
+
+```text
+Fire And Forget
+```
+
+Characteristics:
+
+```text
+No Broker Acknowledgement
+
+No Retry Validation
+
+No Durability Guarantee
+```
+
+Benefits:
+
+```text
+Maximum Throughput
+
+Lowest Latency
+```
+
+Risks:
+
+```text
+Silent Data Loss
+
+Duplicate Processing
+
+Ordering Problems
+```
+
+---
+
+### acks=1
+
+Leader acknowledges after writing locally.
+
+Characteristics:
+
+```text
+Leader ACK Required
+
+No Follower Confirmation
+```
+
+Benefits:
+
+```text
+Good Performance
+
+Reasonable Durability
+```
+
+Risks:
+
+```text
+Leader Failure Can Lose Data
+```
+
+---
+
+### acks=all
+
+Producer waits for all ISR replicas.
+
+Characteristics:
+
+```text
+Leader Write
+
+Follower Replication
+
+ACK Returned
+```
+
+Benefits:
+
+```text
+Strong Durability
+
+Safer Retries
+```
+
+Tradeoff:
+
+```text
+Slightly Higher Latency
+```
+
+---
+
+### acks=all + Idempotency
+
+Recommended production configuration.
 
 ```properties
 acks=all
@@ -4591,41 +5971,56 @@ enable.idempotence=true
 retries=Integer.MAX_VALUE
 ```
 
----
-
-### Production Sound Bite
-
-For compliance workloads we use acks=all, replication factor 3, min.insync.replicas=2, and idempotent producers to maximize durability and eliminate duplicate writes.
-
----
-
-# My Screening Architecture Example
-
-Producer:
+Benefits:
 
 ```text
-Spring Batch Screening Producer
+Duplicate Protection
+
+Ordering Protection
+
+High Durability
+
+Safe Retries
 ```
 
-Topic:
+Suitable For:
 
 ```text
-screening.jobs
+Financial Systems
+
+Payments
+
+Fraud Detection
+
+Compliance Platforms
+
+Screening Systems
 ```
+
+---
+
+## Real Production Example
+
+For AML and sanctions screening systems:
 
 Requirements:
 
 ```text
-No Duplicate Screening Requests
 No Lost Records
-Ordered By Client
+
+No Duplicate Alerts
+
+Ordered Processing
+
+Reliable Retries
 ```
 
-Configuration:
+Recommended:
 
 ```properties
 acks=all
 enable.idempotence=true
+retries=Integer.MAX_VALUE
 replication.factor=3
 min.insync.replicas=2
 ```
@@ -4634,49 +6029,96 @@ Benefits:
 
 ```text
 Durable
+
 Replayable
+
 Retry Safe
+
 Fault Tolerant
 ```
 
 ---
 
-# Quick Revision Sheet
+## Interview Favorite
+
+### Question
+
+What producer configuration would you use for a financial system?
+
+### Answer
+
+```properties
+acks=all
+enable.idempotence=true
+retries=Integer.MAX_VALUE
+```
+
+Optionally:
+
+```properties
+replication.factor=3
+min.insync.replicas=2
+```
+
+for additional durability.
+
+Reason:
 
 ```text
+Prevents Duplicate Writes
+
+Preserves Ordering
+
+Maximizes Durability
+
+Supports Safe Retries
+```
+
+---
+
+## Interview Sound Bite
+
+> For compliance and financial workloads, the safest producer configuration is acks=all with idempotence enabled. This provides durable writes, safe retries, duplicate protection, and ordering guarantees.
+
+---
+
+## Quick Revision Sheet
+
+```text
+acks=0
+=
+Fastest
+=
+Least Safe
+
+acks=1
+=
+Balanced
+
+acks=all
+=
+Durable
+
 Idempotency
 =
-Safe Retries
+Duplicate Protection
 
-Producer ID
-=
 PID
-
-Sequence Number
 =
-Message Ordering Identifier
+Producer Identity
 
-Duplicate Retry
+Sequence Numbers
 =
-Discarded
-
-enable.idempotence=true
-=
-Recommended
-
-Producer Idempotency
-=
-Protects Kafka
-
-Consumer Idempotency
-=
-Protects Database
+Ordering Validation
 
 Best Practice
 =
 acks=all + idempotence=true
-```
 
+Compliance Workloads
+=
+Maximum Reliability
+```
 ---
 
 # Cross References
@@ -4687,6 +6129,610 @@ See Also:
 * Page 7 → Dead Letter Queues
 * Page 8 → Replay
 * Page 9 → Spring Kafka Transactions
+
+---
+
+# 54. Failure Mode Matrix
+
+## Why This Chapter Matters
+
+Many engineers learn:
+
+```text
+Idempotency
+
+Retries
+
+Acknowledgements
+```
+
+individually.
+
+However, production incidents occur when these concepts interact.
+
+This chapter focuses on the most common failure scenarios and their outcomes.
+
+---
+
+## Failure Scenario #1 – Auto Commit
+
+### Flow
+
+```text
+Process Msg57
+↓
+Auto Commit Occurs
+↓
+Application Crashes
+```
+
+Kafka believes:
+
+```text
+Msg57 Successfully Processed
+```
+
+because the offset was already committed.
+
+---
+
+### Result
+
+```text
+❌ Data Loss
+```
+
+The message will never be reprocessed.
+
+---
+
+### Root Cause
+
+```text
+Offset Committed
+Before
+Business Processing Completed
+```
+
+---
+
+### Lesson
+
+Avoid auto commit for critical workloads.
+
+---
+
+## Failure Scenario #2 – Manual Commit Without Idempotency
+
+### Flow
+
+```text
+Process Msg57
+↓
+Business Logic Executes
+↓
+Application Crashes
+↓
+Offset Not Committed
+```
+
+Kafka retries:
+
+```text
+Msg57
+```
+
+---
+
+### Result
+
+```text
+❌ Duplicate Processing
+```
+
+Examples:
+
+```text
+Duplicate Alert
+
+Duplicate Email
+
+Duplicate Trade
+
+Duplicate Payment
+```
+
+---
+
+### Root Cause
+
+Kafka correctly retries the message.
+
+The application executes the same business operation twice.
+
+---
+
+### Lesson
+
+Manual commits improve durability but require idempotent consumers.
+
+---
+
+## Failure Scenario #3 – acks=0
+
+### Flow
+
+```text
+Producer Sends Message
+↓
+Network Failure
+↓
+Broker Never Receives Message
+```
+
+Producer behavior:
+
+```text
+Assumes Success
+```
+
+because:
+
+```text
+No ACK Requested
+```
+
+---
+
+### Result
+
+```text
+❌ Silent Data Loss
+```
+
+---
+
+### Root Cause
+
+The producer has no way to know the message disappeared.
+
+---
+
+### Lesson
+
+```text
+acks=0
+=
+Performance
+Over
+Reliability
+```
+
+---
+
+## Failure Scenario #4 – acks=0 + Idempotency
+
+This is one of the most misunderstood Kafka scenarios.
+
+Many engineers incorrectly assume:
+
+```text
+Idempotency
+=
+Guaranteed Safety
+```
+
+---
+
+### Flow
+
+Producer State:
+
+```text
+Last Sequence = 56
+```
+
+Producer sends:
+
+```text
+Seq57
+Seq58
+```
+
+Network Issue:
+
+```text
+Seq57 Lost
+```
+
+Producer never receives an ACK because:
+
+```text
+acks=0
+```
+
+---
+
+Broker receives:
+
+```text
+Seq58
+```
+
+Broker state:
+
+```text
+Expected Sequence = 57
+```
+
+Result:
+
+```text
+OutOfOrderSequenceException
+```
+
+---
+
+### Broker View
+
+```text
+Producer → Seq57 (Lost)
+
+Producer → Seq58
+
+Broker Expected → Seq57
+
+Broker Received → Seq58
+
+Reject
+```
+
+---
+
+### Result
+
+```text
+⚠ Partition Appears Stuck
+
+❌ Data Loss Still Occurs
+```
+
+---
+
+### Important Observation
+
+```text
+Ordering Preserved
+```
+
+because Kafka rejects Seq58.
+
+However:
+
+```text
+Data Loss Still Occurs
+```
+
+because Seq57 was never delivered and the producer never knew it failed.
+
+---
+
+### Key Lesson
+
+```text
+Idempotency
+≠
+Durability
+```
+
+---
+
+## Failure Scenario #5 – acks=1 + Retries + Multiple In-Flight Requests (No Idempotency)
+
+### Flow
+
+```text
+P1 Sent
+↓
+Leader Writes P1
+↓
+ACK Lost
+↓
+P2 Successfully ACKed
+↓
+Producer Retries P1
+```
+
+---
+
+### Broker Log
+
+```text
+P2
+P1
+```
+
+---
+
+### Result
+
+```text
+❌ Duplicate Messages
+
+❌ Ordering Violations
+```
+
+---
+
+### Root Cause
+
+Without idempotency:
+
+```text
+Broker Cannot Detect
+Duplicate Retries
+```
+
+or:
+
+```text
+Out Of Order Arrivals
+```
+
+---
+
+### Lesson
+
+Retries alone do not guarantee correctness.
+
+---
+
+## Failure Scenario #6 – acks=1 + Idempotency
+
+### Flow
+
+```text
+Leader Writes Record
+↓
+Leader Sends ACK
+↓
+Leader Crashes
+↓
+Replication Never Occurs
+↓
+New Leader Elected
+```
+
+---
+
+### Result
+
+```text
+❌ Data Loss
+```
+
+Even though:
+
+```text
+✔ No Duplicates
+
+✔ Ordering Preserved
+```
+
+---
+
+### Root Cause
+
+The record only existed on the failed leader.
+
+Followers never replicated it.
+
+---
+
+### Lesson
+
+```text
+Idempotency
+Cannot
+Replace Replication
+```
+
+---
+
+## Failure Scenario #7 – acks=all + Idempotency
+
+### Flow
+
+```text
+Producer Sends Record
+↓
+Leader Writes
+↓
+Followers Replicate
+↓
+ISR Confirms
+↓
+ACK Returned
+```
+
+---
+
+### Result
+
+```text
+✔ Duplicate Protection
+
+✔ Ordering Protection
+
+✔ High Durability
+
+✔ Safe Retries
+```
+
+---
+
+### Why This Is The Recommended Configuration
+
+Kafka combines:
+
+```text
+Producer ID (PID)
+
+Sequence Numbers
+
+Replication
+
+ISR Validation
+
+Retries
+```
+
+to provide the strongest reliability guarantees.
+
+---
+
+## Failure Matrix Summary
+
+| Scenario | Duplicate Risk | Ordering Risk | Data Loss Risk |
+|-----------|-----------|-----------|-----------|
+| Auto Commit | No | No | High |
+| Manual Commit Without Idempotency | High | No | Low |
+| acks=0 | Low | Low | Very High |
+| acks=0 + Idempotency | Low | Low | Very High |
+| acks=1 | Medium | Medium | Medium |
+| acks=1 + Idempotency | Low | Low | Medium |
+| acks=all + Idempotency | Lowest | Lowest | Lowest |
+
+---
+
+## What Idempotency Solves
+
+```text
+Duplicate Messages
+
+Out-Of-Order Messages
+
+Sequence Gaps
+```
+
+---
+
+## What Idempotency Does NOT Solve
+
+```text
+Data Loss
+
+Leader Failure
+
+Missing Acknowledgements
+
+Replication Failure
+```
+
+---
+
+## For True Durability You Still Need
+
+```text
+acks=all
+
+ISR Replication
+
+Reliable Retries
+
+Replication Factor > 1
+
+min.insync.replicas
+```
+
+---
+
+## Interview Favorite
+
+### Question
+
+What is the biggest misconception about Kafka idempotency?
+
+### Answer
+
+Many engineers assume:
+
+```text
+Idempotency
+=
+Reliability
+```
+
+In reality:
+
+```text
+Idempotency
+=
+Duplicate Protection
++
+Ordering Protection
+```
+
+while durability still depends on:
+
+```text
+Acknowledgements
+
+Replication
+
+ISR Protection
+```
+
+---
+
+## Interview Sound Bite
+
+> Idempotency prevents duplicates and ordering violations. It does not prevent data loss. Durability still requires acknowledgements, replication, and ISR protection.
+
+---
+
+## Quick Revision Sheet
+
+```text
+Auto Commit
+=
+Possible Data Loss
+
+Manual Commit
+=
+Possible Duplicates
+
+acks=0
+=
+Silent Data Loss
+
+acks=0 + Idempotency
+=
+Ordering Preserved
+But Data Loss Possible
+
+acks=1
+=
+Leader Failure Risk
+
+acks=all
+=
+Highest Durability
+
+Idempotency
+=
+Duplicate Protection
+
+Idempotency
+≠
+Durability
+
+Best Practice
+=
+acks=all
++
+enable.idempotence=true
+```
 
 ---
 
