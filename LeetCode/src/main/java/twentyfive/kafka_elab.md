@@ -4391,75 +4391,15 @@ to ensure retries do not introduce duplicates or ordering violations.
 
 ---
 
-## Interview Favorite
+### 🙋‍♂️ Interview Favorite Question
 
 **Question:** Can idempotency work with `acks=0`?
 
-**Answer:** No.
+**Answer:** **No.** 
 
-The producer never receives acknowledgement from the broker.
-
-Without acknowledgements, the producer cannot reliably determine:
-
-```text
-Success
-
-Failure
-
-Retry Requirements
-```
-
-and therefore cannot safely implement idempotent behavior.
-
----
-
-## Quick Revision Sheet
-
-```text
-max.in.flight=1
-=
-Strict Ordering
-
-max.in.flight=5
-=
-Pipelined Throughput
-
-Pipelining
-=
-Multiple Requests On Wire
-
-Risk
-=
-Retry Reordering
-
-Idempotency
-=
-Duplicate Protection
-
-Hidden Benefit
-=
-Ordering Protection
-
-Sequence Numbers
-=
-Ordering Validation
-
-PID
-=
-Producer Identity
-
-enable.idempotence=true
-=
-Safe Retries
-
-acks=all
-=
-Required
-
-acks=0
-=
-Not Compatible With Idempotency
-```
+* **Fire-and-Forget:** `acks=0` means the producer sends data blindly and never waits for a reply.
+* **No Feedback Loop:** Idempotence requires a two-way conversation. Without an ACK path, the broker cannot send back errors like `OutOfOrderSequenceException` [DEV Community Kafka Producer Acks Guide].
+* **The Result:** The producer can never detect duplicates or gaps, completely disabling the idempotency engine [DEV Community Kafka Producer Acks Guide].
 
 # 51. Failure Scenario #1
 
