@@ -6824,7 +6824,14 @@ Dead Letter Queues isolate permanently failing messages so healthy traffic can c
 
 ## Definition
 
-A Dead Letter Queue (DLQ) is a separate Kafka topic used to store messages that cannot be processed successfully.
+A Dead Letter Queue (DLQ) is a separate Kafka topic used to store messages that cannot be processed successfully after one or more retries..
+Some messages might be:
+- Malformed (bad schema, missing fields)
+- Causing exceptions in your application logic
+- Failing due to downstream service errors (e.g., DB down, API failure)
+- Stuck in a poison pill loop (fail every time they are retried)
+
+Instead of losing or infinitely retrying them, you push such messages to a DLQ for later analysis or manual handling.
 
 ---
 
