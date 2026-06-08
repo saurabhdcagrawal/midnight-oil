@@ -651,20 +651,18 @@ system design, cross-team decisions, and building things that hold up under real
 Q13: Tell me about a time you mentored or developed someone on your team
 ==========================================================================
 
-"During the Bridger POC, I used LexID validation as a training opportunity.
+During the Bridger POC, I used LexID validation as a training opportunity for two mid-level engineers.
 
- LexID is the vendor's unique entity resolution identifier — critical for deduplication and dispositioning.
+LexID is the vendor's entity-resolution identifier and plays a critical role in deduplication, entity matching, and alert dispositioning. It was an important part of the integration, and I saw it as an opportunity to develop expertise across the team rather than becoming the sole owner myself.
 
-Instead of figuring out LexID behavior alone, I brought two mid-level engineers in. 
-I walked them through the first round of structured test scenarios against the SaaS instance — showing how to validate vendor behavior against our assumptions. 
-Then I handed them ownership of the next batch, including edge cases like partial matches and entity merges.
+Instead of figuring out the behavior alone, I brought the engineers into the validation process from the beginning. I walked them through the first set of structured test scenarios against the SaaS environment, showing them how to validate vendor behavior, challenge assumptions, and document findings.
 
-I also had them own the LexID-to-canonical-alert mapping design. I gave constraints, they proposed, I challenged, they iterated.
+After that, I handed them ownership of the next phase of testing and design. They validated more complex LexID scenarios and worked through the associated data-modeling questions, such as how LexID should be linked to our internal client identifiers, where that relationship should be stored, and how the system should behave if the vendor's entity resolution changed and a client was assigned a different LexID over time. I provided the constraints and business requirements, reviewed their proposals, and challenged assumptions, but they drove the design work.
 
-Within 6 weeks, they went from no LexID exposure to independently owning entity resolution for the full integration.
- One of them authored the LexID reference document that compliance now uses.
+Within about six weeks, they went from having no exposure to LexID to independently owning the entity-resolution portion of the integration. One of them ultimately authored the LexID reference document that is still used by engineering and compliance teams today.
 
-POCs are one of the best training opportunities — contained scope, real stakes, hands-on learning."
+One lesson I've learned is that POCs are some of the best training opportunities. They have real business impact, but the scope is still contained enough to allow engineers to learn by doing while receiving guidance along the way.
+
 
 Q14: Tell me about a failure or a time something didn't go as expected
 ========================================================================
@@ -683,9 +681,7 @@ That deep dive uncovered real issues that had gone unnoticed. I found inconsiste
 Within a couple of months, I had deep system understanding — arguably deeper than passive onboarding would have given me,
 because I had to reason through why the system worked the way it did rather than simply being shown how it worked.
 
-The lesson: don't wait for context — go get it. That experience shaped how I operate now. 
-It's why I drive clarity proactively, why I led the AI-assisted documentation initiative to make screening logic queryable, and why I structure onboarding 
-deliberately for engineers joining my team — like the LexID training during the Bridger POC."
+The lesson: don't wait for context—go get it. That experience shaped how I operate today. I proactively drive clarity, push for strong documentation, and invest in onboarding and knowledge sharing. That's one of the reasons I led an AI-assisted initiative to make screening logic more transparent and queryable, and why I focus on helping new engineers become productive more quickly.
 
 ============================================================
 ARCHITECTURE DIAGRAM (ASCII)
