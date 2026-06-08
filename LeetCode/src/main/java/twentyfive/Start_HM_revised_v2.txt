@@ -529,6 +529,19 @@ Q9: How is your approach to system design?
 
 "My approach to system design is constraint-first and iterative. Here's how I think about it:
 
+First, I start with constraints rather than solutions. Before discussing technology choices, I want to understand the business requirements, scale expectations, latency targets, regulatory requirements, and failure tolerance. Those constraints usually drive most architectural decisions.
+
+Second, I focus on defining clear boundaries and contracts. I prefer stable, canonical APIs and data models that isolate consumers from implementation details. This reduces coupling and makes systems easier to evolve over time.
+
+Third, I separate concerns and choose the right processing model for the problem. Not every workflow needs to be real-time. I evaluate latency requirements, throughput needs, and operational complexity, then choose the appropriate architecture, whether that's synchronous APIs, event-driven processing, or batch workloads.
+
+Fourth, I design for resilience and observability from the beginning rather than treating them as afterthoughts. That includes retries, idempotency, rate limiting, circuit breakers, monitoring, and auditability so the system behaves predictably under both normal and failure conditions.
+
+Finally, I validate assumptions early, especially when external dependencies are involved. Rather than locking a design based on incomplete information, I prefer targeted testing, prototypes, and incremental iterations to reduce risk before committing to major architectural decisions.
+
+"My approach to system design is constraint-first and iterative. Here's how I think about it:
+
+
 1. Start with constraints, not solutions.
 I first understand the regulatory, scale, and auditability requirements. In financial crimes tech, every design decision must balance performance with the ability to trace and explain outcomes. For example, before designing our batch pipeline, I mapped out SLA requirements (24-hour processing window for 50M records), compliance needs (full audit trail), and failure tolerance expectations.
 
