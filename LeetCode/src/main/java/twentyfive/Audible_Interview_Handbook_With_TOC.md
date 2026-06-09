@@ -421,6 +421,10 @@ vs
 ```java
 int[]
 ```
+* lowercase letters only → `int[26]`
+* full ascii → `int[128]`
+* extended ascii latin → `int[256]`
+* unicode: characters → `hashmap<character,integer>`
 
 ---
 
