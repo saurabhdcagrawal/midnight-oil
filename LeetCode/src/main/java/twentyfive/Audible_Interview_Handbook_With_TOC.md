@@ -5544,7 +5544,7 @@ Total operations:
 
 # Interview Sound Bite
 
-> A single request may remove many expired timestamps. However, every timestamp enters the deque exactly once and leaves exactly once. Therefore the total work across N requests is O(N), resulting in O(1) amortized cost per request.
+> A single request may remove M expired timestamps, resulting in a worst-case execution cost of O(M) where M = maxLimit. However, every single timestamp enters the deque exactly once and leaves exactly once. Therefore, the total work across N requests is bounded at O(N), resulting in a precise O(1) amortized cost per request
 
 ---
 
