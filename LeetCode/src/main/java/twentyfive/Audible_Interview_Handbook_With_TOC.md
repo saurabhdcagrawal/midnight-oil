@@ -704,6 +704,7 @@ ASCII array.
 ## Interview Talking Point
 
 > Since each character enters and exits the window at most once, the total number of pointer movements is bounded by 2N. Therefore the solution runs in O(N) time.
+> Although there is a nested while loop, the left pointer never resets and only moves forward. Every character enters the window once when the right pointer expands the window and leaves the window at most once when the left pointer contracts it. Therefore, the total number of pointer movements across the entire execution is bounded by 2n, giving an amortized time complexity of O(n)
 
 ---
 
