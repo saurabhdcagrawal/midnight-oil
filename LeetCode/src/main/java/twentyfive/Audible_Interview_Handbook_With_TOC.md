@@ -5094,7 +5094,8 @@ HashMap + DLL
 This combination is the standard solution for LRU Cache.
 
 # Chapter 9: Rate Limiter
-
+> Given your extensive experience building high-throughput, low-latency client screening systems, we want to look at a core infrastructure challenge. Your stateless microservice integrates directly with an external compliance vendor API (like Bridger or RDC). This vendor enforces strict, contract-bound rate limits across our enterprise accounts. If we exceed these limits, they will throttle our traffic, causing cascading thread pool exhaustion and breaking our 200–500ms onboarding SLA.To prevent this, we need to implement a local, resilient guardrail within our microservice wrapper.
+> Please design and implement a component that tracks and limits inbound traffic on a granular, per-user basis. The system must evaluate requests relative to a moving time horizon, ensuring that no individual customer can abuse our vendor bandwidth.Your component must expose a method allowRequest(String userId, long currentTime).It must return true if the request fits within the allowed budget, or false if the threshold is breached.The sliding window must be mathematically precise down to the millisecond
 ## Pattern Recognition
 
 When you hear:
