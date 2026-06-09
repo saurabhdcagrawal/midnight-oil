@@ -5545,6 +5545,7 @@ Total operations:
 # Interview Sound Bite
 
 > A single request may remove M expired timestamps, resulting in a worst-case execution cost of O(M) where M = maxLimit. However, every single timestamp enters the deque exactly once and leaves exactly once. Therefore, the total work across N requests is bounded at O(N), resulting in a precise O(1) amortized cost per request
+> The space complexity per unique user is strictly O(M), where M = maxLimit. Because our logic evaluates our budget constraint before allowing entries to persist, the size of each deque is securely bounded by our configuration threshold. Across the entire application, the total memory footprint scales linearly at (O(U *M)), where U is the number of active concurrent users tracking inside our system
 
 ---
 
