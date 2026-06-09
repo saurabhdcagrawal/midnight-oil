@@ -5562,20 +5562,74 @@ O(1)
 per request.
 
 ---
+# Rate Limiter - Sliding Window Log
 
-## Space
+## Clarifying Questions / Assumptions
 
-```text
-O(R)
-```
+1. **Single instance vs distributed system**
 
-Where:
+   * For simplicity, assume the rate limiter runs on a single server instance.
+   * For multiple microservice instances, a distributed store like Redis would be required.
 
-```text
-R = requests currently inside window
-```
+2. **Scale constraints**
 
----
+   * What is the expected number of concurrent users?
+   * What is the expected request throughput (requests per second)?
+
+3. **Rate limiting strategy**
+
+   * Are we implementing a fixed window, sliding window counter, or sliding window log?
+   * Here, we are implementing a **sliding window log**.
+
+4. **Request ordering**
+
+   * Assume requests arrive in chronological order.
+
+5. **Configuration**
+
+   * `maxLimit`: Maximum number of requests allowed.
+   * `windowSize`: Time window in milliseconds.
+
+6. **Window boundary behavior**
+
+   * Should the lower boundary be inclusive or exclusive?
+   * Example:
+
+     * Window = 3600 ms
+     * Request 1 at `100 ms`
+     * Request 2 at `3700 ms`
+   * If using:
+
+     ```java
+     currentTime - oldestTimestamp >= windowSize
+     ```
+
+     then the lower boundary is exclusive:
+
+     ```
+     (currentTime - windowSize, currentTime]
+     ```
+
+7. **Approach**
+
+   * Maintain a `Map<UserId, Deque<Timestamp>>`.
+   * Each user's deque stores request timestamps within the active sliding window.
+   * For every new request:
+
+     1. Remove expired timestamps from the front of the deque.
+     2. If the remaining count is greater than or equal to `maxLimit`, reject the request.
+     3. Otherwise, append the new timestamp and allow the request.
+
+8. **Quota scope**
+
+   * Is the limit applied per user, per API, per client, or globally?
+     
+9. **Thread safety**
+
+* `HashMap` and `ArrayDeque` are not thread-safe.
+* For concurrent requests:
+  * Use per-user locking.
+  * Use concurrent data structures where appropriate such as concurrentHashMap.
 
 # Audible Analogy
 
