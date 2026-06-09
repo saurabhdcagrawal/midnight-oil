@@ -279,39 +279,41 @@ Overall, I'd say my strength is combining technical depth, structured thinking, 
 Q4: Driving clarity / Process improvement / AI usage / Legacy systems
 ======================================================================
 
-"A big part of my impact has been improving clarity in complex screening systems involving multiple vendors and stakeholders.
+A big part of my impact has been improving clarity in complex screening systems involving multiple vendors and stakeholders.
 
-The Problem:
-We had significant tribal knowledge around screening behavior — edge cases, population logic, vendor-specific nuances — 
-leading to repeated confusion, misalignment, and slow onboarding. 
-We estimated new engineers needed 6-8 weeks just to understand the population rules, and compliance teams regularly raised questions 
-that required pulling in senior engineers to answer.
 
-The Initiative:
-I led an AI-assisted modernization effort targeting legacy SQL-based screening population logic embedded in database objects that had evolved over years. 
-The logic was complex, undocumented, and difficult to interpret — especially around inclusion/exclusion rules like 401k retirement filters,
- role-based eligibility, and relationship joins.
 
-Layer 1 — Semantic Extraction:
-I used Claude Sonnet to programmatically analyze the legacy SQL and extract structured representations of table lineage,
- join relationships, inclusion/exclusion logic, and business rules — creating a semantic abstraction layer over the code.
+We had a significant amount of tribal knowledge around screening population logic..The logic contained critical inclusion and exclusion rules that determined which clients were screened for sanctions, PEP, and adverse media monitoring. These business rules were embedded in legacy SQL database objects that had evolved over many years 
 
-Layer 2 — Queryable Reasoning Agent:
-On top of that structured output, I designed an internal Microsoft 365 GPT-based agent that allowed stakeholders
- to ask targeted questions conversationally — for example, 'Why are 401k retirement accounts excluded?' or 'Which roles are included in sanctions screening?'
+Developers were often hesitant to modify the logic because it was difficult to understand. At the same time, compliance teams frequently lacked visibility into how screening populations were actually being determined because many of the rules hadn't been revisited in years.
 
-Architecture:
-It followed a RAG-style pattern — LLM-based semantic extraction first, then an agent layer for contextual reasoning and Q&A, 
-with validation against source SQL to minimize hallucination. We implemented guardrails including source citation and confidence scoring.
+
+I led an AI-assisted initiative to make that logic transparent and queryable.
+
+The solution consisted of two layers.
+
+
+The first layer was a semantic extraction layer. I used Claude Sonnet to analyze legacy SQL and generate structured artifacts describing table lineage, join relationships, inclusion and exclusion criteria, filtering rules, and the business concepts embedded in the code. This transformed complex procedural SQL into a searchable knowledge base that represented the underlying business logic and served as the foundation for the question-answering agent.
+
+The second layer was a query and reasoning layer. I built a Microsoft 365 GPT-based assistant on top of the extracted knowledge that allowed engineers and compliance analysts to ask questions conversationally. For example, users could ask why 401k retirement accounts were excluded from screening, which client roles were included in sanctions screening, or how a particular eligibility rule was applied. The assistant used the structured semantic output as context and provided answers grounded in the extracted logic.
+
+To improve reliability, responses were linked back to source SQL artifacts and supporting documentation so users could verify the reasoning and trace answers to the underlying implementation.
+
+The impact was significant. Engineers became much more comfortable working with the population logic because they could understand the reasoning behind it rather than treating it as a black box. Compliance teams became more self-sufficient, onboarding time for engineers working on population logic dropped significantly, and knowledge that had previously existed in the heads of a few individuals became transparent and searchable.
 
 Impact:
-- Engineer onboarding time for population logic reduced from ~6 weeks to ~2 weeks
 - Compliance Q&A cycles reduced by roughly 60%
 - Turned deeply embedded, opaque logic into something transparent and queryable
 - Both engineering and compliance teams could now reason about screening behavior independently
 
 Key Lesson:
 Systems don't just need to scale technically — knowledge needs to scale as well. Since then, I've been proactive about making system behavior explicit from the start."
+
+Eg:
+Why are 401k accounts excluded?
+Why is a certain client role screened but another isn't?
+Why does a particular join exist?
+Why was a vendor-specific workaround added 5 years ago?
 
 Q5: Tell me a time you faced conflict / influenced decisions
 ============================================================= 
