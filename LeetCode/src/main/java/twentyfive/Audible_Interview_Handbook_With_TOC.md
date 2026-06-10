@@ -8232,6 +8232,202 @@ Monotonic Stack
 ```
 
 ---
+# Monotonic Stack Cheat Sheet
+
+## Step 1: Ask the Question
+
+### Am I looking for a GREATER element or a SMALLER element?
+
+* Looking for **Greater** → Use a **Monotonically Decreasing Stack**
+
+```
+Bottom
+  100
+   80
+   60
+Top
+```
+
+Meaning:
+
+```
+100 > 80 > 60
+```
+
+* Bigger values are at the bottom.
+* Smaller values are near the top.
+* The top contains the nearest smaller candidate.
+
+When the current element is larger:
+
+```
+Current = 75
+
+75 >= 60 → Pop
+75 < 80  → Stop
+```
+
+The smaller elements are useless because the current element is a better candidate.
+
+---
+
+### Looking for SMALLER → Use a Monotonically Increasing Stack
+
+```
+Bottom
+  60
+  80
+ 100
+Top
+```
+
+Meaning:
+
+```
+60 < 80 < 100
+```
+
+* Smaller values are at the bottom.
+* Larger values are near the top.
+
+---
+
+# Step 2: Which Direction Do I Traverse?
+
+## Looking for the NEXT element (future/right side)
+
+Process from:
+
+```
+Right → Left
+```
+
+Because the future elements must already be in the stack.
+
+Examples:
+
+* Daily Temperatures
+* Next Greater Element
+* Next Smaller Element
+
+---
+
+## Looking for the PREVIOUS element (past/left side)
+
+Process from:
+
+```
+Left → Right
+```
+
+Because previous elements have already been seen.
+
+Examples:
+
+* Stock Span (Previous Greater)
+* Previous Greater Element
+* Previous Smaller Element
+
+---
+
+# The Complete Pattern Table
+
+| What am I looking for? | Stack Type           | Traversal    |
+| ---------------------- | -------------------- | ------------ |
+| Next Greater           | Monotonic Decreasing | Right → Left |
+| Previous Greater       | Monotonic Decreasing | Left → Right |
+| Next Smaller           | Monotonic Increasing | Right → Left |
+| Previous Smaller       | Monotonic Increasing | Left → Right |
+
+---
+
+# Quick Memory Rule
+
+```
+Greater → Decreasing Stack
+Smaller → Increasing Stack
+
+Next (future) → Process Right to Left
+Previous (past) → Process Left to Right
+```
+
+---
+
+# Why This Works
+
+A monotonic stack keeps only useful candidates.
+
+For a "greater" problem:
+
+```
+Stack:
+100
+80
+60 (top)
+```
+
+Current = 75:
+
+```
+75 >= 60 → Pop (60 can never be the answer again)
+75 < 80  → Stop
+```
+
+New Stack:
+
+```
+100
+80
+75 (top)
+```
+
+The stack remains monotonically decreasing.
+
+---
+
+# Common Confusion
+
+### Monotonic Decreasing Stack
+
+The order is from **Bottom → Top**:
+
+```
+100
+80
+60
+```
+
+NOT:
+
+```
+60
+80
+100
+```
+
+So:
+
+* Bottom = largest
+* Top = smallest
+
+---
+
+### Monotonic Decreasing Deque (Sliding Window Maximum)
+
+The order is from **Front → Back**:
+
+```
+Front              Back
+100    80    60
+```
+
+So:
+
+* Front = largest (current maximum)
+* Back = smallest
+
+The direction is different because a deque is read from front to back, while a stack is read from bottom to top.
+
 
 ## Common Mistake
 
