@@ -923,7 +923,8 @@ Total operations:
 
 Interview Sound Bite:
 
-> A single iteration may remove multiple elements from the deque. However, every element is inserted once and removed at most once. Across N events, there are at most 2N deque operations. Therefore the amortized complexity is O(1) per operation and O(N) overall.
+> I maintain a monotonic decreasing deque of indices. The front always contains the index of the maximum element in the current window. For every new element, I first remove expired indices from the front, then remove smaller elements from the back because they can never become the maximum. 
+>  A single iteration may remove multiple elements from the deque. However, every element is inserted once and removed at most once. Across N events, there are at most 2N deque operations. Therefore the amortized complexity is O(1) per operation and O(N) overall. The space complexity is O(k).
 
 ---
 
