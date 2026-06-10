@@ -1334,6 +1334,60 @@ patterns.
 
 ---
 
+
+# Stock Spanner - Monotonic Decreasing Stack
+
+```java
+class StockSpanner {
+    Stack<int[]> st;
+
+    public StockSpanner() {
+        st = new Stack<>();
+    }
+
+    public int next(int price) {
+
+        // Pattern recognition:
+        // Previous greater element → Monotonic Stack
+        // Maintain a monotonically decreasing stack (bottom high, top low)
+
+        // Stack stores:
+        // [price, span]
+
+        // Example evolution:
+        // 100:1 => there are 1 elements including itself and to the left that is less than equal to 100
+        // 100:1 80:1 60:1
+        // 100:1 80:1 70:2  (70 absorbs 60's span) .. if you find a higher element remove the lower element, however encode the information as to how many elements to left of it are less than or equal to the number
+        // 100:1 80:1 70:2 60:1
+        // 100:1 80:1 75:4  (75 absorbs 60 and 70's spans)
+        // 100:1 85:6       (85 absorbs 75 and 80's spans)
+
+        // The span represents the number of consecutive days
+        // including today with price <= current price.
+        // We reuse previously computed spans instead of scanning left.
+
+        // Time Complexity:
+        // Each price is pushed once and popped at most once.
+        // Overall: O(N) for N calls
+        // Amortized: O(1) per next() call
+
+        // Space Complexity:
+        // O(N)
+
+        int count = 1;
+
+        while (!st.isEmpty() && price >= st.peek()[0]) {
+            count += st.pop()[1];
+        }
+
+        st.push(new int[]{price, count});
+
+        return count;
+    }
+}
+```
+
+
 # Modern Java Note
 
 Many engineers prefer:
@@ -8190,58 +8244,6 @@ Deque
 when no elements expire.
 
 ---
-
-# Stock Spanner - Monotonic Decreasing Stack
-
-```java
-class StockSpanner {
-    Stack<int[]> st;
-
-    public StockSpanner() {
-        st = new Stack<>();
-    }
-
-    public int next(int price) {
-
-        // Pattern recognition:
-        // Previous greater element → Monotonic Stack
-        // Maintain a monotonically decreasing stack (bottom high, top low)
-
-        // Stack stores:
-        // [price, span]
-
-        // Example evolution:
-        // 100:1 => there are 1 elements including itself and to the left that is less than equal to 100
-        // 100:1 80:1 60:1
-        // 100:1 80:1 70:2  (70 absorbs 60's span) .. if you find a higher element remove the lower element, however encode the information as to how many elements to left of it are less than or equal to the number
-        // 100:1 80:1 70:2 60:1
-        // 100:1 80:1 75:4  (75 absorbs 60 and 70's spans)
-        // 100:1 85:6       (85 absorbs 75 and 80's spans)
-
-        // The span represents the number of consecutive days
-        // including today with price <= current price.
-        // We reuse previously computed spans instead of scanning left.
-
-        // Time Complexity:
-        // Each price is pushed once and popped at most once.
-        // Overall: O(N) for N calls
-        // Amortized: O(1) per next() call
-
-        // Space Complexity:
-        // O(N)
-
-        int count = 1;
-
-        while (!st.isEmpty() && price >= st.peek()[0]) {
-            count += st.pop()[1];
-        }
-
-        st.push(new int[]{price, count});
-
-        return count;
-    }
-}
-```
 
 
 # Monotonic Queue Recognition
