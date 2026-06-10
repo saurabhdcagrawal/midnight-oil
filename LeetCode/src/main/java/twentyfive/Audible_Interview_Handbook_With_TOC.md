@@ -6011,6 +6011,341 @@ Token Bucket
 
 This recognition pattern solves a large class of backend rate-limiting interview problems.
 
+# Hit Counter - Sliding Window Design
+
+## Problem Statement
+
+Design a hit counter that tracks the number of hits received in the past 5 minutes (300 seconds).
+
+Support two operations:
+
+* `hit(timestamp)` → Record a hit at the given timestamp.
+* `getHits(timestamp)` → Return the number of hits in the past 300 seconds.
+
+Assumptions:
+
+* Timestamps are received in chronological order.
+* Multiple hits may occur at the same timestamp.
+* Timestamp granularity is in seconds.
+
+---
+
+# Solution 1: Store Every Hit (No Aggregation)
+
+## Intuition
+
+Store every incoming request as an individual timestamp in a deque.
+
+Example:
+
+```
+hit(100)
+hit(100)
+hit(100)
+hit(101)
+```
+
+Deque:
+
+```
+[100, 100, 100, 101]
+```
+
+---
+
+## Code
+
+```java
+class HitCounter {
+
+    Deque<Integer> hits;
+    int window = 300;
+
+    public HitCounter() {
+        hits = new ArrayDeque<>();
+    }
+
+    public void hit(int timestamp) {
+        hits.offerLast(timestamp);
+    }
+
+    public int getHits(int timestamp) {
+
+        // Remove timestamps outside the sliding window
+        while (!hits.isEmpty() && hits.peekFirst() <= timestamp - window) {
+            hits.pollFirst();
+        }
+
+        return hits.size();
+    }
+}
+```
+
+---
+
+## Complexity
+
+### hit()
+
+```
+O(1)
+```
+
+Append timestamp to the back of the deque.
+
+---
+
+### getHits()
+
+Worst case:
+
+```
+O(N)
+```
+
+if many expired timestamps are removed.
+
+Amortized:
+
+```
+O(1)
+```
+
+because each hit:
+
+* Enters the deque exactly once.
+* Leaves the deque exactly once.
+
+---
+
+### Space Complexity
+
+```
+O(N)
+```
+
+where:
+
+```
+N = total number of hits in the active 300-second window.
+```
+
+Example:
+
+```
+1,000,000 hits at timestamp 100
+```
+
+Deque:
+
+```
+[100, 100, 100, ... 1,000,000 times]
+```
+
+The space depends on the number of requests, not the window size.
+
+---
+
+# Optimization: Aggregate Hits by Timestamp
+
+## Key Observation
+
+Multiple requests arriving at the same second can be combined.
+
+Instead of:
+
+```
+[100, 100, 100, 101]
+```
+
+store:
+
+```
+[100,3], [101,1]
+```
+
+where:
+
+```
+timestamp = 100
+count = 3 hits
+```
+
+---
+
+# Solution 2: Store Timestamp Buckets
+
+## Data Structure
+
+Use:
+
+```java
+Deque<int[]>
+```
+
+where:
+
+```
+int[0] = timestamp
+int[1] = number of hits at that timestamp
+```
+
+Maintain a running `total` so `getHits()` does not need to iterate through all buckets.
+
+---
+
+## Code
+
+```java
+class HitCounter {
+
+    Deque<int[]> hits;
+    int total;
+    int window = 300;
+
+    public HitCounter() {
+        hits = new ArrayDeque<>();
+        total = 0;
+    }
+
+    public void hit(int timestamp) {
+
+        // Same timestamp as latest bucket
+        if (!hits.isEmpty() && hits.peekLast()[0] == timestamp) {
+            hits.peekLast()[1]++;
+        } else {
+            hits.offerLast(new int[]{timestamp, 1});
+        }
+
+        total++;
+    }
+
+    public int getHits(int timestamp) {
+
+        // Remove expired timestamp buckets
+        while (!hits.isEmpty() && hits.peekFirst()[0] <= timestamp - window) {
+            total -= hits.pollFirst()[1];
+        }
+
+        return total;
+    }
+}
+```
+
+---
+
+## Complexity
+
+### hit()
+
+```
+O(1)
+```
+
+Either increment the latest bucket or create a new one.
+
+---
+
+### getHits()
+
+Worst case:
+
+```
+O(U)
+```
+
+where:
+
+```
+U = number of expired timestamp buckets removed.
+```
+
+Amortized:
+
+```
+O(1)
+```
+
+because each timestamp bucket:
+
+* Is inserted once.
+* Is removed once.
+
+---
+
+### Space Complexity
+
+```
+O(U)
+```
+
+where:
+
+```
+U = number of unique timestamps in the active window.
+```
+
+Because timestamps have second granularity:
+
+```
+Maximum unique timestamps in 5 minutes = 300
+```
+
+Therefore:
+
+```
+O(U) = O(300) = O(1)
+```
+
+---
+
+# Interview Takeaway
+
+### Naive Sliding Window
+
+```
+Deque<Integer>
+```
+
+Stores every request.
+
+Space:
+
+```
+O(number of hits)
+```
+
+Simple but does not scale with high traffic.
+
+---
+
+### Optimized Sliding Window with Aggregation
+
+```
+Deque<int[]>
+```
+
+Stores:
+
+```
+[timestamp, count]
+```
+
+Space:
+
+```
+O(number of unique timestamps)
+```
+
+For second-level timestamps and a fixed 5-minute window:
+
+```
+O(300) = O(1)
+```
+
+This is a common production optimization: **convert individual events into time-based aggregated buckets.**
+
+
 # Chapter 10: Time-Series Analytics System
 
 ## Pattern Recognition
