@@ -6413,6 +6413,7 @@ getTopActivities(...)
 
 ---
 
+
 # Interview Clarification Questions
 
 ## Query Volume
@@ -6507,6 +6508,376 @@ Sorted Order
 by timestamp.
 
 ---
+
+# Real-Time Security & Compliance Log Aggregator
+
+## Problem Statement
+
+In large-scale enterprise environments, audit log streaming and compliance monitoring require high-velocity aggregation.
+
+Upstream event-driven ingestion pipelines (such as Kafka clusters) continuously emit telemetry regarding customer behavior, including:
+
+- Authentication attempts
+- Profile changes
+- Compliance screening executions
+- Operational activities
+
+To turn this raw stream into actionable metrics for internal risk auditors, we need an in-memory aggregation engine that can capture high-throughput event logs and provide low-latency analytical queries over arbitrary time ranges.
+
+---
+
+## Requirements
+
+Implement the following APIs:
+
+```java
+void logSession(int userId, int timestamp, String activityType)
+```
+
+Logs an activity performed by a user at the given timestamp.
+
+Example:
+
+```
+User 101 -> LOGIN at 10:01 AM
+User 102 -> PROFILE_UPDATE at 10:02 AM
+```
+
+---
+
+```java
+int getUniqueUserCount(int startTime, int endTime)
+```
+
+Returns the number of distinct users who performed at least one activity in the inclusive time range:
+
+```
+[startTime, endTime]
+```
+
+---
+
+```java
+List<String> getTopActivities(int startTime, int endTime, int k)
+```
+
+Returns the top `k` most frequently occurring activities in the given time range.
+
+Sorting requirements:
+
+1. Higher frequency comes first.
+2. If two activities have the same frequency, alphabetical order acts as a tie-breaker.
+
+Example:
+
+```
+LOGIN   -> 50
+SEARCH  -> 50
+UPDATE  -> 20
+```
+
+Result for `k = 2`:
+
+```
+LOGIN, SEARCH
+```
+
+because LOGIN comes before SEARCH alphabetically.
+
+---
+
+# Design Decision
+
+## Why TreeMap?
+
+All queries are time-range based.
+
+A HashMap would require scanning all timestamps:
+
+```
+O(T)
+```
+
+where:
+
+```
+T = total number of timestamps stored
+```
+
+Instead, TreeMap maintains timestamps in sorted order and supports:
+
+```java
+subMap(startTime, true, endTime, true)
+```
+
+which allows efficient range retrieval.
+
+Time to locate the time range:
+
+```
+O(log T)
+```
+
+---
+
+## Data Model
+
+```java
+TreeMap<Integer, List<Event>> userEventLog;
+```
+
+Structure:
+
+```
+Timestamp
+    |
+    +---- List<Event>
+                |
+                +---- userId
+                +---- activityType
+```
+
+Example:
+
+```
+1000:
+    User 1 -> LOGIN
+    User 2 -> SEARCH
+
+1010:
+    User 1 -> PURCHASE
+```
+
+---
+
+# Java Implementation
+
+```java
+class AnalyticsAggregator {
+
+    // Storage complexity:
+    // O(E) where E is the total number of events.
+    // More precisely O(E + T), but since T <= E, it simplifies to O(E).
+    private TreeMap<Integer, List<Event>> userEventLog;
+
+    public AnalyticsAggregator() {
+        userEventLog = new TreeMap<>();
+    }
+
+    /*
+     * Time Complexity: O(log T)
+     *
+     * TreeMap lookup/insertion takes O(log T)
+     * Adding to ArrayList is O(1)
+     */
+    public void logSession(int userId, int timestamp, String activityType) {
+
+        userEventLog
+            .computeIfAbsent(timestamp, t -> new ArrayList<>())
+            .add(new Event(userId, activityType));
+    }
+
+    /*
+     * Time Complexity:
+     * O(log T + E)
+     *
+     * T = total number of distinct timestamps
+     * E = total number of events in the queried time window
+     *
+     * Extra Space:
+     * O(U)
+     *
+     * U = number of unique users in the queried window
+     */
+    public int getUniqueUserCount(int startTime, int endTime) {
+
+        Map<Integer, List<Event>> window =
+            userEventLog.subMap(startTime, true, endTime, true);
+
+        Set<Integer> users = new HashSet<>();
+
+        for (List<Event> events : window.values()) {
+            for (Event event : events) {
+                users.add(event.userId);
+            }
+        }
+
+        return users.size();
+    }
+
+
+    /*
+     * Time Complexity:
+     * O(log T + E + A log K)
+     *
+     * T = total number of timestamps
+     * E = total number of events in the queried window
+     * A = number of distinct activities
+     *
+     * Extra Space:
+     * O(A + K)
+     */
+    public List<String> getTopActivities(
+            int startTime,
+            int endTime,
+            int k) {
+
+        Map<Integer, List<Event>> window =
+            userEventLog.subMap(startTime, true, endTime, true);
+
+
+        // Build frequency map
+        Map<String, Integer> activityCount = new HashMap<>();
+
+        for (List<Event> events : window.values()) {
+            for (Event event : events) {
+                activityCount.put(
+                    event.activityType,
+                    activityCount.getOrDefault(event.activityType, 0) + 1
+                );
+            }
+        }
+
+
+        /*
+         * Min Heap:
+         *
+         * Lowest frequency remains on top.
+         *
+         * For equal frequency:
+         * Alphabetically larger string is considered smaller
+         * so that it gets removed first.
+         *
+         * Example:
+         *
+         * LOGIN: 5
+         * SEARCH: 5
+         *
+         * Heap removes SEARCH first and keeps LOGIN.
+         */
+        PriorityQueue<String> pq = new PriorityQueue<>(
+            (a, b) -> {
+                int compare =
+                    Integer.compare(
+                        activityCount.get(a),
+                        activityCount.get(b)
+                    );
+
+                if (compare == 0) {
+                    return b.compareTo(a);
+                }
+
+                return compare;
+            }
+        );
+
+
+        // Maintain only top K activities
+        for (String activity : activityCount.keySet()) {
+
+            pq.offer(activity);
+
+            if (pq.size() > k) {
+                pq.poll();
+            }
+        }
+
+
+        /*
+         * PriorityQueue does not iterate in sorted order.
+         * Therefore, remove using poll().
+         */
+        List<String> result = new ArrayList<>();
+
+        while (!pq.isEmpty()) {
+            result.add(pq.poll());
+        }
+
+
+        /*
+         * Current order:
+         *
+         * Lowest frequency -> Highest frequency
+         *
+         * Reverse to get:
+         *
+         * Highest frequency -> Lowest frequency
+         */
+        Collections.reverse(result);
+
+        return result;
+    }
+}
+
+
+class Event {
+
+    int userId;
+    String activityType;
+
+
+    public Event(int userId, String activityType) {
+        this.userId = userId;
+        this.activityType = activityType;
+    }
+}
+```
+
+---
+
+# Complexity Summary
+
+| Operation | Time Complexity | Extra Space |
+|-----------|----------------|-------------|
+| `logSession()` | `O(log T)` | `O(1)` |
+| `getUniqueUserCount()` | `O(log T + E)` | `O(U)` |
+| `getTopActivities()` | `O(log T + E + A log K)` | `O(A + K)` |
+| Overall Storage | - | `O(E)` |
+
+Where:
+
+- `T` = total number of distinct timestamps
+- `E` = total number of events
+- `U` = number of unique users in the query range
+- `A` = number of unique activities in the query range
+
+---
+
+# Scalability Discussion
+
+This design optimizes **locating the time range** but query performance is still proportional to the amount of data in that window.
+
+For very high query volumes, we can introduce pre-aggregated time buckets.
+
+Example:
+
+```
+Hour 10:
+    LOGIN -> 50,000
+    SEARCH -> 20,000
+    PURCHASE -> 5,000
+
+Hour 11:
+    LOGIN -> 70,000
+    SEARCH -> 30,000
+```
+
+Queries spanning multiple hours can combine precomputed aggregates rather than scanning every event.
+
+Possible production optimizations:
+
+- Hourly or minute-level aggregation buckets
+- Secondary indexes by user ID
+- Distributed storage using Kafka + RocksDB/Cassandra
+- Approximate distinct counting using HyperLogLog for large-scale unique user analytics
+
+---
+
+# Interview Talking Points
+
+A strong explanation would be:
+
+> Since every query is time-range based, I chose a TreeMap to maintain timestamps in sorted order and efficiently retrieve a window using `subMap()`. Each timestamp stores a list of events. For unique users, I use a HashSet to deduplicate users in the window. For top activities, I build a frequency map and maintain a size-K min heap to efficiently keep only the most frequent activities. The design provides efficient range lookup while keeping the implementation simple. If query throughput becomes a bottleneck, I would introduce pre-aggregated time buckets or additional indexes depending on the access pattern.
 
 # Data Structure
 
