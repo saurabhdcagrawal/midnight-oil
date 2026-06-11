@@ -4589,6 +4589,459 @@ Doubly Linked List
 
 ---
 
+# LRU Cache Design (O(1) Get and Put)
+
+## Problem Statement
+
+Design a data structure that supports the following operations in **O(1)** average time:
+
+```java
+int get(int key)
+```
+
+* Return the value associated with the key if it exists.
+* Mark the key as the **most recently used** because it was accessed.
+* Return `-1` if the key does not exist.
+
+```java
+void put(int key, int value)
+```
+
+* Insert a new key-value pair.
+* If the key already exists, update its value and mark it as most recently used.
+* If inserting a new key exceeds the cache capacity, evict the **least recently used (LRU)** item.
+
+---
+
+# High-Level Design
+
+To achieve **O(1)** `get()` and `put()`, combine:
+
+1. **HashMap<Key, DLLNode>**
+2. **Doubly Linked List**
+
+The HashMap provides:
+
+```
+O(1) lookup of a node by key
+```
+
+The Doubly Linked List maintains the recency ordering:
+
+```
+front <-> Most Recently Used ... Least Recently Used <-> end
+```
+
+* `front.next` → Most Recently Used (MRU) node
+* `end.prev` → Least Recently Used (LRU) node
+
+---
+
+# Why not use only a HashMap?
+
+A HashMap can give O(1) access to a value by key, but it does not maintain the order of usage.
+
+We need to know:
+
+```
+Which item was used least recently?
+```
+
+A HashMap alone cannot answer this efficiently.
+
+---
+
+# Why a Doubly Linked List and not a Singly Linked List?
+
+When a key is accessed, it must be moved to the front.
+
+Example:
+
+```
+front <-> A <-> B <-> C <-> end
+                 ↑
+             Access B
+```
+
+After access:
+
+```
+front <-> B <-> A <-> C <-> end
+```
+
+This requires removing B from the middle.
+
+With a singly linked list:
+
+```
+remove(B)
+```
+
+requires finding the previous node first:
+
+```
+O(N)
+```
+
+With a doubly linked list, every node stores a pointer to its previous and next node:
+
+```java
+node.prev.next = node.next;
+node.next.prev = node.prev;
+```
+
+Therefore removal is:
+
+```
+O(1)
+```
+
+---
+
+# Why use Dummy Head and Tail Nodes?
+
+Dummy nodes remove boundary edge cases.
+
+Without dummy nodes, we would need special handling for:
+
+* Removing the first element
+* Removing the last element
+* Inserting into an empty list
+
+With:
+
+```
+front <-> end
+```
+
+as the initial state, every real node always has both a previous and next node.
+
+This simplifies the code and avoids null checks.
+
+---
+
+# Java Implementation
+
+```java
+class LRUCache {
+
+    DLLNode front;
+    DLLNode end;
+    Map<Integer, DLLNode> lruMap;
+    int capacity;
+
+    class DLLNode {
+        int key;
+        int value;
+        DLLNode next;
+        DLLNode prev;
+
+        public DLLNode() {}
+
+        public DLLNode(int key, int value) {
+            this.key = key;
+            this.value = value;
+        }
+    }
+
+
+    public LRUCache(int capacity) {
+        this.capacity = capacity;
+
+        lruMap = new HashMap<>();
+
+        front = new DLLNode();
+        end = new DLLNode();
+
+        front.next = end;
+        end.prev = front;
+    }
+
+
+    public int get(int key) {
+
+        if (!lruMap.containsKey(key)) {
+            return -1;
+        }
+
+        DLLNode node = lruMap.get(key);
+
+        // Since this node was accessed,
+        // it becomes the most recently used
+        bringNodeToFront(node);
+
+        return node.value;
+    }
+
+
+    public void put(int key, int value) {
+
+        if (lruMap.containsKey(key)) {
+
+            DLLNode node = lruMap.get(key);
+
+            // Update existing value
+            node.value = value;
+
+            // Move it to the MRU position
+            bringNodeToFront(node);
+
+        } else {
+
+            DLLNode node = new DLLNode(key, value);
+
+            lruMap.put(key, node);
+
+            // New nodes are always most recently used
+            addNodeToFront(node);
+
+            // Evict LRU if capacity exceeded
+            if (lruMap.size() > capacity) {
+                evictLRUCache();
+            }
+        }
+    }
+
+
+    // Add node immediately after front
+    // front <-> node <-> oldFirst
+    public void addNodeToFront(DLLNode node) {
+
+        DLLNode temp = front.next;
+
+        front.next = node;
+        node.prev = front;
+
+        node.next = temp;
+        temp.prev = node;
+    }
+
+
+    // Move an existing node to MRU position
+    public void bringNodeToFront(DLLNode node) {
+
+        removeNode(node);
+
+        addNodeToFront(node);
+    }
+
+
+    // Remove node from any position
+    // A <-> node <-> B
+    // becomes
+    // A <-> B
+    public void removeNode(DLLNode node) {
+
+        node.prev.next = node.next;
+        node.next.prev = node.prev;
+    }
+
+
+    // Remove least recently used node
+    public void evictLRUCache() {
+
+        DLLNode tailNode = end.prev;
+
+        removeNode(tailNode);
+
+        lruMap.remove(tailNode.key);
+    }
+}
+```
+
+---
+
+# Complexity Analysis
+
+## get(key)
+
+HashMap lookup:
+
+```
+O(1)
+```
+
+Removing and moving the node in the doubly linked list:
+
+```
+O(1)
+```
+
+Total:
+
+```
+O(1)
+```
+
+---
+
+## put(key, value)
+
+HashMap insertion/update:
+
+```
+O(1)
+```
+
+Adding or removing a DLL node:
+
+```
+O(1)
+```
+
+Eviction:
+
+```
+O(1)
+```
+
+Total:
+
+```
+O(1)
+```
+
+---
+
+## Space Complexity
+
+The cache stores at most:
+
+```
+capacity
+```
+
+number of nodes.
+
+Each cache entry has:
+
+* One HashMap entry
+* One doubly linked list node
+
+Therefore:
+
+```
+Space = O(capacity)
+```
+
+---
+
+# Thread Safety Discussion
+
+## Is this implementation thread-safe?
+
+No.
+
+Both the HashMap and the Doubly Linked List are mutable data structures.
+
+Example:
+
+Two threads may execute:
+
+```
+Thread A:
+get(1)
+removeNode(node)
+
+Thread B:
+put(2)
+evictLRUCache()
+```
+
+The linked list pointers may become inconsistent, causing corruption.
+
+---
+
+# Simple Solution: Synchronize Operations
+
+Make `get()` and `put()` synchronized:
+
+```java
+public synchronized int get(int key) {
+    // cache logic
+}
+
+public synchronized void put(int key, int value) {
+    // cache logic
+}
+```
+
+This makes the entire cache operation atomic.
+
+---
+
+# Better Approach: ReentrantLock
+
+A `ReentrantLock` gives explicit control over locking.
+
+Example:
+
+```java
+private final ReentrantLock lock = new ReentrantLock();
+
+public int get(int key) {
+
+    lock.lock();
+
+    try {
+        // Cache operations
+    }
+    finally {
+        lock.unlock();
+    }
+}
+```
+
+---
+
+# Why not just use ConcurrentHashMap?
+
+A `ConcurrentHashMap` only protects the map.
+
+The following operations must happen together atomically:
+
+1. Lookup the node from the map.
+2. Remove the node from its current position in the DLL.
+3. Move the node to the front.
+4. Possibly evict the tail node.
+
+Since the HashMap and DLL represent a single shared state, protecting only the map can still leave the linked list corrupted.
+
+---
+
+# ReentrantLock vs synchronized
+
+## synchronized
+
+* Language-level locking mechanism.
+* Simple and easy to use.
+* Automatically releases the lock when the block exits.
+* Less control over lock behavior.
+
+## ReentrantLock
+
+* Explicit lock API.
+* Supports:
+
+  * `tryLock()` to avoid waiting indefinitely.
+  * Fairness policies to reduce thread starvation.
+  * Interruptible lock acquisition.
+  * More flexible lock management.
+
+In high-concurrency systems, `ReentrantLock` often provides better control over thread coordination.
+
+---
+
+# Interview Explanation
+
+A concise senior-level explanation:
+
+> I used a combination of a HashMap and a doubly linked list. The HashMap gives O(1) access to cache nodes by key, while the doubly linked list maintains access order. The head of the list represents the most recently used entry and the tail represents the least recently used entry. Every access moves the node to the front, and when capacity is exceeded, I remove the tail node in O(1). I use a doubly linked list because arbitrary node removal requires a previous pointer, which a singly linked list cannot provide efficiently.
+
+```
+```
+
+
 # Responsibilities
 
 ## HashMap
