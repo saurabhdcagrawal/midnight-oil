@@ -281,21 +281,17 @@ Q4: Driving clarity / Process improvement / AI usage / Legacy systems
 
 A big part of my impact has been improving clarity in complex screening systems involving multiple vendors and stakeholders.
 
-
-
-We had a significant amount of tribal knowledge around screening population logic..The logic contained critical inclusion and exclusion rules that determined which clients were screened for sanctions, PEP, and adverse media monitoring. These business rules were embedded in legacy SQL database objects that had evolved over many years 
+We had a significant amount of tribal knowledge around screening population logic. The logic contained critical inclusion and exclusion rules that determined which clients were screened for sanctions, PEP, and adverse media monitoring. These business rules were embedded in legacy SQL database objects that had evolved over many years 
 
 Developers were often hesitant to modify the logic because it was difficult to understand. At the same time, compliance teams frequently lacked visibility into how screening populations were actually being determined because many of the rules hadn't been revisited in years.
-
 
 I led an AI-assisted initiative to make that logic transparent and queryable.
 
 The solution consisted of two layers.
 
+The first layer was a semantic extraction layer. I used Claude Sonnet to analyze legacy SQL and generate structured artifacts describing table lineage, join relationships, inclusion and exclusion criteria, filtering rules, and the business concepts embedded in the code. This transformed complex procedural SQL into a searchable knowledge base that represented the underlying business logic.
 
-The first layer was a semantic extraction layer. I used Claude Sonnet to analyze legacy SQL and generate structured artifacts describing table lineage, join relationships, inclusion and exclusion criteria, filtering rules, and the business concepts embedded in the code. This transformed complex procedural SQL into a searchable knowledge base that represented the underlying business logic and served as the foundation for the question-answering agent.
-
-The second layer was a query and reasoning layer. I built a Microsoft 365 GPT-based assistant on top of the extracted knowledge that allowed engineers and compliance analysts to ask questions conversationally. For example, users could ask why 401k retirement accounts were excluded from screening, which client roles were included in sanctions screening, or how a particular eligibility rule was applied. The assistant used the structured semantic output as context and provided answers grounded in the extracted logic.
+The second layer was a query and reasoning layer. I built a Microsoft 365 GPT-based assistant on top of the extracted knowledge that allowed engineers and compliance analysts to ask questions conversationally. For example, users could ask why 401k retirement accounts were excluded from screening, which client roles were included in sanctions screening, or how a particular eligibility rule was applied. The assistant used the structured semantic output created in first step as context and provided answers grounded in the extracted logic.
 
 To improve reliability, responses were linked back to source SQL artifacts and supporting documentation so users could verify the reasoning and trace answers to the underlying implementation.
 
