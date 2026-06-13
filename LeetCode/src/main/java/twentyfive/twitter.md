@@ -2619,3 +2619,491 @@ Notifications:
 The key architectural principle of Twitter is:
 
 "Optimize user-facing paths for low latency, and move heavy computation to asynchronous pipelines using Kafka and large-scale processing systems."
+
+# Social Feed Platform Differences
+## Twitter / Facebook / Instagram / LinkedIn Specific Design Considerations
+
+---
+
+# 1. Common Foundation (Applies to All Social Feed Systems)
+
+The following architecture is common across Twitter, Facebook, Instagram, and LinkedIn:
+
+- Content Creation Service
+- User / Social Graph Service
+- Feed Generation Service
+- Fan-out on Write vs Fan-out on Read
+- Redis Feed Cache
+- Cassandra or distributed storage for large-scale content
+- Kafka-based asynchronous pipelines
+- Activity Tracking
+- Recommendation Engine
+- Notifications
+- Data Lake + ML pipelines
+
+The first five parts of this design document cover these common concepts.
+
+This document only focuses on platform-specific differences.
+
+---
+
+# 2. Twitter / X Specific Design Considerations
+
+## 2.1 Directed Social Graph
+
+Twitter follows a directed relationship model.
+
+
+A follows B
+
+A can see B's content.
+
+B does not automatically follow A.
+
+
+Example:
+
+User A --------> User B
+
+
+Data Model:
+
+FollowerId → FollowingId
+
+
+---
+
+## 2.2 Celebrity Problem
+
+Twitter has a very high number of celebrity accounts.
+
+Example:
+
+Celebrity:
+100 million followers
+
+
+Problem:
+
+A single tweet can trigger:
+
+100 million feed updates.
+
+
+Solution:
+
+Use Hybrid Feed Generation.
+
+Normal users:
+- Fan-out on Write
+
+Celebrities:
+- Fan-out on Read
+
+
+---
+
+## 2.3 Search Is a Core Feature
+
+Twitter users frequently search:
+
+- Hashtags
+- Breaking news
+- Trending events
+- Public conversations
+
+
+Architecture:
+
+Tweet Created
+      |
+    Kafka
+      |
+Search Consumer
+      |
+Elasticsearch
+
+
+Use:
+
+- Inverted Indexes
+- Ranking Algorithms
+- Redis caching for hot searches
+
+
+---
+
+## 2.4 Trending Topics
+
+Twitter emphasizes real-time event discovery.
+
+
+Pipeline:
+
+Tweet Events
+      |
+    Kafka
+      |
+Stream Processing (Spark/Flink)
+      |
+Trending Service
+      |
+Redis
+
+
+Examples:
+
+- World Cup
+- Elections
+- Breaking News
+
+
+---
+
+# 3. Facebook Specific Design Considerations
+
+
+## 3.1 Friendship Graph (Bidirectional)
+
+Unlike Twitter follows, Facebook relationships are usually mutual.
+
+
+User A <-------> User B
+
+
+A friendship requires:
+
+- Friend Request
+- Pending State
+- Acceptance or Rejection
+
+
+Example:
+
+FriendRequest:
+
+{
+    requestId,
+    senderId,
+    receiverId,
+    status,
+    timestamp
+}
+
+
+---
+
+## 3.2 Privacy and Access Control (Most Important Difference)
+
+Facebook has complex visibility rules.
+
+A post can have visibility:
+
+- Public
+- Friends
+- Friends of Friends
+- Custom Groups
+- Only Me
+
+
+Feed generation becomes:
+
+
+Candidate Posts
+       |
+ ACL / Privacy Service
+       |
+ Filter Unauthorized Content
+       |
+ Ranking Service
+       |
+ User Feed
+
+
+This is one of the biggest design differences compared with Twitter.
+
+
+---
+
+## 3.3 Media and Photo Albums
+
+Facebook is more media-centric.
+
+Architecture:
+
+
+Photo Upload
+       |
+ Media Service
+       |
+ Object Storage (S3)
+       |
+ CDN
+
+
+Photo metadata may contain:
+
+- PhotoId
+- UserId
+- AlbumId
+- Tags
+- Location
+- Timestamp
+
+
+---
+
+## 3.4 Facebook Stories
+
+Stories are temporary content.
+
+Characteristics:
+
+- Available for 24 hours
+- High read traffic
+- Temporary storage
+
+
+Implementation:
+
+Redis / Cache
+       |
+ TTL
+       |
+ Automatic Expiration
+
+
+---
+
+# 4. Instagram Specific Design Considerations
+
+
+Instagram shares many concepts with Facebook but is even more media focused.
+
+
+## 4.1 Directed Follower Graph
+
+
+User A --------> User B
+
+
+---
+
+## 4.2 Media Processing Pipeline
+
+
+Image/Video Upload
+        |
+ Media Service
+        |
+ Transcoding Service
+        |
+ Multiple Resolutions
+        |
+ Object Storage
+        |
+ CDN
+
+
+Reasons:
+
+- Different device sizes
+- Different network speeds
+- Optimized streaming
+
+
+---
+
+## 4.3 Reels Recommendation System
+
+Reels are heavily ML driven.
+
+
+Ranking signals:
+
+User Features:
+- Watch Time
+- Likes
+- Shares
+- Comments
+- Following History
+
+
+Content Features:
+
+- Topic
+- Creator
+- Popularity
+- Engagement Rate
+
+
+ML Ranking decides which videos appear in the feed.
+
+
+---
+
+## 4.4 Stories
+
+Same concept as Facebook:
+
+- Ephemeral content
+- TTL based expiration
+- Cached for low latency
+
+
+---
+
+# 5. LinkedIn Specific Design Considerations
+
+
+## 5.1 Professional Social Graph
+
+
+Relationships are based on:
+
+- Connections
+- Companies
+- Schools
+- Skills
+- Professional Interests
+
+
+---
+
+## 5.2 Feed Ranking
+
+Ranking signals are different from consumer social networks.
+
+
+Examples:
+
+Professional relevance:
+- Same company
+- Similar industry
+- Shared connections
+- Job interests
+
+
+Engagement:
+
+- Likes
+- Comments
+- Shares
+
+
+Recency:
+
+- Recent posts
+
+
+---
+
+## 5.3 Job Recommendation System
+
+
+Inputs:
+
+User Profile:
+- Skills
+- Experience
+- Industry
+
+
+Job Features:
+- Required skills
+- Location
+- Company
+
+
+ML Matching:
+
+User Profile
+       +
+Job Features
+       +
+Historical Engagement
+       |
+ Recommendation Score
+
+
+---
+
+## 5.4 Notifications
+
+
+Examples:
+
+- Someone viewed your profile
+- New job matches your skills
+- Your connection changed companies
+- Someone liked your post
+
+
+---
+
+# 6. Interview Strategy
+
+Do not memorize four separate architectures.
+
+
+Think in terms of a common social feed platform:
+
+Core Components:
+
+User
+ |
+API Gateway
+ |
+--------------------------------
+|              |               |
+Post        Feed          Social Graph
+Service     Service       Service
+ |
+Kafka
+ |
+------------------------------------------------
+|          |          |          |             |
+Search  Analytics  Notifications  ML      Recommendations
+
+
+Then apply platform-specific modifications.
+
+
+---
+
+# Quick Comparison Table
+
+| Feature | Twitter | Facebook | Instagram | LinkedIn |
+|---|---|---|---|---|
+| Social Graph | Directed Follow | Mutual Friends | Directed Follow | Professional Connections |
+| Main Content | Tweets | Posts/Photos | Photos/Videos/Reels | Professional Posts |
+| Search Importance | Very High | Medium | Low | Medium |
+| Trending Topics | Very High | Medium | Medium | Low |
+| Privacy Complexity | Low | Very High | Medium | Medium |
+| Media Focus | Medium | High | Very High | Low |
+| ML Recommendations | High | Very High | Very High | High |
+| Celebrity Problem | Major | Moderate | Major | Low |
+| Feed Strategy | Hybrid | Hybrid | Hybrid | Hybrid |
+
+---
+
+# Final L6 Interview Perspective
+
+The interviewer is not looking for "Twitter knowledge" or "Facebook knowledge".
+
+The real evaluation is whether you understand:
+
+- Fan-out on Write vs Fan-out on Read
+- Caching strategies
+- Event-driven architectures using Kafka
+- Storage trade-offs
+- Search and indexing
+- Activity tracking
+- ML-based ranking
+- Real-time vs batch processing
+- Scalability and failure handling
+
+
+The platform-specific differences are usually only the last 10–20% of the discussion.
+
+Master the common social feed architecture first, then add these variations.
