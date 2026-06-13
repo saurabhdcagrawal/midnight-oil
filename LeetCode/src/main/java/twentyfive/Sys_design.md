@@ -11835,3 +11835,7008 @@ The result was significantly improved transparency and reduced dependency on SQL
 "AI systems require evaluation pipelines, not just prompts."
 
 "Structured outputs make AI production-ready."
+
+# Microservices & Spring Boot - Part 1
+# Microservices Fundamentals & Architecture
+
+---
+
+# 1. What are Microservices?
+
+Microservices are an architectural style where a software system is composed of multiple small, autonomous services that communicate over a network using well-defined APIs.
+
+Each microservice:
+
+- Runs as an independent process.
+- Owns a specific business capability.
+- Can be developed, deployed, and scaled independently.
+- Communicates with other services through network calls.
+
+Example:
+
+```
+                  E-Commerce Platform
+
+      Product Service      Order Service      Payment Service
+              |                  |                  |
+              ----------------------------------------
+                                 |
+                            API Contracts
+                                 |
+                              Network
+```
+
+Microservices may run as separate processes, containers, or cloud-native workloads managed by platforms like Kubernetes.
+
+---
+
+# 2. Why Microservices?
+
+Microservices allow organizations to:
+
+- Deliver features faster.
+- Scale individual parts of the system independently.
+- Enable independent teams to work autonomously.
+- Improve resilience by isolating failures.
+- Adopt new technologies more safely.
+
+The goal is not to make services as small as possible.
+
+A very large service creates a mini-monolith.
+
+Too many tiny services create unnecessary operational complexity.
+
+The objective is to find the right balance where services remain independent, cohesive, and manageable.
+
+---
+
+# 3. Monolith vs Microservices
+
+## Monolithic Architecture
+
+A monolith is a single deployable application where all modules run inside the same process.
+
+Example:
+
+```
+                 Monolithic Application
+
+          ---------------------------------
+          | User | Order | Payment | Search |
+          ---------------------------------
+                         |
+                      Database
+```
+
+### Advantages
+
+- Simple development and deployment.
+- Easier local testing.
+- No network latency between modules.
+- Simpler transactions.
+
+### Challenges
+
+- Large codebases become difficult to maintain.
+- A change requires redeploying the entire application.
+- Scaling requires replicating the entire application.
+- Technology choices are constrained.
+
+Example:
+
+A checkout component receives 100x more traffic during a sale.
+
+In a monolith:
+
+```
+Scale the entire application
+```
+
+even though only checkout requires more capacity.
+
+---
+
+## Microservice Architecture
+
+Example:
+
+```
+            API Gateway
+                 |
+     --------------------------------
+     |              |               |
+ Product Service  Order Service  Payment Service
+     |              |               |
+ Product DB      Order DB       Payment DB
+```
+
+Each service can:
+
+- Scale independently.
+- Have independent release cycles.
+- Choose different technologies.
+- Fail independently.
+
+Example:
+
+If the payment service fails:
+
+```
+User can still:
+- Browse products.
+- Search items.
+- Add products to cart.
+```
+
+instead of the entire website failing.
+
+---
+
+# 4. Defining Service Boundaries
+
+One of the hardest problems in microservice design is deciding where service boundaries should exist.
+
+This is not a one-time decision.
+
+Service boundaries evolve as the business evolves.
+
+A good boundary is based on a business capability.
+
+Examples:
+
+```
+User Service
+- Registration
+- Authentication
+- Profile Management
+
+
+Order Service
+- Order creation
+- Order tracking
+- Order history
+
+
+Inventory Service
+- Stock availability
+- Inventory updates
+```
+
+---
+
+# 5. Single Responsibility Principle (SRP) Applied to Services
+
+A service should have one reason to change.
+
+The core idea:
+
+> Gather together things that change for the same reason. Separate those things that change for different reasons.
+
+Example:
+
+## Good Boundary
+
+Order Service:
+
+- Validate orders.
+- Apply discounts.
+- Calculate totals.
+
+Why?
+
+Pricing rules and order processing logic often change together.
+
+---
+
+## Bad Boundary
+
+Combining:
+
+```
+Authentication
++
+Order Processing
+```
+
+in the same service.
+
+Reason:
+
+Authentication changes because of security requirements.
+
+Orders change because of business workflows.
+
+They have different reasons to evolve.
+
+---
+
+# 6. Independent Deployment and Loose Coupling
+
+Microservices should be able to change and deploy independently without forcing consumers to change.
+
+Services expose contracts through APIs.
+
+Example:
+
+```
+Client Service
+       |
+       |
+  REST API
+       |
+Order Service
+```
+
+The consumer should depend on the contract, not internal implementation details.
+
+---
+
+## Avoid Excessive Sharing
+
+Sharing internal models across services creates tight coupling.
+
+Bad:
+
+```
+Shared Java library containing OrderEntity
+         |
+ Product Service
+         |
+ Payment Service
+```
+
+Now every change requires coordination.
+
+---
+
+Better:
+
+```
+Order Service
+      |
+   API DTO
+      |
+ Consumers
+```
+
+Each service controls its own internal model.
+
+---
+
+# 7. Database Ownership
+
+A common microservice principle:
+
+```
+Database per Service
+```
+
+Example:
+
+```
+Order Service
+      |
+ Order Database
+
+
+Inventory Service
+      |
+ Inventory Database
+```
+
+Advantages:
+
+- Independent schema changes.
+- Independent scaling.
+- Better service ownership.
+
+---
+
+## Why Shared Databases are Dangerous
+
+Bad:
+
+```
+Order Service
+        |
+        |
+ Shared Database
+        |
+        |
+Inventory Service
+```
+
+Problems:
+
+- Tight coupling.
+- Cross-service dependencies.
+- Difficult schema evolution.
+- Coordinated deployments.
+
+---
+
+# 8. Technology Heterogeneity
+
+Microservices allow teams to choose the best technology for each problem.
+
+Example:
+
+A social media platform may use:
+
+```
+User Relationships
+       |
+ Graph Database
+
+
+User Posts
+       |
+ Document Database
+
+
+Payments
+       |
+ Relational Database
+```
+
+Different workloads have different requirements.
+
+---
+
+## Advantages
+
+- Use the best database for each use case.
+- Adopt new programming languages gradually.
+- Experiment with new frameworks with lower risk.
+
+Example:
+
+A team can rewrite a small service in a new language in weeks, rather than rewriting an entire monolith.
+
+---
+
+# 9. Independent Scaling
+
+In a monolith:
+
+```
+High Traffic in Checkout
+           |
+ Scale Entire Application
+```
+
+This wastes resources.
+
+---
+
+With microservices:
+
+```
+Checkout Service
+       |
+ Add more instances
+
+
+Profile Service
+       |
+ Keep existing capacity
+```
+
+This allows better resource utilization.
+
+---
+
+## Cloud-Native Scaling
+
+Container orchestration platforms such as Kubernetes enable:
+
+- Automatic scaling based on traffic.
+- Dynamic provisioning of instances.
+- Health monitoring.
+- Automatic replacement of failed instances.
+
+---
+
+# 10. Configuration Management Challenges
+
+A microservice ecosystem may have:
+
+- Many services.
+- Multiple instances of each service.
+- Multiple environments (dev, QA, prod).
+
+Managing configuration manually becomes difficult.
+
+---
+
+## Centralized Configuration
+
+Solutions:
+
+- Spring Cloud Config.
+- Consul.
+- etcd.
+
+Example:
+
+```
+             Git Repository
+                   |
+          Spring Cloud Config
+                   |
+       ---------------------------
+       |             |            |
+   Product       Order       Inventory
+   Service       Service     Service
+```
+
+Benefits:
+
+- Centralized configuration.
+- Environment-specific properties.
+- Easier operational management.
+
+---
+
+# 11. Visibility, Monitoring, and Logging
+
+As the number of services increases, debugging becomes more difficult.
+
+A single user request may flow through many services.
+
+Example:
+
+```
+Client
+  |
+API Gateway
+  |
+Order Service
+  |
+Inventory Service
+  |
+Database
+```
+
+Requirements:
+
+## Centralized Logging
+
+Aggregate logs from all services.
+
+Examples:
+
+- ELK stack.
+- Splunk.
+
+---
+
+## Metrics and Monitoring
+
+Monitor:
+
+- Request latency.
+- Error rates.
+- CPU and memory.
+- Service health.
+
+Tools:
+
+- Prometheus.
+- Grafana.
+
+---
+
+# 12. Fault Tolerance and Resilience
+
+Distributed systems fail.
+
+A service may fail because of:
+
+- Network issues.
+- Timeouts.
+- Dependency outages.
+- Resource exhaustion.
+
+Failures should be isolated.
+
+Example:
+
+```
+Order Service
+       |
+       X
+Inventory Service Down
+```
+
+Order Service should degrade gracefully instead of causing a complete system outage.
+
+---
+
+## Common Resilience Techniques
+
+### Timeouts
+
+Avoid waiting indefinitely for slow services.
+
+---
+
+### Retries
+
+Retry transient failures.
+
+Use exponential backoff with jitter to avoid retry storms.
+
+---
+
+### Circuit Breakers
+
+Stop sending requests to an unhealthy dependency.
+
+States:
+
+```
+Closed
+  |
+Failure threshold reached
+  |
+Open
+  |
+After timeout
+  |
+Half Open
+```
+
+---
+
+### Fallbacks
+
+Return:
+
+- Cached data.
+- Default responses.
+- Partial functionality.
+
+---
+
+# 13. Challenges of Microservices
+
+Microservices are not free.
+
+Benefits come with additional complexity.
+
+Challenges include:
+
+- Network latency.
+- Partial failures.
+- Distributed debugging.
+- Data consistency challenges.
+- Deployment complexity.
+- Monitoring many moving parts.
+- Increased operational overhead.
+
+---
+
+# 14. L6 Interview Discussion
+
+## How do you decide service boundaries?
+
+I align services around business capabilities and the principle:
+
+"Things that change together should stay together. Things that change for different reasons should be separated."
+
+---
+
+## Why not make services extremely small?
+
+Very small services increase:
+
+- Network calls.
+- Operational complexity.
+- Deployment overhead.
+
+The goal is cohesive, independently deployable services.
+
+---
+
+## Why does a microservice own its database?
+
+Because shared databases create tight coupling and prevent independent evolution.
+
+---
+
+## What is the biggest downside of microservices?
+
+Operational complexity.
+
+You trade simple in-process communication for:
+
+- Network calls.
+- Failure handling.
+- Monitoring.
+- Distributed data management.
+
+---
+
+# Key Takeaways
+
+1. Microservices organize systems around business capabilities.
+
+2. Service boundaries are more important than the number of services.
+
+3. Services should be independently deployable.
+
+4. Avoid shared databases and shared internal models.
+
+5. Microservices allow independent scaling and technology choices.
+
+6. Distributed systems require resilience, observability, and automation.
+
+7. Microservices provide flexibility but introduce operational complexity.
+
+# L6 Interview Soundbites
+
+## When would you choose a monolith over microservices?
+
+"Microservices provide independent scaling, deployment, and team autonomy, but they introduce distributed system complexity such as network failures, distributed tracing, data consistency challenges, and operational overhead. For a small team or a simple product, a well-designed modular monolith is often the better choice."
+
+---
+
+## How do you decide microservice boundaries?
+
+"I do not split services based on technical layers. I align service boundaries around business capabilities and the principle that things which change together should stay together, while things that evolve independently should be separated."
+
+---
+
+## Why avoid a shared database?
+
+"Sharing a database creates tight coupling between services because schema changes require coordination between teams. Database-per-service preserves ownership, allows independent evolution, and enables each service to choose storage technology that best fits its workload."
+
+# Microservices & Spring Boot - Part 2
+# Web Services, SOAP, REST & HTTP Fundamentals
+
+---
+
+# 1. What is a Web Service?
+
+A web service is a software component that allows applications running on different platforms and technologies to communicate over a network using a standardized interface.
+
+Example:
+
+```
+Java Application
+       |
+       | HTTP / Messaging
+       |
+Python Application
+       |
+       | HTTP / Messaging
+       |
+.NET Application
+```
+
+The goal is interoperability.
+
+A Java service should be able to communicate with a Python service or a .NET service without needing to know their internal implementation.
+
+---
+
+# 2. Characteristics of a Good Web Service
+
+A good web service should provide:
+
+- A well-defined contract.
+- Technology independence.
+- Platform independence.
+- Loose coupling.
+- Standard communication protocols.
+- Security.
+- Reliability.
+
+---
+
+# 3. Service Contract
+
+A service contract defines:
+
+- What operations are available.
+- What inputs are required.
+- What outputs are returned.
+- What errors may occur.
+- How consumers interact with the service.
+
+---
+
+Examples:
+
+REST:
+
+```
+OpenAPI / Swagger specification
+```
+
+SOAP:
+
+```
+WSDL (Web Services Description Language)
+```
+
+A good contract allows client applications to integrate without knowing the service internals.
+
+---
+
+# 4. Communication Protocols
+
+Web services communicate using standard protocols.
+
+Examples:
+
+### HTTP/HTTPS
+
+Most common for modern APIs.
+
+Example:
+
+```
+Client
+  |
+HTTP Request
+  |
+Service
+  |
+HTTP Response
+  |
+Client
+```
+
+---
+
+### Message-Based Communication
+
+Examples:
+
+- Kafka
+- JMS
+- RabbitMQ
+
+Useful for asynchronous communication.
+
+Example:
+
+```
+Producer
+   |
+ Message Broker
+   |
+ Consumer
+```
+
+Benefits:
+
+- Decoupling.
+- Buffering spikes.
+- Independent scaling.
+- Event-driven architectures.
+
+---
+
+# 5. SOAP Architecture
+
+SOAP (Simple Object Access Protocol) is a protocol for exchanging structured messages between applications.
+
+SOAP messages are typically XML based.
+
+---
+
+## SOAP Message Structure
+
+```
+SOAP Envelope
+     |
+     |--- Header
+     |
+     |--- Body
+```
+
+---
+
+### Envelope
+
+The outer container defining the SOAP message.
+
+---
+
+### Header
+
+Contains metadata.
+
+Examples:
+
+- Authentication information.
+- Security tokens.
+- Transaction information.
+- Routing details.
+
+---
+
+### Body
+
+Contains the actual request or response payload.
+
+Example:
+
+```
+<SOAP-Body>
+    <GetCustomerRequest>
+        <customerId>123</customerId>
+    </GetCustomerRequest>
+</SOAP-Body>
+```
+
+---
+
+# 6. SOAP Characteristics
+
+## Advantages
+
+### Strong Contract
+
+WSDL defines exactly:
+
+- Available operations.
+- Request schema.
+- Response schema.
+
+---
+
+### Built-in Standards
+
+SOAP supports standards such as:
+
+- WS-Security
+- Reliable messaging
+- Transactions
+
+---
+
+### Language Independent
+
+A Java service can communicate with a .NET service using the same contract.
+
+---
+
+## Disadvantages
+
+- XML payloads are large.
+- More bandwidth consumption.
+- More parsing overhead.
+- More complex development.
+
+---
+
+# 7. REST Architecture
+
+REST (Representational State Transfer) is an architectural style rather than a strict protocol.
+
+REST models the system around resources.
+
+Examples:
+
+```
+GET /customers/123
+
+POST /customers
+
+DELETE /customers/123
+```
+
+---
+
+The HTTP method represents the action:
+
+```
+GET    -> Retrieve
+POST   -> Create
+PUT    -> Replace
+PATCH  -> Partial update
+DELETE -> Remove
+```
+
+---
+
+# 8. REST Principles
+
+## Stateless Communication
+
+Every request contains all information required to process it.
+
+Example:
+
+```
+GET /accounts/123
+
+Authorization:
+Bearer JWT_TOKEN
+```
+
+The server does not store client session state.
+
+---
+
+## Resource-Oriented Design
+
+Good:
+
+```
+/customers/123/orders
+```
+
+Bad:
+
+```
+/getCustomerOrders?id=123
+```
+
+---
+
+## Representation
+
+A resource can have different representations.
+
+Examples:
+
+- JSON
+- XML
+- Protocol Buffers
+
+Modern REST APIs commonly use JSON.
+
+---
+
+# 9. SOAP vs REST
+
+| Feature | SOAP | REST |
+|---|---|---|
+| Type | Protocol | Architectural style |
+| Data Format | Usually XML | JSON, XML, etc. |
+| Contract | WSDL | OpenAPI |
+| Complexity | Higher | Lower |
+| Payload Size | Larger | Smaller |
+| Performance | Slower | Faster |
+| State | Can be stateful | Usually stateless |
+| Flexibility | Lower | Higher |
+
+---
+
+# 10. When to Use SOAP
+
+SOAP is often used in:
+
+- Banking.
+- Insurance.
+- Government systems.
+- Legacy enterprise integrations.
+
+Reasons:
+
+- Strict contracts.
+- Strong security standards.
+- Reliable messaging.
+- Transaction support.
+
+---
+
+# 11. When to Use REST
+
+REST is preferred for:
+
+- Microservices.
+- Mobile applications.
+- Web applications.
+- Public APIs.
+- Cloud-native systems.
+
+Reasons:
+
+- Lightweight.
+- Easier development.
+- Better scalability.
+- Better browser support.
+
+---
+
+# 12. Synchronous vs Asynchronous Communication
+
+## Synchronous Communication
+
+The caller waits for a response.
+
+Example:
+
+```
+Order Service
+       |
+       | HTTP
+       |
+Inventory Service
+       |
+       |
+Response
+```
+
+---
+
+### Advantages
+
+- Simple.
+- Immediate response.
+- Easier debugging.
+
+---
+
+### Disadvantages
+
+- Higher coupling.
+- Increased latency.
+- Dependency failures propagate.
+
+---
+
+# Example Problem
+
+Order Service calls:
+
+```
+Inventory Service
+       |
+       |
+Slow response (10 seconds)
+```
+
+Order Service threads become blocked.
+
+This may cause:
+
+- Thread pool exhaustion.
+- Increased latency.
+- Cascading failures.
+
+---
+
+# 13. Asynchronous Communication
+
+The caller sends an event and continues processing.
+
+Example:
+
+```
+Order Created Event
+        |
+      Kafka
+        |
+-----------------
+|               |
+Inventory     Notification
+Service       Service
+```
+
+---
+
+## Advantages
+
+- Loose coupling.
+- Better scalability.
+- Failure isolation.
+- Independent consumer scaling.
+- Replay capability.
+
+---
+
+## Disadvantages
+
+- Eventual consistency.
+- More operational complexity.
+- Harder debugging.
+
+---
+
+# 14. Choosing Communication Style
+
+Use synchronous communication when:
+
+- Immediate response is required.
+- Data consistency is needed at request time.
+
+Examples:
+
+- Authentication.
+- Payment authorization.
+- Inventory availability check.
+
+---
+
+Use asynchronous communication when:
+
+- The operation does not affect the user response immediately.
+
+Examples:
+
+- Sending emails.
+- Analytics.
+- Notifications.
+- Generating reports.
+
+---
+
+# 15. L6 Interview Soundbites
+
+## Why is REST preferred for microservices?
+
+"REST provides a lightweight, stateless, and simple communication model that scales well in distributed systems. It works naturally with HTTP infrastructure such as load balancers, gateways, and caching layers."
+
+---
+
+## When would you choose SOAP over REST?
+
+"SOAP is valuable in enterprise environments where strict contracts, advanced security standards, reliable messaging, or transactional guarantees are required. REST is usually preferred for modern cloud-native services because of its simplicity and lower overhead."
+
+---
+
+## When should you use asynchronous communication?
+
+"I use asynchronous communication when the operation does not need to be completed in the user-facing request path. Moving it to an event-driven pipeline reduces latency, improves resilience, and allows independent scaling of downstream consumers."
+
+---
+
+## Why can synchronous communication become dangerous at scale?
+
+"Each synchronous dependency increases latency and creates a failure path. A slow downstream service can exhaust threads, increase response times, and cause cascading failures. We mitigate this using timeouts, circuit breakers, retries, and sometimes asynchronous patterns."
+
+---
+
+# Key Takeaways
+
+1. Web services enable communication between independent systems.
+
+2. Service contracts define how consumers interact with services.
+
+3. SOAP provides strong contracts and enterprise features but has higher complexity.
+
+4. REST is lightweight and widely used in modern microservices.
+
+5. Synchronous calls are simple but increase coupling.
+
+6. Asynchronous messaging improves scalability and resilience but introduces eventual consistency.
+
+7. The communication model should be chosen based on business requirements and trade-offs.
+
+# Microservices & Spring Boot - Part 3
+# Spring Framework Core: IoC, Dependency Injection, Beans & AOP
+
+---
+
+# 1. What Problem Did Spring Solve?
+
+Before Spring, enterprise Java applications had several challenges:
+
+- Objects manually created their own dependencies.
+- Tight coupling between components.
+- Difficult unit testing.
+- Complex XML-based configuration.
+- Boilerplate infrastructure code.
+
+Example without dependency injection:
+
+```java
+public class OrderService {
+
+    private PaymentService paymentService =
+            new PaymentService();
+
+    public void placeOrder() {
+        paymentService.processPayment();
+    }
+}
+```
+
+Problems:
+
+- OrderService is tightly coupled to PaymentService.
+- Difficult to replace PaymentService with another implementation.
+- Hard to mock during testing.
+
+---
+
+# 2. Inversion of Control (IoC)
+
+## Traditional Approach
+
+The application controls object creation.
+
+```
+Application
+     |
+new PaymentService()
+```
+
+The object manages its own dependencies.
+
+---
+
+## IoC Approach
+
+Control of object creation is delegated to the Spring container.
+
+```
+Application
+      |
+Spring Container
+      |
+Creates Objects
+      |
+Injects Dependencies
+```
+
+This inversion of responsibility is called **Inversion of Control (IoC)**.
+
+---
+
+# 3. Dependency Injection (DI)
+
+Dependency Injection is the primary mechanism Spring uses to implement IoC.
+
+Instead of a class creating its dependencies:
+
+Bad:
+
+```java
+class OrderService {
+
+ private PaymentService paymentService =
+       new PaymentService();
+
+}
+```
+
+Spring injects the dependency:
+
+Good:
+
+```java
+@Service
+public class OrderService {
+
+ private final PaymentService paymentService;
+
+ public OrderService(PaymentService paymentService) {
+    this.paymentService = paymentService;
+ }
+
+}
+```
+
+The Spring container creates the PaymentService object and injects it into OrderService.
+
+---
+
+# 4. Why Dependency Injection Is Important
+
+Benefits:
+
+## Loose Coupling
+
+OrderService depends on an abstraction, not the concrete implementation.
+
+Example:
+
+```
+PaymentService interface
+           |
+ ------------------------
+ |                      |
+CreditCardService   PaypalService
+```
+
+The implementation can change without modifying the consumer.
+
+---
+
+## Easier Testing
+
+Example:
+
+```
+OrderService
+      |
+Mock PaymentService
+```
+
+Unit tests can replace real dependencies with mocks.
+
+---
+
+## Better Maintainability
+
+Different implementations can be selected using:
+
+- Profiles
+- Conditional beans
+- Configuration
+
+---
+
+# 5. Types of Dependency Injection
+
+## Constructor Injection (Recommended)
+
+Example:
+
+```java
+public class UserService {
+
+ private final UserRepository repository;
+
+ public UserService(UserRepository repository) {
+      this.repository = repository;
+ }
+}
+```
+
+Advantages:
+
+- Makes dependencies explicit.
+- Allows immutable fields.
+- Easier testing.
+- Guarantees the object is created in a valid state.
+
+---
+
+## Setter Injection
+
+Example:
+
+```java
+public class UserService {
+
+ private UserRepository repository;
+
+ public void setRepository(UserRepository repository) {
+      this.repository = repository;
+ }
+}
+```
+
+Useful when a dependency is optional.
+
+---
+
+Disadvantages:
+
+- Object may exist without required dependencies.
+- Mutable state.
+
+---
+
+## Field Injection
+
+Example:
+
+```java
+@Autowired
+private UserRepository repository;
+```
+
+---
+
+Why it is discouraged:
+
+- Hidden dependencies.
+- Difficult unit testing.
+- Cannot create immutable objects.
+
+---
+
+# 6. Spring Container
+
+The Spring container is responsible for:
+
+- Creating beans.
+- Managing their lifecycle.
+- Resolving dependencies.
+- Applying configuration.
+
+The two main containers are:
+
+## BeanFactory
+
+Basic IoC container.
+
+Features:
+
+- Lightweight.
+- Lazy initialization.
+
+---
+
+## ApplicationContext
+
+The commonly used Spring container.
+
+Adds:
+
+- Event support.
+- Internationalization.
+- AOP integration.
+- Automatic bean post-processing.
+
+---
+
+# 7. What Is a Bean?
+
+A bean is an object whose lifecycle is managed by the Spring container.
+
+Examples:
+
+```java
+@Service
+class OrderService {}
+```
+
+```java
+@Repository
+class OrderRepository {}
+```
+
+```java
+@Controller
+class UserController {}
+```
+
+Spring discovers these classes and creates objects called beans.
+
+---
+
+# 8. How Does Spring Discover Beans?
+
+## Component Scanning
+
+Spring scans packages for annotations:
+
+```
+@Component
+@Service
+@Repository
+@Controller
+@RestController
+```
+
+Example:
+
+```
+com.company.app
+        |
+     Spring scans
+        |
+Creates beans
+```
+
+---
+
+# 9. @Component vs @Service vs @Repository
+
+Technically they all create beans.
+
+The difference is semantic.
+
+---
+
+## @Component
+
+Generic Spring-managed bean.
+
+Example:
+
+```
+Utility classes
+Helper components
+```
+
+---
+
+## @Service
+
+Represents business logic.
+
+Example:
+
+```
+OrderService
+PaymentService
+```
+
+---
+
+## @Repository
+
+Represents the persistence layer.
+
+Additional benefit:
+
+Spring translates database-specific exceptions into Spring's DataAccessException hierarchy.
+
+---
+
+## @Controller / @RestController
+
+Handle HTTP requests.
+
+---
+
+# 10. Bean Lifecycle
+
+A typical lifecycle:
+
+```
+1. Spring starts
+
+2. Bean definition loaded
+
+3. Bean instance created
+
+4. Dependencies injected
+
+5. BeanPostProcessor executes
+
+6. Initialization methods execute
+
+7. Bean ready for use
+
+Application running...
+
+8. Shutdown event
+
+9. Destroy methods execute
+```
+
+---
+
+## Initialization Methods
+
+Examples:
+
+```java
+@PostConstruct
+public void init() {
+    // initialize resources
+}
+```
+
+---
+
+## Destruction Methods
+
+Examples:
+
+```java
+@PreDestroy
+public void cleanup() {
+    // release resources
+}
+```
+
+---
+
+# 11. Bean Scopes
+
+## Singleton (Default)
+
+One instance per Spring container.
+
+Example:
+
+```
+ApplicationContext
+        |
+    OrderService
+        |
+    Single Instance
+```
+
+Most services use this scope.
+
+---
+
+## Prototype
+
+A new bean instance is created every time it is requested.
+
+Example:
+
+```
+Request bean #1
+
+Request bean #2
+```
+
+---
+
+## Request Scope
+
+One bean per HTTP request.
+
+Useful for request-specific data.
+
+---
+
+## Session Scope
+
+One bean per HTTP session.
+
+Common in traditional web applications.
+
+---
+
+# 12. Aspect-Oriented Programming (AOP)
+
+AOP separates cross-cutting concerns from business logic.
+
+Examples of cross-cutting concerns:
+
+- Logging
+- Security
+- Transactions
+- Metrics
+- Auditing
+
+---
+
+Without AOP:
+
+```
+OrderService
+
+Start log
+
+Validate permissions
+
+Execute business logic
+
+Write metrics
+```
+
+The business logic becomes cluttered.
+
+---
+
+With AOP:
+
+```
+Logging Aspect
+
+Security Aspect
+
+Transaction Aspect
+
+      |
+      V
+
+OrderService
+```
+
+---
+
+# 13. Core AOP Concepts
+
+## Aspect
+
+A class containing cross-cutting logic.
+
+Example:
+
+```
+LoggingAspect
+```
+
+---
+
+## Join Point
+
+A point during execution where an aspect can run.
+
+Example:
+
+```
+Method execution
+```
+
+---
+
+## Pointcut
+
+A rule defining where advice applies.
+
+Example:
+
+```
+All methods inside service package.
+```
+
+---
+
+## Advice
+
+The action performed.
+
+Types:
+
+- Before
+- After
+- Around
+- After returning
+- After throwing
+
+---
+
+# 14. Dynamic Proxies in Spring AOP
+
+Spring does not modify your classes directly.
+
+It creates proxy objects.
+
+Example:
+
+```
+Client
+ |
+Proxy
+ |
+OrderService
+```
+
+The proxy can execute extra behavior before or after the method call.
+
+---
+
+Example:
+
+```
+Transaction Proxy
+
+Start Transaction
+
+Call Service Method
+
+Commit/Rollback
+```
+
+---
+
+This is how features like `@Transactional` work internally.
+
+---
+
+# 15. L6 Interview Soundbites
+
+## What is IoC?
+
+"Instead of application code controlling object creation, the responsibility is delegated to the Spring container. The container creates objects, manages their lifecycle, and injects dependencies."
+
+---
+
+## Why is constructor injection preferred?
+
+"Constructor injection makes dependencies explicit, allows immutable objects, and makes classes easier to test. It ensures a bean cannot be created without its required dependencies."
+
+---
+
+## Why is field injection discouraged?
+
+"Field injection hides dependencies, makes unit testing harder, and prevents immutable design."
+
+---
+
+## Why do we need AOP?
+
+"AOP allows us to separate cross-cutting concerns such as transactions, logging, security, and metrics from business logic, resulting in cleaner and more maintainable code."
+
+---
+
+## How does @Transactional work internally?
+
+"Spring creates a proxy around the bean. The proxy starts a transaction before invoking the method, and then commits or rolls back the transaction based on the outcome."
+
+---
+
+# Key Takeaways
+
+1. IoC means Spring controls object creation and lifecycle.
+
+2. Dependency Injection promotes loose coupling and testability.
+
+3. Constructor injection is the preferred approach.
+
+4. Beans are objects managed by the Spring container.
+
+5. Component scanning discovers beans automatically.
+
+6. ApplicationContext is the primary Spring container.
+
+7. Bean lifecycle includes creation, dependency injection, initialization, and destruction.
+
+8. AOP handles cross-cutting concerns using proxies.
+
+9. Spring features like transactions, security, and logging rely heavily on AOP.
+
+# Microservices & Spring Boot - Part 4
+# Spring Boot Internals & Production REST APIs
+
+---
+
+# 1. Why Was Spring Boot Created?
+
+Traditional Spring applications required significant configuration.
+
+Challenges included:
+
+- Managing dependency versions.
+- XML configuration.
+- Manual servlet container setup.
+- Boilerplate configuration.
+- Additional effort to make applications production-ready.
+
+Example:
+
+Before Spring Boot:
+
+```
+Application
+    |
+Configure Spring Context
+    |
+Configure DispatcherServlet
+    |
+Configure Tomcat Server
+    |
+Manage dependency versions
+```
+
+This resulted in a lot of setup code before developers could focus on business logic.
+
+---
+
+# 2. Spring Framework vs Spring Boot
+
+## Spring Framework
+
+Provides the core capabilities:
+
+- IoC Container.
+- Dependency Injection.
+- AOP.
+- Transaction Management.
+- Spring MVC.
+- Data Access.
+- Security.
+
+Spring provides the foundation.
+
+---
+
+## Spring Boot
+
+Spring Boot builds on top of Spring and provides:
+
+- Auto-configuration.
+- Opinionated defaults.
+- Starter dependencies.
+- Embedded servers.
+- Externalized configuration.
+- Production-ready features.
+
+---
+
+## Interview Soundbite
+
+"Spring Framework provides the core programming model such as IoC, dependency injection, and AOP. Spring Boot reduces the amount of configuration required by providing auto-configuration, sensible defaults, and production-ready capabilities."
+
+---
+
+# 3. Spring Boot Starters
+
+A starter is a curated set of dependencies for a specific functionality.
+
+Examples:
+
+## Web Applications
+
+```
+spring-boot-starter-web
+```
+
+Includes:
+
+- Spring MVC.
+- Embedded Tomcat.
+- Jackson.
+- Validation libraries.
+
+---
+
+## Database Applications
+
+```
+spring-boot-starter-data-jpa
+```
+
+Includes:
+
+- Spring Data JPA.
+- Hibernate.
+- Transaction management.
+
+---
+
+## Security
+
+```
+spring-boot-starter-security
+```
+
+Includes:
+
+- Spring Security.
+- Authentication filters.
+- Authorization mechanisms.
+
+---
+
+## Why Starters Matter
+
+Without starters:
+
+```
+Developer manually chooses:
+
+Jackson version
+Tomcat version
+Spring MVC version
+Logging libraries
+```
+
+Potential issues:
+
+- Dependency conflicts.
+- Incompatible versions.
+
+---
+
+With starters:
+
+Spring Boot manages compatible versions.
+
+---
+
+# 4. Auto-Configuration
+
+## The Problem
+
+Different applications require different infrastructure components.
+
+Example:
+
+A REST application needs:
+
+- DispatcherServlet.
+- Jackson ObjectMapper.
+- HTTP message converters.
+- Embedded web server.
+
+A database application needs:
+
+- DataSource.
+- EntityManager.
+- TransactionManager.
+
+---
+
+## How Auto-Configuration Works
+
+At startup Spring Boot:
+
+```
+Read classpath
+       |
+Detect available libraries
+       |
+Evaluate conditions
+       |
+Create required beans
+```
+
+Example:
+
+If:
+
+```
+spring-boot-starter-web
+```
+
+is present:
+
+Spring Boot configures:
+
+- DispatcherServlet.
+- Jackson.
+- Default error handling.
+- Embedded Tomcat.
+
+---
+
+## Conditional Configuration
+
+Auto-configuration uses conditions.
+
+Examples:
+
+```
+@ConditionalOnClass
+
+@ConditionalOnMissingBean
+
+@ConditionalOnProperty
+```
+
+---
+
+Example:
+
+```
+If no custom ObjectMapper exists:
+
+Create default ObjectMapper.
+```
+
+---
+
+## Interview Soundbite
+
+"Spring Boot auto-configuration uses conditional bean creation. It examines the classpath and application configuration and automatically creates infrastructure beans when the required dependencies are present."
+
+---
+
+# 5. Embedded Server
+
+Traditional applications:
+
+```
+Application
+      |
+WAR File
+      |
+External Tomcat
+```
+
+Deployment team installs and manages the server.
+
+---
+
+Spring Boot approach:
+
+```
+Application
+      |
+Embedded Tomcat
+      |
+Executable JAR
+```
+
+---
+
+Advantages:
+
+- Simple deployment.
+- Same runtime in all environments.
+- Easier containerization with Docker.
+- Faster startup.
+
+---
+
+# 6. Spring Boot Application Startup Lifecycle
+
+Example:
+
+```java
+@SpringBootApplication
+public class Application {
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+}
+```
+
+---
+
+## Startup Steps
+
+### 1. Bootstrap Application
+
+Spring creates an ApplicationContext.
+
+---
+
+### 2. Component Scanning
+
+Searches for:
+
+```
+@Component
+@Service
+@Repository
+@Controller
+@Configuration
+```
+
+---
+
+### 3. Process Auto-Configuration
+
+Spring Boot creates infrastructure beans.
+
+Examples:
+
+- DataSource.
+- DispatcherServlet.
+- ObjectMapper.
+- Transaction Manager.
+
+---
+
+### 4. Create and Wire Beans
+
+Dependencies are injected.
+
+---
+
+### 5. Execute Initialization
+
+Examples:
+
+```
+@PostConstruct
+
+CommandLineRunner
+```
+
+---
+
+### 6. Application Ready
+
+The application starts accepting requests.
+
+---
+
+# 7. Spring MVC Request Lifecycle
+
+When an HTTP request arrives:
+
+```
+Client
+  |
+Embedded Tomcat
+  |
+DispatcherServlet
+  |
+Handler Mapping
+  |
+Controller
+  |
+Service
+  |
+Repository
+  |
+Database
+```
+
+---
+
+The response follows the reverse path.
+
+---
+
+# 8. DispatcherServlet
+
+The DispatcherServlet is the front controller of Spring MVC.
+
+Responsibilities:
+
+- Receives incoming requests.
+- Determines the correct controller.
+- Invokes controller methods.
+- Coordinates request processing.
+- Returns the response.
+
+---
+
+## Example
+
+Request:
+
+```
+GET /customers/123
+```
+
+Spring maps it to:
+
+```java
+@GetMapping("/customers/{id}")
+public CustomerDTO getCustomer() {
+}
+```
+
+---
+
+# 9. HTTP Message Conversion
+
+Controllers work with Java objects.
+
+Example:
+
+```java
+public CustomerDTO getCustomer()
+```
+
+But HTTP communicates using JSON.
+
+---
+
+Jackson converts:
+
+```
+Java Object
+     |
+ JSON
+```
+
+This is serialization.
+
+---
+
+Incoming requests:
+
+```
+JSON
+ |
+Java Object
+```
+
+This is deserialization.
+
+---
+
+# 10. DTO vs Entity
+
+## Entity
+
+Represents the database model.
+
+Example:
+
+```
+CustomerEntity
+```
+
+Contains:
+
+- Database mappings.
+- Persistence annotations.
+
+---
+
+## DTO
+
+Represents data exchanged over APIs.
+
+Example:
+
+```
+CustomerResponseDTO
+```
+
+---
+
+## Why Not Expose Entities?
+
+Problems:
+
+### Tight Coupling
+
+Changing database schema can break API clients.
+
+---
+
+### Security Risks
+
+Entity may contain fields such as:
+
+```
+passwordHash
+internalFlags
+```
+
+---
+
+### Over-fetching
+
+Clients may receive unnecessary data.
+
+---
+
+## Best Practice
+
+```
+Controller
+     |
+ DTO
+     |
+Service
+     |
+Entity
+     |
+Repository
+```
+
+---
+
+## Interview Soundbite
+
+"Entities represent persistence concerns, while DTOs represent API contracts. Separating them prevents database changes from leaking into external APIs and allows independent evolution."
+
+---
+
+# 11. Validation
+
+Never trust client input.
+
+Example:
+
+```java
+public class UserRequest {
+
+    @NotBlank
+    private String name;
+
+    @Email
+    private String email;
+}
+```
+
+Controller:
+
+```java
+@PostMapping("/users")
+public void createUser(
+        @Valid @RequestBody UserRequest request) {
+}
+```
+
+Spring validates the request before executing business logic.
+
+---
+
+# 12. Exception Handling
+
+Avoid:
+
+```
+try {
+}
+catch(Exception e) {
+}
+```
+
+in every controller.
+
+---
+
+Use centralized exception handling.
+
+Example:
+
+```java
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+}
+```
+
+Benefits:
+
+- Consistent error responses.
+- Less duplicate code.
+- Centralized logging.
+
+---
+
+# 13. Externalized Configuration & Profiles
+
+Different environments require different configurations.
+
+Examples:
+
+- Database URLs.
+- API endpoints.
+- Feature flags.
+
+---
+
+Profiles:
+
+```
+application.properties
+
+application-dev.properties
+
+application-prod.properties
+```
+
+Example:
+
+```
+spring.profiles.active=prod
+```
+
+---
+
+Benefits:
+
+- Same application artifact.
+- Different runtime configuration.
+
+---
+
+# 14. Spring Boot Actuator
+
+Actuator provides production endpoints.
+
+Examples:
+
+Health:
+
+```
+/actuator/health
+```
+
+Metrics:
+
+```
+/actuator/metrics
+```
+
+Mappings:
+
+```
+/actuator/mappings
+```
+
+---
+
+Used for:
+
+- Kubernetes health probes.
+- Monitoring.
+- Troubleshooting.
+
+---
+
+# 15. Production Readiness Considerations
+
+A production service requires more than working code.
+
+Consider:
+
+## Configuration
+
+- Externalized properties.
+- Secrets management.
+
+---
+
+## Observability
+
+- Structured logging.
+- Metrics.
+- Distributed tracing.
+
+---
+
+## Security
+
+- HTTPS.
+- Authentication.
+- Authorization.
+
+---
+
+## Reliability
+
+- Timeouts.
+- Retries.
+- Circuit breakers.
+
+---
+
+## Performance
+
+- Connection pooling.
+- Thread pool tuning.
+- Caching.
+
+---
+
+# 16. L6 Interview Soundbites
+
+## What happens when a Spring Boot application starts?
+
+"Spring Boot creates the ApplicationContext, scans for components, processes auto-configurations, creates and wires beans, executes initialization callbacks, and finally starts the embedded server to accept requests."
+
+---
+
+## What happens when a REST request reaches Spring Boot?
+
+"The embedded Tomcat receives the HTTP request and passes it to DispatcherServlet. DispatcherServlet uses handler mappings to find the appropriate controller, executes the request through the service and repository layers, and uses message converters like Jackson to serialize the response."
+
+---
+
+## Why use DTOs instead of entities?
+
+"Entities represent database models and may change due to persistence requirements. DTOs represent stable API contracts and prevent internal database details from leaking to external clients."
+
+---
+
+## Why is Spring Boot popular?
+
+"Spring Boot reduces configuration complexity through opinionated defaults, starter dependencies, auto-configuration, and production-ready features, allowing developers to focus on business functionality."
+
+---
+
+# Key Takeaways
+
+1. Spring Boot simplifies traditional Spring configuration.
+2. Auto-configuration creates infrastructure beans based on classpath and conditions.
+3. Embedded servers enable self-contained deployments.
+4. DispatcherServlet is the front controller of Spring MVC.
+5. Jackson handles JSON serialization and deserialization.
+6. DTOs should be separated from entities.
+7. Validation and centralized exception handling improve API quality.
+8. Actuator provides operational visibility.
+9. Production readiness requires observability, security, resilience, and performance considerations.
+
+# Microservices & Spring Boot - Part 5
+# Spring Data JPA, Hibernate, Transactions & Database Performance
+
+---
+
+# 1. What is JPA?
+
+JPA (Java Persistence API) is a specification that defines how Java objects are mapped to relational databases.
+
+It is not an implementation.
+
+Popular implementations include:
+
+- Hibernate
+- EclipseLink
+
+---
+
+## Why Do We Need JPA?
+
+Without an ORM:
+
+```
+Application
+     |
+ JDBC
+     |
+ SQL Queries
+     |
+ Database
+```
+
+Developers manually handle:
+
+- SQL creation
+- ResultSet mapping
+- Connection management
+- Object conversion
+
+---
+
+With JPA:
+
+```
+Application
+     |
+ Entity Object
+     |
+ JPA
+     |
+ Hibernate
+     |
+ JDBC
+     |
+ Database
+```
+
+The ORM converts Java objects into SQL operations.
+
+---
+
+# 2. What is Hibernate?
+
+Hibernate is the most popular implementation of JPA.
+
+Responsibilities:
+
+- Object-relational mapping (ORM)
+- SQL generation
+- Entity lifecycle management
+- Caching
+- Dirty checking
+- Lazy loading
+- Transaction coordination
+
+---
+
+# 3. Entity Mapping
+
+An entity represents a table in the database.
+
+Example:
+
+```java
+@Entity
+@Table(name="customers")
+public class Customer {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+}
+```
+
+---
+
+## Common ID Generation Strategies
+
+### IDENTITY
+
+Database generates the primary key.
+
+Example:
+
+```
+AUTO_INCREMENT
+```
+
+---
+
+### SEQUENCE
+
+Uses a database sequence.
+
+Example:
+
+```
+customer_sequence.nextVal()
+```
+
+Often performs better for databases that support sequences.
+
+---
+
+### AUTO
+
+Hibernate chooses an appropriate strategy.
+
+---
+
+### TABLE
+
+Stores generated IDs in a separate table.
+
+Less commonly used due to performance overhead.
+
+---
+
+# 4. Spring Data Repository
+
+Example:
+
+```java
+public interface CustomerRepository
+       extends JpaRepository<Customer, Long> {
+
+}
+```
+
+Spring automatically provides methods like:
+
+```
+save()
+findById()
+findAll()
+delete()
+```
+
+---
+
+## Derived Query Methods
+
+Example:
+
+```java
+List<Customer>
+findByStatus(String status);
+```
+
+Spring generates SQL based on the method name.
+
+---
+
+## JPQL
+
+JPQL works with entities rather than tables.
+
+Example:
+
+```java
+@Query(
+"SELECT c FROM Customer c WHERE c.status = :status"
+)
+List<Customer> findActive();
+```
+
+---
+
+# 5. Persistence Context
+
+This is one of the most important JPA concepts.
+
+The persistence context is a first-level cache managed by Hibernate.
+
+It tracks entities during a transaction.
+
+Example:
+
+```
+Transaction
+     |
+Persistence Context
+     |
+Managed Entities
+```
+
+---
+
+## Example
+
+```java
+Customer customer =
+ repository.findById(1L);
+
+Customer customer2 =
+ repository.findById(1L);
+```
+
+Only one database query is executed.
+
+The second request returns the entity from the persistence context.
+
+---
+
+## Entity States
+
+### Transient
+
+Object exists in memory but is not managed.
+
+Example:
+
+```java
+Customer c = new Customer();
+```
+
+---
+
+### Persistent
+
+Entity is attached to the persistence context.
+
+Example:
+
+```java
+repository.findById(1L);
+```
+
+---
+
+### Detached
+
+Previously managed entity no longer attached.
+
+Example:
+
+After transaction ends.
+
+---
+
+### Removed
+
+Marked for deletion.
+
+Example:
+
+```java
+repository.delete(customer);
+```
+
+---
+
+# 6. Dirty Checking
+
+Hibernate automatically detects changes to managed entities.
+
+Example:
+
+```java
+@Transactional
+public void updateCustomer() {
+
+ Customer c =
+  repository.findById(1L);
+
+ c.setName("John");
+
+}
+```
+
+Notice:
+
+```
+No save()
+```
+
+is called.
+
+---
+
+At transaction commit:
+
+```
+Hibernate compares:
+Old state vs Current state
+```
+
+Generates:
+
+```sql
+UPDATE customer
+SET name = 'John'
+WHERE id = 1;
+```
+
+---
+
+## Why Is This Useful?
+
+Advantages:
+
+- Less boilerplate.
+- Automatic updates.
+- Better domain-driven design.
+
+---
+
+# 7. Fetch Strategies
+
+## Eager Loading
+
+Related entities are loaded immediately.
+
+Example:
+
+```
+Order
+ |
+Customer loaded automatically
+```
+
+---
+
+Advantages:
+
+- Simple.
+
+Disadvantages:
+
+- Can fetch unnecessary data.
+- Larger queries.
+- Performance issues.
+
+---
+
+## Lazy Loading
+
+Related entities are loaded only when accessed.
+
+Example:
+
+```
+Order loaded
+
+Later:
+order.getCustomer()
+     |
+Database query executed
+```
+
+---
+
+Advantages:
+
+- Better performance when relationships are not always needed.
+
+---
+
+Disadvantages:
+
+Can cause:
+
+```
+LazyInitializationException
+```
+
+if accessed outside an active persistence context.
+
+---
+
+# 8. N+1 Query Problem
+
+A very common performance issue.
+
+Example:
+
+Get 100 orders.
+
+Query 1:
+
+```sql
+SELECT * FROM orders;
+```
+
+---
+
+Then for each order:
+
+```sql
+SELECT * FROM customer
+WHERE id = ?
+```
+
+100 additional queries.
+
+---
+
+Total:
+
+```
+1 + 100 = 101 queries
+```
+
+---
+
+## Solutions
+
+### Fetch Join
+
+Example:
+
+```jpql
+SELECT o
+FROM Order o
+JOIN FETCH o.customer
+```
+
+---
+
+### Entity Graph
+
+Allows specifying relationships to fetch.
+
+---
+
+### DTO Projection
+
+Fetch only required columns.
+
+---
+
+# 9. Transactions
+
+A transaction is a unit of work that executes completely or not at all.
+
+---
+
+## ACID Properties
+
+### Atomicity
+
+All operations succeed or rollback.
+
+---
+
+### Consistency
+
+Database remains in a valid state.
+
+---
+
+### Isolation
+
+Concurrent transactions do not interfere improperly.
+
+---
+
+### Durability
+
+Committed changes survive failures.
+
+---
+
+# 10. @Transactional
+
+Spring uses AOP proxies to manage transactions.
+
+Flow:
+
+```
+Client
+ |
+Transaction Proxy
+ |
+Service Method
+ |
+Database
+```
+
+---
+
+Before method execution:
+
+```
+Begin transaction
+```
+
+---
+
+Success:
+
+```
+Commit
+```
+
+---
+
+Exception:
+
+```
+Rollback
+```
+
+---
+
+# 11. Transaction Propagation
+
+Defines behavior when one transaction calls another.
+
+---
+
+## REQUIRED (Default)
+
+Join existing transaction or create a new one.
+
+Example:
+
+```
+Service A Transaction
+        |
+        |
+Service B joins same transaction
+```
+
+---
+
+## REQUIRES_NEW
+
+Suspend current transaction and start a new transaction.
+
+Example:
+
+```
+Transaction A
+
+Suspended
+
+Transaction B starts
+```
+
+Useful for:
+
+- Audit logging
+- Independent operations
+
+---
+
+## MANDATORY
+
+Requires an existing transaction.
+
+Throws exception if none exists.
+
+---
+
+# 12. Isolation Levels
+
+Controls visibility of concurrent changes.
+
+---
+
+## READ_UNCOMMITTED
+
+Allows dirty reads.
+
+Highest concurrency.
+
+Lowest consistency.
+
+---
+
+## READ_COMMITTED
+
+Prevents dirty reads.
+
+Most commonly used.
+
+---
+
+## REPEATABLE_READ
+
+Prevents non-repeatable reads.
+
+---
+
+## SERIALIZABLE
+
+Highest consistency.
+
+Transactions behave as if executed one at a time.
+
+Lowest concurrency.
+
+---
+
+# 13. Optimistic Locking
+
+Assumes conflicts are rare.
+
+Uses a version column.
+
+Example:
+
+```java
+@Version
+private Long version;
+```
+
+---
+
+Flow:
+
+User A reads:
+
+```
+version = 5
+```
+
+User B reads:
+
+```
+version = 5
+```
+
+---
+
+User A updates:
+
+```
+version becomes 6
+```
+
+---
+
+User B tries update:
+
+```
+WHERE version = 5
+```
+
+No rows updated.
+
+Conflict detected.
+
+---
+
+## Good For
+
+- Read-heavy systems.
+- Rare conflicts.
+
+Examples:
+
+- User profiles
+- Product catalogs
+
+---
+
+# 14. Pessimistic Locking
+
+Locks the database row.
+
+Example:
+
+```
+SELECT FOR UPDATE
+```
+
+Other transactions must wait.
+
+---
+
+## Good For
+
+High-conflict scenarios.
+
+Examples:
+
+- Inventory updates
+- Financial transactions
+
+---
+
+## Trade-Off
+
+More consistency.
+
+Less concurrency.
+
+---
+
+# 15. Connection Pooling
+
+Opening database connections is expensive.
+
+Instead:
+
+```
+Application
+     |
+Connection Pool
+     |
+Database
+```
+
+---
+
+Spring Boot commonly uses:
+
+```
+HikariCP
+```
+
+---
+
+Benefits:
+
+- Reuse connections.
+- Lower latency.
+- Better throughput.
+
+---
+
+# 16. Common JPA Performance Issues
+
+## Problem: Too Many Queries
+
+Solution:
+
+- Use fetch joins.
+- Use DTO projections.
+
+---
+
+## Problem: Large Result Sets
+
+Solution:
+
+- Pagination.
+- Streaming.
+
+---
+
+## Problem: Long Transactions
+
+Solution:
+
+- Keep transaction boundaries small.
+- Avoid network calls inside transactions.
+
+---
+
+## Problem: Eager Loading
+
+Solution:
+
+Use lazy loading where appropriate.
+
+---
+
+# 17. L6 Interview Soundbites
+
+## What is the persistence context?
+
+"The persistence context is Hibernate's first-level cache that manages entity lifecycle within a transaction. It tracks entities and enables features like dirty checking."
+
+---
+
+## Why does Hibernate update an entity without save()?
+
+"Because managed entities are tracked by the persistence context. At transaction commit, Hibernate performs dirty checking and automatically generates the required SQL update."
+
+---
+
+## Why avoid long transactions?
+
+"Long transactions hold database connections and locks for a longer time, reducing concurrency and increasing the probability of contention."
+
+---
+
+## When do you use optimistic vs pessimistic locking?
+
+"Optimistic locking is preferred when conflicts are rare because it provides better concurrency. Pessimistic locking is useful when conflicts are frequent and data consistency is critical."
+
+---
+
+## Why should transactions be in the service layer?
+
+"Transactions usually represent a business operation that may involve multiple repositories. Keeping transaction boundaries in the service layer aligns transaction scope with business logic."
+
+---
+
+# Key Takeaways
+
+1. JPA is a specification; Hibernate is a common implementation.
+
+2. The persistence context manages entity lifecycle and acts as a first-level cache.
+
+3. Dirty checking automatically persists changes to managed entities.
+
+4. Lazy loading improves performance but can cause LazyInitializationException.
+
+5. N+1 queries are a common ORM performance problem.
+
+6. @Transactional works using Spring AOP proxies.
+
+7. Choose transaction propagation and isolation levels based on business requirements.
+
+8. Optimistic locking favors concurrency; pessimistic locking favors strict consistency.
+
+9. Keep transactions short and use connection pooling for scalability.
+
+# Microservices & Spring Boot - Part 5
+# Spring Data JPA, Hibernate, Transactions & Database Performance
+
+---
+
+# 1. What is JPA?
+
+JPA (Java Persistence API) is a specification that defines how Java objects are mapped to relational databases.
+
+It is not an implementation.
+
+Popular implementations include:
+
+- Hibernate
+- EclipseLink
+
+---
+
+## Why Do We Need JPA?
+
+Without an ORM:
+
+```
+Application
+     |
+ JDBC
+     |
+ SQL Queries
+     |
+ Database
+```
+
+Developers manually handle:
+
+- SQL creation
+- ResultSet mapping
+- Connection management
+- Object conversion
+
+---
+
+With JPA:
+
+```
+Application
+     |
+ Entity Object
+     |
+ JPA
+     |
+ Hibernate
+     |
+ JDBC
+     |
+ Database
+```
+
+The ORM converts Java objects into SQL operations.
+
+---
+
+# 2. What is Hibernate?
+
+Hibernate is the most popular implementation of JPA.
+
+Responsibilities:
+
+- Object-relational mapping (ORM)
+- SQL generation
+- Entity lifecycle management
+- Caching
+- Dirty checking
+- Lazy loading
+- Transaction coordination
+
+---
+
+# 3. Entity Mapping
+
+An entity represents a table in the database.
+
+Example:
+
+```java
+@Entity
+@Table(name="customers")
+public class Customer {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+}
+```
+
+---
+
+## Common ID Generation Strategies
+
+### IDENTITY
+
+Database generates the primary key.
+
+Example:
+
+```
+AUTO_INCREMENT
+```
+
+---
+
+### SEQUENCE
+
+Uses a database sequence.
+
+Example:
+
+```
+customer_sequence.nextVal()
+```
+
+Often performs better for databases that support sequences.
+
+---
+
+### AUTO
+
+Hibernate chooses an appropriate strategy.
+
+---
+
+### TABLE
+
+Stores generated IDs in a separate table.
+
+Less commonly used due to performance overhead.
+
+---
+
+# 4. Spring Data Repository
+
+Example:
+
+```java
+public interface CustomerRepository
+       extends JpaRepository<Customer, Long> {
+
+}
+```
+
+Spring automatically provides methods like:
+
+```
+save()
+findById()
+findAll()
+delete()
+```
+
+---
+
+## Derived Query Methods
+
+Example:
+
+```java
+List<Customer>
+findByStatus(String status);
+```
+
+Spring generates SQL based on the method name.
+
+---
+
+## JPQL
+
+JPQL works with entities rather than tables.
+
+Example:
+
+```java
+@Query(
+"SELECT c FROM Customer c WHERE c.status = :status"
+)
+List<Customer> findActive();
+```
+
+---
+
+# 5. Persistence Context
+
+This is one of the most important JPA concepts.
+
+The persistence context is a first-level cache managed by Hibernate.
+
+It tracks entities during a transaction.
+
+Example:
+
+```
+Transaction
+     |
+Persistence Context
+     |
+Managed Entities
+```
+
+---
+
+## Example
+
+```java
+Customer customer =
+ repository.findById(1L);
+
+Customer customer2 =
+ repository.findById(1L);
+```
+
+Only one database query is executed.
+
+The second request returns the entity from the persistence context.
+
+---
+
+## Entity States
+
+### Transient
+
+Object exists in memory but is not managed.
+
+Example:
+
+```java
+Customer c = new Customer();
+```
+
+---
+
+### Persistent
+
+Entity is attached to the persistence context.
+
+Example:
+
+```java
+repository.findById(1L);
+```
+
+---
+
+### Detached
+
+Previously managed entity no longer attached.
+
+Example:
+
+After transaction ends.
+
+---
+
+### Removed
+
+Marked for deletion.
+
+Example:
+
+```java
+repository.delete(customer);
+```
+
+---
+
+# 6. Dirty Checking
+
+Hibernate automatically detects changes to managed entities.
+
+Example:
+
+```java
+@Transactional
+public void updateCustomer() {
+
+ Customer c =
+  repository.findById(1L);
+
+ c.setName("John");
+
+}
+```
+
+Notice:
+
+```
+No save()
+```
+
+is called.
+
+---
+
+At transaction commit:
+
+```
+Hibernate compares:
+Old state vs Current state
+```
+
+Generates:
+
+```sql
+UPDATE customer
+SET name = 'John'
+WHERE id = 1;
+```
+
+---
+
+## Why Is This Useful?
+
+Advantages:
+
+- Less boilerplate.
+- Automatic updates.
+- Better domain-driven design.
+
+---
+
+# 7. Fetch Strategies
+
+## Eager Loading
+
+Related entities are loaded immediately.
+
+Example:
+
+```
+Order
+ |
+Customer loaded automatically
+```
+
+---
+
+Advantages:
+
+- Simple.
+
+Disadvantages:
+
+- Can fetch unnecessary data.
+- Larger queries.
+- Performance issues.
+
+---
+
+## Lazy Loading
+
+Related entities are loaded only when accessed.
+
+Example:
+
+```
+Order loaded
+
+Later:
+order.getCustomer()
+     |
+Database query executed
+```
+
+---
+
+Advantages:
+
+- Better performance when relationships are not always needed.
+
+---
+
+Disadvantages:
+
+Can cause:
+
+```
+LazyInitializationException
+```
+
+if accessed outside an active persistence context.
+
+---
+
+# 8. N+1 Query Problem
+
+A very common performance issue.
+
+Example:
+
+Get 100 orders.
+
+Query 1:
+
+```sql
+SELECT * FROM orders;
+```
+
+---
+
+Then for each order:
+
+```sql
+SELECT * FROM customer
+WHERE id = ?
+```
+
+100 additional queries.
+
+---
+
+Total:
+
+```
+1 + 100 = 101 queries
+```
+
+---
+
+## Solutions
+
+### Fetch Join
+
+Example:
+
+```jpql
+SELECT o
+FROM Order o
+JOIN FETCH o.customer
+```
+
+---
+
+### Entity Graph
+
+Allows specifying relationships to fetch.
+
+---
+
+### DTO Projection
+
+Fetch only required columns.
+
+---
+
+# 9. Transactions
+
+A transaction is a unit of work that executes completely or not at all.
+
+---
+
+## ACID Properties
+
+### Atomicity
+
+All operations succeed or rollback.
+
+---
+
+### Consistency
+
+Database remains in a valid state.
+
+---
+
+### Isolation
+
+Concurrent transactions do not interfere improperly.
+
+---
+
+### Durability
+
+Committed changes survive failures.
+
+---
+
+# 10. @Transactional
+
+Spring uses AOP proxies to manage transactions.
+
+Flow:
+
+```
+Client
+ |
+Transaction Proxy
+ |
+Service Method
+ |
+Database
+```
+
+---
+
+Before method execution:
+
+```
+Begin transaction
+```
+
+---
+
+Success:
+
+```
+Commit
+```
+
+---
+
+Exception:
+
+```
+Rollback
+```
+
+---
+
+# 11. Transaction Propagation
+
+Defines behavior when one transaction calls another.
+
+---
+
+## REQUIRED (Default)
+
+Join existing transaction or create a new one.
+
+Example:
+
+```
+Service A Transaction
+        |
+        |
+Service B joins same transaction
+```
+
+---
+
+## REQUIRES_NEW
+
+Suspend current transaction and start a new transaction.
+
+Example:
+
+```
+Transaction A
+
+Suspended
+
+Transaction B starts
+```
+
+Useful for:
+
+- Audit logging
+- Independent operations
+
+---
+
+## MANDATORY
+
+Requires an existing transaction.
+
+Throws exception if none exists.
+
+---
+
+# 12. Isolation Levels
+
+Controls visibility of concurrent changes.
+
+---
+
+## READ_UNCOMMITTED
+
+Allows dirty reads.
+
+Highest concurrency.
+
+Lowest consistency.
+
+---
+
+## READ_COMMITTED
+
+Prevents dirty reads.
+
+Most commonly used.
+
+---
+
+## REPEATABLE_READ
+
+Prevents non-repeatable reads.
+
+---
+
+## SERIALIZABLE
+
+Highest consistency.
+
+Transactions behave as if executed one at a time.
+
+Lowest concurrency.
+
+---
+
+# 13. Optimistic Locking
+
+Assumes conflicts are rare.
+
+Uses a version column.
+
+Example:
+
+```java
+@Version
+private Long version;
+```
+
+---
+
+Flow:
+
+User A reads:
+
+```
+version = 5
+```
+
+User B reads:
+
+```
+version = 5
+```
+
+---
+
+User A updates:
+
+```
+version becomes 6
+```
+
+---
+
+User B tries update:
+
+```
+WHERE version = 5
+```
+
+No rows updated.
+
+Conflict detected.
+
+---
+
+## Good For
+
+- Read-heavy systems.
+- Rare conflicts.
+
+Examples:
+
+- User profiles
+- Product catalogs
+
+---
+
+# 14. Pessimistic Locking
+
+Locks the database row.
+
+Example:
+
+```
+SELECT FOR UPDATE
+```
+
+Other transactions must wait.
+
+---
+
+## Good For
+
+High-conflict scenarios.
+
+Examples:
+
+- Inventory updates
+- Financial transactions
+
+---
+
+## Trade-Off
+
+More consistency.
+
+Less concurrency.
+
+---
+
+# 15. Connection Pooling
+
+Opening database connections is expensive.
+
+Instead:
+
+```
+Application
+     |
+Connection Pool
+     |
+Database
+```
+
+---
+
+Spring Boot commonly uses:
+
+```
+HikariCP
+```
+
+---
+
+Benefits:
+
+- Reuse connections.
+- Lower latency.
+- Better throughput.
+
+---
+
+# 16. Common JPA Performance Issues
+
+## Problem: Too Many Queries
+
+Solution:
+
+- Use fetch joins.
+- Use DTO projections.
+
+---
+
+## Problem: Large Result Sets
+
+Solution:
+
+- Pagination.
+- Streaming.
+
+---
+
+## Problem: Long Transactions
+
+Solution:
+
+- Keep transaction boundaries small.
+- Avoid network calls inside transactions.
+
+---
+
+## Problem: Eager Loading
+
+Solution:
+
+Use lazy loading where appropriate.
+
+---
+
+# 17. L6 Interview Soundbites
+
+## What is the persistence context?
+
+"The persistence context is Hibernate's first-level cache that manages entity lifecycle within a transaction. It tracks entities and enables features like dirty checking."
+
+---
+
+## Why does Hibernate update an entity without save()?
+
+"Because managed entities are tracked by the persistence context. At transaction commit, Hibernate performs dirty checking and automatically generates the required SQL update."
+
+---
+
+## Why avoid long transactions?
+
+"Long transactions hold database connections and locks for a longer time, reducing concurrency and increasing the probability of contention."
+
+---
+
+## When do you use optimistic vs pessimistic locking?
+
+"Optimistic locking is preferred when conflicts are rare because it provides better concurrency. Pessimistic locking is useful when conflicts are frequent and data consistency is critical."
+
+---
+
+## Why should transactions be in the service layer?
+
+"Transactions usually represent a business operation that may involve multiple repositories. Keeping transaction boundaries in the service layer aligns transaction scope with business logic."
+
+---
+
+# Key Takeaways
+
+1. JPA is a specification; Hibernate is a common implementation.
+
+2. The persistence context manages entity lifecycle and acts as a first-level cache.
+
+3. Dirty checking automatically persists changes to managed entities.
+
+4. Lazy loading improves performance but can cause LazyInitializationException.
+
+5. N+1 queries are a common ORM performance problem.
+
+6. @Transactional works using Spring AOP proxies.
+
+7. Choose transaction propagation and isolation levels based on business requirements.
+
+8. Optimistic locking favors concurrency; pessimistic locking favors strict consistency.
+
+9. Keep transactions short and use connection pooling for scalability.
+
+# Microservices & Spring Boot - Part 7
+# Spring Cloud Infrastructure
+
+---
+
+# 1. The Problem with Distributed Microservices
+
+A microservice architecture may contain:
+
+```
+Order Service
+Inventory Service
+Payment Service
+User Service
+Notification Service
+```
+
+Each service may have:
+
+- Multiple instances.
+- Different environments (dev, QA, prod).
+- Dynamic scaling.
+- Frequent deployments.
+
+Questions arise:
+
+- How does Order Service find Inventory Service?
+- Where do services get their configuration?
+- How do clients know which service instance to call?
+- How do we apply authentication and rate limiting consistently?
+
+Spring Cloud provides solutions to these distributed system challenges.
+
+---
+
+# 2. Configuration Management Problem
+
+In small applications, configuration may live inside:
+
+```
+application.properties
+```
+
+Example:
+
+```properties
+database.url=jdbc:mysql://localhost:3306/order
+inventory.url=http://localhost:8080
+```
+
+---
+
+This becomes difficult when there are:
+
+- Hundreds of services.
+- Multiple environments.
+- Frequent configuration changes.
+
+Problems:
+
+- Configuration duplication.
+- Manual updates.
+- Configuration drift.
+- Difficult rollbacks.
+
+---
+
+# 3. Centralized Configuration with Spring Cloud Config
+
+The idea:
+
+Store configuration in a central location.
+
+Example architecture:
+
+```
+                 Git Repository
+                        |
+                Spring Cloud Config Server
+                        |
+       ---------------------------------------
+       |                    |                 |
+ Order Service      Inventory Service   Payment Service
+```
+
+---
+
+## How It Works
+
+At startup:
+
+```
+Microservice
+      |
+Requests configuration
+      |
+Config Server
+      |
+Git Repository
+```
+
+The service receives environment-specific properties.
+
+Example:
+
+```
+order-service-dev.properties
+
+order-service-prod.properties
+```
+
+---
+
+## Advantages
+
+- Centralized configuration management.
+- Version history using Git.
+- Easy rollback.
+- Environment separation.
+- No need to rebuild applications for config changes.
+
+---
+
+## Security Considerations
+
+Sensitive information should not be stored as plain text.
+
+Examples:
+
+- Database passwords.
+- API keys.
+- Certificates.
+
+Use:
+
+- HashiCorp Vault.
+- AWS Secrets Manager.
+- Kubernetes Secrets.
+
+---
+
+# 4. The Service Discovery Problem
+
+In a dynamic environment:
+
+```
+Inventory Service
+
+Instance 1:
+10.0.1.20
+
+Instance 2:
+10.0.1.21
+
+Instance 3:
+10.0.1.22
+```
+
+IPs may change because:
+
+- Auto-scaling.
+- Container restarts.
+- Failures.
+- New deployments.
+
+Hardcoding:
+
+```
+inventory-service = 10.0.1.20
+```
+
+is not practical.
+
+---
+
+# 5. Service Registry
+
+A service registry maintains a list of available service instances.
+
+Example:
+
+```
+                Service Registry
+                      |
+          --------------------------
+          |                        |
+   Inventory Instance 1      Inventory Instance 2
+```
+
+Each service:
+
+- Registers itself.
+- Sends periodic heartbeats.
+- Deregisters when shutting down.
+
+---
+
+# 6. Eureka Service Discovery
+
+Eureka is Netflix's service registry.
+
+Example:
+
+```
+              Eureka Server
+                     |
+        --------------------------
+        |                        |
+ Inventory Service          Order Service
+    registers                   queries
+```
+
+---
+
+## Registration Flow
+
+Inventory Service starts:
+
+```
+Inventory Service
+       |
+Register:
+inventory-service
+IP: 10.0.1.20
+Port: 8080
+       |
+Eureka Server
+```
+
+---
+
+Order Service needs Inventory:
+
+```
+Order Service
+       |
+Ask Eureka:
+"Give me inventory-service instances"
+       |
+Receives:
+10.0.1.20
+10.0.1.21
+```
+
+---
+
+# 7. Client-Side Load Balancing
+
+The client receives a list of available instances.
+
+Example:
+
+```
+Order Service
+
+Inventory Instances:
+
+10.0.1.20
+10.0.1.21
+10.0.1.22
+```
+
+The client chooses one.
+
+---
+
+Example algorithms:
+
+- Round robin.
+- Random.
+- Weighted selection.
+
+---
+
+## Spring Cloud LoadBalancer
+
+Modern Spring applications use:
+
+```
+Spring Cloud LoadBalancer
+```
+
+Example:
+
+```
+Order Service
+      |
+Spring Cloud LoadBalancer
+      |
+Inventory Service Instance
+```
+
+---
+
+## Advantages
+
+- No central load balancer bottleneck.
+- Service has knowledge of available instances.
+- Works well in internal microservice communication.
+
+---
+
+# 8. Server-Side vs Client-Side Load Balancing
+
+## Server-Side
+
+Example:
+
+```
+Client
+  |
+Load Balancer
+  |
+----------------
+|              |
+Service A    Service B
+```
+
+Examples:
+
+- NGINX
+- AWS Application Load Balancer
+
+---
+
+Advantages:
+
+- Simple clients.
+- Centralized routing.
+
+Disadvantages:
+
+- Additional network hop.
+- Load balancer becomes another component to manage.
+
+---
+
+## Client-Side
+
+Example:
+
+```
+Client
+ |
+Service Discovery
+ |
+Choose Instance
+ |
+Service Instance
+```
+
+---
+
+Advantages:
+
+- Reduced extra hop.
+- Better service awareness.
+
+Disadvantages:
+
+- More complex client libraries.
+
+---
+
+# 9. API Gateway
+
+In a microservice architecture, clients should generally not communicate directly with every service.
+
+Bad:
+
+```
+Mobile App
+ |
+----------------------------
+|            |              |
+User       Order        Payment
+Service    Service      Service
+```
+
+Problems:
+
+- Client needs to know all services.
+- Authentication logic duplicated.
+- Difficult to apply rate limiting.
+- API changes affect clients.
+
+---
+
+# 10. API Gateway Architecture
+
+Better:
+
+```
+             Client
+                |
+           API Gateway
+                |
+--------------------------------
+|              |               |
+User        Order          Payment
+Service     Service        Service
+```
+
+---
+
+# 11. Responsibilities of API Gateway
+
+## Routing
+
+Example:
+
+```
+/users/*     -> User Service
+/orders/*    -> Order Service
+/payments/*  -> Payment Service
+```
+
+---
+
+## Authentication
+
+Validate:
+
+- OAuth tokens.
+- JWT tokens.
+
+---
+
+## Authorization
+
+Enforce:
+
+- Roles.
+- Permissions.
+
+---
+
+## Rate Limiting
+
+Protect backend services.
+
+Examples:
+
+```
+Free User:
+100 requests/hour
+
+Premium User:
+10000 requests/hour
+```
+
+---
+
+## SSL Termination
+
+The gateway handles HTTPS connections.
+
+Internal services may communicate over private networks.
+
+---
+
+## Request Transformation
+
+Examples:
+
+- Add headers.
+- Remove sensitive information.
+- Transform payloads.
+
+---
+
+## Observability
+
+Central place for:
+
+- Logging.
+- Metrics.
+- Distributed tracing.
+
+---
+
+# 12. Backend for Frontend (BFF)
+
+Different clients may have different needs.
+
+Example:
+
+```
+          Backend Systems
+                 |
+        -------------------
+        |                 |
+ Mobile BFF          Web BFF
+        |                 |
+     Mobile App       Browser
+```
+
+---
+
+Mobile may need:
+
+- Smaller responses.
+- Fewer network calls.
+
+Web may need:
+
+- More detailed data.
+
+---
+
+Benefits:
+
+- Client-specific optimization.
+- Reduced over-fetching.
+- Independent frontend evolution.
+
+---
+
+# 13. Service Discovery in Kubernetes
+
+Modern cloud environments often do not use Eureka.
+
+Kubernetes provides built-in service discovery.
+
+Example:
+
+```
+Order Service
+      |
+inventory-service.default.svc.cluster.local
+      |
+Kubernetes Service
+      |
+Pods
+```
+
+---
+
+Responsibilities:
+
+- DNS-based discovery.
+- Load balancing.
+- Health checking.
+
+---
+
+## Interview Soundbite
+
+"Eureka solved service discovery before Kubernetes became widely adopted. In modern cloud-native environments, Kubernetes Services and DNS often replace Eureka, but the underlying problem remains the same: services need a dynamic way to locate healthy instances."
+
+---
+
+# 14. Failure Scenarios
+
+## Config Server is Down
+
+Existing services continue running using already-loaded configuration.
+
+However:
+
+- New instances may fail to start.
+- Configuration updates may be unavailable.
+
+---
+
+## Eureka Registry is Down
+
+Existing instances can continue using cached service information.
+
+However:
+
+- New service registrations may fail.
+- Discovery information may become stale.
+
+---
+
+## API Gateway Failure
+
+Because it is a critical entry point:
+
+Solutions:
+
+- Run multiple gateway instances.
+- Place behind a load balancer.
+- Monitor health.
+- Enable autoscaling.
+
+---
+
+# 15. L6 Interview Soundbites
+
+## Why use centralized configuration?
+
+"Centralized configuration separates configuration from application binaries. It allows environment-specific settings, versioning, easier rollbacks, and avoids rebuilding services when configuration changes."
+
+---
+
+## Why do we need service discovery?
+
+"In dynamic environments, service instances constantly change due to scaling, failures, and deployments. Service discovery provides a reliable mechanism for locating healthy instances."
+
+---
+
+## Why use an API Gateway?
+
+"An API Gateway provides a single entry point for clients and centralizes cross-cutting concerns such as authentication, routing, rate limiting, SSL termination, and observability."
+
+---
+
+## When would you choose BFF?
+
+"I would introduce a Backend for Frontend when different clients have significantly different data requirements. It allows mobile and web applications to evolve independently without overloading the clients with unnecessary data."
+
+---
+
+## Is Eureka still relevant?
+
+"The concept of service discovery is absolutely relevant. While many modern Kubernetes-based systems rely on DNS-based discovery instead of Eureka, the architectural problem being solved remains the same."
+
+---
+
+# Key Takeaways
+
+1. Microservices require infrastructure for configuration, discovery, routing, and security.
+
+2. Spring Cloud Config centralizes environment-specific configuration.
+
+3. Service discovery removes hardcoded network locations.
+
+4. Eureka uses registration and heartbeats to maintain available instances.
+
+5. Client-side load balancing allows services to choose healthy instances.
+
+6. API Gateways centralize authentication, routing, security, and traffic management.
+
+7. BFF provides client-specific APIs.
+
+8. Kubernetes provides built-in service discovery and often replaces Eureka.
+
+# Microservices & Spring Boot - Part 8
+# Spring Security, OAuth2, OpenID Connect & API Security
+
+---
+
+# 1. Why Do We Need Spring Security?
+
+A production API must answer two questions:
+
+### Authentication
+
+"Who are you?"
+
+Example:
+
+```
+User Alice logs in.
+
+System verifies:
+- Username/password
+- MFA
+- OAuth login
+```
+
+---
+
+### Authorization
+
+"What are you allowed to do?"
+
+Example:
+
+```
+Endpoint:
+
+DELETE /admin/users/123
+```
+
+User:
+
+```
+ROLE_USER
+```
+
+Result:
+
+```
+403 Forbidden
+```
+
+because the user lacks the required permission.
+
+---
+
+# 2. Spring Security Architecture
+
+Spring Security is built around a chain of filters.
+
+A request does not directly reach the controller.
+
+Flow:
+
+```
+HTTP Request
+      |
+Embedded Tomcat
+      |
+Security Filter Chain
+      |
+DispatcherServlet
+      |
+Controller
+      |
+Service
+```
+
+---
+
+## Why Filters?
+
+Filters can intercept every request and apply cross-cutting security concerns:
+
+- Authentication
+- Authorization
+- CSRF protection
+- Session management
+- Exception handling
+
+---
+
+# 3. Security Filter Chain
+
+The Security Filter Chain contains multiple filters executed in order.
+
+Examples:
+
+```
+Request
+ |
+Authentication Filter
+ |
+Authorization Filter
+ |
+Exception Filter
+ |
+Controller
+```
+
+---
+
+## Interview Soundbite
+
+"Spring Security works as a filter chain in front of Spring MVC. Every incoming request passes through security filters before reaching the DispatcherServlet."
+
+---
+
+# 4. Authentication Flow with Username and Password
+
+Traditional flow:
+
+```
+Client
+ |
+POST /login
+ |
+UsernamePasswordAuthenticationFilter
+ |
+AuthenticationManager
+ |
+AuthenticationProvider
+ |
+UserDetailsService
+ |
+Database
+```
+
+---
+
+## Step 1: Authentication Filter
+
+Extracts credentials from the request.
+
+Example:
+
+```
+username=alice
+password=****** 
+```
+
+---
+
+## Step 2: AuthenticationManager
+
+Coordinates authentication.
+
+It decides which AuthenticationProvider should process the request.
+
+---
+
+## Step 3: AuthenticationProvider
+
+Validates credentials.
+
+Examples:
+
+- Database authentication
+- LDAP
+- External identity providers
+
+---
+
+## Step 4: UserDetailsService
+
+Loads user information.
+
+Example:
+
+```
+User:
+Alice
+
+Roles:
+ADMIN
+USER
+```
+
+---
+
+# 5. Password Storage
+
+Passwords should never be stored as plain text.
+
+Bad:
+
+```
+password = mySecret123
+```
+
+---
+
+Good:
+
+```
+password = BCrypt hash
+```
+
+---
+
+## Why Hash Passwords?
+
+If the database is compromised:
+
+```
+Attacker sees:
+$2a$10$K7H.....
+```
+
+instead of the real password.
+
+---
+
+# 6. JWT Authentication in Spring Security
+
+Modern microservices commonly use stateless authentication.
+
+Flow:
+
+```
+Client
+ |
+Authorization: Bearer JWT
+ |
+JWT Authentication Filter
+ |
+Validate Token
+ |
+Create Authentication Object
+ |
+Security Context
+ |
+Controller
+```
+
+---
+
+## What Happens Internally?
+
+### Step 1
+
+The filter extracts the JWT.
+
+Example:
+
+```
+Authorization:
+Bearer eyJhbGci...
+```
+
+---
+
+### Step 2
+
+Validate:
+
+- Signature
+- Expiration
+- Issuer
+- Audience
+
+---
+
+### Step 3
+
+Extract claims:
+
+Example:
+
+```
+userId = 123
+
+roles = ADMIN
+```
+
+---
+
+### Step 4
+
+Create an Authentication object.
+
+Example:
+
+```
+UsernamePasswordAuthenticationToken
+```
+
+---
+
+### Step 5
+
+Store it in:
+
+```
+SecurityContextHolder
+```
+
+The rest of the application can access the authenticated user.
+
+---
+
+# 7. SecurityContext
+
+SecurityContext stores information about the current authenticated request.
+
+Example:
+
+```
+SecurityContext
+      |
+Authentication
+      |
+Principal + Roles
+```
+
+---
+
+Example in code:
+
+```java
+Authentication auth =
+ SecurityContextHolder
+    .getContext()
+    .getAuthentication();
+```
+
+---
+
+# 8. OAuth2 Roles
+
+In OAuth2:
+
+```
+User
+ |
+Client Application
+ |
+Authorization Server
+ |
+Resource Server
+```
+
+---
+
+## Authorization Server
+
+Responsible for:
+
+- Authenticating users.
+- Issuing access tokens.
+
+Examples:
+
+- Keycloak
+- Okta
+- Auth0
+
+---
+
+## Resource Server
+
+The API receiving the token.
+
+Example:
+
+```
+Order Service
+```
+
+Responsibilities:
+
+- Validate JWT.
+- Enforce authorization.
+
+---
+
+# 9. OpenID Connect (OIDC)
+
+OAuth2 answers:
+
+```
+Can this application access a resource?
+```
+
+---
+
+OpenID Connect answers:
+
+```
+Who is the user?
+```
+
+---
+
+OIDC is an identity layer built on top of OAuth2.
+
+It introduces an ID Token.
+
+Example:
+
+```
+OAuth2:
+Access Token
+
+OIDC:
+Access Token
++
+ID Token
+```
+
+---
+
+## Common Example
+
+```
+Login with Google
+```
+
+The application receives identity information about the user through OIDC.
+
+---
+
+# 10. Keycloak Architecture
+
+Example:
+
+```
+           Keycloak
+               |
+      ----------------
+      |              |
+ User Login      Token Issuance
+               |
+             JWT
+               |
+      ----------------
+      |              |
+ Order API      Payment API
+```
+
+---
+
+Keycloak manages:
+
+- Users
+- Roles
+- Groups
+- Password policies
+- MFA
+- OAuth2 flows
+- Token issuance
+
+---
+
+# 11. Authorization in Spring
+
+## URL-Based Authorization
+
+Example:
+
+```java
+http
+.authorizeHttpRequests(auth ->
+ auth
+ .requestMatchers("/admin/**")
+ .hasRole("ADMIN")
+ .anyRequest()
+ .authenticated()
+);
+```
+
+---
+
+## Method-Level Authorization
+
+Example:
+
+```java
+@PreAuthorize("hasRole('ADMIN')")
+public void deleteUser() {
+}
+```
+
+---
+
+Advantages:
+
+- Authorization close to business logic.
+- Fine-grained access control.
+
+---
+
+# 12. CSRF Protection
+
+CSRF is an attack where a malicious website causes a user's browser to send unintended requests.
+
+Example:
+
+```
+User logged into bank.com
+
+Visits malicious website
+
+Hidden request:
+Transfer $1000
+```
+
+---
+
+CSRF is especially relevant for:
+
+- Browser applications using cookies.
+
+---
+
+For stateless JWT APIs:
+
+```
+Authorization:
+Bearer token
+```
+
+CSRF is generally disabled because the browser does not automatically attach JWT tokens like cookies.
+
+---
+
+# 13. CORS
+
+CORS controls which domains can call your API.
+
+Example:
+
+Allowed:
+
+```
+https://myapp.com
+```
+
+Blocked:
+
+```
+https://evil.com
+```
+
+---
+
+Common configuration:
+
+- Allowed origins
+- HTTP methods
+- Headers
+
+---
+
+# 14. Stateless vs Stateful Security
+
+## Session-Based
+
+```
+Client
+ |
+Session ID Cookie
+ |
+Server Session Store
+```
+
+Problems:
+
+- Sticky sessions.
+- Shared session stores.
+- Harder horizontal scaling.
+
+---
+
+## JWT-Based
+
+```
+Client
+ |
+JWT Token
+ |
+Any API Instance
+```
+
+Benefits:
+
+- Stateless.
+- Cloud friendly.
+- Easier scaling.
+
+---
+
+# 15. Security Best Practices
+
+Use:
+
+- HTTPS everywhere.
+- Short-lived access tokens.
+- Refresh tokens.
+- RBAC or ABAC.
+- Least privilege.
+- Secure password hashing.
+- Input validation.
+- Audit logging.
+- Rate limiting.
+
+---
+
+# 16. L6 Interview Soundbites
+
+## What happens when a secured request reaches Spring Boot?
+
+"The request first enters the Security Filter Chain. Authentication filters validate the user's identity and populate the SecurityContext. Authorization filters verify permissions before allowing the request to reach the controller."
+
+---
+
+## Why use JWT in microservices?
+
+"JWT allows stateless authentication. Any service instance can validate the token without maintaining server-side session state, making horizontal scaling easier."
+
+---
+
+## What is the role of Keycloak or Okta?
+
+"They act as authorization servers responsible for authenticating users and issuing signed tokens. Microservices act as resource servers that validate tokens and enforce access policies."
+
+---
+
+## OAuth2 vs OpenID Connect?
+
+"OAuth2 is a delegation framework that allows applications to access resources on behalf of a user. OpenID Connect extends OAuth2 by adding identity information through ID tokens."
+
+---
+
+## Why use method-level security?
+
+"URL-level rules provide coarse-grained protection, but business operations often require finer authorization checks. Method-level security keeps authorization rules close to the business logic."
+
+---
+
+# Key Takeaways
+
+1. Spring Security protects applications through a Security Filter Chain.
+
+2. Authentication verifies identity; authorization controls access.
+
+3. JWT authentication stores user identity inside a signed token and uses SecurityContext to make it available during the request.
+
+4. OAuth2 manages delegated access; OIDC adds identity.
+
+5. Keycloak and Okta are common authorization servers.
+
+6. Method-level security provides fine-grained authorization.
+
+7. Stateless JWT security scales well for cloud-native microservices.
+
+8. Security requires multiple layers including HTTPS, validation, least privilege, and auditing.
+
+# Microservices & Spring Boot - Part 9
+# Resilience, Fault Tolerance & Resilience4j
+
+---
+
+# 1. Why Do Distributed Calls Fail?
+
+In a monolithic application:
+
+```
+Order Module
+     |
+Inventory Module
+```
+
+Communication happens inside the same process.
+
+---
+
+In microservices:
+
+```
+Order Service
+      |
+ HTTP/Kafka
+      |
+Inventory Service
+```
+
+Every network call introduces failure possibilities.
+
+---
+
+Common failures:
+
+- Network latency.
+- Temporary outages.
+- Dependency failures.
+- Thread exhaustion.
+- Database slowdowns.
+- Resource exhaustion.
+- Traffic spikes.
+
+---
+
+## Fundamental Principle
+
+Distributed systems are designed assuming failures will happen.
+
+The goal is not to eliminate failures.
+
+The goal is to:
+- Detect failures quickly.
+- Contain the impact.
+- Recover gracefully.
+
+---
+
+# 2. Timeouts
+
+Never wait indefinitely for a dependency.
+
+Bad:
+
+```
+Order Service
+      |
+Inventory Service
+      |
+Wait forever...
+```
+
+---
+
+Good:
+
+```
+Order Service
+      |
+Inventory Service
+      |
+Wait 500ms
+      |
+Timeout
+      |
+Return fallback or error
+```
+
+---
+
+## Why Timeouts Matter
+
+Without timeouts:
+
+- Threads remain blocked.
+- Thread pools become exhausted.
+- New requests cannot be processed.
+- Failure spreads to healthy services.
+
+---
+
+## Choosing Timeout Values
+
+Timeouts should be based on:
+
+- Normal dependency latency.
+- P95/P99 response times.
+- Business requirements.
+
+Example:
+
+```
+Inventory API:
+P99 latency = 200ms
+
+Timeout = 300-500ms
+```
+
+---
+
+## L6 Interview Soundbite
+
+"I choose timeout values using actual production latency metrics rather than arbitrary numbers. The timeout should be slightly above normal high-percentile latency while still protecting the caller."
+
+---
+
+# 3. Retries
+
+Retries handle transient failures.
+
+Example:
+
+```
+Request fails due to temporary network issue.
+
+Retry after a short delay.
+
+Request succeeds.
+```
+
+---
+
+## Good Candidates for Retry
+
+- Network timeouts.
+- Temporary dependency unavailability.
+- HTTP 503 responses.
+- Rate-limited requests where a retry is allowed.
+
+---
+
+## Bad Candidates for Retry
+
+Do not retry:
+
+- Validation errors.
+- Authentication failures.
+- Permanent failures.
+
+Examples:
+
+```
+400 Bad Request
+401 Unauthorized
+403 Forbidden
+404 Not Found
+```
+
+---
+
+# 4. Retry Storm Problem
+
+Retries can make outages worse.
+
+Example:
+
+Normal traffic:
+
+```
+1,000 requests/second
+```
+
+Dependency becomes slow.
+
+Every request retries 3 times:
+
+```
+Original:
+1,000 RPS
+
+Retries:
+3,000 additional RPS
+```
+
+The failing dependency receives:
+
+```
+4,000 RPS
+```
+
+The outage becomes worse.
+
+---
+
+# 5. Exponential Backoff
+
+Do not retry immediately.
+
+Bad:
+
+```
+Retry after:
+100ms
+100ms
+100ms
+```
+
+---
+
+Good:
+
+```
+Retry 1:
+100ms
+
+Retry 2:
+200ms
+
+Retry 3:
+400ms
+```
+
+---
+
+This gives the dependency time to recover.
+
+---
+
+# 6. Jitter
+
+If thousands of clients retry at the same time:
+
+```
+10,000 clients
+        |
+Retry exactly at 500ms
+        |
+Traffic spike
+```
+
+---
+
+Add randomness:
+
+```
+Retry 1:
+100-200ms
+
+Retry 2:
+300-500ms
+```
+
+---
+
+Benefits:
+
+- Avoids synchronized retry spikes.
+- Smooths traffic.
+- Reduces pressure on dependencies.
+
+---
+
+# 7. Circuit Breaker Pattern
+
+A circuit breaker prevents repeatedly calling a failing dependency.
+
+---
+
+## Closed State
+
+Normal operation.
+
+```
+Request
+   |
+Dependency
+   |
+Success
+```
+
+Requests are allowed.
+
+---
+
+## Open State
+
+Failure threshold exceeded.
+
+```
+Request
+   |
+Circuit Open
+   |
+Fail immediately
+```
+
+No calls go to the dependency.
+
+---
+
+Benefits:
+
+- Protects the dependency.
+- Protects caller resources.
+- Enables faster failure.
+
+---
+
+## Half-Open State
+
+After a wait period:
+
+```
+Allow limited test requests.
+```
+
+If successful:
+
+```
+Half-Open -> Closed
+```
+
+If failures continue:
+
+```
+Half-Open -> Open
+```
+
+---
+
+# 8. Circuit Breaker Example
+
+Scenario:
+
+```
+Payment Service
+        |
+External Bank API
+```
+
+Bank API is down.
+
+Without circuit breaker:
+
+```
+Every payment request waits 5 seconds.
+
+Threads accumulate.
+
+Application becomes unavailable.
+```
+
+---
+
+With circuit breaker:
+
+```
+Failure threshold reached.
+
+Circuit opens.
+
+Requests fail immediately.
+```
+
+The system remains healthy.
+
+---
+
+# 9. Fallback Strategies
+
+When a dependency fails, provide an alternative.
+
+Examples:
+
+## Cached Data
+
+```
+Product Service unavailable.
+
+Return cached product information.
+```
+
+---
+
+## Default Response
+
+Example:
+
+```
+Recommendation service unavailable.
+
+Return popular products.
+```
+
+---
+
+## Queue For Later
+
+Example:
+
+```
+Email service unavailable.
+
+Publish event to Kafka.
+```
+
+---
+
+## Graceful Degradation
+
+Example:
+
+```
+E-commerce site:
+
+Browsing works.
+
+Recommendations temporarily disabled.
+```
+
+---
+
+# 10. Bulkhead Pattern
+
+The idea comes from ship compartments.
+
+A hole in one compartment should not sink the entire ship.
+
+---
+
+Example:
+
+```
+Application Threads
+
+-----------------
+Inventory Pool
+-----------------
+Payment Pool
+-----------------
+Notification Pool
+-----------------
+```
+
+---
+
+If Notification Service becomes slow:
+
+```
+Notification threads exhausted.
+```
+
+Inventory and Payment continue working.
+
+---
+
+## Implementation Approaches
+
+- Separate thread pools.
+- Connection pool limits.
+- Semaphore limits.
+
+---
+
+# 11. Rate Limiting
+
+Rate limiting protects services from excessive traffic.
+
+Examples:
+
+```
+Free users:
+100 requests/minute
+
+Premium users:
+10,000 requests/minute
+```
+
+---
+
+Algorithms:
+
+- Token bucket.
+- Leaky bucket.
+- Sliding window.
+- Fixed window.
+
+---
+
+# 12. Controlled Concurrency
+
+This directly applies to external dependency protection.
+
+Example:
+
+External vendor allows:
+
+```
+Maximum 50 concurrent requests.
+```
+
+Bad:
+
+```
+500 threads call vendor simultaneously.
+```
+
+Results:
+
+- Vendor overload.
+- Timeouts.
+- Failures.
+
+---
+
+Better:
+
+```
+Semaphore permits: 50
+
+Request arrives
+       |
+Acquire permit
+       |
+Call vendor
+       |
+Release permit
+```
+
+---
+
+Benefits:
+
+- Protects downstream services.
+- Prevents resource exhaustion.
+- Provides predictable load.
+
+---
+
+## Real Production Example
+
+```
+Client Screening Service
+             |
+             |
+     External Screening Vendor
+```
+
+We observed:
+
+- Increased latency.
+- Timeout errors.
+- Vendor saturation.
+
+Solution:
+
+- Introduced concurrency limits.
+- Controlled parallel requests.
+- Reduced downstream pressure.
+- Improved overall system stability.
+
+---
+
+# 13. Resilience4j Overview
+
+Resilience4j is a lightweight fault-tolerance library.
+
+It provides:
+
+- Circuit Breaker.
+- Retry.
+- Rate Limiter.
+- Bulkhead.
+- Time Limiter.
+
+---
+
+## Spring Boot Integration
+
+Example:
+
+```java
+@CircuitBreaker(
+    name = "paymentService",
+    fallbackMethod = "fallback"
+)
+public PaymentResponse pay() {
+    return client.call();
+}
+```
+
+---
+
+Retry example:
+
+```java
+@Retry(name="inventoryService")
+public Inventory getInventory() {
+    return client.get();
+}
+```
+
+---
+
+Bulkhead example:
+
+```java
+@Bulkhead(name="vendorService")
+public Response callVendor() {
+    return client.call();
+}
+```
+
+---
+
+# 14. Combining Patterns
+
+A typical production call may use:
+
+```
+Client Request
+       |
+Timeout
+       |
+Retry with Backoff + Jitter
+       |
+Circuit Breaker
+       |
+Bulkhead Limit
+       |
+External Dependency
+```
+
+---
+
+The order and configuration must be chosen carefully.
+
+For example:
+
+- Retry only transient failures.
+- Do not retry forever.
+- Ensure retries do not bypass rate limits.
+
+---
+
+# 15. Observability of Resilience Patterns
+
+Monitor:
+
+Circuit Breaker:
+- Open count.
+- Failure rate.
+- Slow calls.
+
+Retries:
+- Retry count.
+- Success after retry.
+
+Bulkheads:
+- Queue size.
+- Rejected requests.
+
+Timeouts:
+- Timeout frequency.
+
+---
+
+# 16. L6 Interview Soundbites
+
+## Why are retries dangerous?
+
+"Retries can amplify failures. During an outage, uncontrolled retries may create a retry storm that increases traffic and prevents the dependency from recovering."
+
+---
+
+## Why use a circuit breaker?
+
+"A circuit breaker allows the system to fail fast when a dependency is unhealthy, protecting threads and reducing unnecessary pressure on downstream services."
+
+---
+
+## How do you protect an external API?
+
+"I combine timeout limits, controlled concurrency, rate limiting, and circuit breakers. The goal is to make sure my service remains healthy even when the dependency is slow or unavailable."
+
+---
+
+## When do you use a bulkhead?
+
+"I use bulkheads when different dependencies have different reliability characteristics. Isolating resources prevents one failing dependency from consuming all available threads or connections."
+
+---
+
+## What is the biggest mistake with resilience?
+
+"Adding retries without understanding the failure mode. Retries can be beneficial for transient failures but harmful during overload scenarios."
+
+---
+
+# Key Takeaways
+
+1. Failures are normal in distributed systems.
+
+2. Timeouts prevent resources from being blocked indefinitely.
+
+3. Retries should target transient failures and use backoff with jitter.
+
+4. Circuit breakers fail fast and prevent cascading failures.
+
+5. Bulkheads isolate failures.
+
+6. Controlled concurrency protects downstream systems.
+
+7. Rate limiting protects services from abuse.
+
+8. Resilience4j provides production-ready implementations of these patterns.
+
+9. Resilience patterns must be observable and tuned using real production metrics.
+
+# Microservices & Spring Boot - Part 9
+# Resilience, Fault Tolerance & Resilience4j
+
+---
+
+# 1. Why Do Distributed Calls Fail?
+
+In a monolithic application:
+
+```
+Order Module
+     |
+Inventory Module
+```
+
+Communication happens inside the same process.
+
+---
+
+In microservices:
+
+```
+Order Service
+      |
+ HTTP/Kafka
+      |
+Inventory Service
+```
+
+Every network call introduces failure possibilities.
+
+---
+
+Common failures:
+
+- Network latency.
+- Temporary outages.
+- Dependency failures.
+- Thread exhaustion.
+- Database slowdowns.
+- Resource exhaustion.
+- Traffic spikes.
+
+---
+
+## Fundamental Principle
+
+Distributed systems are designed assuming failures will happen.
+
+The goal is not to eliminate failures.
+
+The goal is to:
+- Detect failures quickly.
+- Contain the impact.
+- Recover gracefully.
+
+---
+
+# 2. Timeouts
+
+Never wait indefinitely for a dependency.
+
+Bad:
+
+```
+Order Service
+      |
+Inventory Service
+      |
+Wait forever...
+```
+
+---
+
+Good:
+
+```
+Order Service
+      |
+Inventory Service
+      |
+Wait 500ms
+      |
+Timeout
+      |
+Return fallback or error
+```
+
+---
+
+## Why Timeouts Matter
+
+Without timeouts:
+
+- Threads remain blocked.
+- Thread pools become exhausted.
+- New requests cannot be processed.
+- Failure spreads to healthy services.
+
+---
+
+## Choosing Timeout Values
+
+Timeouts should be based on:
+
+- Normal dependency latency.
+- P95/P99 response times.
+- Business requirements.
+
+Example:
+
+```
+Inventory API:
+P99 latency = 200ms
+
+Timeout = 300-500ms
+```
+
+---
+
+## L6 Interview Soundbite
+
+"I choose timeout values using actual production latency metrics rather than arbitrary numbers. The timeout should be slightly above normal high-percentile latency while still protecting the caller."
+
+---
+
+# 3. Retries
+
+Retries handle transient failures.
+
+Example:
+
+```
+Request fails due to temporary network issue.
+
+Retry after a short delay.
+
+Request succeeds.
+```
+
+---
+
+## Good Candidates for Retry
+
+- Network timeouts.
+- Temporary dependency unavailability.
+- HTTP 503 responses.
+- Rate-limited requests where a retry is allowed.
+
+---
+
+## Bad Candidates for Retry
+
+Do not retry:
+
+- Validation errors.
+- Authentication failures.
+- Permanent failures.
+
+Examples:
+
+```
+400 Bad Request
+401 Unauthorized
+403 Forbidden
+404 Not Found
+```
+
+---
+
+# 4. Retry Storm Problem
+
+Retries can make outages worse.
+
+Example:
+
+Normal traffic:
+
+```
+1,000 requests/second
+```
+
+Dependency becomes slow.
+
+Every request retries 3 times:
+
+```
+Original:
+1,000 RPS
+
+Retries:
+3,000 additional RPS
+```
+
+The failing dependency receives:
+
+```
+4,000 RPS
+```
+
+The outage becomes worse.
+
+---
+
+# 5. Exponential Backoff
+
+Do not retry immediately.
+
+Bad:
+
+```
+Retry after:
+100ms
+100ms
+100ms
+```
+
+---
+
+Good:
+
+```
+Retry 1:
+100ms
+
+Retry 2:
+200ms
+
+Retry 3:
+400ms
+```
+
+---
+
+This gives the dependency time to recover.
+
+---
+
+# 6. Jitter
+
+If thousands of clients retry at the same time:
+
+```
+10,000 clients
+        |
+Retry exactly at 500ms
+        |
+Traffic spike
+```
+
+---
+
+Add randomness:
+
+```
+Retry 1:
+100-200ms
+
+Retry 2:
+300-500ms
+```
+
+---
+
+Benefits:
+
+- Avoids synchronized retry spikes.
+- Smooths traffic.
+- Reduces pressure on dependencies.
+
+---
+
+# 7. Circuit Breaker Pattern
+
+A circuit breaker prevents repeatedly calling a failing dependency.
+
+---
+
+## Closed State
+
+Normal operation.
+
+```
+Request
+   |
+Dependency
+   |
+Success
+```
+
+Requests are allowed.
+
+---
+
+## Open State
+
+Failure threshold exceeded.
+
+```
+Request
+   |
+Circuit Open
+   |
+Fail immediately
+```
+
+No calls go to the dependency.
+
+---
+
+Benefits:
+
+- Protects the dependency.
+- Protects caller resources.
+- Enables faster failure.
+
+---
+
+## Half-Open State
+
+After a wait period:
+
+```
+Allow limited test requests.
+```
+
+If successful:
+
+```
+Half-Open -> Closed
+```
+
+If failures continue:
+
+```
+Half-Open -> Open
+```
+
+---
+
+# 8. Circuit Breaker Example
+
+Scenario:
+
+```
+Payment Service
+        |
+External Bank API
+```
+
+Bank API is down.
+
+Without circuit breaker:
+
+```
+Every payment request waits 5 seconds.
+
+Threads accumulate.
+
+Application becomes unavailable.
+```
+
+---
+
+With circuit breaker:
+
+```
+Failure threshold reached.
+
+Circuit opens.
+
+Requests fail immediately.
+```
+
+The system remains healthy.
+
+---
+
+# 9. Fallback Strategies
+
+When a dependency fails, provide an alternative.
+
+Examples:
+
+## Cached Data
+
+```
+Product Service unavailable.
+
+Return cached product information.
+```
+
+---
+
+## Default Response
+
+Example:
+
+```
+Recommendation service unavailable.
+
+Return popular products.
+```
+
+---
+
+## Queue For Later
+
+Example:
+
+```
+Email service unavailable.
+
+Publish event to Kafka.
+```
+
+---
+
+## Graceful Degradation
+
+Example:
+
+```
+E-commerce site:
+
+Browsing works.
+
+Recommendations temporarily disabled.
+```
+
+---
+
+# 10. Bulkhead Pattern
+
+The idea comes from ship compartments.
+
+A hole in one compartment should not sink the entire ship.
+
+---
+
+Example:
+
+```
+Application Threads
+
+-----------------
+Inventory Pool
+-----------------
+Payment Pool
+-----------------
+Notification Pool
+-----------------
+```
+
+---
+
+If Notification Service becomes slow:
+
+```
+Notification threads exhausted.
+```
+
+Inventory and Payment continue working.
+
+---
+
+## Implementation Approaches
+
+- Separate thread pools.
+- Connection pool limits.
+- Semaphore limits.
+
+---
+
+# 11. Rate Limiting
+
+Rate limiting protects services from excessive traffic.
+
+Examples:
+
+```
+Free users:
+100 requests/minute
+
+Premium users:
+10,000 requests/minute
+```
+
+---
+
+Algorithms:
+
+- Token bucket.
+- Leaky bucket.
+- Sliding window.
+- Fixed window.
+
+---
+
+# 12. Controlled Concurrency
+
+This directly applies to external dependency protection.
+
+Example:
+
+External vendor allows:
+
+```
+Maximum 50 concurrent requests.
+```
+
+Bad:
+
+```
+500 threads call vendor simultaneously.
+```
+
+Results:
+
+- Vendor overload.
+- Timeouts.
+- Failures.
+
+---
+
+Better:
+
+```
+Semaphore permits: 50
+
+Request arrives
+       |
+Acquire permit
+       |
+Call vendor
+       |
+Release permit
+```
+
+---
+
+Benefits:
+
+- Protects downstream services.
+- Prevents resource exhaustion.
+- Provides predictable load.
+
+---
+
+## Real Production Example
+
+```
+Client Screening Service
+             |
+             |
+     External Screening Vendor
+```
+
+We observed:
+
+- Increased latency.
+- Timeout errors.
+- Vendor saturation.
+
+Solution:
+
+- Introduced concurrency limits.
+- Controlled parallel requests.
+- Reduced downstream pressure.
+- Improved overall system stability.
+
+---
+
+# 13. Resilience4j Overview
+
+Resilience4j is a lightweight fault-tolerance library.
+
+It provides:
+
+- Circuit Breaker.
+- Retry.
+- Rate Limiter.
+- Bulkhead.
+- Time Limiter.
+
+---
+
+## Spring Boot Integration
+
+Example:
+
+```java
+@CircuitBreaker(
+    name = "paymentService",
+    fallbackMethod = "fallback"
+)
+public PaymentResponse pay() {
+    return client.call();
+}
+```
+
+---
+
+Retry example:
+
+```java
+@Retry(name="inventoryService")
+public Inventory getInventory() {
+    return client.get();
+}
+```
+
+---
+
+Bulkhead example:
+
+```java
+@Bulkhead(name="vendorService")
+public Response callVendor() {
+    return client.call();
+}
+```
+
+---
+
+# 14. Combining Patterns
+
+A typical production call may use:
+
+```
+Client Request
+       |
+Timeout
+       |
+Retry with Backoff + Jitter
+       |
+Circuit Breaker
+       |
+Bulkhead Limit
+       |
+External Dependency
+```
+
+---
+
+The order and configuration must be chosen carefully.
+
+For example:
+
+- Retry only transient failures.
+- Do not retry forever.
+- Ensure retries do not bypass rate limits.
+
+---
+
+# 15. Observability of Resilience Patterns
+
+Monitor:
+
+Circuit Breaker:
+- Open count.
+- Failure rate.
+- Slow calls.
+
+Retries:
+- Retry count.
+- Success after retry.
+
+Bulkheads:
+- Queue size.
+- Rejected requests.
+
+Timeouts:
+- Timeout frequency.
+
+---
+
+# 16. L6 Interview Soundbites
+
+## Why are retries dangerous?
+
+"Retries can amplify failures. During an outage, uncontrolled retries may create a retry storm that increases traffic and prevents the dependency from recovering."
+
+---
+
+## Why use a circuit breaker?
+
+"A circuit breaker allows the system to fail fast when a dependency is unhealthy, protecting threads and reducing unnecessary pressure on downstream services."
+
+---
+
+## How do you protect an external API?
+
+"I combine timeout limits, controlled concurrency, rate limiting, and circuit breakers. The goal is to make sure my service remains healthy even when the dependency is slow or unavailable."
+
+---
+
+## When do you use a bulkhead?
+
+"I use bulkheads when different dependencies have different reliability characteristics. Isolating resources prevents one failing dependency from consuming all available threads or connections."
+
+---
+
+## What is the biggest mistake with resilience?
+
+"Adding retries without understanding the failure mode. Retries can be beneficial for transient failures but harmful during overload scenarios."
+
+---
+
+# Key Takeaways
+
+1. Failures are normal in distributed systems.
+
+2. Timeouts prevent resources from being blocked indefinitely.
+
+3. Retries should target transient failures and use backoff with jitter.
+
+4. Circuit breakers fail fast and prevent cascading failures.
+
+5. Bulkheads isolate failures.
+
+6. Controlled concurrency protects downstream systems.
+
+7. Rate limiting protects services from abuse.
+
+8. Resilience4j provides production-ready implementations of these patterns.
+
+9. Resilience patterns must be observable and tuned using real production metrics.
