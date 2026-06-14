@@ -3259,6 +3259,741 @@ However, modern relational databases can scale horizontally using:
 
 ---
 
+# 5.1 Read Replicas
+
+## Introduction
+
+As applications scale, database workloads often become heavily read-oriented. Examples include:
+
+* User profile views.
+* Product catalog searches.
+* Dashboards and reports.
+* Analytics queries.
+
+A single primary database may become a bottleneck because it must handle both read and write traffic.
+
+**Read replicas** are a common strategy to horizontally scale read capacity by creating additional read-only copies of the primary database.
+
+---
+
+# How Read Replicas Work
+
+## Primary-Replica Architecture
+
+The database architecture separates responsibilities:
+
+* The **primary database** handles all write operations:
+
+  * INSERT
+  * UPDATE
+  * DELETE
+
+* One or more **read replicas** handle read-only queries:
+
+  * SELECT statements
+
+Changes made to the primary are replicated to the replicas.
+
+Example:
+
+```
+                     Application
+                           |
+            --------------------------------
+            |                              |
+        Write Requests                 Read Requests
+            |                              |
+        Primary Database        -----------------------
+                                 |                     |
+                           Read Replica 1        Read Replica 2
+```
+
+---
+
+## Replication Process
+
+Most relational databases implement replication asynchronously.
+
+Example:
+
+```
+User updates profile
+          |
+          v
+     Primary Database
+          |
+          v
+     Replication Log
+          |
+          v
+     Read Replica
+```
+
+The primary commits the transaction immediately and sends the changes to replicas afterward.
+
+This approach provides:
+
+* Low write latency.
+* Improved read scalability.
+
+---
+
+# Advantages of Read Replicas
+
+## Horizontal Read Scaling
+
+Additional replicas can be added to handle increasing read traffic.
+
+Example:
+
+```
+Primary:
+10,000 writes/sec
+
+Single Primary:
+20,000 reads/sec capacity
+
+
+With 5 replicas:
+
+Primary:
+20,000 reads/sec
+
+Replicas:
+5 × 20,000 reads/sec
+
+Total:
+120,000 reads/sec
+```
+
+Read throughput can scale by adding more replicas.
+
+---
+
+## Offloading Expensive Queries
+
+Long-running queries can be routed to replicas.
+
+Examples:
+
+* Reporting.
+* Analytics.
+* Dashboard generation.
+* Large aggregations.
+
+This prevents analytical workloads from affecting transactional operations on the primary.
+
+---
+
+## Native Database Support
+
+Most relational databases support read replicas natively.
+
+Examples:
+
+* PostgreSQL streaming replication.
+* MySQL replication.
+* Amazon RDS Read Replicas.
+
+Managed cloud databases can automatically provision and manage replicas.
+
+---
+
+# Challenges and Trade-Offs
+
+## Replication Lag
+
+Because replication is usually asynchronous, replicas may temporarily fall behind the primary.
+
+Example:
+
+```
+Time T0:
+User updates address
+
+Time T1:
+Application reads from replica
+
+Result:
+Old address returned
+```
+
+This is known as **stale reads**.
+
+---
+
+## Handling Read-After-Write Consistency
+
+Some applications require users to immediately see their own changes.
+
+Possible solutions:
+
+### Read from Primary After a Write
+
+Example:
+
+```
+Update Profile
+      |
+      |
+Read from Primary
+```
+
+Ensures the latest data is returned.
+
+---
+
+### Sticky Reads
+
+After a user performs a write operation, route that user's subsequent reads to the primary for a short period.
+
+Example:
+
+```
+User writes data
+
+Next 5 seconds:
+Read from Primary
+
+After replication catches up:
+Read from Replica
+```
+
+---
+
+## Write Scalability Limitation
+
+Read replicas increase **read capacity**, but they do not improve write scalability.
+
+All writes still go through a single primary database.
+
+Example:
+
+```
+           Writes
+             |
+             v
+        Primary Database
+             |
+        ----------------
+        |              |
+   Replica 1      Replica 2
+```
+
+If the primary reaches its CPU, memory, or storage limits, additional solutions are needed:
+
+* Vertical scaling.
+* Partitioning.
+* Sharding.
+* Database redesign.
+
+---
+
+# Read Routing Strategies
+
+Applications must decide where to send database queries.
+
+---
+
+## Application-Level Routing
+
+The application manages separate connections:
+
+Example:
+
+```
+Application
+
+Write Connection
+       |
+    Primary Database
+
+
+Read Connection
+       |
+Randomly Selected Replica
+```
+
+Advantages:
+
+* Full control over routing decisions.
+* Can apply custom consistency rules.
+
+Disadvantages:
+
+* More complex application logic.
+* Requires maintaining multiple connection pools.
+
+---
+
+## Database Proxy Routing
+
+A proxy sits between the application and databases.
+
+Example:
+
+```
+Application
+      |
+Database Proxy
+      |
+------------------------
+|                      |
+Primary            Read Replicas
+```
+
+The proxy automatically routes:
+
+* INSERT, UPDATE, DELETE → Primary
+* SELECT → Replicas
+
+Examples:
+
+* ProxySQL for MySQL.
+* PgBouncer or similar connection routing solutions for PostgreSQL.
+
+Advantages:
+
+* Simplifies application code.
+* Centralizes routing policies.
+
+Disadvantages:
+
+* Additional infrastructure component.
+* Can become a bottleneck if not scaled properly.
+
+---
+
+# Failure Scenarios
+
+## Replica Failure
+
+If a replica becomes unavailable:
+
+```
+Replica 1 fails
+       |
+Traffic moves to other replicas
+```
+
+The system loses some read capacity but remains available.
+
+---
+
+## Primary Failure
+
+If the primary database fails:
+
+* A replica may be promoted to become the new primary.
+* Applications must redirect write traffic to the new primary.
+
+This process is called **failover**.
+
+---
+
+# L6 Interview Discussion
+
+## When would you introduce read replicas?
+
+Use read replicas when:
+
+* Read traffic is significantly higher than write traffic.
+* Analytical queries impact transactional workloads.
+* A single database cannot handle read throughput.
+
+---
+
+## Why not always read from replicas?
+
+Because replicas may lag behind the primary.
+
+For workflows requiring strong consistency, reads may need to go to the primary.
+
+Examples:
+
+Strong consistency needed:
+
+* Account balances.
+* Recent profile updates.
+* Payment confirmations.
+
+Eventual consistency acceptable:
+
+* News feeds.
+* Product catalogs.
+* Analytics dashboards.
+
+---
+
+## Do read replicas solve database scaling completely?
+
+No.
+
+Read replicas only scale **read throughput**.
+
+The primary database remains a bottleneck for:
+
+* Writes.
+* Transaction processing.
+* Schema changes.
+
+At very large scale, additional techniques such as partitioning and sharding are required.
+
+---
+
+# Key Takeaways
+
+1. Read replicas provide horizontal scalability for read-heavy workloads.
+
+2. The primary handles writes, while replicas handle SELECT queries.
+
+3. Replication is often asynchronous, which can lead to stale reads.
+
+4. Read-after-write consistency can be achieved by temporarily routing reads to the primary.
+
+5. Read replicas improve read scalability but do not solve write scalability.
+
+6. Applications can route reads using application logic or database proxies.
+
+7. At massive scale, read replicas are often combined with partitioning and sharding.
+
+
+# 5.2 Partitioning vs Sharding
+
+## Introduction
+
+As databases grow to billions of records, storing all data in a single large table becomes inefficient. Two common techniques used to manage large datasets are **partitioning** and **sharding**.
+
+Both techniques split data into smaller chunks, but they solve different problems:
+
+* **Partitioning** improves data organization and query performance within a single database server.
+* **Sharding** distributes data across multiple independent database servers to achieve horizontal scalability.
+
+---
+
+## Partitioning vs Sharding Comparison
+
+| Feature                  | Partitioning                                                                          | Sharding                                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **Location**             | Partitions are stored within the same database server.                                | Shards are distributed across multiple independent database servers.                               |
+| **Primary Goal**         | Improve maintenance efficiency and query performance.                                 | Scale horizontally to handle massive data volume and traffic.                                      |
+| **Architecture**         | Uses the resources (CPU, memory, disk) of a single machine.                           | Uses a shared-nothing architecture where each shard has its own CPU, memory, and storage.          |
+| **Scalability**          | Limited by the capacity of a single server.                                           | Can scale by adding more database nodes.                                                           |
+| **Complexity**           | Low. Usually supported natively by relational databases.                              | High. Requires shard routing, data distribution, rebalancing, and handling cross-shard operations. |
+| **Joins & Transactions** | Normal joins and ACID transactions are easier because all data resides on one server. | Cross-shard joins and distributed transactions are difficult and expensive.                        |
+
+---
+
+# Partitioning
+
+## What is Partitioning?
+
+Partitioning divides a large database table into smaller physical pieces called **partitions** based on a partitioning strategy.
+
+Common partitioning strategies include:
+
+### Range Partitioning
+
+Data is divided based on a range of values.
+
+Example:
+
+```
+Orders Table
+
+Partition 1:
+Orders from 2022
+
+Partition 2:
+Orders from 2023
+
+Partition 3:
+Orders from 2024
+```
+
+---
+
+### List Partitioning
+
+Data is divided based on predefined categories.
+
+Example:
+
+```
+Users Table
+
+US Users
+EU Users
+Asia Users
+```
+
+---
+
+### Hash Partitioning
+
+A hash function determines which partition stores a record.
+
+Example:
+
+```
+hash(UserId) % 4
+
+0 → Partition A
+1 → Partition B
+2 → Partition C
+3 → Partition D
+```
+
+---
+
+## Advantages of Partitioning
+
+### Partition Pruning
+
+The database engine can ignore irrelevant partitions when executing a query.
+
+Example:
+
+A query asks:
+
+```
+SELECT * FROM Orders
+WHERE OrderDate BETWEEN Jan 1, 2024 and Jan 31, 2024
+```
+
+The database only scans the 2024 partition instead of scanning years of historical data.
+
+---
+
+### Easier Maintenance
+
+Operations such as:
+
+* Archiving old data.
+* Dropping old records.
+* Backing up specific ranges.
+
+become much easier.
+
+---
+
+## Limitations of Partitioning
+
+Because all partitions remain on the same database server, they still share:
+
+* CPU.
+* Memory.
+* Disk I/O.
+
+Partitioning improves performance and manageability but **does not provide unlimited scalability**.
+
+---
+
+# Sharding
+
+## What is Sharding?
+
+Sharding is a form of horizontal partitioning where data is distributed across multiple independent database servers.
+
+Each shard owns a subset of the total data.
+
+Example:
+
+```
+User Database
+
+Shard 1:
+Users 1 - 10 Million
+
+Shard 2:
+Users 10 Million - 20 Million
+
+Shard 3:
+Users 20 Million - 30 Million
+```
+
+---
+
+## How Requests Are Routed
+
+A routing layer determines which shard contains the requested data.
+
+Example:
+
+```
+Application
+      |
+Shard Router
+      |
+------------------------
+|            |          |
+Shard 1    Shard 2    Shard 3
+```
+
+Routing may be based on:
+
+* User ID.
+* Customer ID.
+* Geographic region.
+* Hash of a key.
+
+---
+
+## Advantages of Sharding
+
+### Horizontal Scalability
+
+Additional shards can be added as data volume and traffic grow.
+
+Example:
+
+A social media platform with billions of users can distribute user data across hundreds of database servers.
+
+---
+
+### Improved Throughput
+
+Multiple shards can process requests in parallel.
+
+Example:
+
+```
+1000 writes/sec on one server
+
+becomes
+
+10 shards × 1000 writes/sec = 10,000 writes/sec
+```
+
+---
+
+### Fault Isolation
+
+A failure in one shard affects only the data stored on that shard rather than the entire database.
+
+---
+
+## Challenges of Sharding
+
+### Cross-Shard Queries
+
+A query such as:
+
+```
+Find all users who purchased a product
+```
+
+may require querying many shards and combining the results.
+
+---
+
+### Data Rebalancing
+
+As shards grow unevenly, data may need to be migrated between servers.
+
+This process can be expensive and requires careful planning.
+
+---
+
+### Hot Shards
+
+Poor shard key selection can create uneven traffic.
+
+Example:
+
+```
+User ID 1 - 1000 receives 90% of traffic
+```
+
+That shard becomes overloaded while others remain underutilized.
+
+---
+
+### Distributed Transactions
+
+Transactions involving multiple shards are complex and often require techniques such as:
+
+* Saga patterns.
+* Eventual consistency.
+* Application-level coordination.
+
+---
+
+# How Partitioning and Sharding Work Together
+
+Large-scale systems often combine both techniques.
+
+Example:
+
+```
+Global Application
+
+             |
+        Sharding Layer
+             |
+--------------------------------
+|                              |
+US Database                 EU Database
+|                              |
+Local Partitions           Local Partitions
+(by date)                  (by date)
+```
+
+A system may:
+
+1. **Shard** data across multiple servers to achieve horizontal scalability.
+2. **Partition** data within each shard to improve query performance and maintenance.
+
+---
+
+# L6 Interview Discussion
+
+## When would you use partitioning?
+
+Use partitioning when:
+
+* A single database server can handle the workload.
+* Tables are very large.
+* Queries frequently access a subset of data.
+* You want easier data lifecycle management.
+
+---
+
+## When would you use sharding?
+
+Use sharding when:
+
+* Data volume exceeds the capacity of a single machine.
+* Read/write throughput exceeds what one server can handle.
+* You need horizontal scaling.
+
+---
+
+## Why is sharding more difficult?
+
+Because it introduces distributed system challenges:
+
+* Request routing.
+* Data rebalancing.
+* Cross-shard queries.
+* Distributed transactions.
+* Hot partitions.
+
+---
+
+# Key Takeaways
+
+1. Partitioning splits data within a single database server to improve performance and maintenance.
+
+2. Sharding distributes data across multiple servers to achieve horizontal scalability.
+
+3. Partitioning is simpler but limited by a single machine's resources.
+
+4. Sharding provides massive scale but introduces operational and consistency challenges.
+
+5. Large-scale systems often combine sharding and partitioning.
+
+
 # 6. NoSQL Databases
 
 NoSQL databases trade some relational features for:
