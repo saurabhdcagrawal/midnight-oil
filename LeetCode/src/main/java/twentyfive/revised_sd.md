@@ -6897,6 +6897,136 @@ Partition 3 -> Consumer C
 
 ---
 
+# Execution Model Matters: Where Do Threads Come From?
+
+A semaphore does not create threads. It only limits how many existing threads can access a constrained resource at the same time.
+
+The source of threads depends on the execution model.
+
+---
+
+## Synchronous REST API
+
+In a Spring Boot application using Tomcat:
+
+```
+Client Request
+       |
+Tomcat Thread Pool
+       |
+Controller
+       |
+Service
+       |
+Semaphore (50 permits)
+       |
+External Vendor API
+```
+
+Tomcat already provides request threads.
+
+Example:
+
+- Tomcat threads: 200
+- Vendor capacity: 50 concurrent calls
+
+Without semaphore:
+
+```
+200 Tomcat threads
+        |
+200 Vendor Calls
+        |
+Vendor Overloaded
+```
+
+With semaphore:
+
+```
+200 Tomcat threads
+        |
+Semaphore (50)
+        |
+50 Vendor Calls
+```
+
+The remaining requests can:
+
+- Wait for a permit.
+- Timeout and fail fast.
+- Return HTTP 429/503.
+
+In most synchronous APIs, creating another worker thread pool is unnecessary because the application server already manages request threads.
+
+---
+
+## Kafka Consumer Processing
+
+Kafka consumers also provide execution threads.
+
+Example:
+
+```
+Kafka Topic
+      |
+Consumer Threads
+      |
+Business Processing
+      |
+Semaphore (50)
+      |
+External Vendor API
+```
+
+The semaphore limits downstream pressure while allowing Kafka consumers to process messages concurrently.
+
+---
+
+## When Would We Add Worker Threads?
+
+A separate worker pool is useful when we want to decouple accepting work from processing work.
+
+Example:
+
+```
+Kafka Consumer
+      |
+Bounded Queue
+      |
+Worker Thread Pool
+      |
+External Dependency
+```
+
+Reasons:
+
+- Keep Kafka polling responsive.
+- Apply different concurrency limits at different stages.
+- Absorb short traffic spikes.
+- Isolate slow operations.
+
+Example:
+
+```
+Kafka Consumers: 10 threads
+
+CPU Processing: 100 worker threads
+
+Vendor Calls: 20 concurrent requests
+```
+
+Each stage can have independent concurrency controls.
+
+---
+
+## Key Idea
+
+Thread pools provide execution capacity.
+
+Semaphores provide access control.
+
+They solve different problems and are often used together.
+
 # 6. Real World Example: External Vendor Protection
 
 Scenario:
@@ -7032,6 +7162,22 @@ Use a combination of:
 - Backpressure.
 
 ---
+
+## How do you implement concurrency control?
+
+"It depends on the execution model. In a synchronous Spring Boot API, I usually use the existing Tomcat request threads and place a semaphore or bulkhead around the downstream call. In Kafka or batch systems, consumer or worker threads provide the execution capacity, while semaphores limit how much pressure is applied to external dependencies."
+
+---
+
+## Why not just add more threads?
+
+"More threads increase concurrency only if the downstream dependency has additional capacity. If the bottleneck is the dependency itself, adding threads only increases waiting, timeouts, and resource consumption. The correct approach is to match concurrency to the downstream capacity."
+
+---
+
+## What happens when the concurrency limit is reached?
+
+"That decision depends on the workload. In synchronous APIs, I may wait briefly and then fail fast with HTTP 429 or 503. In asynchronous systems, I may buffer work in a bounded queue or Kafka and process it later at a controlled rate."
 
 # Key Takeaways
 
