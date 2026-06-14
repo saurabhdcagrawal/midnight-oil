@@ -4226,6 +4226,372 @@ Disadvantages:
 - Data consistency challenges.
 
 ---
+# 5.3 Query-Driven Schema Design (Query-First Data Modeling)
+
+## Introduction
+
+Traditional relational database design focuses on modeling real-world entities and minimizing data duplication through normalization.
+
+However, at large scale, the primary challenge is often not storing data efficiently—it is retrieving the right data with very low latency.
+
+Query-driven schema design (also known as **query-first** or **demand-driven design**) is a methodology where the schema is designed around the application's exact read and write access patterns.
+
+Instead of asking:
+
+```
+What entities exist in the system?
+```
+
+we start with:
+
+```
+What queries must the system execute?
+```
+
+This approach is the foundation of many NoSQL databases such as:
+
+* MongoDB
+* Cassandra
+* ScyllaDB
+
+and modern API layers such as GraphQL.
+
+---
+
+# Traditional Design vs Query-Driven Design
+
+| Feature               | Traditional Relational Design                       | Query-Driven Design                                  |
+| --------------------- | --------------------------------------------------- | ---------------------------------------------------- |
+| Primary Goal          | Minimize redundancy and maintain strict consistency | Maximize read/write efficiency and minimize latency  |
+| Modeling Strategy     | Normalize entities into separate tables             | Denormalize data around access patterns              |
+| Structure Orientation | Designed around business entities                   | Designed around application workflows and UI needs   |
+| Joins                 | Common and optimized by relational databases        | Avoided because they may be expensive or unsupported |
+| Storage Cost          | Lower storage, higher query complexity              | Higher storage, simpler and faster queries           |
+| Schema Evolution      | Generally more stable                               | Changes as access patterns evolve                    |
+
+---
+
+# The Query-First Design Process
+
+## Step 1: Identify Access Patterns
+
+Before designing the schema, list all critical application queries.
+
+Examples:
+
+```
+Load a user's profile page
+
+Fetch the latest 20 posts from followed users
+
+Retrieve an order and its line items
+
+Display the top 10 comments for a post
+```
+
+For each query, understand:
+
+* Query frequency.
+* Required response latency.
+* Filtering conditions.
+* Sorting requirements.
+* Read-to-write ratio.
+
+A common L6 principle:
+
+> Your database schema should serve your application's most important queries.
+
+---
+
+## Step 2: Choose the Right Primary Keys and Indexes
+
+The primary key determines how data is distributed and retrieved.
+
+In distributed databases, selecting a good partition key is critical.
+
+A good partition key:
+
+* Distributes traffic evenly.
+* Avoids hot partitions.
+* Supports common lookup patterns.
+
+Examples:
+
+Good:
+
+```
+UserId hash → Partition
+```
+
+Bad:
+
+```
+All events from today's date → Single partition
+```
+
+because all writes target the same location.
+
+Additional clustering or sort keys can be used to organize data within a partition.
+
+Example:
+
+```
+Partition Key:
+UserId
+
+Sort Key:
+Timestamp DESC
+```
+
+This allows efficient queries such as:
+
+```
+Get the most recent 50 messages for a user
+```
+
+---
+
+## Step 3: Apply Embedding and Denormalization
+
+Data that is frequently read together should often be stored together.
+
+### Traditional Relational Model
+
+```
+Post Table
+     |
+     |
+Comments Table
+     |
+     |
+Users Table
+```
+
+Loading a post page may require multiple joins.
+
+---
+
+### Query-Driven NoSQL Model
+
+```
+Post Document
+
+{
+  postId: 123,
+  authorName: "Alice",
+  content: "Hello World",
+  topComments: [
+    {
+      user: "Bob",
+      text: "Great post"
+    }
+  ]
+}
+```
+
+A single database lookup can retrieve everything needed for the page.
+
+---
+
+# Query-Driven Design in APIs
+
+The same philosophy applies to API design.
+
+A good API should be designed around client needs rather than internal data models.
+
+Example:
+
+A mobile dashboard requires:
+
+* User profile.
+* Recent orders.
+* Recommendations.
+* Account metrics.
+
+Instead of requiring four separate API calls:
+
+```
+Client
+ |
+ |-- User Service
+ |
+ |-- Orders Service
+ |
+ |-- Recommendation Service
+ |
+ |-- Metrics Service
+```
+
+A query-driven API layer such as GraphQL or a Backend-for-Frontend (BFF) can expose:
+
+```
+Dashboard Response
+{
+  profile,
+  orders,
+  recommendations,
+  metrics
+}
+```
+
+This reduces network round trips and improves client performance.
+
+---
+
+# Trade-Offs and Challenges
+
+## Data Duplication
+
+Denormalization means the same information may exist in multiple places.
+
+Example:
+
+```
+User Name
+
+Stored in:
+- User document
+- Post document
+- Comment document
+```
+
+When the user changes their name, all copies must eventually be updated.
+
+---
+
+## More Complex Writes
+
+Optimizing reads may require multiple write operations.
+
+Example:
+
+```
+Update User Name
+
+      |
+      |
+Update User Profile
+
+      +
+Update All Posts
+
+      +
+Update All Comments
+```
+
+This may require:
+
+* Asynchronous updates.
+* Event-driven architecture.
+* Background jobs.
+
+---
+
+## Schema Evolution
+
+If application workflows change, the schema may need to evolve.
+
+Examples:
+
+* New UI screens.
+* Different sorting requirements.
+* New query patterns.
+
+Large systems often use:
+
+* Backward-compatible schema changes.
+* Lazy migrations.
+* Background migration jobs.
+
+---
+
+# When Should You Use Query-Driven Design?
+
+Use it when:
+
+* You have well-known access patterns.
+* Read latency is a top priority.
+* The system operates at massive scale.
+* Joins become expensive.
+* You are using NoSQL or distributed databases.
+
+---
+
+# When Is Normalization Better?
+
+Normalization is often preferred when:
+
+* Data consistency is critical.
+* Data relationships are complex.
+* Write correctness is more important than read performance.
+* The dataset comfortably fits within a relational database.
+
+Examples:
+
+* Banking systems.
+* Payment ledgers.
+* Inventory management.
+
+---
+
+# L6 Interview Discussion
+
+## Why do large-scale systems denormalize data?
+
+Because network calls and joins become expensive at scale.
+
+Storage is relatively cheap, but latency and distributed coordination are expensive.
+
+---
+
+## What is the first step when designing a database?
+
+Do not start with tables.
+
+Start with:
+
+```
+Access Patterns
+        |
+        ↓
+Primary Keys
+        |
+        ↓
+Indexes
+        |
+        ↓
+Schema Design
+```
+
+---
+
+## Is denormalization always better?
+
+No.
+
+It improves read performance but introduces:
+
+* Data duplication.
+* More complex writes.
+* Eventual consistency challenges.
+
+Choose the approach based on business requirements.
+
+---
+
+# Key Takeaways
+
+1. Query-driven design starts with application access patterns rather than entities.
+
+2. Denormalization trades additional storage for lower query latency.
+
+3. Partition keys and indexes should be chosen based on how data is retrieved.
+
+4. Data that is frequently read together should often be stored together.
+
+5. Modern NoSQL databases heavily rely on query-driven schema design.
+
+6. The best database design is driven by workload and trade-offs, not a single universal rule.
 
 # 13. Database Indexing
 
