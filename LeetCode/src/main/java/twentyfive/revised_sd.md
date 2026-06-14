@@ -7152,6 +7152,410 @@ Benefits:
 
 ---
 
+# Putting It All Together: End-to-End Resilience Pipeline
+
+A production-grade system often uses multiple layers of protection. Each layer addresses a different failure mode.
+
+The key principle is:
+
+> Protect your own service, protect downstream dependencies, and handle failures gracefully.
+
+---
+
+## Overall Flow
+
+```
+Incoming Requests / Messages
+              |
+              |
+        Rate Limiter
+              |
+              |
+    Bounded Queue (Optional)
+              |
+              |
+ Application Threads
+(Tomcat/Kafka Workers)
+              |
+              |
+   Bulkhead / Semaphore
+(Max Concurrent Calls)
+              |
+              |
+           Timeout
+              |
+              |
+ Retry (Exponential Backoff
+          + Jitter)
+              |
+              |
+      Circuit Breaker
+              |
+              |
+      External Dependency
+```
+
+---
+
+# 1. Rate Limiter - Protect Your Service Entrance
+
+Rate limiting controls how many requests the service accepts over time.
+
+Example:
+
+```
+Incoming Traffic:
+100,000 requests/sec
+
+Allowed:
+10,000 requests/sec
+```
+
+Excess traffic is rejected, typically with:
+
+```
+HTTP 429 Too Many Requests
+```
+
+This prevents the service itself from becoming overloaded.
+
+---
+
+# 2. Bounded Queue - Absorb Temporary Spikes
+
+Traffic is often bursty.
+
+Example:
+
+```
+Normal:
+500 requests/sec
+
+Temporary Spike:
+2,000 requests/sec
+```
+
+A bounded queue can absorb short spikes.
+
+However, queues must have limits.
+
+Without a limit:
+
+```
+Producer Faster Than Consumer
+              |
+       Queue Grows Forever
+              |
+        Memory Exhaustion
+              |
+      OutOfMemoryError
+```
+
+When the queue becomes full, the system must choose a policy:
+
+* Reject requests.
+* Retry later.
+* Drop lower priority work.
+
+A bounded queue prevents moving the overload problem into application memory.
+
+---
+
+# 3. Application Threads - Execute Work
+
+These are the actual threads performing business operations.
+
+Examples:
+
+Synchronous APIs:
+
+```
+Tomcat Request Threads
+```
+
+Kafka Processing:
+
+```
+Kafka Consumer Threads
+```
+
+In many cases, additional worker pools are not required because the execution model already provides concurrency.
+
+---
+
+# 4. Bulkhead / Semaphore - Protect Downstream Dependencies
+
+This was the primary solution in our vendor screening scenario.
+
+Example:
+
+```
+Application Threads: 200
+
+Vendor Capacity:
+50 concurrent requests
+```
+
+Without protection:
+
+```
+200 Threads
+      |
+200 Vendor Calls
+      |
+Vendor Overloaded
+```
+
+With a semaphore:
+
+```
+200 Threads
+      |
+Semaphore (50 permits)
+      |
+50 Vendor Calls
+```
+
+The remaining requests can:
+
+* Wait.
+* Timeout.
+* Fail fast.
+
+The purpose is to match our request concurrency with the actual capacity of the dependency.
+
+---
+
+# 5. Timeout - Avoid Waiting Forever
+
+A dependency may become slow.
+
+Example:
+
+```
+Normal Response:
+100ms
+
+Failure Scenario:
+10 seconds
+```
+
+Instead of waiting indefinitely:
+
+```
+Timeout = 500ms
+```
+
+After the timeout:
+
+* The request is aborted.
+* Threads are released.
+* Resources are protected.
+
+---
+
+# 6. Retry with Exponential Backoff and Jitter
+
+Retries are useful for transient failures.
+
+Example:
+
+```
+Attempt 1:
+Failure
+
+Wait:
+100ms + Random Jitter
+
+Attempt 2:
+Failure
+
+Wait:
+200ms + Random Jitter
+
+Attempt 3:
+Success
+```
+
+Exponential backoff gives the dependency time to recover.
+
+Jitter prevents thousands of clients from retrying at exactly the same time, avoiding retry storms.
+
+Retries should only be used for temporary failures.
+
+Examples:
+
+Good:
+
+* Network glitches.
+* Temporary timeouts.
+* HTTP 503 responses.
+
+Bad:
+
+* Validation failures.
+* Authentication failures.
+* Permanent business errors.
+
+---
+
+# 7. Circuit Breaker - Fail Fast During Outages
+
+If a dependency continues failing, repeatedly calling it only wastes resources.
+
+Without a circuit breaker:
+
+```
+Request
+  |
+Vendor Call
+  |
+Timeout
+  |
+Retry
+  |
+Failure
+```
+
+The system continues applying pressure to a broken dependency.
+
+A circuit breaker monitors:
+
+* Failure rate.
+* Slow call rate.
+
+Example:
+
+```
+Failure Rate > 50%
+over the last 100 requests
+```
+
+The circuit transitions to:
+
+```
+OPEN
+```
+
+Now requests fail immediately without calling the dependency.
+
+After a waiting period:
+
+```
+HALF OPEN
+```
+
+A small number of test requests are allowed.
+
+If successful:
+
+```
+CLOSED
+```
+
+Normal traffic resumes.
+
+---
+
+# How Resilience4j Implements This
+
+Resilience4j provides these patterns as decorators around an external call.
+
+Architecture:
+
+```
+Your Service Method
+        |
+Resilience4j Proxy / AOP Aspect
+        |
+---------------------------------
+| Retry                         |
+| Circuit Breaker               |
+| Time Limiter                  |
+| Bulkhead                      |
+---------------------------------
+        |
+HTTP Client (WebClient/RestTemplate)
+        |
+External Dependency
+```
+
+---
+
+## Example Using Spring Boot Annotations
+
+```java
+@Bulkhead(name = "vendorService")
+@TimeLimiter(name = "vendorService")
+@Retry(name = "vendorService")
+@CircuitBreaker(
+    name = "vendorService",
+    fallbackMethod = "fallback")
+public Response callVendor() {
+    return vendorClient.call();
+}
+```
+
+---
+
+## Example Configuration
+
+```yaml
+resilience4j:
+
+  bulkhead:
+    instances:
+      vendorService:
+        maxConcurrentCalls: 50
+
+  timelimiter:
+    instances:
+      vendorService:
+        timeoutDuration: 500ms
+
+  retry:
+    instances:
+      vendorService:
+        maxAttempts: 3
+        waitDuration: 100ms
+
+  circuitbreaker:
+    instances:
+      vendorService:
+        failureRateThreshold: 50
+```
+
+---
+
+# Real Production Example - Vendor Screening System
+
+In our screening platform, the external vendor had limited capacity.
+
+The application itself could process a much higher level of parallel requests, but allowing unrestricted concurrency caused:
+
+* Increased latency.
+* Timeouts.
+* Vendor saturation.
+
+The solution was to introduce a concurrency limit using a bulkhead/semaphore so that only a fixed number of requests could be in-flight at a time.
+
+Additional resilience mechanisms included:
+
+* Timeouts to avoid holding threads indefinitely.
+* Controlled retries with exponential backoff for transient failures.
+* Circuit breakers to stop repeatedly calling an unhealthy dependency.
+
+The goal was not to maximize throughput.
+
+The goal was to match our request pressure to the downstream capacity while keeping our own system healthy.
+
+---
+
+# L6 Interview Soundbite
+
+"Resilience mechanisms should not be added blindly. I first identify the bottleneck and failure mode. In our case, the bottleneck was an external vendor with limited concurrency, so the most important control was a bulkhead. Timeouts, retries, and circuit breakers were additional layers that helped the system fail gracefully when the dependency became slow or unavailable."
+
+
 # 7. Failure Scenarios
 
 ## What if the vendor becomes slow?
