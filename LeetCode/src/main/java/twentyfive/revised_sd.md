@@ -7259,20 +7259,6 @@ The system always looks at the previous one second.
 
 The most common rate limiting strategy.
 
-The system maintains a bucket of tokens.
-
-Example:
-
-```
-Bucket capacity:
-500 tokens
-
-Refill rate:
-500 tokens per second
-```
-
-Each request consumes one token.
-
 ---
 
 ## Request Flow
@@ -7291,27 +7277,191 @@ Reject / Delay / Queue
 
 ---
 
-## Why Token Bucket Is Popular
+## Token Bucket Algorithm
 
-It allows controlled bursts.
+Token Bucket is the most commonly used rate limiting strategy.
+
+The system maintains a bucket containing tokens.
+
+Each request consumes one token.
+
+Two parameters control its behavior:
+
+```
+Bucket Capacity:
+Maximum number of tokens that can be stored.
+
+Refill Rate:
+Number of new tokens added per second.
+```
+
+---
+
+### Example Configuration
+
+```
+Bucket Capacity: 1000 tokens
+
+Refill Rate: 200 tokens/second
+
+Each Request:
+Consumes 1 token
+```
+
+---
+
+## Normal Traffic
+
+Assume normal traffic is:
+
+```
+100 requests/second
+```
+
+The bucket receives:
+
+```
++200 tokens/second
+```
+
+The application consumes:
+
+```
+-100 tokens/second
+```
+
+Unused capacity accumulates:
+
+```
++100 tokens/second saved
+```
 
 Example:
 
-Normal traffic:
-
 ```
-200 requests/sec
-```
-
-Unused tokens accumulate.
-
-Sudden spike:
-
-```
-500 requests immediately
+Second 1: 300 tokens
+Second 2: 400 tokens
+Second 3: 500 tokens
+...
+Maximum: 1000 tokens
 ```
 
-Allowed if enough tokens exist.
+The bucket never grows beyond its configured capacity.
+
+---
+
+## Handling a Sudden Burst
+
+Assume the bucket has accumulated:
+
+```
+1000 tokens
+```
+
+A user suddenly sends:
+
+```
+800 requests instantly
+```
+
+Result:
+
+```
+800 tokens consumed
+
+200 tokens remain
+```
+
+All 800 requests are allowed immediately.
+
+---
+
+## Another Burst Immediately After
+
+Another:
+
+```
+500 requests arrive
+```
+
+Available tokens:
+
+```
+200
+```
+
+Result:
+
+```
+200 requests allowed
+
+300 requests rejected, delayed, or asked to retry later
+```
+
+---
+
+## Why Token Bucket Is Popular
+
+It separates two important concepts:
+
+### 1. Refill Rate → Long-Term Average Throughput
+
+Example:
+
+```
+200 tokens/second
+```
+
+Meaning:
+
+> Over a long period, the client can sustain approximately 200 requests per second.
+
+---
+
+### 2. Bucket Capacity → Maximum Burst Capacity
+
+Example:
+
+```
+1000 tokens
+```
+
+Meaning:
+
+> The system can tolerate a short burst of up to 1000 requests if enough tokens have accumulated.
+
+---
+
+## Trade-off: Why Not Make the Bucket Very Large?
+
+A larger bucket allows bigger bursts.
+
+Example:
+
+```
+Bucket Capacity: 100,000 tokens
+```
+
+A client may suddenly send:
+
+```
+100,000 requests instantly
+```
+
+This could overwhelm:
+
+* Databases.
+* External APIs.
+* Microservices.
+
+Therefore, the bucket size should be chosen based on the amount of burst traffic the downstream systems can safely tolerate.
+
+---
+
+## L6 Interview Soundbite
+
+"Token Bucket separates average throughput from burst capacity. The refill rate controls the long-term request rate, while the bucket capacity controls how much short-term burst traffic the system can absorb."
+
 
 ---
 
