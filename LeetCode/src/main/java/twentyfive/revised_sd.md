@@ -6897,7 +6897,7 @@ Partition 3 -> Consumer C
 
 ---
 
-# Execution Model Matters: Where Do Threads Come From?
+# 6. Execution Model Matters: Where Do Threads Come From?
 
 A semaphore does not create threads. It only limits how many existing threads can access a constrained resource at the same time.
 
@@ -7027,33 +7027,121 @@ Semaphores provide access control.
 
 They solve different problems and are often used together.
 
-# 6. Real World Example: External Vendor Protection
+## Multiple Layers of Concurrency Control
 
-Scenario:
-
-AML screening system calls a third-party vendor.
-
-Vendor limits:
-
-- 500 requests/second
-- 100 concurrent connections
-
-
-Solution:
+A production system may apply multiple layers of protection:
 
 ```
-Incoming Requests
-        |
- Rate Limiter (500/sec)
-        |
- Bounded Queue
-        |
- Thread Pool / Semaphore (100 concurrent)
-        |
- Vendor API
+Incoming Work
+      |
+Rate Limiter
+      |
+Bounded Queue
+      |
+Worker Thread Pool
+      |
+Semaphore / Bulkhead
+      |
+External Dependency
 ```
+
+Each layer solves a different problem:
+
+| Layer                | Purpose                                                           |
+| -------------------- | ----------------------------------------------------------------- |
+| Rate Limiter         | Controls incoming request rate over time                          |
+| Bounded Queue        | Absorbs short traffic spikes and prevents unlimited memory growth |
+| Worker Thread Pool   | Controls how much work the application executes concurrently      |
+| Semaphore / Bulkhead | Limits pressure applied to a constrained downstream dependency    |
 
 ---
+
+## Synchronous REST API
+
+In a Spring Boot synchronous request path, creating an additional worker thread pool is usually unnecessary because the application server already provides request threads.
+
+Example:
+
+```
+Incoming HTTP Request
+        |
+Tomcat Thread Pool
+        |
+Business Logic
+        |
+Semaphore (50 concurrent calls)
+        |
+External Vendor API
+```
+
+The semaphore does not create threads. It only limits how many existing Tomcat threads can call the vendor simultaneously.
+
+When the limit is reached:
+
+* Wait for a permit.
+* Wait with timeout and fail fast.
+* Return HTTP 429/503.
+
+---
+
+## Kafka or Batch Processing
+
+Kafka consumers or batch workers already provide execution threads.
+
+Example:
+
+```
+Kafka Topic
+      |
+Kafka Consumer Threads
+      |
+Business Processing
+      |
+Semaphore (50 concurrent calls)
+      |
+External Vendor API
+```
+
+A semaphore protects the downstream dependency while allowing the application to process messages concurrently.
+
+---
+
+## When Is a Separate Worker Pool Needed?
+
+A separate worker thread pool is useful when we need to decouple accepting work from processing work.
+
+Example:
+
+```
+Kafka Consumer
+      |
+Bounded Queue
+      |
+Worker Thread Pool
+      |
+Semaphore / Bulkhead
+      |
+External Vendor API
+```
+
+Reasons:
+
+* Keep Kafka polling responsive.
+* Apply different concurrency limits at different stages.
+* Absorb short bursts of traffic.
+* Isolate slow operations.
+
+---
+
+## Key Interview Insight
+
+A thread pool and a semaphore solve different problems.
+
+* Thread Pool → Controls how much work the application can execute.
+* Semaphore → Controls how much pressure the application applies to a downstream dependency.
+
+In many synchronous APIs, Tomcat threads provide the execution capacity and a semaphore is added only to protect the downstream service.
+
 
 Benefits:
 
