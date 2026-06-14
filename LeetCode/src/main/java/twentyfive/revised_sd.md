@@ -6793,7 +6793,9 @@ Advantages:
 Disadvantages:
 
 - Bursts are not allowed.
-
+- Difference between token & leaky bucket:
+- Leaky Bucket: Regulates egress (outgoing traffic). Spikes go in, but requests exit into your server at a fixed, unyielding tick rate.
+- Token Bucket: Regulates ingress (incoming traffic). Tokens accumulate passively, allowing the server to handle immediate, explosive spikes if tokens are saved up.
 ---
 
 # 4. Backpressure
