@@ -7315,6 +7315,8 @@ Allowed if enough tokens exist.
 
 ---
 
+Token bucket allows controlled bursts by accumulating unused tokens up to a configured bucket capacity. The refill rate controls the long-term average throughput, while the bucket size controls the maximum burst that the system can tolerate.
+
 ## Advantages
 
 - Handles normal traffic efficiently.
