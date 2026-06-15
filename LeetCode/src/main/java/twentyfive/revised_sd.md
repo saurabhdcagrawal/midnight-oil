@@ -16950,6 +16950,8 @@ Examples:
 - REST APIs.
 - gRPC.
 
+gRPC is a high-performance, open-source Remote Procedure Call (RPC) framework originally developed by Google. It allows applications to communicate across different machines or microservices as if they were local functions. It excels in speed and scale by using Protocol Buffers (Protobuf) for compact binary serialization and HTTP/2 for network transpor
+
 Architecture:
 
 ```
