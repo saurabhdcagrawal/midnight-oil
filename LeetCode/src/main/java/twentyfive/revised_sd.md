@@ -2300,71 +2300,195 @@ Store shared session data in:
 # Chapter 4. Caching Systems
 ---
 
-# 1. Why Do We Need Caching?
+# Caching Fundamentals
 
-Caching stores frequently accessed data in a faster storage layer to reduce:
+## What is Caching?
 
-- Database load
-- Network calls
-- Disk access
-- Response latency
+Caching stores frequently accessed data in a faster storage layer (usually memory) to avoid repeatedly retrieving or computing the same data.
 
-The goal is to serve repeated requests from a fast memory-based layer instead of repeatedly computing or retrieving the same data.
+The goals of caching are to reduce:
+
+* Database load
+* Network calls
+* Disk access
+* Response latency
+
+The core idea is:
+
+> Serve repeated requests from a fast memory-based layer instead of repeatedly querying a slower backend system.
 
 ---
 
-Example:
+# Without Cache
 
-Without cache:
+Every request goes directly to the database.
 
+```
 User Request
       |
- Application Server
+      v
+Application Server
       |
- Database
+      v
+Database
       |
- Response
+      v
+Response
+```
 
+For repeated requests:
 
-Every request hits the database.
+```
+Request 1  ──> Database
+Request 2  ──> Database
+Request 3  ──> Database
+Request N  ──> Database
+```
 
 Problems:
 
-- Higher latency
-- More database CPU usage
-- Limited scalability
-
+* Higher latency because database queries are slower than memory lookups.
+* Increased database CPU and I/O usage.
+* Higher database connection utilization.
+* Limited ability to scale under high read traffic.
 
 ---
+
+# With Cache
+
+A cache sits between the application and the database.
+
+```
+                 Cache Hit?
+                     |
+              +------+------+
+              |             |
+             Yes            No
+              |             |
+User Request  |        Application
+      |       |             |
+      v       |             v
+Application Server        Cache
+      |                    |
+      v                    v
+    Cache <---------- Database
+      |
+      v
+   Response
+```
+
+A cleaner flow is:
+
+## Cache Hit
+
+```
+User Request
+      |
+      v
+Application Server
+      |
+      v
+Cache
+      |
+      v
+Return Data
+```
+
+## Cache Miss
+
+```
+User Request
+      |
+      v
+Application Server
+      |
+      v
+Cache
+      |
+      v
+Cache Miss
+      |
+      v
+Database
+      |
+      v
+Store Data in Cache
+      |
+      v
+Return Response
+```
+
+---
+
+# Benefits of Caching
+
+* Lower response latency because memory access is much faster than disk or network calls.
+* Higher application throughput because fewer requests reach the database.
+* Reduced database CPU, I/O, and connection usage.
+* Better scalability by allowing the database to handle fewer read operations.
+
+---
+
+# Real World Example
+
+Imagine a product details API:
+
+```
+GET /products/123
+```
+
+Without cache:
+
+```
+Every user request
+        |
+        v
+     Database Query
+        |
+        v
+     Response
+```
+
+10,000 users viewing the same product may result in:
+
+```
+10,000 database queries
+```
 
 With cache:
 
-
-User Request
+```
+First Request
       |
- Application Server
+      v
+Database
       |
-     Cache
+      v
+Cache Product 123
+
+Subsequent Requests
       |
- Cache Hit?
-   /      \
- Yes       No
- |          |
-Return   Database
- Data       |
-             |
-          Store in Cache
-             |
-          Return Data
+      v
+Cache
+      |
+      v
+Response
+```
 
+Result:
 
-Benefits:
-
-- Lower latency
-- Higher throughput
-- Reduced database pressure
+```
+1 Database Query
+        +
+9,999 Cache Reads
+```
 
 ---
+
+# L6 Interview Soundbite
+
+"Cache is a trade-off where we exchange additional memory and consistency complexity for significantly lower latency and reduced load on downstream systems. It is most beneficial for read-heavy workloads where the same data is accessed repeatedly."
+
 
 # 2. Principle of Locality
 
