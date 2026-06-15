@@ -18875,6 +18875,7 @@ Example:
 - A change requires redeploying the entire application.
 - Scaling requires replicating the entire application.
 - Technology choices are constrained.
+- A fault in one module may bring the entire application down
 
 Example:
 
