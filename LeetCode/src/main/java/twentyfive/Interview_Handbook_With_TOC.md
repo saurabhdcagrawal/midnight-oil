@@ -1,4 +1,4 @@
-# Audible Interview Handbook
+# Interview Handbook
 
 ## Table of Contents
 
@@ -950,6 +950,12 @@ Sliding Window
 ```
 
 before considering any other approach.
+
+## 2 pointer problems
+Container With Most Water: https://leetcode.com/problems/container-with-most-water/
+Trapping Rain Water: https://leetcode.com/problems/trapping-rain-water/
+
+
 
 # Chapter 3: Monotonic Stacks
 
@@ -12531,7 +12537,7 @@ HashMap
 709. Group Anagrams
 710. Top K Frequent Elements
 711. Subarray Sum Equals K
-
+155. MinStack (Stack problems)
 ```
 ```
 
