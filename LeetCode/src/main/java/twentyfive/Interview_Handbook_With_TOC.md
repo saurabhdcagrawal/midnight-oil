@@ -12532,12 +12532,409 @@ HashMap
 # Must-Know LeetCode List
 
 706. Design HashMap
-707. Design HashSet
 708. Two Sum
 709. Group Anagrams
 710. Top K Frequent Elements
-711. Subarray Sum Equals K
 155. MinStack (Stack problems)
+36. Valid Sudoku
+
+
 ```
 ```
+
+# Subarray Problems: Understanding O(n²) vs O(n³)
+
+Subarray problems
+711. Subarray Sum Equals K
+Max SubArray..
+
+## The Confusion
+
+Many candidates think:
+
+> "Subarray problems are O(n³) because there are three loops."
+
+This is not always true.
+
+The key question is:
+
+> Am I generating subarrays, or am I recomputing work for every subarray?
+
+---
+
+# Step 1: How Many Subarrays Exist?
+
+Consider:
+
+```text
+[1,2,3,4]
+```
+
+Possible subarrays:
+
+```text
+[1]
+[1,2]
+[1,2,3]
+[1,2,3,4]
+
+[2]
+[2,3]
+[2,3,4]
+
+[3]
+[3,4]
+
+[4]
+```
+
+Count:
+
+```text
+n + (n-1) + (n-2) + ... + 1
+
+= n(n+1)/2
+```
+
+Therefore:
+
+```text
+Number of subarrays = O(n²)
+```
+
+This is one of the most important interview observations.
+
+---
+
+# Brute Force Pattern #1 (O(n²))
+
+Generate every subarray once.
+
+```java
+for(int start=0; start<n; start++) {
+
+    int sum = 0;
+
+    for(int end=start; end<n; end++) {
+
+        sum += nums[end];
+
+        // process current subarray
+    }
+}
+```
+
+Why O(n²)?
+
+Outer loop:
+
+```text
+n
+```
+
+Inner loop:
+
+```text
+n + (n-1) + (n-2) + ... + 1
+```
+
+Total:
+
+```text
+O(n²)
+```
+
+We are visiting every subarray exactly once.
+
+---
+
+# Example: Subarray Sum Equals K
+
+```java
+for(int start=0; start<n; start++) {
+
+    int sum = 0;
+
+    for(int end=start; end<n; end++) {
+
+        sum += nums[end];
+
+        if(sum == k)
+            count++;
+    }
+}
+```
+
+Time Complexity:
+
+```text
+O(n²)
+```
+
+Space Complexity:
+
+```text
+O(1)
+```
+
+---
+
+# Brute Force Pattern #2 (O(n³))
+
+Bad approach:
+
+```java
+for(int start=0; start<n; start++) {
+
+    for(int end=start; end<n; end++) {
+
+        int sum = 0;
+
+        for(int k=start; k<=end; k++) {
+            sum += nums[k];
+        }
+    }
+}
+```
+
+What's happening?
+
+For every subarray:
+
+```text
+[start ... end]
+```
+
+we scan the entire subarray again.
+
+---
+
+# Why O(n³)?
+
+Loop 1:
+
+```text
+start
+```
+
+Loop 2:
+
+```text
+end
+```
+
+Together generate:
+
+```text
+O(n²) subarrays
+```
+
+Loop 3:
+
+```text
+scan subarray
+```
+
+Worst case:
+
+```text
+O(n)
+```
+
+Therefore:
+
+```text
+O(n²) * O(n)
+
+= O(n³)
+```
+
+---
+
+# Visual Difference
+
+## O(n³)
+
+```text
+Generate subarray
+        ↓
+Scan subarray again
+```
+
+Example:
+
+```text
+[1,2,3,4]
+
+Generate:
+[1,2,3]
+
+Then scan:
+1
+2
+3
+```
+
+Repeated over and over.
+
+---
+
+## O(n²)
+
+```text
+Generate subarray
+        ↓
+Maintain running information
+```
+
+Example:
+
+```text
+sum = 0
+
+[1]
+sum = 1
+
+[1,2]
+sum = 3
+
+[1,2,3]
+sum = 6
+
+[1,2,3,4]
+sum = 10
+```
+
+No rescanning.
+
+---
+
+# Interview Recognition Rule
+
+Whenever you hear:
+
+```text
+Subarray
+Contiguous
+Range
+Window
+```
+
+Think:
+
+```text
+Brute Force:
+start/end loops
+
+O(n²)
+```
+
+Then ask:
+
+```text
+Can I maintain information incrementally?
+```
+
+Examples:
+
+```text
+Running Sum
+Prefix Sum
+Sliding Window
+Deque
+HashMap
+```
+
+---
+
+# Common Examples
+
+## Maximum Subarray Sum
+
+Brute Force:
+
+```text
+O(n²)
+```
+
+Kadane:
+
+```text
+O(n)
+```
+
+---
+
+## Subarray Sum Equals K
+
+Brute Force:
+
+```text
+O(n²)
+```
+
+Prefix Sum + HashMap:
+
+```text
+O(n)
+```
+
+---
+
+## Longest Subarray With Sum K
+
+Brute Force:
+
+```text
+O(n²)
+```
+
+Prefix Sum:
+
+```text
+O(n)
+```
+
+---
+
+## Sliding Window Maximum
+
+Brute Force:
+
+```text
+O(nk)
+```
+
+Deque:
+
+```text
+O(n)
+```
+
+---
+
+# Mental Model To Remember
+
+For Subarray Problems:
+
+```text
+O(n²)
+=
+Generate all subarrays
+```
+
+```text
+O(n³)
+=
+Generate all subarrays
++
+Rescan each subarray
+```
+
+This is the most important distinction.
+
+If you can maintain information while expanding the subarray (running sum, running max, running count), you usually reduce O(n³) to O(n²).
+
+If you can avoid generating all subarrays entirely (prefix sums, sliding window, hash maps), you may reach O(n).
+
 
