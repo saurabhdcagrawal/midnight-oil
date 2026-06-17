@@ -12938,3 +12938,481 @@ If you can maintain information while expanding the subarray (running sum, runni
 If you can avoid generating all subarrays entirely (prefix sums, sliding window, hash maps), you may reach O(n).
 
 
+# Subarray Sum Equals K - Prefix Sum + HashMap
+
+## Problem
+
+Given an integer array `nums` and an integer `k`, return the total number of continuous subarrays whose sum equals `k`.
+
+---
+
+# Brute Force
+
+```java
+class Solution {
+    public int subarraySum(int[] nums, int k) {
+
+        int count = 0;
+
+        for(int start = 0; start < nums.length; start++) {
+
+            int sum = 0;
+
+            for(int end = start; end < nums.length; end++) {
+
+                sum += nums[end];
+
+                if(sum == k) {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+}
+```
+
+## Complexity
+
+```text
+Time  : O(n²)
+Space : O(1)
+```
+
+---
+
+# Prefix Sum + HashMap
+
+## Core Intuition
+
+```java
+// if current Prefix Sum is S & I see S-K... in prefix sum map... that means
+// wherever I saw S-K, index from then on to current index should sum to K
+//
+// 1,2,3,4
+//
+// lets say 7...
+//
+// {0:1,1:1,3:1: ith posn is 1,6:1,10:1}
+//
+// now iterate...
+//
+// at position 3, does prefix map contain S-K
+//
+// yes...
+//
+// 10-7=3...
+//
+// at ith position 1...
+//
+// so from 2+
+//
+// [3,4] sums to 7
+```
+
+The key equation is:
+
+```text
+Current Prefix Sum - Previous Prefix Sum = K
+```
+
+Therefore:
+
+```text
+Previous Prefix Sum = Current Prefix Sum - K
+```
+
+So if current prefix sum is:
+
+```text
+S
+```
+
+then we need to know whether:
+
+```text
+S-K
+```
+
+has been seen before.
+
+---
+
+# Why Does This Work?
+
+Example:
+
+```text
+nums = [1,2,3,4]
+k = 7
+```
+
+Prefix Sums:
+
+```text
+Index      Prefix Sum
+
+-1             0
+ 0             1
+ 1             3
+ 2             6
+ 3            10
+```
+
+At index 3:
+
+```text
+Current Prefix Sum = 10
+```
+
+Need:
+
+```text
+10 - 7 = 3
+```
+
+Have we seen prefix sum 3 before?
+
+```text
+Yes
+```
+
+Prefix sum 3 occurred at index 1.
+
+Therefore:
+
+```text
+10 - 3 = 7
+```
+
+Subarray:
+
+```text
+[3,4]
+```
+
+Starts:
+
+```text
+1 + 1 = 2
+```
+
+Ends:
+
+```text
+3
+```
+
+---
+
+# Version 1 - Count Subarrays Only
+
+Store:
+
+```java
+Map<Integer,Integer>
+```
+
+Meaning:
+
+```text
+PrefixSum -> Frequency
+```
+
+Example:
+
+```text
+{
+    0 : 1,
+    1 : 1,
+    3 : 1,
+    6 : 1,
+    10 : 1
+}
+```
+
+---
+
+## Why Frequency?
+
+Consider:
+
+```text
+nums = [0,0,0]
+k = 0
+```
+
+Prefix sum 0 appears multiple times.
+
+Every occurrence creates another valid subarray.
+
+Therefore:
+
+```java
+count += prefixMap.get(sum-k);
+```
+
+instead of:
+
+```java
+count++;
+```
+
+---
+
+## Code
+
+```java
+class Solution {
+
+    public int subarraySumWithoutIndices(int[] nums, int k) {
+
+        // if current Prefix Sum is S & I see S-K... in prefix sum map... that means
+        // wherever I saw S-K, index from then on to current index should sum to K
+        // 1,2,3,4
+        // lets say 7...
+        // {0:1,1:1,3:1: ith posn is 1,6:1,10:1}
+        // now iterate..
+        // at position 3, does prefix map contain S-K yes.. 10-7=3... at ith position 1..
+        // so from 2+
+
+        int n = nums.length;
+        int count = 0;
+        int sum = 0;
+
+        Map<Integer,Integer> prefixMap = new HashMap<>();
+
+        prefixMap.put(0,1);
+
+        for(int i=0;i<n;i++){
+
+            sum += nums[i];
+
+            if(prefixMap.containsKey(sum-k)){
+                count += prefixMap.get(sum-k);
+            }
+
+            prefixMap.put(
+                sum,
+                prefixMap.getOrDefault(sum,0)+1
+            );
+        }
+
+        return count;
+    }
+}
+```
+
+## Complexity
+
+```text
+Time  : O(n)
+Space : O(n)
+```
+
+---
+
+# Version 2 - Return Actual Subarray Indices
+
+Store:
+
+```java
+Map<Integer,List<Integer>>
+```
+
+Meaning:
+
+```text
+PrefixSum -> All Indices
+```
+
+Instead of storing:
+
+```text
+3 -> 1
+```
+
+Store:
+
+```text
+3 -> [1]
+```
+
+If a prefix sum occurs multiple times:
+
+```text
+0 -> [-1, 2, 5]
+```
+
+then every stored index can generate a valid subarray.
+
+---
+
+## Why -1?
+
+Before processing the array:
+
+```java
+prefixMap.put(0, [-1]);
+```
+
+This represents:
+
+```text
+Prefix Sum 0 exists before array starts
+```
+
+It allows us to detect subarrays that begin at index 0.
+
+---
+
+## Code
+
+```java
+class Solution {
+
+    public int subarraySum(int[] nums, int k) {
+
+        // if current Prefix Sum is S & I see S-K... in prefix sum map... that means
+        // wherever I saw S-K, index from then on to current index should sum to K
+        // 1,2,3,4
+        // lets say 7...
+        // {0:1,1:1,3:1:ith posn is 1,6:1,10:1}
+        // now iterate..
+        // at position 3, does prefix map contain S-K yes.. 10-7=3... at ith position 1..
+        // so from 2+
+
+        int n = nums.length;
+        int count = 0;
+        int sum = 0;
+
+        Map<Integer,List<Integer>> prefixMap = new HashMap<>();
+
+        List<Integer> initial = new ArrayList<>();
+        initial.add(-1);
+
+        prefixMap.put(0, initial);
+
+        for(int i=0;i<n;i++){
+
+            sum += nums[i];
+
+            if(prefixMap.containsKey(sum-k)){
+
+                count += prefixMap.get(sum-k).size();
+
+                List<Integer> indices =
+                    prefixMap.get(sum-k);
+
+                for(int index : indices){
+
+                    System.out.println(
+                        "Starting at index "
+                        + (index+1)
+                        + " and ending at "
+                        + i
+                    );
+                }
+            }
+
+            if(!prefixMap.containsKey(sum))
+                prefixMap.put(sum,new ArrayList<>());
+
+            List<Integer> indices =
+                prefixMap.get(sum);
+
+            indices.add(i);
+        }
+
+        return count;
+    }
+}
+```
+
+## Complexity
+
+```text
+Time  : O(n + total matching subarrays)
+Space : O(n)
+```
+
+---
+
+# Interview Follow-Up Variations
+
+## Count Only
+
+```java
+Map<Integer,Integer>
+```
+
+Store:
+
+```text
+PrefixSum -> Frequency
+```
+
+---
+
+## Return One Matching Subarray
+
+```java
+Map<Integer,Integer>
+```
+
+Store:
+
+```text
+PrefixSum -> First Index
+```
+
+---
+
+## Return All Matching Subarrays
+
+```java
+Map<Integer,List<Integer>>
+```
+
+Store:
+
+```text
+PrefixSum -> All Indices
+```
+
+---
+
+# Recognition Pattern
+
+Whenever you hear:
+
+```text
+Subarray
+Continuous
+Range Sum
+Sum Equals K
+```
+
+Think:
+
+```text
+Brute Force O(n²)
+        ↓
+Prefix Sum
+        ↓
+Current Prefix Sum = S
+Need Previous Prefix Sum = S-K
+        ↓
+HashMap
+```
+
+This pattern appears repeatedly in:
+
+```text
+Subarray Sum Equals K
+Continuous Subarray Sum
+Maximum Size Subarray Sum Equals K
+Count of Range Sum
+Binary Subarrays With Sum
+```
