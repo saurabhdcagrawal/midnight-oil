@@ -3015,3 +3015,871 @@ Success
 # Interview Answer
 
 A deployment bug allowed multiple scheduler instances to process the same provider slot concurrently. I would introduce a distributed lock keyed by providerId and slotId so only one instance can process a slot at a time. However, distributed locks alone are insufficient because retries, lock expiration, crashes, and replayed messages can still result in duplicate execution. Therefore I would also implement idempotency using a unique booking key persisted in the database. The distributed lock prevents concurrent processing, while idempotency guarantees correctness even if the same operation is executed multiple times.
+
+# Database Connection Pool Exhaustion - Complete Deep Dive
+
+# What Is A Database Connection?
+
+A database connection is an active session between your application and the database.
+
+Example:
+
+```text
+Application
+      |
+      v
+Database Connection
+      |
+      v
+Database
+```
+
+Creating connections is expensive because it involves:
+
+```text
+TCP Handshake
+
+Authentication
+
+Session Creation
+
+Resource Allocation
+```
+
+Therefore applications do not create a new connection for every request.
+
+Instead they maintain a:
+
+```text
+Database Connection Pool
+```
+
+---
+
+# What Is A Database Connection Pool?
+
+Example:
+
+```text
+Pool Size = 50
+```
+
+Meaning:
+
+```text
+50 database connections
+already exist and are ready to use.
+```
+
+Popular implementations:
+
+```text
+HikariCP
+
+Apache DBCP
+
+C3P0
+```
+
+---
+
+# Request Flow
+
+Every request typically requires:
+
+```text
+Application Thread
++
+Database Connection
+```
+
+Example:
+
+```text
+HTTP Request
+      |
+      v
+Worker Thread
+      |
+      v
+Acquire DB Connection
+      |
+      v
+Execute Queries
+      |
+      v
+Commit Transaction
+      |
+      v
+Release Connection
+```
+
+The connection is occupied during the entire operation.
+
+---
+
+# Application Thread Pool vs Database Connection Pool
+
+These are different resources.
+
+---
+
+## Application Thread Pool
+
+Example:
+
+```java
+Executors.newFixedThreadPool(30)
+```
+
+Meaning:
+
+```text
+30 requests can execute simultaneously.
+```
+
+---
+
+## Database Connection Pool
+
+Example:
+
+```text
+Pool Size = 20
+```
+
+Meaning:
+
+```text
+Only 20 database operations
+can execute simultaneously.
+```
+
+---
+
+# Mental Model
+
+Think of:
+
+```text
+Application Threads
+```
+
+as:
+
+```text
+Restaurant Workers
+```
+
+and:
+
+```text
+Database Connections
+```
+
+as:
+
+```text
+Cash Registers
+```
+
+Example:
+
+```text
+100 Workers
+20 Registers
+```
+
+Even though:
+
+```text
+100 workers are available
+```
+
+only:
+
+```text
+20 customers
+```
+
+can check out simultaneously.
+
+Everyone else waits.
+
+---
+
+# What Is Database Pool Exhaustion?
+
+Pool exhaustion means:
+
+```text
+All available database connections
+are busy.
+```
+
+Example:
+
+```text
+Pool Size = 50
+
+50 connections in use
+```
+
+Request 51:
+
+```text
+Needs connection
+```
+
+but:
+
+```text
+No connection available
+```
+
+So it waits.
+
+---
+
+Request 52:
+
+```text
+Wait
+```
+
+Request 53:
+
+```text
+Wait
+```
+
+Eventually:
+
+```text
+Connection acquisition timeout
+```
+
+occurs.
+
+---
+
+# Symptoms Of Pool Exhaustion
+
+```text
+Increasing latency
+
+Connection timeout exceptions
+
+Large request queues
+
+Reduced throughput
+
+Database wait times increasing
+```
+
+---
+
+# Important Senior Engineering Insight
+
+When someone says:
+
+```text
+Database pool exhausted
+```
+
+do NOT immediately think:
+
+```text
+Need bigger pool
+```
+
+Pool exhaustion is usually:
+
+```text
+A symptom
+
+Not the root cause
+```
+
+---
+
+# Root Cause #1 - Too Many Database Calls Per Request
+
+Suppose booking an appointment performs:
+
+```text
+1. Read Provider
+
+2. Read Schedule
+
+3. Read Slot
+
+4. Insert Booking
+
+5. Update Slot Availability
+
+6. Create Audit Record
+```
+
+Total:
+
+```text
+6 database operations
+```
+
+per request.
+
+---
+
+At:
+
+```text
+1000 requests/sec
+```
+
+Database performs:
+
+```text
+6000 database operations/sec
+```
+
+---
+
+At:
+
+```text
+10000 requests/sec
+```
+
+Database performs:
+
+```text
+60000 database operations/sec
+```
+
+before we even discuss scaling.
+
+---
+
+# Why This Causes Pool Exhaustion
+
+Suppose:
+
+```text
+Pool Size = 100
+```
+
+and each request occupies a connection for:
+
+```text
+200ms
+```
+
+because of multiple database operations.
+
+Connections remain busy longer.
+
+Eventually:
+
+```text
+100 connections busy
+```
+
+New requests cannot acquire connections.
+
+Result:
+
+```text
+Wait Time Increases
+
+Latency Increases
+
+Timeouts Increase
+```
+
+---
+
+# Senior Question To Ask
+
+Before adding infrastructure:
+
+```text
+Why does a single request
+need so many database round trips?
+```
+
+---
+
+# Optimization - Reduce Database Round Trips
+
+Current Flow:
+
+```text
+Read Provider
+
+Read Schedule
+
+Read Slot
+
+Insert Booking
+
+Update Slot
+```
+
+Five database calls.
+
+---
+
+Potential Improvement:
+
+```text
+Single Transaction
+
+Stored Procedure
+
+Optimized Query
+```
+
+Example:
+
+```text
+5 DB Calls
+      ↓
+2 DB Calls
+```
+
+---
+
+# Why Fewer Round Trips Matter
+
+Every database call requires:
+
+```text
+Acquire Connection
+
+Network Round Trip
+
+Database Processing
+
+Return Result
+```
+
+Reducing:
+
+```text
+5 calls
+```
+
+to:
+
+```text
+2 calls
+```
+
+reduces:
+
+```text
+Connection Occupancy Time
+
+Latency
+
+Pool Utilization
+```
+
+without adding hardware.
+
+---
+
+# Stored Procedure Example
+
+Instead of:
+
+```text
+Application
+   |
+Read Provider
+
+Application
+   |
+Read Slot
+
+Application
+   |
+Insert Booking
+
+Application
+   |
+Update Slot
+```
+
+multiple client-server round trips occur.
+
+---
+
+Instead:
+
+```sql
+BookAppointment(
+    providerId,
+    slotId,
+    patientId
+)
+```
+
+Application makes:
+
+```text
+1 database call
+```
+
+instead of:
+
+```text
+4-5 database calls
+```
+
+---
+
+# Root Cause #2 - Slow Queries
+
+Suppose:
+
+```text
+Query Time = 20ms
+```
+
+At:
+
+```text
+1000 RPS
+```
+
+few concurrent connections are required.
+
+---
+
+Now suppose:
+
+```text
+Query Time = 200ms
+```
+
+Connections stay occupied:
+
+```text
+10x longer
+```
+
+Pool fills much faster.
+
+---
+
+# Solution
+
+Review:
+
+```text
+Execution Plans
+
+Slow Query Logs
+
+Indexes
+```
+
+Look for:
+
+```text
+Table Scans
+
+Missing Indexes
+
+Inefficient Joins
+```
+
+---
+
+# Root Cause #3 - Lock Contention
+
+Appointment systems are fundamentally concurrency problems.
+
+Example:
+
+```text
+Provider A
+10:00 AM
+```
+
+Many users attempt to book simultaneously.
+
+Flow:
+
+```text
+Read Slot
+
+Update Slot
+
+Commit
+```
+
+creates contention.
+
+---
+
+Effects:
+
+```text
+Transactions wait
+
+Connections remain occupied
+
+Pool utilization increases
+```
+
+---
+
+# Solution
+
+Use database-enforced correctness.
+
+Example:
+
+```sql
+UNIQUE(provider_id, slot_id)
+```
+
+or:
+
+```text
+Optimistic Locking
+```
+
+Avoid long-running locks.
+
+---
+
+# Root Cause #4 - Connection Leaks
+
+Application acquires:
+
+```java
+connection =
+    datasource.getConnection();
+```
+
+but never releases it.
+
+---
+
+Pool slowly fills.
+
+Eventually:
+
+```text
+Pool Utilization = 100%
+```
+
+even though traffic remains stable.
+
+---
+
+# Solution
+
+Monitor:
+
+```text
+Active Connections
+
+Idle Connections
+
+Connection Wait Time
+
+Leak Detection
+```
+
+---
+
+# Root Cause #5 - Reads Hitting Primary
+
+Suppose architecture already has:
+
+```text
+Primary
++
+Read Replica
+```
+
+but reads still hit:
+
+```text
+Primary
+```
+
+Examples:
+
+```text
+Availability Search
+
+Provider Lookup
+
+Schedule Search
+```
+
+Now:
+
+```text
+Primary becomes overloaded.
+```
+
+---
+
+# Solution
+
+Route read traffic:
+
+```text
+Availability Search
+Provider Search
+Appointment Lookup
+```
+
+to:
+
+```text
+Read Replicas
+```
+
+while:
+
+```text
+Create Booking
+
+Cancel Booking
+
+Reschedule Booking
+```
+
+continue hitting:
+
+```text
+Primary
+```
+
+---
+
+# Can Adding Replicas Increase Pool Capacity?
+
+Yes.
+
+Example:
+
+```text
+Primary Pool = 100
+
+Replica Pool = 100
+
+Replica Pool = 100
+```
+
+Total:
+
+```text
+300 available connections
+```
+
+across all databases.
+
+---
+
+# Important Limitation
+
+Replicas only help:
+
+```text
+Read Traffic
+```
+
+If exhaustion comes from:
+
+```text
+INSERT
+
+UPDATE
+
+DELETE
+```
+
+then:
+
+```text
+Additional replicas provide little benefit.
+```
+
+because writes still go to primary.
+
+---
+
+# Capacity Planning Questions
+
+If interviewer says:
+
+```text
+Database pool exhausted at 1000 RPS
+```
+
+ask:
+
+```text
+How many DB calls per request?
+
+Average query latency?
+
+P95 query latency?
+
+Read/write ratio?
+
+Pool size?
+
+Are reads already using replicas?
+
+Any lock contention?
+
+Any slow queries?
+
+Any connection leaks?
+```
+
+---
+
+# Senior Engineering Takeaway
+
+When I hear:
+
+```text
+Database pool exhaustion
+```
+
+I do NOT immediately think:
+
+```text
+Increase pool size
+```
+
+I think:
+
+```text
+How long is each connection occupied?
+
+How many database round trips occur?
+
+Can I reduce DB calls?
+
+Can I optimize slow queries?
+
+Can I reduce lock contention?
+
+Can I move reads to replicas?
+```
+
+Pool exhaustion is usually the symptom.
+
+The goal is to identify and eliminate the reason connections remain occupied for so long before adding additional infrastructure.
