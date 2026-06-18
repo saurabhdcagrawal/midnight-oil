@@ -252,7 +252,7 @@
 
 	---
 
-	# Step 2: Scale Reads — Introduce Redis
+	#### Step 2: Scale Reads — Introduce Redis
 
 
 	Problem:
@@ -307,7 +307,7 @@
 
 	---
 
-	# Step 3: Keep Redis Updated
+	#### Step 3: Keep Redis Updated
 
 
 	Write-Through Style:
@@ -333,7 +333,7 @@
 
 	---
 
-	# Step 4: What If Redis Update Fails?
+	#### Step 4: What If Redis Update Fails?
 
 
 	Scenario:
@@ -396,7 +396,7 @@
 
 	---
 
-	# Step 5: Scale Writes — Introduce Kafka
+	#### Step 5: Scale Writes — Introduce Kafka
 
 
 	Problem:
@@ -429,7 +429,7 @@
 
 	---
 
-	# Step 6: Hybrid Large Scale Design
+	#### Step 6: Hybrid Large Scale Design
 
 
 	Progress Update
@@ -463,7 +463,7 @@
 
 	---
 
-	# Step 7: Multiple Device Conflict (L6 Deep Dive)
+	#### Step 7: Multiple Device Conflict (L6 Deep Dive)
 
 
 	Problem:
@@ -529,7 +529,7 @@
 
 	---
 
-	# Reliability
+	#### Reliability
 
 	Discuss:
 
@@ -545,7 +545,7 @@
 
 	---
 
-	# Partitioning
+	#### Partitioning
 
 
 	Partition by userId.
@@ -563,7 +563,7 @@
 
 	---
 
-	# L6 Interview Flow
+	#### L6 Interview Flow
 
 
 	Do NOT start with everything.
@@ -592,7 +592,7 @@
 
 	---
 
-	# Key L6 Soundbite
+	#### Key L6 Soundbite
 
 
 	"I would start with a simple progress service backed by a database. As read traffic grows, I would add Redis for low-latency access. If heartbeat writes become very high, I would introduce Kafka to absorb write spikes and process them asynchronously. Finally, I would handle multi-device conflicts using server-controlled versions and optimistic locking."
@@ -616,13 +616,13 @@
 	Write Path:
 	Device → Service → Redis (latest state) + Kafka → Consumer → Database
 
-	#### Part B — Detailed Design Reference
+	### Part B — Detailed Design Reference
 
-	## 1. Problem Statement
+	#### 1. Problem Statement
 
-	## 2. Functional Requirements
+	#### 2. Functional Requirements
 
-	### Core Features
+	#### Core Features
 
 	* Update audiobook playback progress.
 	* Retrieve latest playback progress.
@@ -632,7 +632,7 @@
 
 	---
 
-	## 3. Non-Functional Requirements
+	#### 3. Non-Functional Requirements
 
 	* Low latency reads.
 	* High write throughput due to frequent heartbeat updates.
@@ -643,7 +643,7 @@
 
 	---
 
-	## 4. Capacity Estimation
+	#### 4. Capacity Estimation
 
 	Example assumptions:
 
@@ -668,10 +668,9 @@
 
 	---
 
-	## 5. API Design
+	#### 5. API Design
 
-	### Update Progress
-
+	####
 	```
 	POST /progress
 	```
@@ -689,7 +688,7 @@
 
 	---
 
-	### Get Latest Progress
+	#### Get Latest Progress
 
 	```
 	GET /progress?userId=123&bookId=ABC
@@ -706,7 +705,7 @@
 
 	---
 
-	## 6. Data Model
+	#### 6. Data Model
 
 	Access pattern:
 
@@ -739,7 +738,7 @@
 
 	---
 
-	## 7. Initial Simple Architecture
+	#### 7. Initial Simple Architecture
 
 	Start with the simplest design:
 
@@ -764,7 +763,7 @@
 
 	---
 
-	## 8. Scale Reads with Redis Cache
+	#### 8. Scale Reads with Redis Cache
 
 	Problem:
 
@@ -795,7 +794,7 @@
 	}
 	```
 
-	### Cache Miss
+	#### Cache Miss
 
 	A cache miss occurs when Redis does not have the key because of:
 
@@ -819,7 +818,7 @@
 
 	---
 
-	## 9. Keeping Cache Updated (Write-Through)
+	#### 9. Keeping Cache Updated (Write-Through)
 
 	The application manages both database and cache writes.
 
@@ -841,7 +840,7 @@
 
 	---
 
-	## 10. Cache Update Failure Handling
+	#### 10. Cache Update Failure Handling
 
 	Scenario:
 
@@ -864,7 +863,7 @@
 
 	Solutions:
 
-	### Retry Redis Update
+	#### Retry Redis Update
 
 	Useful for temporary failures.
 
@@ -876,7 +875,7 @@
 	Retry 3
 	```
 
-	### Invalidate Only the Affected Cache Key
+	#### Invalidate Only the Affected Cache Key
 
 	Example:
 
@@ -888,7 +887,7 @@
 
 	---
 
-	## 11. Scale Writes with Kafka
+	#### 11. Scale Writes with Kafka
 
 	Problem:
 
@@ -917,7 +916,7 @@
 
 	---
 
-	## 12. Hybrid Large-Scale Architecture
+	#### 12. Hybrid Large-Scale Architecture
 
 	For very large systems:
 
@@ -946,7 +945,7 @@
 
 	---
 
-	## 13. Multiple Device Synchronization (L6 Discussion)
+	#### 13. Multiple Device Synchronization (L6 Discussion)
 
 	Multiple devices may update the same audiobook:
 
@@ -962,7 +961,7 @@
 
 	Possible conflict resolution strategies:
 
-	### Last Write Wins
+	#### Last Write Wins
 
 	Use timestamps.
 
@@ -974,7 +973,7 @@
 
 	---
 
-	### Server-Generated Version Numbers
+	#### Server-Generated Version Numbers
 
 	Maintain:
 
@@ -991,7 +990,7 @@
 
 	---
 
-	### Optimistic Locking
+	#### Optimistic Locking
 
 	Example:
 
@@ -1007,7 +1006,7 @@
 
 	---
 
-	## 14. Reliability Considerations
+	#### 14. Reliability Considerations
 
 	Discuss:
 
@@ -1022,7 +1021,7 @@
 
 	---
 
-	## 15. Partitioning Strategy
+	#### 15. Partitioning Strategy
 
 	Partition by:
 
@@ -1042,7 +1041,7 @@
 
 	---
 
-	## 16. Interview Evolution Strategy
+	#### 16. Interview Evolution Strategy
 
 	Do not start with Kafka, Redis, versioning, and concurrency.
 
@@ -1069,7 +1068,7 @@
 
 	---
 
-	## L6 Interview Soundbite
+	#### L6 Interview Soundbite
 
 	"I would start with a simple Progress Sync Service backed by a database. As read traffic grows, I would introduce Redis to provide low-latency access to the latest playback position. If heartbeat writes become very high, I would introduce Kafka to absorb the write stream and asynchronously persist updates. Finally, I would handle multiple device updates using conflict resolution techniques such as server-generated versions and optimistic locking."
 
@@ -1163,3 +1162,1297 @@
 	---
 
 
+# Scale-Up System Design: Appointment Scheduling Service (1K RPS → 10K RPS)
+
+# Interview Question
+
+You are responsible for an Appointment Scheduling Service.
+
+Current traffic is:
+
+```text
+1,000 requests/sec
+```
+
+Business forecasts indicate traffic will grow to:
+
+```text
+10,000 requests/sec
+```
+
+The service must maintain:
+
+```text
+Same SLA
+Same latency requirements
+No double booking
+High availability
+```
+
+Current architecture:
+
+```text
+Client
+   |
+   v
+Appointment Service
+   |
+   +---- Provider Availability Service
+   |
+   +---- Insurance Verification Service
+   |
+   +---- Database
+   |
+   +---- Cache
+```
+
+Known production issues:
+
+```text
+1. Database connection pools get exhausted
+
+2. Cache occasionally causes double booking
+
+3. Provider availability service retries create spikes
+
+4. Insurance verification failures cascade into
+   appointment scheduling failures
+
+5. Traffic expected to increase by 10x
+```
+
+How would you scale the system?
+
+---
+
+# Understanding The Problem
+
+This is not a greenfield system design problem.
+
+The system already exists.
+
+The challenge is:
+
+```text
+1,000 RPS
+        ↓
+10,000 RPS
+```
+
+while maintaining:
+
+```text
+Correctness
+Latency
+Availability
+```
+
+The most important business invariant is:
+
+```text
+A provider slot must never be double booked.
+```
+
+Therefore:
+
+```text
+Correctness > Performance
+```
+
+Cache can improve performance.
+
+Database must guarantee correctness.
+
+---
+
+# Challenge #1 - Application Layer Saturation
+
+Current deployment:
+
+```text
+3 application instances
+```
+
+At 10x traffic:
+
+```text
+CPU utilization increases
+Thread pools become exhausted
+Connection pools become exhausted
+```
+
+Symptoms:
+
+```text
+Higher latency
+Request timeouts
+Reduced throughput
+```
+
+---
+
+## Solution
+
+Scale horizontally.
+
+```text
+3 instances
+      ↓
+10-15 instances
+```
+
+behind a load balancer.
+
+Because the application is stateless:
+
+```text
+Request
+   |
+   v
+Any Instance
+```
+
+can process the request.
+
+This allows throughput to scale linearly.
+
+---
+
+# Challenge #2 - Database Bottleneck
+
+Current flow:
+
+```text
+Read Provider Slot
+       |
+       v
+Create Booking
+       |
+       v
+Update Availability
+```
+
+At 10x traffic:
+
+```text
+Database CPU increases
+IOPS increases
+Locks increase
+Connection exhaustion occurs
+```
+
+Simply adding more application instances will not help if the database becomes the bottleneck.
+
+---
+
+## Solution - Read Replicas
+
+Separate reads from writes.
+
+Architecture:
+
+```text
+               Primary
+                  |
+      ------------------------
+      |                      |
+      v                      v
+  Replica-1              Replica-2
+```
+
+---
+
+### Read Traffic
+
+```text
+Check Availability
+Provider Search
+View Schedule
+Appointment Lookup
+```
+
+goes to replicas.
+
+---
+
+### Write Traffic
+
+```text
+Create Booking
+Cancel Booking
+Reschedule Booking
+```
+
+goes to primary.
+
+This significantly reduces load on the write database.
+
+---
+
+# Challenge #3 - Database Connection Pool Exhaustion
+
+Every request requires:
+
+```text
+Application Thread
+        |
+        v
+Database Connection
+```
+
+At 10,000 RPS:
+
+```text
+Connection pool becomes exhausted.
+```
+
+New requests wait for connections.
+
+Latency increases dramatically.
+
+---
+
+## Solution
+
+Increase:
+
+```text
+Connection Pool Size
+```
+
+based on database capacity.
+
+Monitor:
+
+```text
+Pool utilization
+Wait time
+Timeout count
+```
+
+Additionally:
+
+```text
+Scale application instances
+```
+
+so database load is distributed.
+
+---
+
+# Challenge #4 - Double Booking
+
+This is the most important problem.
+
+Example:
+
+```text
+Provider Slot:
+10:00 AM
+```
+
+Two users:
+
+```text
+User A
+User B
+```
+
+arrive simultaneously.
+
+---
+
+## Without Protection
+
+```text
+A reads slot available
+
+B reads slot available
+
+A books slot
+
+B books slot
+```
+
+Result:
+
+```text
+Double Booking
+```
+
+---
+
+# Why Cache Can Make It Worse
+
+Suppose cache contains:
+
+```text
+Slot Available
+```
+
+User A books successfully.
+
+Database updated.
+
+Cache update delayed.
+
+User B reads stale cache.
+
+System incorrectly believes:
+
+```text
+Slot Available
+```
+
+Result:
+
+```text
+Duplicate Reservation
+```
+
+---
+
+# Correct Solution
+
+Database must be source of truth.
+
+Cache is optimization only.
+
+Never rely on cache for booking correctness.
+
+---
+
+## Enforce Uniqueness
+
+Example:
+
+```sql
+UNIQUE(provider_id, slot_id)
+```
+
+or
+
+```sql
+UNIQUE(provider_id, appointment_time)
+```
+
+Now:
+
+```text
+First booking succeeds
+Second booking fails
+```
+
+regardless of cache state.
+
+---
+
+## Idempotency
+
+Use:
+
+```text
+provider_id
+appointment_slot
+location_id
+```
+
+to generate an idempotency key.
+
+Example:
+
+```text
+provider123_10am_nyc
+```
+
+If duplicate requests arrive:
+
+```text
+Return existing booking
+```
+
+instead of creating a second booking.
+
+---
+
+## Cache Strategy
+
+Write database first.
+
+```text
+Request
+   |
+   v
+Database Commit
+   |
+   v
+Cache Update
+```
+
+Database guarantees correctness.
+
+Cache accelerates reads.
+
+---
+
+# Challenge #5 - Provider Availability Retries
+
+Provider Availability Service occasionally times out.
+
+Current behavior:
+
+```text
+Retry
+Retry
+Retry
+```
+
+At 10,000 RPS:
+
+```text
+10,000 requests
+
+becomes
+
+30,000+ requests
+```
+
+due to retries.
+
+This creates:
+
+```text
+Retry Storm
+```
+
+---
+
+# Retry Storm Effects
+
+```text
+Higher latency
+More failures
+More retries
+Even higher latency
+```
+
+Positive feedback loop.
+
+---
+
+# Solution
+
+Limit retries.
+
+Example:
+
+```text
+Maximum Retries = 3
+```
+
+Use:
+
+```text
+Exponential Backoff
+```
+
+Example:
+
+```text
+Retry 1 = 100 ms
+
+Retry 2 = 250 ms
+
+Retry 3 = 700 ms
+```
+
+Add:
+
+```text
+Jitter
+```
+
+to randomize retry timing.
+
+This prevents synchronized spikes.
+
+---
+
+# Challenge #6 - Cascading Failures
+
+Current flow:
+
+```text
+Appointment Service
+        |
+        v
+Insurance Verification Service
+```
+
+Suppose Insurance Service becomes slow.
+
+Appointment threads wait.
+
+Eventually:
+
+```text
+Thread pool exhausted
+```
+
+Then:
+
+```text
+Queue builds
+```
+
+Then:
+
+```text
+Requests timeout
+```
+
+Eventually:
+
+```text
+Entire appointment service fails
+```
+
+even though appointment service itself is healthy.
+
+---
+
+# Solution - Circuit Breaker
+
+Circuit Breaker States:
+
+```text
+Closed
+Open
+Half Open
+```
+
+---
+
+### Closed
+
+Normal traffic.
+
+```text
+Appointment
+      |
+      v
+Insurance
+```
+
+---
+
+### Open
+
+Failures exceed threshold.
+
+```text
+Appointment
+      |
+      X
+Insurance
+```
+
+Requests fail immediately.
+
+No waiting.
+
+No thread exhaustion.
+
+---
+
+### Half Open
+
+Small number of requests allowed.
+
+If successful:
+
+```text
+Close Circuit
+```
+
+Otherwise:
+
+```text
+Open Circuit Again
+```
+
+---
+
+## Benefits
+
+```text
+Fail Fast
+Protect Appointment Service
+Reduce load on Insurance Service
+Allow recovery
+```
+
+---
+
+# Challenge #7 - Thread Pool Exhaustion
+
+Every request consumes:
+
+```text
+Application Thread
+```
+
+Slow downstream services cause:
+
+```text
+Blocked Threads
+```
+
+Eventually:
+
+```text
+No threads available
+```
+
+System stops serving requests.
+
+---
+
+# Solution
+
+Use:
+
+```text
+Bounded Thread Pool
+```
+
+Example:
+
+```text
+30 worker threads
+```
+
+and:
+
+```text
+Queue Size = 10,000
+```
+
+The queue provides:
+
+```text
+Buffering
+Backpressure
+Controlled resource usage
+```
+
+If queue exceeds capacity:
+
+```text
+Return HTTP 429
+```
+
+rather than crashing the service.
+
+---
+
+# Challenge #8 - Timeouts
+
+Never allow requests to wait forever.
+
+Every dependency should have:
+
+```text
+Connection Timeout
+Read Timeout
+```
+
+Example:
+
+```text
+500 ms
+```
+
+Benefits:
+
+```text
+Fail Fast
+Prevent Resource Exhaustion
+Protect Thread Pools
+```
+
+---
+
+# Challenge #9 - Observability
+
+Before scaling, measure.
+
+Monitor:
+
+```text
+Throughput
+P50 Latency
+P95 Latency
+P99 Latency
+Error Rate
+Retry Count
+Circuit Breaker State
+```
+
+Infrastructure metrics:
+
+```text
+CPU
+Memory
+Connection Pool Usage
+Database Utilization
+Cache Hit Rate
+```
+
+Without observability:
+
+```text
+Cannot identify bottlenecks
+Cannot validate scaling improvements
+```
+
+---
+
+# Load Testing
+
+Before production rollout:
+
+```text
+Simulate 10,000 requests/sec
+```
+
+Validate:
+
+```text
+P99 latency
+Database throughput
+Connection pool behavior
+Retry behavior
+Circuit breaker activation
+```
+
+Tune system based on results.
+
+---
+
+# Final Architecture
+
+```text
+Client
+   |
+   v
+Load Balancer
+   |
+   v
+Appointment Service (10+ Instances)
+   |
+   +--------------------------+
+   |                          |
+   v                          v
+Provider Service      Insurance Service
+                              |
+                       Circuit Breaker
+   |
+   v
+Primary Database
+   |
+   +-----------+
+   |           |
+   v           v
+Replica-1   Replica-2
+
+Cache
+
+Retries + Exponential Backoff + Jitter
+
+Observability + Monitoring
+```
+
+---
+
+# Interview Summary
+
+A strong answer should emphasize:
+
+```text
+1. Horizontal scaling of application tier
+
+2. Read replicas for database scaling
+
+3. Connection pool management
+
+4. Database as source of truth
+
+5. Unique constraints and idempotency
+   to prevent double booking
+
+6. Retry limits with backoff and jitter
+
+7. Circuit breakers to prevent cascading failures
+
+8. Bounded resources and backpressure
+
+9. Timeouts
+
+10. Observability and load testing
+```
+
+The most important takeaway is:
+
+```text
+Appointment Scheduling is fundamentally
+a correctness and concurrency problem.
+
+The database must guarantee correctness.
+
+Everything else exists to improve
+performance and resiliency.
+```
+# Additional Deep Dive: Database Thread Pool Exhaustion at 1000 RPS
+
+## Important Observation
+
+The original proposal suggested:
+
+```text
+Primary Database
++
+Read Replica
+```
+
+However, the problem statement explicitly states:
+
+```text
+Database thread pools are already exhausting
+at 1000 requests/sec.
+```
+
+This changes the discussion significantly.
+
+The problem is no longer:
+
+```text
+How do we scale from 1000 RPS to 10000 RPS?
+```
+
+The problem becomes:
+
+```text
+Why is the database already struggling
+at current traffic?
+```
+
+Before adding infrastructure, we must identify the bottleneck.
+
+---
+
+# Potential Root Causes
+
+## 1. Too Many Database Calls Per Request
+
+Example:
+
+```text
+Check Provider
+Check Schedule
+Check Slot
+Insert Booking
+Update Availability
+Create Audit Record
+```
+
+Total:
+
+```text
+6 database operations/request
+```
+
+At:
+
+```text
+1000 RPS
+```
+
+This becomes:
+
+```text
+6000 DB operations/sec
+```
+
+At:
+
+```text
+10000 RPS
+```
+
+This becomes:
+
+```text
+60000 DB operations/sec
+```
+
+Simply adding application instances will not solve this.
+
+---
+
+## Solution
+
+Reduce database round trips.
+
+Example:
+
+Instead of:
+
+```text
+Read Provider
+Read Schedule
+Read Slot
+Insert Booking
+Update Slot
+```
+
+Use:
+
+```text
+Single Transaction
+Stored Procedure
+Optimized Query
+```
+
+Goal:
+
+```text
+5 DB calls
+      ↓
+2 DB calls
+```
+
+Reducing database round trips directly reduces connection usage and database load.
+
+---
+
+# 2. Slow Queries
+
+Database pool exhaustion is often caused by slow queries rather than insufficient pool size.
+
+Suppose:
+
+```text
+Query Time = 20 ms
+```
+
+At:
+
+```text
+1000 RPS
+```
+
+Approximate concurrent connections:
+
+```text
+20
+```
+
+Now suppose:
+
+```text
+Query Time = 200 ms
+```
+
+At:
+
+```text
+1000 RPS
+```
+
+Approximate concurrent connections:
+
+```text
+200
+```
+
+The database pool may become exhausted even though traffic has not increased.
+
+---
+
+## Solution
+
+Review:
+
+```text
+Execution Plans
+Indexes
+Slow Query Logs
+```
+
+Identify:
+
+```text
+Table Scans
+Missing Indexes
+Inefficient Joins
+```
+
+Optimize the slowest queries first.
+
+This often provides larger gains than adding hardware.
+
+---
+
+# 3. Reads Still Hitting Primary
+
+Even with a read replica, traffic may still be hitting the primary database.
+
+Example:
+
+```text
+Check Availability
+Provider Search
+Schedule Lookup
+```
+
+may still be routed to primary.
+
+This creates unnecessary pressure on the write database.
+
+---
+
+## Solution
+
+Ensure all read-only operations are routed to replicas.
+
+Example:
+
+```text
+Availability Search
+Provider Lookup
+Appointment Search
+```
+
+↓
+
+```text
+Read Replica
+```
+
+while:
+
+```text
+Create Booking
+Cancel Booking
+Reschedule Booking
+```
+
+↓
+
+```text
+Primary Database
+```
+
+---
+
+# 4. Cache More Aggressively
+
+Most appointment systems are heavily read dominated.
+
+Example:
+
+```text
+95% Availability Checks
+5% Booking Requests
+```
+
+Users repeatedly search for available appointments.
+
+Those requests often generate significant database traffic.
+
+---
+
+## Solution
+
+Cache:
+
+```text
+Provider Availability
+Provider Schedule
+Location Availability
+```
+
+for a short TTL.
+
+Example:
+
+```text
+30 seconds
+60 seconds
+```
+
+This removes a large percentage of database reads.
+
+---
+
+## Important
+
+Booking operations must still use the database.
+
+Cache should never become the source of truth.
+
+Correct flow:
+
+```text
+Availability Search
+      ↓
+Cache
+
+Booking
+      ↓
+Database
+```
+
+---
+
+# 5. Lock Contention
+
+Appointment systems frequently experience lock contention.
+
+Example:
+
+```text
+Provider A
+10:00 AM Slot
+```
+
+Thousands of users attempt to reserve the same slot.
+
+Typical flow:
+
+```text
+Read Slot
+Update Slot
+Commit
+```
+
+This creates contention.
+
+---
+
+## Solution
+
+Use database-enforced correctness.
+
+Examples:
+
+```sql
+UNIQUE(provider_id, appointment_time)
+```
+
+or
+
+```text
+Optimistic Locking
+```
+
+The database should prevent double booking.
+
+Avoid holding locks for long periods.
+
+---
+
+# 6. Connection Leaks
+
+Another common cause of pool exhaustion.
+
+Symptoms:
+
+```text
+Pool Utilization Near 100%
+Traffic Not Increasing
+```
+
+Connections are acquired but not released.
+
+---
+
+## Solution
+
+Monitor:
+
+```text
+Connection Pool Usage
+Connection Wait Time
+Active Connections
+Idle Connections
+```
+
+Verify connections are properly closed.
+
+Use:
+
+```text
+Connection Leak Detection
+```
+
+available in most pool implementations.
+
+---
+
+# Capacity Planning Questions
+
+Before scaling to 10000 RPS, I would ask:
+
+```text
+How many DB calls per request?
+
+What is average query latency?
+
+What is P95 query latency?
+
+What percentage of traffic is read vs write?
+
+How many active DB connections exist?
+
+What is pool utilization?
+
+Are reads already using replicas?
+
+What are the slowest queries?
+```
+
+Without these answers, increasing infrastructure may simply move the bottleneck.
+
+---
+
+# Interview Takeaway
+
+When the interviewer says:
+
+```text
+Database thread pools are already exhausting
+at 1000 requests/sec.
+```
+
+A strong response is:
+
+```text
+Before scaling horizontally, I would identify
+why the database is already saturated.
+
+Potential causes include:
+
+- Excessive database round trips
+- Slow queries
+- Missing indexes
+- Reads hitting primary
+- Lock contention
+- Connection leaks
+
+The goal is not simply to add more servers.
+The goal is to reduce database pressure and
+eliminate the existing bottleneck before
+attempting a 10x scale increase.
+```
