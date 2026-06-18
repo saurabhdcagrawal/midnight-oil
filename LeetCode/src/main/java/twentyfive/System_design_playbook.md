@@ -3883,3 +3883,1586 @@ Can I move reads to replicas?
 Pool exhaustion is usually the symptom.
 
 The goal is to identify and eliminate the reason connections remain occupied for so long before adding additional infrastructure.
+
+# Distributed Lock vs Idempotency
+
+# Production Incident
+
+A production hotfix bypassed staging validation.
+
+A scheduler that was intended to run on:
+
+```text
+Instance-1
+```
+
+was accidentally deployed to:
+
+```text
+Instance-1
+Instance-2
+Instance-3
+```
+
+All instances started processing the same provider availability records.
+
+Result:
+
+```text
+Duplicate booking attempts
+
+Duplicate downstream processing
+
+Duplicate notifications
+
+Increased database load
+```
+
+The proposed solution was:
+
+```text
+Distributed Lock
+
+Idempotency
+```
+
+A common interview question is:
+
+```text
+Do we really need both?
+
+Would idempotency alone solve the problem?
+```
+
+---
+
+# Understanding The Problem
+
+Suppose:
+
+```text
+Provider = Dr. Smith
+
+Slot = 10:00 AM
+```
+
+Three scheduler instances are running:
+
+```text
+Instance-1
+Instance-2
+Instance-3
+```
+
+All three receive work for:
+
+```text
+Dr. Smith
+10:00 AM
+```
+
+simultaneously.
+
+---
+
+# Solution #1 - Idempotency Only
+
+Create a unique idempotency key:
+
+```text
+providerId_slotId
+```
+
+Example:
+
+```text
+drsmith_10am
+```
+
+Store:
+
+```sql
+Booking
+---------
+idempotency_key UNIQUE
+```
+
+---
+
+# Execution Flow
+
+Instance-1:
+
+```text
+INSERT Booking
+```
+
+Success.
+
+---
+
+Instance-2:
+
+```text
+INSERT Booking
+```
+
+Fails:
+
+```text
+Duplicate Key
+```
+
+---
+
+Instance-3:
+
+```text
+INSERT Booking
+```
+
+Fails:
+
+```text
+Duplicate Key
+```
+
+---
+
+# Result
+
+Only one booking exists.
+
+Correctness is preserved.
+
+No duplicate booking is created.
+
+This means:
+
+```text
+Idempotency alone is sufficient
+to guarantee correctness.
+```
+
+---
+
+# So Why Isn't Idempotency Enough?
+
+Because all three instances still performed work.
+
+Example:
+
+```text
+Read Provider
+
+Read Slot
+
+Call Insurance Service
+
+Generate Notification
+
+Attempt Booking
+```
+
+Three separate times.
+
+Only the final insert was prevented.
+
+---
+
+# Imagine 100 Instances
+
+Suppose a deployment bug causes:
+
+```text
+100 Scheduler Instances
+```
+
+to process the same provider slot.
+
+Even with idempotency:
+
+```text
+100 database reads
+
+100 insurance calls
+
+100 notification attempts
+
+100 booking attempts
+```
+
+will still occur.
+
+---
+
+# Problems Created
+
+## Database
+
+```text
+High contention
+
+Increased load
+
+More lock waits
+```
+
+---
+
+## Insurance Service
+
+```text
+Unnecessary traffic
+
+Potential rate limiting
+
+Higher latency
+```
+
+---
+
+## Notification Systems
+
+```text
+Duplicate processing
+
+Additional costs
+
+Potential duplicate delivery
+```
+
+---
+
+## External Providers
+
+```text
+Unnecessary API calls
+
+Increased operational costs
+```
+
+---
+
+# This Is Wasted Work
+
+Idempotency protects:
+
+```text
+Correctness
+```
+
+but it does not prevent:
+
+```text
+Duplicate execution
+```
+
+---
+
+# Solution #2 - Distributed Lock
+
+Before processing:
+
+```text
+Acquire Lock
+
+provider123:10AM
+```
+
+Example Redis lock:
+
+```text
+SET provider123:10AM
+    instance1
+    NX
+    EX 30
+```
+
+Meaning:
+
+```text
+NX = Set Only If Not Exists
+
+EX = Expire After 30 Seconds
+```
+
+---
+
+# Execution Flow
+
+Instance-1:
+
+```text
+Acquire Lock
+
+Success
+```
+
+Processes booking.
+
+---
+
+Instance-2:
+
+```text
+Acquire Lock
+
+Fail
+```
+
+Exits.
+
+---
+
+Instance-3:
+
+```text
+Acquire Lock
+
+Fail
+```
+
+Exits.
+
+---
+
+# Result
+
+Only one instance performs:
+
+```text
+Database Reads
+
+Insurance Calls
+
+Notification Generation
+
+Booking Logic
+```
+
+The other instances stop immediately.
+
+---
+
+# Why Distributed Lock Helps
+
+Distributed lock prevents:
+
+```text
+Concurrent execution
+```
+
+of the same workflow.
+
+Benefits:
+
+```text
+Reduced database load
+
+Reduced downstream traffic
+
+Reduced contention
+
+Lower infrastructure cost
+```
+
+---
+
+# Why Distributed Lock Is Still Not Enough
+
+This is the most important interview insight.
+
+Suppose:
+
+```text
+Instance-1
+```
+
+acquires lock.
+
+Processes booking.
+
+Crashes.
+
+Lock expires.
+
+---
+
+Later:
+
+```text
+Instance-2
+```
+
+acquires lock.
+
+Processes the same booking again.
+
+Distributed lock did not protect correctness.
+
+---
+
+# Other Failure Scenarios
+
+```text
+Application Restarts
+
+Retry Logic
+
+Message Replay
+
+Network Failures
+
+Lock Expiration
+
+Deployment Issues
+```
+
+can all result in:
+
+```text
+Same operation executing again
+```
+
+even when locks exist.
+
+---
+
+# Why Idempotency Is Still Required
+
+Idempotency guarantees:
+
+```text
+Executing the same operation
+multiple times
+produces the same result.
+```
+
+Example:
+
+```text
+provider123_10AM_NYC
+```
+
+already exists.
+
+Another instance attempts:
+
+```text
+INSERT Booking
+```
+
+Database returns:
+
+```text
+Duplicate Key
+```
+
+or:
+
+```text
+Return Existing Booking
+```
+
+No duplicate booking is created.
+
+---
+
+# Distributed Lock vs Idempotency
+
+These solve different problems.
+
+---
+
+## Distributed Lock
+
+Protects against:
+
+```text
+Concurrent execution
+```
+
+Example:
+
+```text
+Instance-1
+
+Instance-2
+
+Instance-3
+```
+
+trying to process the same booking simultaneously.
+
+---
+
+Benefits:
+
+```text
+Efficiency
+
+Reduced contention
+
+Reduced downstream traffic
+```
+
+---
+
+## Idempotency
+
+Protects against:
+
+```text
+Duplicate execution
+```
+
+Example:
+
+```text
+Retries
+
+Replays
+
+Crashes
+
+Restarts
+
+Lock Expiration
+```
+
+---
+
+Benefits:
+
+```text
+Correctness
+
+Data Integrity
+
+Duplicate Prevention
+```
+
+---
+
+# Simple Memory Trick
+
+```text
+Distributed Lock = Efficiency
+
+Idempotency = Correctness
+```
+
+---
+
+# Another Memory Trick
+
+Distributed Lock protects:
+
+```text
+NOW
+```
+
+Example:
+
+```text
+Multiple instances
+processing simultaneously
+```
+
+---
+
+Idempotency protects:
+
+```text
+FOREVER
+```
+
+Example:
+
+```text
+Retry tomorrow
+
+Replay next week
+
+Restart after crash
+
+Message redelivery
+```
+
+---
+
+# If I Had To Choose Only One
+
+I would choose:
+
+```text
+Idempotency
+```
+
+because:
+
+```text
+Correctness > Efficiency
+```
+
+I can tolerate:
+
+```text
+Extra work
+```
+
+I cannot tolerate:
+
+```text
+Duplicate bookings
+```
+
+---
+
+# Interview Answer
+
+If an interviewer asks:
+
+```text
+Could idempotency alone solve this problem?
+```
+
+A strong answer is:
+
+Idempotency alone can guarantee correctness and prevent duplicate bookings. However, multiple instances would still execute the same workflow, creating unnecessary database reads, downstream service calls, and contention. A distributed lock prevents concurrent processing, while idempotency guarantees correctness if the operation is retried, replayed, or executed again after a crash. Therefore I would use both, with idempotency serving as the ultimate correctness guarantee.
+
+---
+
+# Final Takeaway
+
+The most important insight is:
+
+```text
+Distributed Lock
+    ↓
+Prevents duplicate work
+
+Idempotency
+    ↓
+Prevents duplicate effects
+```
+
+Strong distributed systems almost always rely on:
+
+```text
+Distributed Lock
++
+Idempotency
+```
+
+because they solve different failure modes.
+
+# Distributed Lock vs Idempotency
+
+# Production Incident
+
+A production hotfix bypassed staging validation.
+
+A scheduler that was intended to run on:
+
+```text
+Instance-1
+```
+
+was accidentally deployed to:
+
+```text
+Instance-1
+Instance-2
+Instance-3
+```
+
+All instances started processing the same provider availability records.
+
+Result:
+
+```text
+Duplicate booking attempts
+
+Duplicate downstream processing
+
+Duplicate notifications
+
+Increased database load
+```
+
+The proposed solution was:
+
+```text
+Distributed Lock
+
+Idempotency
+```
+
+A common interview question is:
+
+```text
+Do we really need both?
+
+Would idempotency alone solve the problem?
+```
+
+---
+
+# Understanding The Problem
+
+Suppose:
+
+```text
+Provider = Dr. Smith
+
+Slot = 10:00 AM
+```
+
+Three scheduler instances are running:
+
+```text
+Instance-1
+Instance-2
+Instance-3
+```
+
+All three receive work for:
+
+```text
+Dr. Smith
+10:00 AM
+```
+
+simultaneously.
+
+---
+
+# Solution #1 - Idempotency Only
+
+Create a unique idempotency key:
+
+```text
+providerId_slotId
+```
+
+Example:
+
+```text
+drsmith_10am
+```
+
+Store:
+
+```sql
+Booking
+---------
+idempotency_key UNIQUE
+```
+
+---
+
+# Execution Flow
+
+Instance-1:
+
+```text
+INSERT Booking
+```
+
+Success.
+
+---
+
+Instance-2:
+
+```text
+INSERT Booking
+```
+
+Fails:
+
+```text
+Duplicate Key
+```
+
+---
+
+Instance-3:
+
+```text
+INSERT Booking
+```
+
+Fails:
+
+```text
+Duplicate Key
+```
+
+---
+
+# Result
+
+Only one booking exists.
+
+Correctness is preserved.
+
+No duplicate booking is created.
+
+This means:
+
+```text
+Idempotency alone is sufficient
+to guarantee correctness.
+```
+
+---
+
+# So Why Isn't Idempotency Enough?
+
+Because all three instances still performed work.
+
+Example:
+
+```text
+Read Provider
+
+Read Slot
+
+Call Insurance Service
+
+Generate Notification
+
+Attempt Booking
+```
+
+Three separate times.
+
+Only the final insert was prevented.
+
+---
+
+# Imagine 100 Instances
+
+Suppose a deployment bug causes:
+
+```text
+100 Scheduler Instances
+```
+
+to process the same provider slot.
+
+Even with idempotency:
+
+```text
+100 database reads
+
+100 insurance calls
+
+100 notification attempts
+
+100 booking attempts
+```
+
+will still occur.
+
+---
+
+# Problems Created
+
+## Database
+
+```text
+High contention
+
+Increased load
+
+More lock waits
+```
+
+## Insurance Service
+
+```text
+Unnecessary traffic
+
+Potential rate limiting
+
+Higher latency
+```
+
+## Notification Systems
+
+```text
+Duplicate processing
+
+Additional costs
+
+Potential duplicate delivery
+```
+
+## External Providers
+
+```text
+Unnecessary API calls
+
+Increased operational costs
+```
+
+---
+
+# This Is Wasted Work
+
+Idempotency protects:
+
+```text
+Correctness
+```
+
+but it does not prevent:
+
+```text
+Duplicate execution
+```
+
+---
+
+# Solution #2 - Distributed Lock
+
+Before processing:
+
+```text
+Acquire Lock
+
+provider123:10AM
+```
+
+Example Redis lock:
+
+```text
+SET provider123:10AM
+    instance1
+    NX
+    EX 30
+```
+
+Meaning:
+
+```text
+NX = Set Only If Not Exists
+
+EX = Expire After 30 Seconds
+```
+
+---
+
+# Execution Flow
+
+Instance-1:
+
+```text
+Acquire Lock
+
+Success
+```
+
+Processes booking.
+
+---
+
+Instance-2:
+
+```text
+Acquire Lock
+
+Fail
+```
+
+Exits.
+
+---
+
+Instance-3:
+
+```text
+Acquire Lock
+
+Fail
+```
+
+Exits.
+
+---
+
+# Result
+
+Only one instance performs:
+
+```text
+Database Reads
+
+Insurance Calls
+
+Notification Generation
+
+Booking Logic
+```
+
+The other instances stop immediately.
+
+---
+
+# Why Distributed Lock Helps
+
+Distributed lock prevents:
+
+```text
+Concurrent execution
+```
+
+of the same workflow.
+
+Benefits:
+
+```text
+Reduced database load
+
+Reduced downstream traffic
+
+Reduced contention
+
+Lower infrastructure cost
+```
+
+---
+
+# Why Distributed Lock Is Still Not Enough
+
+Suppose:
+
+```text
+Instance-1
+```
+
+acquires lock.
+
+Processes booking.
+
+Crashes.
+
+Lock expires.
+
+---
+
+Later:
+
+```text
+Instance-2
+```
+
+acquires lock.
+
+Processes the same booking again.
+
+Distributed lock did not protect correctness.
+
+---
+
+# Why Idempotency Is Still Required
+
+Idempotency guarantees:
+
+```text
+Executing the same operation
+multiple times
+produces the same result.
+```
+
+Example:
+
+```text
+provider123_10AM_NYC
+```
+
+already exists.
+
+Another instance attempts:
+
+```text
+INSERT Booking
+```
+
+Database returns:
+
+```text
+Duplicate Key
+```
+
+or
+
+```text
+Return Existing Booking
+```
+
+No duplicate booking is created.
+
+---
+
+# Distributed Lock vs Idempotency
+
+These solve different problems.
+
+## Distributed Lock
+
+Protects against:
+
+```text
+Concurrent execution
+```
+
+Benefits:
+
+```text
+Efficiency
+
+Reduced contention
+
+Reduced downstream traffic
+```
+
+---
+
+## Idempotency
+
+Protects against:
+
+```text
+Duplicate execution
+```
+
+Benefits:
+
+```text
+Correctness
+
+Data Integrity
+
+Duplicate Prevention
+```
+
+---
+
+# Simple Memory Trick
+
+```text
+Distributed Lock = Efficiency
+
+Idempotency = Correctness
+```
+
+---
+
+# How Does A Distributed Lock Actually Work?
+
+The key insight:
+
+```text
+Application instances do NOT
+talk to each other.
+```
+
+Instead they communicate through:
+
+```text
+A Shared Coordinator
+```
+
+Examples:
+
+```text
+Redis
+
+ZooKeeper
+
+etcd
+
+Consul
+```
+
+---
+
+# Shared Coordinator Architecture
+
+```text
+             Redis
+               |
+    -----------------------
+    |         |          |
+    v         v          v
+
+ Inst1     Inst2      Inst3
+```
+
+Redis becomes the referee.
+
+Every instance asks Redis:
+
+```text
+Can I process provider123:10AM?
+```
+
+---
+
+# Redis Lock Example
+
+Instance-1 sends:
+
+```text
+SET provider123:10AM
+    instance1
+    NX
+    EX 30
+```
+
+Redis checks:
+
+```text
+Does key exist?
+```
+
+Answer:
+
+```text
+No
+```
+
+Redis creates:
+
+```text
+provider123:10AM = instance1
+```
+
+Returns:
+
+```text
+SUCCESS
+```
+
+---
+
+Instance-2 sends:
+
+```text
+SET provider123:10AM
+    instance2
+    NX
+    EX 30
+```
+
+Redis checks:
+
+```text
+Does key exist?
+```
+
+Answer:
+
+```text
+Yes
+```
+
+Returns:
+
+```text
+FAIL
+```
+
+---
+
+Instance-3:
+
+Same result.
+
+Returns:
+
+```text
+FAIL
+```
+
+---
+
+# Final Outcome
+
+```text
+Instance-1 -> SUCCESS
+
+Instance-2 -> FAIL
+
+Instance-3 -> FAIL
+```
+
+Only one instance proceeds.
+
+---
+
+# Why Does This Work?
+
+Redis executes commands atomically.
+
+Imagine:
+
+```text
+100 instances
+```
+
+sending:
+
+```text
+SET lock NX
+```
+
+simultaneously.
+
+Redis processes them internally one at a time.
+
+Only one request creates the lock.
+
+Everyone else loses.
+
+---
+
+# What Happens When Processing Finishes?
+
+Instance-1 completes:
+
+```text
+Book Appointment
+
+Send Notification
+
+Update Database
+```
+
+Then releases lock:
+
+```text
+DEL provider123:10AM
+```
+
+---
+
+# Why Do We Need Expiration?
+
+Suppose:
+
+```text
+Instance-1
+```
+
+acquires lock.
+
+Then crashes.
+
+Without expiration:
+
+```text
+provider123:10AM
+```
+
+would remain forever.
+
+Nobody could process that slot.
+
+System becomes deadlocked.
+
+---
+
+Therefore:
+
+```text
+SET provider123:10AM
+    instance1
+    NX
+    EX 30
+```
+
+means:
+
+```text
+Auto-delete lock
+after 30 seconds
+```
+
+if owner disappears.
+
+---
+
+# Redis Is NOT Local Memory
+
+This is a common misunderstanding.
+
+Local cache:
+
+```text
+Instance-1 -> Local Memory
+
+Instance-2 -> Local Memory
+
+Instance-3 -> Local Memory
+```
+
+Each instance has separate memory.
+
+They cannot coordinate.
+
+---
+
+Redis is different.
+
+Redis is a separate server.
+
+Architecture:
+
+```text
+            Redis Server
+                |
+      -----------------------
+      |         |          |
+      v         v          v
+
+   Inst1     Inst2      Inst3
+```
+
+All instances connect to the same Redis.
+
+Just like all instances connect to the same database.
+
+---
+
+# Example
+
+Instance-1:
+
+```java
+redis.set(
+  "provider123:10AM",
+  "instance1"
+);
+```
+
+The value is stored:
+
+```text
+Inside Redis Server Memory
+```
+
+NOT inside Instance-1 memory.
+
+---
+
+Instance-2:
+
+```java
+redis.get(
+ "provider123:10AM"
+);
+```
+
+asks Redis.
+
+Redis responds:
+
+```text
+instance1
+```
+
+because both instances are looking at the same shared state.
+
+---
+
+# Why Is It Called A Distributed Lock?
+
+Not because Redis memory is distributed.
+
+Because:
+
+```text
+Multiple distributed application instances
+```
+
+coordinate through it.
+
+Example:
+
+```text
+Server A
+
+Server B
+
+Server C
+```
+
+All ask:
+
+```text
+Who owns provider123:10AM?
+```
+
+Redis answers.
+
+That shared state enables coordination.
+
+---
+
+# Is Redis A Single Point Of Failure?
+
+Production deployments typically use:
+
+```text
+Redis Primary
+
+Redis Replica
+
+Redis Replica
+```
+
+or:
+
+```text
+Redis Cluster
+```
+
+If primary fails:
+
+```text
+Replica promoted
+```
+
+and lock service continues.
+
+---
+
+# Final Interview Answer
+
+If an interviewer asks:
+
+```text
+Could idempotency alone solve this problem?
+```
+
+A strong answer is:
+
+Idempotency alone can guarantee correctness and prevent duplicate bookings. However, multiple instances would still execute the same workflow, creating unnecessary database reads, downstream service calls, and contention. A distributed lock prevents concurrent processing, while idempotency guarantees correctness if the operation is retried, replayed, or executed again after a crash. Therefore I would use both, with idempotency serving as the ultimate correctness guarantee.
+
+The most important takeaway is:
+
+```text
+Distributed Lock
+    ↓
+Prevents duplicate work
+
+Idempotency
+    ↓
+Prevents duplicate effects
+```
