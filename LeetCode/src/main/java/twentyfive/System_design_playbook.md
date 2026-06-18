@@ -2456,3 +2456,562 @@ The goal is to reduce database pressure and
 eliminate the existing bottleneck before
 attempting a 10x scale increase.
 ```
+# Production Incident: Duplicate Provider Bookings Due to Multi-Instance Deployment
+
+# Interview Question
+
+A healthcare appointment scheduling platform experienced duplicate provider bookings after a production hotfix was deployed.
+
+Normally, a scheduling job is expected to run on only one application instance.
+
+A hotfix bypassed staging validation and was deployed directly to production.
+
+As a result:
+
+```text
+Scheduler Instance 1
+Scheduler Instance 2
+Scheduler Instance 3
+```
+
+all started processing the same provider availability records simultaneously.
+
+This caused:
+
+```text
+Duplicate provider bookings
+Duplicate notifications
+Duplicate downstream processing
+```
+
+The interviewer asks:
+
+```text
+How would you prevent this from happening?
+```
+
+Expected topics:
+
+```text
+Distributed Locking
+Idempotency
+```
+
+---
+
+# Understanding The Problem
+
+This is not a cache consistency problem.
+
+This is not a database scaling problem.
+
+This is a:
+
+```text
+Distributed Coordination Problem
+```
+
+Multiple application instances are performing work that should only be executed once.
+
+---
+
+# Original Design
+
+Expected:
+
+```text
+Scheduler Service
+
+Instance-1
+```
+
+Single scheduler processes:
+
+```text
+Provider A
+10:00 AM Slot
+```
+
+one time.
+
+---
+
+# What Happened
+
+After deployment:
+
+```text
+Scheduler Service
+
+Instance-1
+Instance-2
+Instance-3
+```
+
+all became active.
+
+Now all instances process:
+
+```text
+Provider A
+10:00 AM Slot
+```
+
+simultaneously.
+
+---
+
+# Failure Sequence
+
+Instance-1:
+
+```text
+Read Provider Slot
+Create Booking
+```
+
+Instance-2:
+
+```text
+Read Provider Slot
+Create Booking
+```
+
+Instance-3:
+
+```text
+Read Provider Slot
+Create Booking
+```
+
+Result:
+
+```text
+Multiple bookings created
+```
+
+for the same provider slot.
+
+---
+
+# Why This Happens
+
+Every instance believes:
+
+```text
+I am responsible for processing this slot.
+```
+
+There is no coordination mechanism.
+
+Nothing prevents:
+
+```text
+Instance-1
+Instance-2
+Instance-3
+```
+
+from executing the same workflow.
+
+---
+
+# Solution #1 - Distributed Lock
+
+Before processing a provider slot:
+
+```text
+Acquire Lock
+```
+
+Key:
+
+```text
+providerId:slotId
+```
+
+Example:
+
+```text
+provider123:10AM
+```
+
+Only one instance should be able to acquire the lock.
+
+---
+
+# Lock Acquisition Flow
+
+Instance-1:
+
+```text
+Acquire Lock
+```
+
+Success.
+
+```text
+Process Booking
+```
+
+---
+
+Instance-2:
+
+```text
+Acquire Lock
+```
+
+Fails.
+
+```text
+Do Not Process
+```
+
+---
+
+Instance-3:
+
+```text
+Acquire Lock
+```
+
+Fails.
+
+```text
+Do Not Process
+```
+
+---
+
+# Redis Implementation Example
+
+```text
+SET provider123:10AM
+    instance1
+    NX
+    EX 30
+```
+
+Meaning:
+
+```text
+NX = Set Only If Key Does Not Exist
+
+EX = Expire After 30 Seconds
+```
+
+If lock already exists:
+
+```text
+Another instance is processing.
+```
+
+---
+
+# Architecture
+
+```text
+Instance-1
+      |
+Acquire Lock
+      |
+      v
+ Process Booking
+      |
+ Release Lock
+```
+
+---
+
+```text
+Instance-2
+      |
+Acquire Lock
+      |
+      X
+Lock Exists
+      |
+Exit
+```
+
+---
+
+# Why Distributed Lock Helps
+
+Distributed lock prevents:
+
+```text
+Concurrent Execution
+```
+
+of the same booking workflow.
+
+Only one instance can process a provider slot at a given time.
+
+---
+
+# Why Distributed Lock Is Not Enough
+
+This is the critical interview insight.
+
+Consider:
+
+```text
+Instance-1
+```
+
+acquires lock.
+
+Processes booking.
+
+Crashes before lock cleanup.
+
+Lock expires.
+
+---
+
+Later:
+
+```text
+Instance-2
+```
+
+acquires lock.
+
+Processes same booking again.
+
+Duplicate booking still occurs.
+
+---
+
+# Other Failure Scenarios
+
+```text
+Application Restart
+
+Message Replay
+
+Retry Logic
+
+Duplicate Requests
+
+Deployment Issues
+
+Network Partition
+```
+
+All can result in:
+
+```text
+Same operation executed again
+```
+
+even when locks exist.
+
+---
+
+# Solution #2 - Idempotency
+
+Idempotency guarantees:
+
+```text
+Executing the same operation multiple times
+produces the same result.
+```
+
+---
+
+# Idempotency Key
+
+Generate:
+
+```text
+providerId
+appointmentSlot
+locationId
+```
+
+Example:
+
+```text
+provider123_10AM_NYC
+```
+
+This uniquely identifies:
+
+```text
+One logical booking request
+```
+
+---
+
+# Database Design
+
+```sql
+Booking
+-------
+booking_id
+provider_id
+appointment_slot
+location_id
+idempotency_key UNIQUE
+```
+
+---
+
+# Booking Flow
+
+Instance-1:
+
+```text
+INSERT booking
+```
+
+Success.
+
+---
+
+Instance-2:
+
+```text
+INSERT booking
+```
+
+Same idempotency key.
+
+Database returns:
+
+```text
+Already Exists
+```
+
+Return existing booking.
+
+No duplicate booking created.
+
+---
+
+# Why Idempotency Helps
+
+Even if:
+
+```text
+Retries happen
+
+Messages replay
+
+Instances restart
+
+Deployments fail
+
+Locks expire
+```
+
+the same booking request can never create multiple records.
+
+---
+
+# Distributed Lock vs Idempotency
+
+These solve different problems.
+
+---
+
+## Distributed Lock
+
+Prevents:
+
+```text
+Concurrent Processing
+```
+
+Example:
+
+```text
+Instance-1
+Instance-2
+Instance-3
+```
+
+trying to execute the same workflow simultaneously.
+
+---
+
+## Idempotency
+
+Prevents:
+
+```text
+Duplicate Processing
+```
+
+even if execution happens multiple times over time.
+
+Example:
+
+```text
+Retry
+
+Replay
+
+Crash Recovery
+
+Deployment Bug
+```
+
+---
+
+# Why We Need Both
+
+Distributed Lock:
+
+```text
+Protects NOW
+```
+
+Idempotency:
+
+```text
+Protects FOREVER
+```
+
+Distributed Lock reduces:
+
+```text
+Database contention
+Duplicate notifications
+Duplicate external calls
+```
+
+Idempotency guarantees:
+
+```text
+Data correctness
+```
+
+---
+
+# Final Architecture
+
+```text
+Scheduler Instance
+        |
+Acquire Distributed Lock
+        |
+        v
+Generate Idempotency Key
+        |
+        v
+Insert Booking
+(Unique Constraint)
+        |
+        v
+Success
+```
+
+---
+
+# Interview Answer
+
+A deployment bug allowed multiple scheduler instances to process the same provider slot concurrently. I would introduce a distributed lock keyed by providerId and slotId so only one instance can process a slot at a time. However, distributed locks alone are insufficient because retries, lock expiration, crashes, and replayed messages can still result in duplicate execution. Therefore I would also implement idempotency using a unique booking key persisted in the database. The distributed lock prevents concurrent processing, while idempotency guarantees correctness even if the same operation is executed multiple times.
