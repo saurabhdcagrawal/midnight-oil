@@ -5466,3 +5466,2123 @@ Idempotency
     ↓
 Prevents duplicate effects
 ```
+
+
+# Scale-Up System Design Case Study: Appointment Scheduling Service
+
+# Problem Statement
+
+Current traffic:
+
+```text
+1,000 requests/sec
+```
+
+Expected future traffic:
+
+```text
+10,000 requests/sec
+```
+
+Business requirements:
+
+```text
+Maintain current SLA
+
+Maintain low latency
+
+Prevent double booking
+
+Maintain high availability
+
+Handle downstream failures gracefully
+```
+
+Current architecture:
+
+```text
+Client
+   |
+   v
+Appointment Service
+   |
+   +---- Provider Availability Service
+   |
+   +---- Insurance Verification Service
+   |
+   +---- Primary Database
+   |
+   +---- Read Replica
+   |
+   +---- Cache
+```
+
+Known production problems:
+
+```text
+Database connection pool exhaustion
+
+Duplicate provider bookings
+
+Provider retries creating traffic spikes
+
+Insurance service failures cascading upstream
+
+Traffic expected to grow 10x
+```
+
+---
+
+# Step 1: Identify The Real Bottleneck
+
+A common mistake is immediately proposing:
+
+```text
+More servers
+
+More replicas
+
+Larger pools
+```
+
+A senior engineer first asks:
+
+```text
+Why is the system failing today?
+```
+
+The problem statement already tells us:
+
+```text
+Database pool exhaustion at 1000 RPS
+```
+
+This means:
+
+```text
+The database is already struggling
+before the 10x scale increase.
+```
+
+---
+
+# Application Thread Pool vs Database Connection Pool
+
+These are different resources.
+
+## Application Thread Pool
+
+Example:
+
+```java
+Executors.newFixedThreadPool(30)
+```
+
+Meaning:
+
+```text
+30 requests can execute simultaneously.
+```
+
+---
+
+## Database Connection Pool
+
+Example:
+
+```text
+Pool Size = 50
+```
+
+Meaning:
+
+```text
+50 active database connections
+available for use.
+```
+
+Each request typically needs:
+
+```text
+Application Thread
++
+Database Connection
+```
+
+to complete.
+
+---
+
+# What Is Database Pool Exhaustion?
+
+Pool exhaustion means:
+
+```text
+All available database connections
+are busy.
+```
+
+Example:
+
+```text
+Pool Size = 50
+
+50 connections in use
+```
+
+Request #51:
+
+```text
+Waits for connection
+```
+
+Request #52:
+
+```text
+Waits for connection
+```
+
+Eventually:
+
+```text
+Connection acquisition timeout
+```
+
+occurs.
+
+---
+
+# Root Cause Analysis
+
+Before increasing pool size, investigate why connections remain occupied.
+
+---
+
+## Cause #1: Too Many Database Calls Per Request
+
+Example booking workflow:
+
+```text
+1. Read Provider
+
+2. Read Schedule
+
+3. Read Slot
+
+4. Insert Booking
+
+5. Update Availability
+
+6. Create Audit Record
+```
+
+Total:
+
+```text
+6 DB operations/request
+```
+
+At:
+
+```text
+1000 RPS
+```
+
+the database performs:
+
+```text
+6000 DB operations/sec
+```
+
+At:
+
+```text
+10000 RPS
+```
+
+the database performs:
+
+```text
+60000 DB operations/sec
+```
+
+No amount of application scaling will solve this.
+
+---
+
+## Optimization: Reduce Database Round Trips
+
+Current flow:
+
+```text
+Read Provider
+
+Read Schedule
+
+Read Slot
+
+Insert Booking
+
+Update Slot
+```
+
+5 separate database calls.
+
+---
+
+Potential improvement:
+
+```text
+Single Transaction
+
+Stored Procedure
+
+Optimized Query
+```
+
+Example:
+
+```text
+5 DB calls
+      ↓
+2 DB calls
+```
+
+---
+
+# Why This Matters
+
+Every database call requires:
+
+```text
+Acquire Connection
+
+Network Round Trip
+
+Database Processing
+
+Return Result
+```
+
+Reducing:
+
+```text
+5 calls
+```
+
+to:
+
+```text
+2 calls
+```
+
+dramatically reduces:
+
+```text
+Connection Occupancy Time
+
+Latency
+
+Pool Utilization
+```
+
+---
+
+# Stored Procedure Example
+
+Instead of:
+
+```text
+Application
+   |
+Read Provider
+
+Application
+   |
+Read Slot
+
+Application
+   |
+Insert Booking
+
+Application
+   |
+Update Slot
+```
+
+multiple client-server round trips occur.
+
+Instead:
+
+```sql
+BookAppointment(
+    providerId,
+    slotId,
+    patientId
+)
+```
+
+Application makes:
+
+```text
+1 DB call
+```
+
+instead of:
+
+```text
+4-5 DB calls
+```
+
+---
+
+## Cause #2: Slow Queries
+
+Suppose:
+
+```text
+Query Time = 20 ms
+```
+
+At:
+
+```text
+1000 RPS
+```
+
+few concurrent connections are needed.
+
+Now suppose:
+
+```text
+Query Time = 200 ms
+```
+
+Connections stay occupied much longer.
+
+Pool fills quickly.
+
+---
+
+### Solution
+
+Review:
+
+```text
+Execution Plans
+
+Slow Query Logs
+
+Indexes
+```
+
+Look for:
+
+```text
+Table Scans
+
+Missing Indexes
+
+Inefficient Joins
+```
+
+---
+
+## Cause #3: Lock Contention
+
+Appointment scheduling is fundamentally a concurrency problem.
+
+Example:
+
+```text
+Provider A
+10:00 AM
+```
+
+Many users attempt booking simultaneously.
+
+Flow:
+
+```text
+Read Slot
+
+Update Slot
+
+Commit
+```
+
+creates locking pressure.
+
+---
+
+### Solution
+
+Use database-enforced correctness.
+
+Example:
+
+```sql
+UNIQUE(provider_id, slot_id)
+```
+
+or:
+
+```text
+Optimistic Locking
+```
+
+Database should prevent duplicate bookings.
+
+---
+
+## Cause #4: Connection Leaks
+
+Symptoms:
+
+```text
+Pool utilization near 100%
+
+Traffic stable
+```
+
+Connections are acquired but never released.
+
+---
+
+### Solution
+
+Monitor:
+
+```text
+Active Connections
+
+Idle Connections
+
+Connection Wait Time
+
+Leak Detection
+```
+
+---
+
+# Database Scaling
+
+Current architecture already contains:
+
+```text
+Primary
++
+Read Replica
+```
+
+Adding more replicas only helps if:
+
+```text
+Reads move to replicas.
+```
+
+---
+
+## Route Reads To Replicas
+
+Examples:
+
+```text
+Search Availability
+
+Provider Lookup
+
+Appointment Search
+```
+
+↓
+
+```text
+Read Replicas
+```
+
+---
+
+## Route Writes To Primary
+
+Examples:
+
+```text
+Create Booking
+
+Cancel Booking
+
+Reschedule Booking
+```
+
+↓
+
+```text
+Primary Database
+```
+
+---
+
+# Important Limitation
+
+If the bottleneck is:
+
+```text
+INSERT
+
+UPDATE
+
+DELETE
+```
+
+then:
+
+```text
+More replicas help very little.
+```
+
+Because writes still hit primary.
+
+---
+
+# Cache Strategy
+
+Most appointment systems are heavily read dominated.
+
+Example:
+
+```text
+95% availability lookups
+
+5% bookings
+```
+
+---
+
+## Good Use Of Cache
+
+Cache:
+
+```text
+Provider Availability
+
+Provider Schedule
+
+Location Availability
+```
+
+for:
+
+```text
+30-60 seconds
+```
+
+---
+
+## Wrong Use Of Cache
+
+Never allow cache to become source of truth.
+
+Incorrect:
+
+```text
+Cache decides booking correctness
+```
+
+Correct:
+
+```text
+Database decides correctness
+
+Cache improves performance
+```
+
+---
+
+# Preventing Double Booking
+
+This is the most important business requirement.
+
+Example:
+
+```text
+User A
+User B
+```
+
+attempt to reserve:
+
+```text
+Provider A
+10:00 AM
+```
+
+simultaneously.
+
+---
+
+## Database Constraint
+
+```sql
+UNIQUE(provider_id, slot_id)
+```
+
+guarantees:
+
+```text
+Only one booking succeeds.
+```
+
+---
+
+## Idempotency
+
+Generate:
+
+```text
+providerId
+slotId
+locationId
+```
+
+Example:
+
+```text
+provider123_10AM_NYC
+```
+
+Store:
+
+```sql
+idempotency_key UNIQUE
+```
+
+If duplicate requests arrive:
+
+```text
+Return existing booking.
+```
+
+Do not create another one.
+
+---
+
+# Production Incident: Hotfix Created Duplicate Bookings
+
+A production hotfix bypassed staging validation.
+
+A scheduler intended to run on:
+
+```text
+Instance-1
+```
+
+was accidentally deployed to:
+
+```text
+Instance-1
+Instance-2
+Instance-3
+```
+
+All instances processed the same provider slot.
+
+Result:
+
+```text
+Duplicate bookings
+
+Duplicate notifications
+
+Duplicate downstream processing
+```
+
+---
+
+# Solution #1: Distributed Lock
+
+Key:
+
+```text
+providerId:slotId
+```
+
+Example:
+
+```text
+provider123:10AM
+```
+
+Stored in:
+
+```text
+Redis
+
+ZooKeeper
+
+etcd
+```
+
+---
+
+Flow
+
+Instance-1:
+
+```text
+Acquire Lock
+
+Success
+
+Process Booking
+```
+
+Instance-2:
+
+```text
+Acquire Lock
+
+Fail
+
+Exit
+```
+
+Only one instance proceeds.
+
+---
+
+# Why Distributed Lock Is Not Enough
+
+Suppose:
+
+```text
+Instance-1
+```
+
+acquires lock.
+
+Processes booking.
+
+Crashes.
+
+Lock expires.
+
+---
+
+Later:
+
+```text
+Instance-2
+```
+
+acquires lock.
+
+Processes booking again.
+
+Duplicate booking still possible.
+
+---
+
+# Solution #2: Idempotency
+
+Store:
+
+```sql
+idempotency_key UNIQUE
+```
+
+Example:
+
+```text
+provider123_10AM_NYC
+```
+
+If operation executes again:
+
+```text
+Return existing booking
+
+Do not create duplicate
+```
+
+---
+
+# Distributed Lock vs Idempotency
+
+Distributed Lock:
+
+```text
+Prevents concurrent execution.
+```
+
+Idempotency:
+
+```text
+Prevents duplicate execution.
+```
+
+Distributed Lock protects:
+
+```text
+NOW
+```
+
+Idempotency protects:
+
+```text
+FOREVER
+```
+
+---
+
+# Retry Storms
+
+Provider Availability Service becomes slow.
+
+Application retries.
+
+Example:
+
+```text
+10000 requests
+```
+
+becomes:
+
+```text
+30000+ requests
+```
+
+due to retries.
+
+---
+
+# Solution
+
+Maximum:
+
+```text
+3 retries
+```
+
+Use:
+
+```text
+Exponential Backoff
+```
+
+Example:
+
+```text
+100 ms
+
+250 ms
+
+700 ms
+```
+
+Add:
+
+```text
+Jitter
+```
+
+to randomize retries.
+
+---
+
+# Cascading Failures
+
+Current flow:
+
+```text
+Appointment Service
+      |
+      v
+Insurance Verification
+```
+
+Insurance becomes slow.
+
+Threads block.
+
+Queue grows.
+
+Requests timeout.
+
+Entire appointment service becomes unavailable.
+
+---
+
+# Circuit Breaker
+
+States:
+
+```text
+Closed
+
+Open
+
+Half Open
+```
+
+---
+
+When failure threshold exceeded:
+
+```text
+Open Circuit
+```
+
+Requests fail immediately.
+
+Benefits:
+
+```text
+Protect Appointment Service
+
+Reduce load on Insurance Service
+
+Allow recovery
+```
+
+---
+
+# Thread Pool Protection
+
+Use:
+
+```text
+Bounded Thread Pool
+```
+
+Example:
+
+```text
+30 worker threads
+```
+
+Queue:
+
+```text
+10000
+```
+
+When queue fills:
+
+```text
+HTTP 429
+```
+
+Backpressure is better than system collapse.
+
+---
+
+# Timeouts
+
+Every dependency should have:
+
+```text
+Connection Timeout
+
+Read Timeout
+```
+
+Example:
+
+```text
+500 ms
+```
+
+Benefits:
+
+```text
+Fail Fast
+
+Prevent Resource Exhaustion
+
+Protect Thread Pools
+```
+
+---
+
+# Observability
+
+Monitor:
+
+```text
+RPS
+
+P50
+
+P95
+
+P99
+
+Error Rate
+
+Retry Count
+
+Connection Pool Usage
+
+DB Utilization
+
+Cache Hit Ratio
+
+Circuit Breaker State
+```
+
+---
+
+# Load Testing
+
+Before rollout:
+
+```text
+Simulate 10000 RPS
+```
+
+Validate:
+
+```text
+P99 Latency
+
+Database Throughput
+
+Pool Utilization
+
+Retry Behavior
+
+Circuit Breakers
+```
+
+---
+
+# Key Senior-Level Takeaway
+
+When I hear:
+
+```text
+Database pool exhaustion at 1000 RPS
+```
+
+I do not immediately think:
+
+```text
+Need more connections.
+```
+
+I think:
+
+```text
+How many DB calls per request?
+
+How long are connections occupied?
+
+Can I reduce round trips?
+
+Can I optimize queries?
+
+Can I reduce lock contention?
+```
+
+Only after identifying the true bottleneck would I increase pool sizes or add infrastructure.
+
+The goal is not simply to add more servers.
+
+The goal is to eliminate the existing bottleneck before attempting a 10x scale increase.
+
+
+Absolutely. This deserves to be a proper chapter in your Audible handbook. I've kept all the intuition we built up, added diagrams, interview explanations, and clarified the differences between **Distributed Locks, Idempotency, and Database Constraints**.
+
+# Distributed Locks, Idempotency & Database Constraints - Complete Interview Guide
+
+# Introduction
+
+One of the most common mistakes in system design interviews is thinking that **Distributed Locks**, **Idempotency**, and **Database Constraints** solve the same problem.
+
+They do **not**.
+
+Each solves a different class of problem.
+
+A senior engineer knows exactly:
+
+* What problem each mechanism solves
+* Where it is implemented
+* Why multiple mechanisms are often used together
+
+This chapter explains all three using an Appointment Scheduling System.
+
+---
+
+# The Business Problem
+
+Suppose we have:
+
+```text
+Provider: Dr. Smith
+Time Slot: 10:00 AM
+```
+
+There is only **one available appointment**.
+
+Now imagine **100 requests** arrive at the exact same time.
+
+The system must ensure:
+
+* Only one appointment is booked.
+* Downstream services are not overwhelmed.
+* Network retries do not create duplicate work.
+
+These are actually **three different problems**.
+
+---
+
+# Problem 1 - Double Booking
+
+Suppose two patients try to book simultaneously.
+
+```text
+John ----------------\
+                       \
+                        ---> Dr. Smith 10:00 AM
+
+Alice ---------------/
+```
+
+Business rule:
+
+```text
+One slot
+=
+One booking
+```
+
+The question becomes:
+
+> Can two different patients book the same provider slot?
+
+---
+
+# Database Constraint - The Correctness Layer
+
+The Booking table:
+
+```sql
+Booking
+--------
+
+booking_id
+
+provider_id
+
+slot_id
+
+patient_id
+```
+
+Constraint:
+
+```sql
+UNIQUE(provider_id, slot_id)
+```
+
+Meaning:
+
+```text
+The database will never allow
+two bookings for the same slot.
+```
+
+---
+
+# Execution
+
+John:
+
+```text
+INSERT Booking
+```
+
+Database checks:
+
+```text
+(provider123,10AM)
+```
+
+Doesn't exist.
+
+Insert succeeds.
+
+---
+
+Alice:
+
+```text
+INSERT Booking
+```
+
+Database checks:
+
+```text
+(provider123,10AM)
+```
+
+Already exists.
+
+Returns:
+
+```text
+Duplicate Key
+```
+
+Alice receives:
+
+```text
+Slot No Longer Available
+```
+
+---
+
+# Why Does The Database Guarantee This?
+
+Many people think:
+
+> Because it is a relational database.
+
+That is only partially true.
+
+The real reason is:
+
+The database internally uses:
+
+```text
+Indexes
+
+Transactions
+
+Locks
+
+Concurrency Control
+
+Atomic Operations
+```
+
+When:
+
+```sql
+UNIQUE(provider_id, slot_id)
+```
+
+exists, the database guarantees that only one transaction can successfully create that unique value.
+
+Every application instance must eventually write to the same database, making it the ultimate source of truth.
+
+---
+
+# Database Guarantees
+
+Database answers:
+
+```text
+Can duplicate data exist?
+```
+
+Answer:
+
+```text
+No.
+```
+
+---
+
+# Problem 2 - Expensive Processing
+
+Suppose booking now requires:
+
+```text
+Insurance Verification
+
+Payment Authorization
+
+Notification
+
+Audit Logging
+
+Booking Insert
+```
+
+Now imagine:
+
+```text
+100 Requests
+```
+
+arrive simultaneously.
+
+Without any coordination:
+
+```text
+100 Insurance Calls
+
+100 Payment Calls
+
+100 Emails
+
+100 Booking Attempts
+```
+
+Database rejects:
+
+```text
+99 Booking Inserts
+```
+
+Correctness is maintained.
+
+But:
+
+```text
+99 expensive operations
+were completely wasted.
+```
+
+---
+
+# Distributed Lock - The Efficiency Layer
+
+Before doing any work:
+
+```text
+Acquire Lock(provider123:10AM)
+```
+
+Only one request succeeds.
+
+Example:
+
+```text
+Request 1
+
+Acquire Lock
+
+SUCCESS
+```
+
+Request 2:
+
+```text
+Acquire Lock
+
+FAIL
+```
+
+Request 3:
+
+```text
+Acquire Lock
+
+FAIL
+```
+
+Only Request 1 performs:
+
+```text
+Insurance
+
+Payment
+
+Notification
+
+Booking
+```
+
+All others exit immediately.
+
+---
+
+# Architecture
+
+```text
+                 Redis
+                   |
+      -------------------------
+      |           |          |
+      v           v          v
+
+   Instance1   Instance2   Instance3
+```
+
+Redis acts as the coordinator.
+
+Application instances never communicate directly.
+
+Instead they all ask Redis:
+
+```text
+Can I process provider123:10AM?
+```
+
+Redis replies:
+
+```text
+YES
+
+or
+
+NO
+```
+
+---
+
+# Redis Lock Example
+
+Instance1:
+
+```text
+SET provider123:10AM
+
+instance1
+
+NX
+
+EX 30
+```
+
+Meaning:
+
+```text
+NX
+
+Only create lock
+if it does not already exist.
+
+EX
+
+Automatically expire
+after 30 seconds.
+```
+
+Redis returns:
+
+```text
+SUCCESS
+```
+
+---
+
+Instance2:
+
+Same command.
+
+Redis replies:
+
+```text
+FAIL
+```
+
+because the key already exists.
+
+---
+
+# Why Is Expiration Needed?
+
+Suppose:
+
+```text
+Instance1
+```
+
+gets the lock.
+
+Then crashes.
+
+Without expiration:
+
+```text
+provider123:10AM
+```
+
+would remain forever.
+
+Nobody could process the slot again.
+
+Therefore locks always have a TTL.
+
+---
+
+# Distributed Lock Guarantees
+
+Distributed Lock answers:
+
+```text
+Can multiple servers
+perform this expensive work
+simultaneously?
+```
+
+Answer:
+
+```text
+Only one should.
+```
+
+---
+
+# Problem 3 - Duplicate Requests
+
+Suppose John clicks:
+
+```text
+Book Appointment
+```
+
+The booking succeeds.
+
+However:
+
+The HTTP response is lost due to a network timeout.
+
+John sees:
+
+```text
+Loading...
+```
+
+He clicks again.
+
+Now the server receives:
+
+```text
+POST /book
+
+POST /book
+```
+
+Question:
+
+Are these:
+
+```text
+Two bookings?
+```
+
+No.
+
+They are:
+
+```text
+One booking
+
+sent twice.
+```
+
+---
+
+# Idempotency
+
+Idempotency means:
+
+```text
+Executing the same
+logical operation
+multiple times
+produces the same result.
+```
+
+The important phrase is:
+
+```text
+Logical Operation
+```
+
+NOT:
+
+```text
+HTTP Request
+```
+
+---
+
+# What Is A Logical Operation?
+
+Suppose John books:
+
+```text
+Dr Smith
+
+10AM
+```
+
+Network fails.
+
+John retries.
+
+Retries again.
+
+Retries again.
+
+These are:
+
+```text
+One logical business operation.
+```
+
+Therefore:
+
+They must all use the same:
+
+```text
+Idempotency Key
+```
+
+---
+
+# Where Is The Idempotency Key Stored?
+
+Usually:
+
+```sql
+IdempotencyTable
+
+--------------------------
+
+key
+
+status
+
+response
+
+created_at
+
+expires_at
+```
+
+Example:
+
+| Key    | Response   |
+| ------ | ---------- |
+| ABC123 | Booking#17 |
+
+---
+
+# Processing Flow
+
+Request:
+
+```text
+POST /book
+
+Idempotency-Key = ABC123
+```
+
+Server checks:
+
+```text
+Idempotency Table
+```
+
+Already exists?
+
+YES
+
+Return:
+
+```text
+Booking #17
+```
+
+No insurance.
+
+No payment.
+
+No booking insert.
+
+No distributed lock.
+
+Done.
+
+---
+
+# Public API Example
+
+Stripe is a good example.
+
+Your application sends:
+
+```text
+POST /payment
+
+Idempotency-Key:
+ABC123
+```
+
+Network fails.
+
+Retry:
+
+```text
+POST /payment
+
+Idempotency-Key:
+ABC123
+```
+
+Stripe returns the previous payment result.
+
+No duplicate payment occurs.
+
+---
+
+# Internal Systems
+
+Suppose:
+
+```text
+Scheduler
+
+↓
+
+Booking Service
+```
+
+Both belong to your team.
+
+Instead of a random UUID you can derive:
+
+```text
+providerId
+
+slotId
+
+patientId
+```
+
+↓
+
+```text
+provider123_slot10AM_patient567
+```
+
+This becomes the idempotency key.
+
+---
+
+# Why Not Use Only providerId + slotId?
+
+This is an extremely common interview question.
+
+Suppose John books:
+
+```text
+provider123
+
+slot10AM
+```
+
+Idempotency Key:
+
+```text
+provider123_slot10AM
+```
+
+Server stores:
+
+```text
+Booking #17
+```
+
+---
+
+Now Alice books the same slot.
+
+Her key is also:
+
+```text
+provider123_slot10AM
+```
+
+Server checks the Idempotency Table.
+
+Finds:
+
+```text
+Already Processed
+```
+
+Returns:
+
+```text
+Booking #17
+```
+
+This is incorrect.
+
+Alice should NOT receive John's booking.
+
+She should receive:
+
+```text
+Slot No Longer Available
+```
+
+---
+
+# Why?
+
+Because:
+
+John's booking
+
+and
+
+Alice's booking
+
+are:
+
+```text
+Two different
+logical business operations.
+```
+
+They simply happen to target the same resource.
+
+---
+
+# Correct Idempotency Key
+
+John:
+
+```text
+provider123_slot10AM_John
+```
+
+Alice:
+
+```text
+provider123_slot10AM_Alice
+```
+
+Different keys.
+
+Server correctly treats them as:
+
+```text
+Different booking requests.
+```
+
+Both continue.
+
+Database then enforces:
+
+```sql
+UNIQUE(provider_id, slot_id)
+```
+
+John succeeds.
+
+Alice fails.
+
+Correct behaviour.
+
+---
+
+# Important Insight
+
+Idempotency should uniquely identify:
+
+```text
+A Logical Business Operation
+```
+
+NOT:
+
+```text
+A Resource
+```
+
+Ask yourself:
+
+> If these two requests have the same idempotency key, should they receive exactly the same response?
+
+If:
+
+```text
+YES
+```
+
+Same key.
+
+If:
+
+```text
+NO
+```
+
+Different key.
+
+---
+
+# Three Different Questions
+
+## Database Constraint
+
+Question:
+
+```text
+Can duplicate data exist?
+```
+
+Answer:
+
+```text
+No.
+```
+
+---
+
+## Distributed Lock
+
+Question:
+
+```text
+Can multiple servers
+perform this work
+simultaneously?
+```
+
+Answer:
+
+```text
+Only one should.
+```
+
+---
+
+## Idempotency
+
+Question:
+
+```text
+Have I already processed
+this logical request?
+```
+
+Answer:
+
+```text
+If yes,
+return previous response.
+```
+
+---
+
+# Complete Request Flow
+
+```text
+                    Client
+                       |
+                       |
+         POST /book
+         Idempotency-Key
+                       |
+                       v
+
+            Appointment Service
+                       |
+                       |
+        Check Idempotency Table
+                       |
+          +------------+------------+
+          |                         |
+      Already Exists?            Doesn't Exist
+          |                         |
+ Return Previous Response           |
+                                    |
+                                    v
+                  Acquire Redis Lock
+              (providerId + slotId)
+                                    |
+                                    v
+                Insurance Verification
+                                    |
+                                    v
+                Payment Authorization
+                                    |
+                                    v
+                 INSERT Booking
+     UNIQUE(provider_id, slot_id)
+                                    |
+                                    v
+        Store Idempotency Result
+                                    |
+                                    v
+             Release Distributed Lock
+                                    |
+                                    v
+               Return Booking
+```
+
+---
+
+# Memory Tricks
+
+## Database
+
+```text
+Protects Data
+```
+
+One slot.
+
+One booking.
+
+---
+
+## Distributed Lock
+
+```text
+Protects Infrastructure
+```
+
+Avoids duplicate expensive work.
+
+---
+
+## Idempotency
+
+```text
+Protects Requests
+```
+
+Handles retries, duplicate clicks, network failures and message replays.
+
+---
+
+# Final Interview Summary
+
+For an Appointment Scheduling System, I would use three layers of protection.
+
+1. **Database UNIQUE Constraint** on `(provider_id, slot_id)` to guarantee correctness and ensure only one booking can ever exist for a provider slot.
+
+2. **Distributed Lock** using `(provider_id, slot_id)` before expensive downstream processing such as insurance verification, payment authorization and notifications so that only one server performs that work.
+
+3. **Idempotency** using a key that uniquely identifies a logical booking request. For external/public APIs, I would typically use a client-generated UUID. For internal systems that I fully control, I can derive a deterministic key such as `providerId + slotId + patientId`. The idempotency result is stored in a dedicated table so retries return the original response instead of executing the workflow again.
+
+The most important interview takeaway is:
+
+```text
+Database Constraint
+    ↓
+Protects Correctness
+
+Distributed Lock
+    ↓
+Protects Efficiency
+
+Idempotency
+    ↓
+Protects Request Semantics
+```
+
+Although these mechanisms are often used together, they solve **three completely different problems**.
