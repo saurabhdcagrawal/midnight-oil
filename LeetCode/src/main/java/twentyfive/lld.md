@@ -7422,3 +7422,1260 @@ The common idea is always the same:
 > **The workflow remains the same, but one piece of behavior is interchangeable.**
 
 That is exactly what the **Strategy Pattern** is designed to solve.
+
+# E-Commerce Pricing Engine LLD
+
+# Problem Statement
+
+Design a Pricing Engine for an e-commerce application.
+
+The customer adds products to a shopping cart.
+
+At checkout, the system calculates the final payable amount after applying a discount.
+
+Initially support:
+
+* Percentage Discount
+* Flat Discount
+* Buy One Get One (BOGO)
+
+Assumptions:
+
+* Amazon-like online retail application.
+* One customer owns one shopping cart.
+* Cart contains multiple products.
+* Discounts are applied to the entire cart.
+* Only one discount is active at a time.
+* No discount is also a valid scenario.
+* Ignore taxes and shipping charges.
+
+---
+
+# LLD Design Framework
+
+For every LLD problem, follow the same process:
+
+1. Clarify Requirements
+2. Identify Core Objects
+3. Define Relationships
+4. Responsibilities + Public APIs
+5. Data Structures
+6. Workflow
+7. Extensibility
+8. SOLID Principles
+
+---
+
+# Step 1 - Clarify Requirements
+
+Typical clarification questions:
+
+* Is this an online retail application?
+* Are discounts applied to individual products or the entire cart?
+* Can multiple discounts be combined?
+* Is a discount always present?
+* Which discount types should be supported?
+* Who selects the discount?
+* Should we ignore taxes and shipping?
+
+Assumptions for this design:
+
+* Amazon-like e-commerce application.
+* Discount applies to the entire cart.
+* Only one discount is active.
+* Discount selection happens before checkout.
+* No discount is a valid scenario.
+
+---
+
+# Step 2 - Core Objects
+
+## Product
+
+Represents an item sold by the platform.
+
+```java
+class Product{
+
+    int productId;
+
+    String name;
+
+    double price;
+
+}
+```
+
+---
+
+## Customer
+
+Represents a registered customer.
+
+```java
+class Customer{
+
+    int customerId;
+
+    String name;
+
+    PaymentMethod paymentMethod;
+
+}
+```
+
+---
+
+## Cart
+
+Represents the customer's shopping cart.
+
+Notice that it contains **CartItems**, not Products.
+
+```java
+class Cart{
+
+    Customer customer;
+
+    Map<Integer, CartItem> cartItems;
+
+    Discount discount;
+
+}
+```
+
+---
+
+## CartItem (Association Class)
+
+Represents one product inside a shopping cart.
+
+Why is this needed?
+
+Suppose a customer purchases
+
+```
+Laptop × 3
+```
+
+Question:
+
+Who owns the quantity?
+
+Not Product.
+
+Not Cart.
+
+Quantity belongs to the relationship.
+
+Exactly like:
+
+* ParkingTicket
+* BookPurchase
+* BookRead
+
+```java
+class CartItem{
+
+    Product product;
+
+    int quantity;
+
+}
+```
+
+---
+
+## Discount
+
+Initially this is only a configuration object.
+
+```java
+class Discount{
+
+    DiscountType type;
+
+    double value;
+
+}
+```
+
+Examples:
+
+```
+PERCENTAGE
+
+↓
+
+10
+```
+
+or
+
+```
+FLAT
+
+↓
+
+50
+```
+
+No behavior yet.
+
+---
+
+## CheckoutService
+
+Coordinates the checkout process.
+
+```java
+class CheckoutService{
+
+}
+```
+
+Notice:
+
+The service owns no business objects.
+
+It simply coordinates them.
+
+---
+
+# Step 3 - Relationships
+
+## Customer → Cart
+
+```
+Customer 1 -------- 1 Cart
+```
+
+---
+
+## Cart → CartItem
+
+```
+Cart 1 -------- * CartItem
+```
+
+---
+
+## CartItem → Product
+
+A product may appear in many carts.
+
+```
+Product 1 -------- * CartItem
+```
+
+---
+
+## Cart → Discount
+
+Only one discount can be active.
+
+```
+Cart 1 -------- 0..1 Discount
+```
+
+---
+
+# Class Diagram
+
+```
+                  Customer
+                      |
+                      |
+                     1|1
+                      |
+                     Cart
+                    /    \
+                   /      \
+                  *        0..1
+                 /          \
+           CartItem       Discount
+                |
+                |
+               *|1
+                |
+             Product
+```
+
+---
+
+# Step 4 - Responsibilities + Public APIs
+
+## Product
+
+### Responsibility
+
+Represents a product.
+
+### APIs
+
+```java
+getProductId()
+
+getPrice()
+```
+
+---
+
+## Customer
+
+### Responsibility
+
+Represents a customer.
+
+### APIs
+
+```java
+getCustomerId()
+
+getPaymentMethod()
+```
+
+---
+
+## CartItem
+
+### Responsibility
+
+Represents one line item.
+
+Owns:
+
+* Product
+* Quantity
+
+Since it owns both,
+
+it should compute its own total.
+
+### APIs
+
+```java
+getItemTotal()
+```
+
+Implementation:
+
+```
+price × quantity
+```
+
+---
+
+## Cart
+
+### Responsibility
+
+Owns all cart items.
+
+Since it owns them,
+
+it should compute the subtotal.
+
+### APIs
+
+```java
+addProduct()
+
+removeProduct()
+
+updateQuantity()
+
+getSubtotal()
+```
+
+Implementation:
+
+```
+subtotal = Σ item.getItemTotal()
+```
+
+Notice:
+
+CheckoutService never iterates through products.
+
+Cart owns that behavior.
+
+---
+
+## Discount
+
+### Responsibility
+
+Represents discount configuration.
+
+Owns:
+
+* Discount Type
+* Discount Value
+
+### APIs
+
+```java
+getType()
+
+getValue()
+```
+
+At this stage,
+
+Discount contains only configuration.
+
+---
+
+## CheckoutService
+
+### Responsibility
+
+Coordinates checkout.
+
+Workflow:
+
+1. Ask Cart for subtotal.
+2. Read Discount.
+3. Apply business rule.
+4. Return final price.
+
+### APIs
+
+```java
+calculateFinalPrice(Cart cart,
+                    Discount discount)
+```
+
+Implementation:
+
+```java
+double subtotal = cart.getSubtotal();
+
+switch(discount.getType()){
+
+case PERCENTAGE:
+
+    return subtotal
+         - subtotal*discount.getValue()/100;
+
+case FLAT:
+
+    return subtotal
+         - discount.getValue();
+
+case BOGO:
+
+    ...
+
+}
+```
+
+---
+
+# Step 5 - Data Structures
+
+Always ask:
+
+```
+Operation
+
+↓
+
+Desired Complexity
+
+↓
+
+Data Structure
+```
+
+---
+
+## Cart
+
+Operations:
+
+* Add Product
+* Remove Product
+* Update Quantity
+* Lookup Product
+
+Using
+
+```java
+List<CartItem>
+```
+
+requires
+
+```
+O(n)
+```
+
+search.
+
+Better:
+
+```java
+Map<ProductId, CartItem>
+```
+
+Benefits:
+
+* O(1) lookup
+* O(1) remove
+* O(1) update quantity
+
+If insertion order is important for UI,
+
+a
+
+```java
+LinkedHashMap<ProductId, CartItem>
+```
+
+can be used.
+
+---
+
+# Step 6 - Workflow
+
+```
+Customer
+
+↓
+
+Cart
+
+↓
+
+Cart.getSubtotal()
+
+↓
+
+CheckoutService
+
+↓
+
+Read Discount
+
+↓
+
+Apply Discount Logic
+
+↓
+
+Return Final Price
+```
+
+---
+
+# Step 7 - Extensibility
+
+## New Requirement
+
+Marketing introduces:
+
+* Black Friday
+* Student Discount
+* Employee Discount
+* Coupon Discount
+* Loyalty Discount
+* Festival Discount
+
+Current implementation requires
+
+```java
+switch(discountType)
+```
+
+to keep growing.
+
+This violates the
+
+**Open/Closed Principle**.
+
+Instead,
+
+introduce the **Strategy Pattern**.
+
+---
+
+# Strategy Pattern
+
+## Interface
+
+```java
+interface DiscountStrategy{
+
+    double applyDiscount(Cart cart);
+
+}
+```
+
+Notice:
+
+We pass the **Cart**, not just the subtotal.
+
+Reason:
+
+Some strategies need:
+
+* Products
+* Categories
+* Quantities
+
+For example,
+
+BOGO cannot be calculated from subtotal alone.
+
+---
+
+## Implementations
+
+```java
+PercentageDiscountStrategy
+```
+
+```java
+FlatDiscountStrategy
+```
+
+```java
+BuyOneGetOneStrategy
+```
+
+```java
+StudentDiscountStrategy
+```
+
+```java
+BlackFridayDiscountStrategy
+```
+
+```java
+CouponDiscountStrategy
+```
+
+---
+
+## Updated Cart
+
+Instead of storing a simple Discount,
+
+the Cart stores the selected strategy.
+
+```java
+class Cart{
+
+    Customer customer;
+
+    Map<Integer, CartItem> cartItems;
+
+    DiscountStrategy discountStrategy;
+
+}
+```
+
+---
+
+## Updated CheckoutService
+
+Now CheckoutService no longer needs a switch statement.
+
+```java
+class CheckoutService{
+
+    double calculateFinalPrice(Cart cart){
+
+        return cart.getDiscountStrategy()
+                   .applyDiscount(cart);
+
+    }
+
+}
+```
+
+Notice:
+
+CheckoutService has no knowledge of:
+
+* Percentage
+* Flat
+* BOGO
+* Student
+* Coupon
+
+It simply delegates the work.
+
+---
+
+# Optional Enhancement - Discount Optimizer
+
+Suppose the customer qualifies for multiple promotions:
+
+* Student
+* Black Friday
+* Loyalty
+* Credit Card Offer
+
+Business requirement:
+
+Automatically choose the best discount.
+
+Introduce:
+
+```java
+class DiscountOptimizer{
+
+    DiscountStrategy
+        getBestStrategy(Cart cart);
+
+}
+```
+
+Workflow:
+
+```
+Cart
+
+↓
+
+DiscountOptimizer
+
+↓
+
+Best Discount Strategy
+
+↓
+
+Attach Strategy to Cart
+
+↓
+
+CheckoutService
+
+↓
+
+strategy.applyDiscount()
+
+↓
+
+Final Price
+```
+
+This keeps CheckoutService unchanged.
+
+---
+
+# SOLID Principles
+
+## Single Responsibility Principle
+
+Product
+
+* Represents a product.
+
+Customer
+
+* Represents a customer.
+
+CartItem
+
+* Represents one line item.
+
+Cart
+
+* Owns cart items and computes subtotal.
+
+CheckoutService
+
+* Coordinates checkout.
+
+Each DiscountStrategy
+
+* Implements one discount algorithm.
+
+---
+
+## Open/Closed Principle
+
+New discounts require creating new strategy classes.
+
+CheckoutService never changes.
+
+---
+
+## Dependency Inversion Principle
+
+CheckoutService depends on
+
+```java
+DiscountStrategy
+```
+
+instead of concrete implementations.
+
+---
+
+# Key Interview Takeaways
+
+* Start with a simple design before introducing patterns.
+* Introduce **association classes** (`CartItem`) when data belongs to a relationship.
+* The object that owns the state should own the behavior.
+* `Cart` computes the subtotal because it owns the cart items.
+* `CartItem` computes the line-item total because it owns the product and quantity.
+* `CheckoutService` coordinates the checkout process instead of performing every calculation.
+* Choose data structures based on operations (`Map<ProductId, CartItem>` for O(1) lookup).
+* Introduce the **Strategy Pattern** only when business rules become interchangeable and frequently change.
+* Design patterns should emerge naturally from changing requirements rather than being introduced prematurely.
+
+# Pricing Engine LLD - Follow-up: Supporting Multiple Promotions
+
+After completing the basic Pricing Engine using the **Strategy Pattern**, an interviewer may introduce a new requirement.
+
+---
+
+# New Requirement
+
+The interviewer says:
+
+> "A customer may qualify for multiple promotions at the same time."
+
+For example:
+
+* Student Discount
+* Coupon Discount
+* Black Friday Discount
+* Credit Card Cashback
+* Loyalty Discount
+
+How would you extend your design?
+
+---
+
+# First Step - Clarify the Business Rules
+
+Before changing the design, ask the interviewer:
+
+> **How should multiple promotions behave?**
+
+Possible business rules include:
+
+1. Apply **all** promotions.
+2. Apply **only the best** promotion.
+3. Apply multiple promotions, but only certain combinations are allowed.
+
+The design depends entirely on the answer.
+
+Never make assumptions.
+
+---
+
+# Case 1 - Apply All Promotions
+
+Example:
+
+```text
+Subtotal = $100
+
+↓
+
+10% Student Discount
+
+↓
+
+$90
+
+↓
+
+$20 Coupon
+
+↓
+
+$70
+
+↓
+
+5% Cashback
+
+↓
+
+$66.50
+```
+
+Instead of storing one strategy,
+
+```java
+DiscountStrategy discountStrategy;
+```
+
+the cart now stores multiple strategies.
+
+```java
+class Cart{
+
+    Map<Integer, CartItem> cartItems;
+
+    List<DiscountStrategy> discountStrategies;
+
+}
+```
+
+---
+
+## Strategy Interface
+
+The interface also changes.
+
+Instead of
+
+```java
+double applyDiscount(Cart cart);
+```
+
+use
+
+```java
+interface DiscountStrategy{
+
+    double applyDiscount(double currentPrice,
+                         Cart cart);
+
+}
+```
+
+Why?
+
+Each strategy receives the result of the previous strategy.
+
+Example:
+
+```text
+Current Price
+
+↓
+
+Student Discount
+
+↓
+
+New Price
+
+↓
+
+Coupon Discount
+
+↓
+
+New Price
+
+↓
+
+Cashback
+
+↓
+
+Final Price
+```
+
+---
+
+## CheckoutService
+
+CheckoutService simply executes each strategy sequentially.
+
+```java
+double calculateFinalPrice(Cart cart){
+
+    double total = cart.getSubtotal();
+
+    for(DiscountStrategy strategy :
+            cart.getDiscountStrategies()){
+
+        total = strategy.applyDiscount(total,
+                                       cart);
+
+    }
+
+    return total;
+
+}
+```
+
+Notice:
+
+CheckoutService still does not know:
+
+* Percentage Discount
+* Flat Discount
+* Coupon
+* Cashback
+
+It only coordinates the strategies.
+
+---
+
+# Case 2 - Apply Only the Best Promotion
+
+Example:
+
+```text
+Student Discount
+
+↓
+
+$20 Savings
+
+----------------
+
+Coupon
+
+↓
+
+$30 Savings
+
+----------------
+
+Black Friday
+
+↓
+
+$40 Savings
+
+↓
+
+Apply Black Friday
+```
+
+In this case,
+
+multiple strategies exist,
+
+but only one should be selected.
+
+Introduce a new object.
+
+```java
+class DiscountOptimizer{
+
+    DiscountStrategy
+    getBestStrategy(Cart cart);
+
+}
+```
+
+---
+
+## Workflow
+
+```text
+Available Promotions
+
+↓
+
+DiscountOptimizer
+
+↓
+
+Best Discount Strategy
+
+↓
+
+Attach Strategy to Cart
+
+↓
+
+CheckoutService
+
+↓
+
+Apply Discount
+
+↓
+
+Final Price
+```
+
+CheckoutService remains unchanged.
+
+---
+
+# Case 3 - Promotion Combination Rules
+
+Real e-commerce systems often have complex rules.
+
+Example:
+
+```text
+Student
+
++
+
+Coupon
+
+Allowed
+
+----------------
+
+Coupon
+
++
+
+Black Friday
+
+Not Allowed
+
+----------------
+
+Employee Discount
+
+Cannot combine with any other promotion
+```
+
+Now introduce another object.
+
+```java
+class PromotionEngine{
+
+    List<DiscountStrategy>
+        getApplicablePromotions(Cart cart);
+
+}
+```
+
+Responsibilities:
+
+* Validate promotion combinations.
+* Remove invalid promotions.
+* Return only the applicable strategies.
+
+---
+
+## Workflow
+
+```text
+Available Promotions
+
+↓
+
+PromotionEngine
+
+↓
+
+Applicable Promotions
+
+↓
+
+CheckoutService
+
+↓
+
+Apply Promotions
+
+↓
+
+Final Price
+```
+
+---
+
+# Which Design Pattern Is This?
+
+Originally,
+
+we used the **Strategy Pattern**.
+
+```text
+CheckoutService
+
+↓
+
+DiscountStrategy
+
+↓
+
+Percentage
+
+Flat
+
+BOGO
+```
+
+Once multiple promotions are applied sequentially,
+
+the design also resembles the
+
+**Chain of Responsibility** (or Processing Pipeline).
+
+Example:
+
+```text
+Subtotal
+
+↓
+
+Student Discount
+
+↓
+
+Coupon Discount
+
+↓
+
+Cashback
+
+↓
+
+Loyalty Discount
+
+↓
+
+Final Price
+```
+
+Each strategy performs one transformation
+
+and passes the updated price to the next strategy.
+
+---
+
+# Interview Discussion
+
+If the interviewer asks:
+
+> "Can multiple promotions be applied?"
+
+A good answer is:
+
+> "I'd first clarify the business rules because there are multiple possible interpretations."
+
+Then discuss the three approaches:
+
+### Apply All Promotions
+
+* Store a `List<DiscountStrategy>`.
+* Execute each strategy sequentially.
+
+### Apply Best Promotion
+
+* Introduce a `DiscountOptimizer`.
+* Select the strategy that gives the maximum savings.
+
+### Apply Based on Business Rules
+
+* Introduce a `PromotionEngine`.
+* Validate combinations before checkout.
+
+---
+
+# Key Takeaways
+
+* Never assume how promotions should be combined.
+* Clarify the business rule first.
+* The object model changes based on the requirement.
+* `CheckoutService` should remain a coordinator.
+* `DiscountStrategy` continues to encapsulate the discount calculation.
+* A `DiscountOptimizer` is useful when only the best promotion should be applied.
+* A `PromotionEngine` is useful when complex stacking rules exist.
+* Applying multiple strategies sequentially naturally forms a processing pipeline similar to the **Chain of Responsibility** pattern.
