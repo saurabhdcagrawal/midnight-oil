@@ -6259,3 +6259,1166 @@ If later the interviewer adds multiple customer categories (VIP, Employee, Handi
 * Refactor only when new requirements justify additional abstraction.
 * Always explain **why** a class exists and **why** a method belongs there. This reasoning is often more important than the final class diagram itself.
 
+
+# Rate Limiter LLD (Without Strategy Pattern)
+
+# Problem Statement
+
+Design a Rate Limiter for an API Gateway.
+
+Assumptions:
+
+* Rate limiting is performed per API Key.
+* Every API Key is allowed **100 requests per minute**.
+* Use the **Token Bucket** algorithm.
+* Return **HTTP 429 (Too Many Requests)** when the limit is exceeded.
+* Assume a **single JVM**.
+* The rate limit should be configurable.
+
+---
+
+# LLD Design Framework
+
+For every LLD problem, follow the same approach:
+
+1. Clarify Requirements
+2. Identify Core Objects
+3. Define Relationships
+4. Responsibilities + Public APIs
+5. Data Structures
+6. Workflow
+7. Extensibility
+8. SOLID Principles
+
+---
+
+# Step 1 - Clarify Requirements
+
+Typical interview questions:
+
+* What are we rate limiting?
+
+  * API Key?
+  * User Id?
+  * Session?
+  * IP Address?
+* How many requests are allowed?
+* Which algorithm should be used?
+
+  * Fixed Window
+  * Sliding Window
+  * Token Bucket
+  * Leaky Bucket
+* What response should be returned when limit is exceeded?
+* Single server or distributed?
+* Should configuration be dynamic?
+
+---
+
+# Step 2 - Core Objects
+
+## Request
+
+Represents an incoming API request.
+
+```java
+class Request{
+
+    String requestId;
+
+    String apiKey;
+
+    long timestamp;
+
+}
+```
+
+---
+
+## ApiClient
+
+Represents a registered API consumer.
+
+```java
+class ApiClient{
+
+    String apiKey;
+
+    UserType userType;
+
+}
+```
+
+Initially all clients may belong to the same plan.
+
+UserType is added for future extensibility.
+
+---
+
+## RateLimitPolicy (TokenConfig)
+
+Represents the configuration for a rate limit.
+
+```java
+class RateLimitPolicy{
+
+    int maxTokens;
+
+    int refillRate;
+
+}
+```
+
+Notice:
+
+This is configuration.
+
+It should not contain runtime state.
+
+---
+
+## TokenBucket
+
+Represents the runtime state of one client's bucket.
+
+```java
+class TokenBucket{
+
+    int currentTokens;
+
+    long lastRefillTimestamp;
+
+    RateLimitPolicy policy;
+
+}
+```
+
+Notice the separation.
+
+Configuration:
+
+* maxTokens
+* refillRate
+
+Runtime State:
+
+* currentTokens
+* lastRefillTimestamp
+
+---
+
+## RateLimiterService
+
+Coordinates the complete rate limiting workflow.
+
+```java
+class RateLimiterService{
+
+}
+```
+
+---
+
+# Step 3 - Relationships
+
+## ApiClient → Request
+
+One client can send many requests.
+
+```
+ApiClient 1 -------- * Request
+```
+
+---
+
+## ApiClient → TokenBucket
+
+Each client owns one token bucket.
+
+```
+ApiClient 1 -------- 1 TokenBucket
+```
+
+---
+
+## RateLimitPolicy → ApiClient
+
+Many clients may share the same policy.
+
+```
+RateLimitPolicy 1 -------- * ApiClient
+```
+
+Example:
+
+```
+Premium Policy
+
+↓
+
+Client A
+
+↓
+
+Client B
+
+↓
+
+Client C
+```
+
+---
+
+## RateLimiterService
+
+Internally maintains:
+
+```
+Map<ApiKey, ApiClient>
+
+Map<ApiKey, TokenBucket>
+```
+
+---
+
+# Step 4 - Responsibilities + Public APIs
+
+## Request
+
+### Responsibility
+
+Represents an incoming API request.
+
+Owns:
+
+* Request Id
+* API Key
+* Timestamp
+
+### APIs
+
+```java
+getApiKey()
+
+getTimestamp()
+
+getRequestId()
+```
+
+Request does not know anything about rate limiting.
+
+---
+
+## ApiClient
+
+### Responsibility
+
+Represents a registered API client.
+
+Owns:
+
+* API Key
+* User Type
+
+### APIs
+
+```java
+getApiKey()
+
+getUserType()
+```
+
+ApiClient should not perform rate limiting.
+
+---
+
+## RateLimitPolicy
+
+### Responsibility
+
+Represents the configuration for a subscription plan.
+
+Owns:
+
+* Maximum Tokens
+* Refill Rate
+
+### APIs
+
+```java
+getMaxTokens()
+
+getRefillRate()
+```
+
+Notice:
+
+It only stores configuration.
+
+It should not modify token counts.
+
+---
+
+## TokenBucket
+
+### Responsibility
+
+Represents one client's token bucket.
+
+Owns:
+
+* Current Tokens
+* Last Refill Time
+* RateLimitPolicy
+
+This class owns its state.
+
+Therefore it should also own the behavior that modifies the state.
+
+### APIs
+
+```java
+boolean allowRequest()
+
+private refillTokens()
+
+int getCurrentTokens()
+```
+
+Why only expose allowRequest()?
+
+Because the outside world shouldn't know:
+
+* when refill happens
+* how refill happens
+* when tokens are decremented
+
+Internally:
+
+```
+allowRequest()
+
+↓
+
+refillTokens()
+
+↓
+
+tokens > 0 ?
+
+↓
+
+Yes
+
+↓
+
+tokens--
+
+↓
+
+Return true
+
+↓
+
+Else
+
+↓
+
+Return false
+```
+
+This is an example of **Encapsulation**.
+
+---
+
+## RateLimiterService
+
+### Responsibility
+
+Coordinates the rate limiting workflow.
+
+It does NOT own:
+
+* Token count
+* Refill logic
+
+Instead it coordinates existing objects.
+
+### APIs
+
+```java
+boolean processRequest(Request request)
+```
+
+Typical workflow:
+
+```
+Request arrives
+
+↓
+
+Find ApiClient
+
+↓
+
+Find TokenBucket
+
+↓
+
+bucket.allowRequest()
+
+↓
+
+Allowed?
+
+↓
+
+Yes → Continue Request
+
+↓
+
+No → HTTP 429
+```
+
+Notice:
+
+RateLimiterService never performs
+
+```java
+tokens--;
+```
+
+The bucket owns that responsibility.
+
+---
+
+# Step 5 - Data Structures
+
+At this stage ask:
+
+> Which operations should be efficient?
+
+Always think:
+
+```
+Operation
+
+↓
+
+Desired Complexity
+
+↓
+
+Data Structure
+```
+
+---
+
+## Find Client
+
+Operation
+
+```
+Find ApiClient using API Key
+```
+
+Desired Complexity
+
+```
+O(1)
+```
+
+Data Structure
+
+```java
+Map<ApiKey, ApiClient>
+```
+
+---
+
+## Find Token Bucket
+
+Operation
+
+```
+Find TokenBucket using API Key
+```
+
+Desired Complexity
+
+```
+O(1)
+```
+
+Data Structure
+
+```java
+Map<ApiKey, TokenBucket>
+```
+
+---
+
+No additional complex data structures are required for the Token Bucket algorithm.
+
+Each bucket maintains only its own runtime state.
+
+---
+
+# Step 6 - Workflow
+
+```
+Incoming Request
+
+↓
+
+Extract API Key
+
+↓
+
+Lookup ApiClient
+
+↓
+
+Lookup TokenBucket
+
+↓
+
+TokenBucket.allowRequest()
+
+↓
+
+Refill Tokens if needed
+
+↓
+
+Token Available?
+
+↓
+
+YES
+
+↓
+
+Consume Token
+
+↓
+
+Allow Request
+
+-------------------------
+
+NO
+
+↓
+
+Return HTTP 429
+```
+
+---
+
+# Step 7 - Extensibility
+
+## New Requirement
+
+Different subscription plans.
+
+Example:
+
+```
+FREE
+
+100 requests/min
+
+----------------
+
+PREMIUM
+
+1000 requests/min
+
+----------------
+
+ENTERPRISE
+
+5000 requests/min
+```
+
+Very little changes.
+
+ApiClient
+
+```java
+UserType
+```
+
+already exists.
+
+RateLimitPolicy
+
+can now store
+
+```
+FREE
+
+↓
+
+Policy
+
+----------------
+
+PREMIUM
+
+↓
+
+Policy
+
+----------------
+
+ENTERPRISE
+
+↓
+
+Policy
+```
+
+Every TokenBucket simply references its client's policy.
+
+No change to the workflow.
+
+---
+
+# SOLID Principles
+
+## Single Responsibility Principle
+
+Each class has one responsibility.
+
+Request
+
+* Represents a request
+
+ApiClient
+
+* Represents a client
+
+RateLimitPolicy
+
+* Stores configuration
+
+TokenBucket
+
+* Stores runtime state and rate limiting behavior
+
+RateLimiterService
+
+* Coordinates the workflow
+
+---
+
+## Open/Closed Principle
+
+Current implementation supports only Token Bucket.
+
+If requirements change to another algorithm (Sliding Window, Fixed Window, Leaky Bucket), the implementation will need modification.
+
+In the next iteration we will improve this design using the **Strategy Pattern** so that RateLimiterService remains unchanged while different rate limiting algorithms become interchangeable.
+
+---
+
+# Key Interview Takeaways
+
+* Separate **configuration** from **runtime state**.
+* The object that owns the state should own the behavior that modifies it.
+* `TokenBucket` owns token count, so it should expose `allowRequest()` instead of allowing external classes to manipulate its state.
+* `RateLimiterService` should coordinate objects rather than implement the Token Bucket algorithm itself.
+* Use `HashMap<ApiKey, TokenBucket>` for O(1) bucket lookup.
+* Design for today's requirements first; introduce design patterns only when new requirements justify additional abstraction.
+
+# Rate Limiter LLD - Strategy Pattern Follow-up
+
+> **Interview Follow-up**
+>
+> We have successfully designed a Token Bucket based Rate Limiter.
+>
+> The interviewer now introduces a new requirement:
+>
+> "Tomorrow we may replace Token Bucket with Sliding Window, Fixed Window or Leaky Bucket. Modify your design so that new algorithms can be added without changing the RateLimiterService."
+
+This is a classic **Open/Closed Principle** follow-up and is an excellent opportunity to introduce the **Strategy Pattern**.
+
+---
+
+# Why the Original Design Breaks
+
+Our original design looked like this:
+
+```java
+class RateLimiterService{
+
+    Map<ApiKey, TokenBucket> buckets;
+
+    boolean processRequest(Request request){
+
+        TokenBucket bucket = buckets.get(request.getApiKey());
+
+        return bucket.allowRequest();
+
+    }
+
+}
+```
+
+The problem:
+
+Tomorrow if the interviewer says:
+
+* Use Sliding Window
+* Use Fixed Window
+* Use Leaky Bucket
+
+RateLimiterService must change.
+
+For example,
+
+```java
+SlidingWindow window = windows.get(apiKey);
+
+return window.allowRequest();
+```
+
+Now the service depends directly on one algorithm.
+
+Every new algorithm forces modifications to the service.
+
+This violates the **Open/Closed Principle**.
+
+---
+
+# Goal
+
+We want the service to remain unchanged.
+
+Only the algorithm implementation should change.
+
+---
+
+# Strategy Pattern
+
+Instead of depending on TokenBucket,
+
+RateLimiterService should depend on an abstraction.
+
+```java
+interface RateLimitingAlgorithm{
+
+    boolean allowRequest(Request request);
+
+}
+```
+
+Now every algorithm implements this interface.
+
+---
+
+# Token Bucket Implementation
+
+```java
+class TokenBucketAlgorithm
+        implements RateLimitingAlgorithm{
+
+    Map<ApiKey, TokenBucket> buckets;
+
+    @Override
+    public boolean allowRequest(Request request){
+
+        TokenBucket bucket =
+            buckets.get(request.getApiKey());
+
+        return bucket.allowRequest();
+
+    }
+
+}
+```
+
+Notice:
+
+The Token Bucket specific data structure
+
+```java
+Map<ApiKey, TokenBucket>
+```
+
+belongs inside this implementation.
+
+---
+
+# Sliding Window Implementation
+
+Sliding Window requires completely different state.
+
+Instead of TokenBucket,
+
+it stores timestamps.
+
+```java
+class SlidingWindowAlgorithm
+        implements RateLimitingAlgorithm{
+
+    Map<ApiKey, Deque<Long>> windows;
+
+    @Override
+    public boolean allowRequest(Request request){
+
+        // Sliding Window Logic
+
+    }
+
+}
+```
+
+Notice:
+
+Different algorithm
+
+↓
+
+Different state
+
+↓
+
+Different data structure.
+
+RateLimiterService doesn't need to know.
+
+---
+
+# Fixed Window Implementation
+
+```java
+class FixedWindowAlgorithm
+        implements RateLimitingAlgorithm{
+
+    Map<ApiKey, WindowCounter> counters;
+
+    @Override
+    public boolean allowRequest(Request request){
+
+        // Fixed Window Logic
+
+    }
+
+}
+```
+
+Again,
+
+the implementation owns its own state.
+
+---
+
+# Leaky Bucket Implementation
+
+```java
+class LeakyBucketAlgorithm
+        implements RateLimitingAlgorithm{
+
+    Map<ApiKey, LeakyBucket> buckets;
+
+    @Override
+    public boolean allowRequest(Request request){
+
+        // Leaky Bucket Logic
+
+    }
+
+}
+```
+
+Again,
+
+no changes to RateLimiterService.
+
+---
+
+# Updated RateLimiterService
+
+Now the service depends only on the interface.
+
+```java
+class RateLimiterService{
+
+    private RateLimitingAlgorithm algorithm;
+
+    public boolean processRequest(Request request){
+
+        return algorithm.allowRequest(request);
+
+    }
+
+}
+```
+
+Notice something important.
+
+RateLimiterService no longer knows:
+
+* Token Bucket
+* Sliding Window
+* Fixed Window
+* Leaky Bucket
+
+It only knows
+
+```java
+allowRequest()
+```
+
+---
+
+# Why Should the Algorithm Own the Data Structure?
+
+Question:
+
+Where should
+
+```java
+Map<ApiKey, TokenBucket>
+```
+
+live?
+
+Wrong:
+
+```java
+RateLimiterService
+```
+
+Correct:
+
+```java
+TokenBucketAlgorithm
+```
+
+Reason:
+
+That map is part of the Token Bucket implementation.
+
+Tomorrow,
+
+Sliding Window doesn't need
+
+```java
+Map<ApiKey, TokenBucket>
+```
+
+It needs
+
+```java
+Map<ApiKey, Deque<Long>>
+```
+
+Similarly,
+
+Fixed Window needs
+
+```java
+Map<ApiKey, WindowCounter>
+```
+
+Each algorithm owns its own runtime state.
+
+---
+
+# Final Class Diagram
+
+```text
+                    +---------------------------+
+                    | RateLimiterService        |
+                    +---------------------------+
+                    | - algorithm              |
+                    +---------------------------+
+                               |
+                               |
+                               ▼
+                +--------------------------------+
+                | RateLimitingAlgorithm          |
+                +--------------------------------+
+                | +allowRequest(Request):boolean |
+                +--------------------------------+
+                     ▲         ▲          ▲
+                     |         |          |
+                     |         |          |
+      +------------------+ +------------------+ +------------------+
+      | TokenBucketAlgo  | | SlidingWindow    | | FixedWindowAlgo  |
+      +------------------+ +------------------+ +------------------+
+      | Map<ApiKey,      | | Map<ApiKey,      | | Map<ApiKey,      |
+      | TokenBucket>     | | Deque<Long>>     | | WindowCounter>   |
+      +------------------+ +------------------+ +------------------+
+```
+
+---
+
+# Workflow
+
+```text
+Incoming Request
+
+↓
+
+RateLimiterService
+
+↓
+
+algorithm.allowRequest(request)
+
+↓
+
+Token Bucket?
+            \
+             \
+              Sliding Window?
+                       \
+                        \
+                         Fixed Window?
+
+↓
+
+true / false
+
+↓
+
+Allow Request or HTTP 429
+```
+
+Notice:
+
+The workflow never changes.
+
+Only the algorithm changes.
+
+---
+
+# Benefits
+
+## Open/Closed Principle
+
+Open for Extension
+
+* Add a new algorithm.
+
+Closed for Modification
+
+* RateLimiterService never changes.
+
+---
+
+## Single Responsibility Principle
+
+RateLimiterService
+
+* Coordinates the workflow.
+
+Each Algorithm
+
+* Implements one rate limiting algorithm.
+
+Each algorithm owns:
+
+* Its own runtime state
+* Its own data structures
+* Its own implementation
+
+---
+
+## Encapsulation
+
+Each algorithm hides its implementation.
+
+RateLimiterService never knows:
+
+* How tokens are refilled.
+* How timestamps are removed.
+* How windows are calculated.
+
+It simply calls
+
+```java
+allowRequest(request)
+```
+
+---
+
+# Interview Discussion
+
+### Interviewer
+
+Tomorrow we want to support Sliding Window.
+
+How much code changes?
+
+Answer:
+
+Only create
+
+```java
+SlidingWindowAlgorithm
+        implements RateLimitingAlgorithm
+```
+
+No changes to
+
+```java
+RateLimiterService
+```
+
+---
+
+### Interviewer
+
+Tomorrow we invent a brand new algorithm.
+
+Answer:
+
+Create another implementation.
+
+```java
+class CustomRateLimiterAlgorithm
+        implements RateLimitingAlgorithm
+```
+
+Everything else remains unchanged.
+
+---
+
+# Key Takeaways
+
+* Strategy Pattern abstracts **behavior**, not data.
+* The algorithm interface exposes one operation:
+
+```java
+allowRequest(Request request)
+```
+
+* Every algorithm owns its own runtime state and internal data structures.
+* RateLimiterService depends on an interface rather than a concrete implementation.
+* This design satisfies both the **Open/Closed Principle** and the **Dependency Inversion Principle**.
+* This pattern is common in real-world backend systems where different algorithms or policies may be swapped without affecting the calling code.
+
+---
+
+# Where Else Will You Use Strategy Pattern?
+
+After learning this problem, you'll start recognizing the same pattern in many backend systems:
+
+* **Rate Limiter** → Token Bucket, Sliding Window, Fixed Window
+* **Payment System** → Credit Card, PayPal, Apple Pay
+* **Notification Service** → Email, SMS, Push Notification
+* **Parking Allocation** → Normal, VIP, Handicapped
+* **Pricing Engine** → Standard Pricing, Holiday Pricing, Surge Pricing
+* **Compression** → ZIP, GZIP, Snappy
+
+The common idea is always the same:
+
+> **The workflow remains the same, but one piece of behavior is interchangeable.**
+
+That is exactly what the **Strategy Pattern** is designed to solve.
