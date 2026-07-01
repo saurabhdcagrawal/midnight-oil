@@ -1671,6 +1671,292 @@ O(m + n)
 ### Rule of Thumb
 
 - **Sequential traversals of two independent linked lists** → `O(m + n)`
-- **Simultaneous traversal of two linked lists** → `O(max(m, n))`
+- **Simultaneous traversal of two linked lists using OR** → `O(max(m, n))`
+- **Simultaneous traversal of two linked lists using AND** → `O(min(m, n))`
+
 
 > **Note:** `O(max(m, n))` is a tighter bound. Since `max(m, n) ≤ m + n`, writing `O(m + n)` is also technically correct, but `O(max(m, n))` more accurately reflects the actual number of iterations.
+
+
+# Merge Two Sorted Linked Lists
+
+## Problem
+
+Given the heads of two sorted linked lists, merge them into a single sorted linked list.
+
+The merged list should be created by **reusing the existing nodes**.
+
+Example
+
+```
+List 1
+
+1 → 2 → 4
+```
+
+```
+List 2
+
+1 → 3 → 4
+```
+
+Output
+
+```
+1 → 1 → 2 → 3 → 4 → 4
+```
+
+---
+
+## Approach
+
+Use a **dummy node** to simplify construction of the merged list.
+
+Maintain a pointer (`result`) pointing to the last node of the merged list.
+
+- Compare the current nodes of both lists.
+- Append the smaller node.
+- Move the corresponding pointer forward.
+- Continue until one list is exhausted.
+- Attach the remaining nodes.
+
+---
+
+## Algorithm
+
+```
+Create dummy node
+
+↓
+
+result = dummy
+
+↓
+
+While both lists are not empty
+
+    Compare current nodes
+
+    Append smaller node
+
+    Move corresponding pointer
+
+    Move result
+
+↓
+
+Attach remaining list
+
+↓
+
+Return dummy.next
+```
+
+---
+
+## Example
+
+```
+List1
+
+1 → 2 → 4
+```
+
+```
+List2
+
+1 → 3 → 4
+```
+
+### Step 1
+
+```
+1 <= 1
+
+Append List1 node
+
+Result
+
+1
+```
+
+### Step 2
+
+```
+1 < 2
+
+Append List2 node
+
+Result
+
+1 → 1
+```
+
+### Step 3
+
+```
+2 < 3
+
+Result
+
+1 → 1 → 2
+```
+
+### Step 4
+
+```
+3 < 4
+
+Result
+
+1 → 1 → 2 → 3
+```
+
+### Remaining Nodes
+
+```
+4 → 4
+```
+
+Attach directly.
+
+Final Result
+
+```
+1 → 1 → 2 → 3 → 4 → 4
+```
+
+---
+
+## Java Implementation
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode() {}
+ *     ListNode(int val) { this.val = val; }
+ *     ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+ * }
+ */
+class Solution {
+    public ListNode mergeTwoLists(ListNode list1, ListNode list2) {
+        ListNode dummy= new ListNode(0);
+        ListNode result=dummy;
+
+        //dummy->1->1->3->4
+        //Reusing the existing nodes. We only update the next pointers
+        //to build the merged list. No new nodes are created.
+
+        while(list1!=null && list2!=null){
+            if(list1.val<=list2.val){
+                result.next=list1;
+                list1=list1.next;
+            }
+            else{
+                result.next=list2;
+                list2=list2.next;
+            }
+            result=result.next;
+        }
+
+        if(list1!=null){
+            result.next=list1;
+        }
+
+        if(list2!=null){
+            result.next=list2;
+        }
+
+        return dummy.next;
+    }
+}
+```
+
+---
+
+## Why Use `&&`?
+
+We continue while **both** lists have nodes remaining.
+
+```java
+while(list1 != null && list2 != null)
+```
+
+As soon as one list is exhausted, the remaining nodes in the other list are already sorted and can be attached directly.
+
+---
+
+## Complexity
+
+**Time:** `O(m + n)`
+
+Every node from both linked lists is visited exactly once.
+
+**Space:** `O(1)`
+
+The algorithm reuses the existing nodes and only uses a few pointers.
+
+---
+
+## Interview Tips
+
+- Use a **dummy node** to simplify linked list construction.
+- Reuse the existing nodes instead of creating new ones.
+- Compare **node values** to decide which node to append.
+- Attach the remaining list once one list becomes empty.
+- This is the standard optimal solution with **O(m + n)** time and **O(1)** extra space.
+
+## Why Reuse the Existing Nodes?
+
+Instead of creating new nodes, we reuse the nodes already present in the input linked lists.
+
+Example
+
+```
+List1
+
+1 → 2 → 4
+```
+
+```
+List2
+
+1 → 3 → 4
+```
+
+When we write
+
+```java
+result.next = list1;
+```
+
+or
+
+```java
+result.next = list2;
+```
+
+we are **linking an existing node** into the merged list.
+
+Then we advance the corresponding pointer.
+
+```java
+list1 = list1.next;
+```
+
+or
+
+```java
+list2 = list2.next;
+```
+
+No new nodes are created.
+
+Only the **`next` pointers are rearranged** to build the merged list.
+
+This is why the algorithm uses only **O(1)** extra space.
+
+> **Note:** Since we reuse the original nodes, the original linked lists are **not preserved** as separate lists after merging.
