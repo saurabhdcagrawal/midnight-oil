@@ -1960,3 +1960,331 @@ Only the **`next` pointers are rearranged** to build the merged list.
 This is why the algorithm uses only **O(1)** extra space.
 
 > **Note:** Since we reuse the original nodes, the original linked lists are **not preserved** as separate lists after merging.
+
+# Remove Duplicates from an Unsorted Linked List
+
+## Problem
+
+Given an unsorted linked list, remove duplicate nodes while preserving the first occurrence.
+
+Example
+
+```
+Input
+
+1 → 4 → 6 → 1 → 6 → 5 → 4
+```
+
+Output
+
+```
+1 → 4 → 6 → 5
+```
+
+---
+
+# Solution 1 - Using HashSet
+
+## Approach
+
+Maintain a `HashSet` of visited values.
+
+- If the next node is already present in the set, remove it.
+- Otherwise, add it to the set and continue.
+
+This preserves the first occurrence of every element.
+
+---
+
+## Algorithm
+
+```
+Initialize HashSet
+
+↓
+
+Traverse the list
+
+↓
+
+Duplicate?
+
+Yes → Delete node
+
+No → Add to HashSet
+
+↓
+
+Continue
+```
+
+---
+
+## Java Implementation
+
+```java
+public ListNode removeDups(ListNode head){
+
+    if(head==null)
+        return null;
+
+    ListNode temp=head;
+    Set<Integer> hset= new HashSet<>();
+
+    hset.add(head.val);
+
+    while(temp.next!=null){
+
+        if(hset.contains(temp.next.val)){
+            temp.next=temp.next.next;
+        }
+        else{
+            hset.add(temp.next.val);
+            temp=temp.next;
+        }
+    }
+
+    return head;
+}
+```
+
+---
+
+## Why don't we move `temp` after deleting?
+
+Suppose
+
+```
+1 → 2 → 2 → 2 → 3
+```
+
+After deleting the first duplicate
+
+```
+1 → 2 → 2 → 3
+```
+
+If we moved `temp`, we would skip checking the next `2`.
+
+Therefore,
+
+```java
+if(duplicate)
+    temp.next=temp.next.next;
+else
+    temp=temp.next;
+```
+
+---
+
+## Complexity
+
+**Time:** `O(n)`
+
+**Space:** `O(n)`
+
+---
+
+# Solution 2 - Runner Technique (Without Extra Space)
+
+## Approach
+
+Use two pointers.
+
+- `current` picks one node.
+- `runner` scans all remaining nodes.
+- Whenever a duplicate is found, remove it.
+
+Repeat for every node.
+
+---
+
+## Algorithm
+
+```
+current = head
+
+↓
+
+runner = current
+
+↓
+
+Compare current with every remaining node
+
+↓
+
+Delete duplicates
+
+↓
+
+Move current
+```
+
+---
+
+## Java Implementation
+
+```java
+public ListNode removeDupsWithoutSpace(ListNode head){
+
+    if(head==null)
+        return null;
+
+    ListNode current=head, runner=null;
+
+    while(current!=null){
+
+        runner=current;
+
+        while(runner.next!=null){
+
+            if(current.val==runner.next.val){
+                runner.next=runner.next.next;
+            }
+            else{
+                runner=runner.next;
+            }
+        }
+
+        current=current.next;
+    }
+
+    return head;
+}
+```
+
+---
+
+## Why does `runner` start from `current`?
+
+Suppose
+
+```
+1 → 4 → 1 → 6 → 1
+```
+
+```
+current = first 1
+
+runner = current
+```
+
+The inner loop starts checking from
+
+```
+runner.next
+```
+
+Comparisons become
+
+```
+4
+
+↓
+
+1 ✓ Duplicate
+
+↓
+
+6
+
+↓
+
+1 ✓ Duplicate
+```
+
+This avoids comparing `current` with itself while checking every remaining node.
+
+---
+
+## Complexity
+
+### HashSet Solution
+
+- **Time:** `O(n)`
+- **Space:** `O(n)`
+
+### Runner Technique
+
+- **Time:** `O(n²)`
+- **Space:** `O(1)`
+
+---
+
+## Interview Tips
+
+- If extra space is allowed, use a **HashSet** for an `O(n)` solution.
+- Without extra space, use the **Runner Technique** (`O(n²)`).
+- After deleting a duplicate, **do not move** the pointer that performed the deletion.
+- The runner technique is a common interview pattern for linked list problems where additional memory is not allowed.
+
+## Utility Methods
+
+### Print Linked List
+
+```java
+public void printList(ListNode head){
+    ListNode temp = head;
+
+    while(temp != null){
+        System.out.print(temp.val);
+
+        if(temp.next != null){
+            System.out.print(" -> ");
+        }
+
+        temp = temp.next;
+    }
+
+    System.out.println();
+}
+```
+
+Example
+
+```
+Input
+
+1 → 4 → 6 → 5
+```
+
+Output
+
+```
+1 -> 4 -> 6 -> 5
+```
+
+---
+
+### Insert at End
+
+```java
+public void insertAtEnd(ListNode head, int val){
+    ListNode temp = head;
+
+    while(temp.next != null){
+        temp = temp.next;
+    }
+
+    temp.next = new ListNode(val);
+}
+```
+
+Example
+
+```
+Before
+
+1 → 2 → 3
+```
+
+```
+insertAtEnd(head, 4)
+```
+
+```
+After
+
+1 → 2 → 3 → 4
+```
