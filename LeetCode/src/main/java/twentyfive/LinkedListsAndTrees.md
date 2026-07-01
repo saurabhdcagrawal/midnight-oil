@@ -1,0 +1,1676 @@
+# Linked Lists
+
+---
+
+# Floyd's Cycle Detection Algorithm (Fast & Slow Pointer)
+
+## Problem
+
+Given the head of a singly linked list, determine whether the linked list contains a cycle.
+
+Example:
+
+```
+1 -> 2 -> 3 -> 4
+          ^     |
+          |_____|
+```
+
+Return:
+
+```
+true
+```
+
+If the list terminates normally:
+
+```
+1 -> 2 -> 3 -> null
+```
+
+Return:
+
+```
+false
+```
+
+---
+
+# Solution 1 - HashSet
+
+## Idea
+
+Store every visited node inside a HashSet.
+
+If a node is encountered again, a cycle exists.
+
+### Time Complexity
+
+```
+O(n)
+```
+
+### Space Complexity
+
+```
+O(n)
+```
+
+```java
+/*public boolean hasCycle(ListNode head) {
+    HashSet<ListNode> hset= new HashSet<>();
+    ListNode temp=head;
+    while(temp!=null){
+        if(hset.contains(temp))
+            return true;
+        hset.add(temp);
+        temp=temp.next;
+    }
+    return false;
+}*/
+```
+
+---
+
+# Solution 2 - Floyd's Cycle Detection (Tortoise & Hare)
+
+## Idea
+
+Maintain two pointers.
+
+- Slow Pointer → moves one step
+- Fast Pointer → moves two steps
+
+If a cycle exists, the fast pointer eventually laps the slow pointer and both pointers meet.
+
+If no cycle exists, the fast pointer reaches the end of the list first.
+
+---
+
+## Algorithm
+
+```
+Initialize
+
+slow = head
+fast = head
+
+while(fast != null && fast.next != null)
+
+    slow = slow.next
+    fast = fast.next.next
+
+    if(slow == fast)
+        Cycle Exists
+
+If fast reaches null
+
+No Cycle
+```
+
+---
+
+# Why Fast Pointer?
+
+One of the most common interview questions is:
+
+> **Why do we only check the fast pointer?**
+
+The **fast pointer** advances two nodes at a time.
+
+If the list does **not** contain a cycle, the fast pointer will always reach the end of the list before the slow pointer.
+
+Therefore, the termination condition should always be based on the fast pointer.
+
+```java
+while(fastPointer != null && fastPointer.next != null)
+```
+
+instead of
+
+```java
+while(slowPointer != null &&
+      fastPointer != null &&
+      fastPointer.next != null)
+```
+
+Although checking `slowPointer != null` is not incorrect, it is unnecessary because the fast pointer reaching the end already guarantees termination.
+
+---
+
+# Why check
+
+```java
+if(fastPointer == null || fastPointer.next == null)
+```
+
+instead of
+
+```java
+if(slowPointer == null || fastPointer == null)
+```
+
+Consider:
+
+```
+1 -> 2 -> 3 -> null
+```
+
+Execution:
+
+```
+slow = 1
+fast = 1
+```
+
+Iteration 1
+
+```
+slow = 2
+fast = 3
+```
+
+Loop condition
+
+```
+fast != null       ✓
+fast.next != null  ✗
+```
+
+The loop exits because the **fast pointer** has reached the end.
+
+Notice:
+
+```
+slow != null
+fast != null
+```
+
+If we checked
+
+```java
+if(slowPointer == null || fastPointer == null)
+```
+
+the condition would evaluate to **false**, incorrectly suggesting a cycle may exist.
+
+The correct termination condition is therefore
+
+```java
+if(fastPointer == null || fastPointer.next == null)
+    return false;
+```
+
+This accurately indicates that the fast pointer reached the end of the list, meaning no cycle exists.
+
+---
+
+# Why don't we check
+
+```java
+slowPointer.next != null
+```
+
+Consider a single-node list:
+
+```
+1 -> null
+```
+
+The while loop condition is
+
+```java
+while(fastPointer != null && fastPointer.next != null)
+```
+
+Here,
+
+```
+fastPointer != null      ✓
+fastPointer.next != null ✗
+```
+
+The loop never executes.
+
+Therefore,
+
+```java
+slowPointer = slowPointer.next;
+```
+
+is never reached.
+
+Likewise, for any acyclic list, the fast pointer reaches the end before the slow pointer, so checking the fast pointer alone guarantees that advancing the slow pointer by one step is always safe.
+
+---
+
+# Dry Run
+
+## Example 1 (No Cycle)
+
+```
+1 -> 2 -> 3 -> null
+```
+
+```
+Initial
+
+S = 1
+F = 1
+```
+
+Iteration 1
+
+```
+S = 2
+F = 3
+```
+
+Next Iteration
+
+```
+F.next == null
+
+Exit Loop
+
+Return false
+```
+
+---
+
+## Example 2 (Cycle Exists)
+
+```
+1 -> 2 -> 3 -> 4
+     ^         |
+     |_________|
+```
+
+```
+Initial
+
+S = 1
+F = 1
+```
+
+Iteration 1
+
+```
+S = 2
+F = 3
+```
+
+Iteration 2
+
+```
+S = 3
+F = 2
+```
+
+Iteration 3
+
+```
+S = 4
+F = 4
+```
+
+Pointers meet.
+
+Return
+
+```
+true
+```
+
+---
+
+# Java Implementation
+
+```java
+/**
+ * Definition for singly-linked list.
+ * class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode(int x) {
+ *         val = x;
+ *         next = null;
+ *     }
+ * }
+ */
+public class Solution {
+    /*public boolean hasCycle(ListNode head) {
+        HashSet<ListNode> hset= new HashSet<>();
+        ListNode temp=head;
+        while(temp!=null){
+            if(hset.contains(temp))
+                return true;
+            hset.add(temp);
+            temp=temp.next;
+        }
+        return false;
+    }*/
+
+    public boolean hasCycle(ListNode head) {
+        if(head==null ||head.next==null)
+            return false;
+
+        ListNode slowPointer=head, fastPointer=head;
+        while(fastPointer!=null && fastPointer.next!=null){
+            slowPointer=slowPointer.next;
+            fastPointer=fastPointer.next.next;
+            if(slowPointer==fastPointer)
+                break;
+        }
+
+        //1->2->3->null
+        /*We check the fast pointer because it's the one advancing two nodes at a time. In an acyclic list, it reaches the end first, which tells us there is no cycle. The slow pointer cannot reliably indicate the end of the list because it progresses only one node at a time.
+        */
+        if(fastPointer==null || fastPointer.next==null)
+            return false;
+
+      /*  fastPointer=head;
+        while(slowPointer!=fastPointer){
+            slowPointer=slowPointer.next;
+            fastPointer=fastPointer.next;
+        }
+        System.out.println("Loop is here :"+slowPointer.val); */
+        return true;
+    }
+}
+```
+
+---
+
+# Interview Takeaways
+
+- HashSet solution is simple but uses **O(n)** extra space.
+- Floyd's Cycle Detection uses **O(1)** extra space.
+- The fast pointer determines whether the list terminates.
+- Always check `fast != null && fast.next != null` before advancing the fast pointer.
+- If the pointers meet, a cycle exists.
+- If the fast pointer reaches the end, the list is acyclic.
+- The commented second phase in the implementation is used in **Linked List Cycle II (LeetCode 142)** to find the starting node of the cycle after a meeting point has been detected.
+
+# Reverse Linked List (Iterative)
+
+## Problem
+
+Reverse a singly linked list.
+
+```
+Input
+
+1 → 2 → 3 → 4 → null
+```
+
+```
+Output
+
+4 → 3 → 2 → 1 → null
+```
+
+---
+
+## Approach
+
+Maintain three pointers:
+
+- **prev** → Previous node
+- **curr** → Current node
+- **nextNode** → Stores the next node before reversing the link
+
+At each iteration:
+
+1. Save the next node.
+2. Reverse the current node's pointer.
+3. Move all pointers forward.
+
+---
+
+## Algorithm
+
+```
+prev = null
+curr = head
+
+while(curr != null)
+
+    nextNode = curr.next
+    curr.next = prev
+
+    prev = curr
+    curr = nextNode
+
+return prev
+```
+
+---
+
+## Dry Run
+
+```
+Initial
+
+prev = null
+
+curr = 1 → 2 → 3 → 4
+```
+
+### Iteration 1
+
+```
+next = 2
+
+1 → null
+
+prev = 1
+
+curr = 2
+```
+
+### Iteration 2
+
+```
+2 → 1 → null
+
+prev = 2
+
+curr = 3
+```
+
+### Iteration 3
+
+```
+3 → 2 → 1 → null
+
+prev = 3
+
+curr = 4
+```
+
+### Iteration 4
+
+```
+4 → 3 → 2 → 1 → null
+
+prev = 4
+
+curr = null
+```
+
+Return:
+
+```
+prev
+```
+
+---
+
+## Java Implementation
+
+```java
+class Solution {
+
+    /*public ListNode reverseListIterative(ListNode head) {
+        ListNode prev=null,nextNode=null;
+        ListNode curr=head;
+        while(curr!=null){
+            nextNode=curr.next;
+            curr.next=prev;
+            prev=curr;
+            curr=nextNode;
+        }
+        return prev;
+    }*/
+}
+```
+
+---
+
+## Why Do We Need `nextNode`?
+
+Before reversing:
+
+```
+1 → 2 → 3
+```
+
+If we execute:
+
+```java
+curr.next = prev;
+```
+
+the original link to `2` is lost.
+
+Therefore, we first save:
+
+```java
+nextNode = curr.next;
+```
+
+before changing the pointer.
+
+---
+
+## Complexity
+
+**Time:** `O(n)`
+
+**Space:** `O(1)`
+
+---
+
+## Interview Tips
+
+- Always save `curr.next` before reversing the pointer.
+- `prev` becomes the new head after the loop.
+- Uses **three pointers**: `prev`, `curr`, and `nextNode`.
+- Optimal solution with **O(n)** time and **O(1)** space.
+
+# Palindrome Linked List
+
+## Problem
+
+Determine whether a singly linked list is a palindrome.
+
+Example
+
+```
+Input
+
+1 → 2 → 2 → 1
+```
+
+```
+Output
+
+true
+```
+
+---
+
+## Approach
+
+We solve this in **O(n)** time and **O(1)** space.
+
+Steps:
+
+1. Find the middle of the linked list.
+2. Reverse the second half.
+3. Compare the first half with the reversed second half.
+4. Restore the original list by reversing the second half again.
+
+---
+
+## Algorithm
+
+```
+Find middle node
+
+↓
+
+Reverse second half
+
+↓
+
+Compare both halves
+
+↓
+
+Restore original list
+
+↓
+
+Return result
+```
+
+---
+
+## Dry Run
+
+Input
+
+```
+1 → 2 → 2 → 1
+```
+
+### Step 1 - Find Middle
+
+```
+slow = 2 (third node)
+```
+
+```
+1 → 2 → 2 → 1
+          ↑
+       middle
+```
+
+---
+
+### Step 2 - Reverse Second Half
+
+```
+Original
+
+2 → 1
+```
+
+becomes
+
+```
+1 → 2
+```
+
+Now we have
+
+```
+First Half
+
+1 → 2
+
+Second Half
+
+1 → 2
+```
+
+---
+
+### Step 3 - Compare
+
+```
+1 == 1 ✓
+
+2 == 2 ✓
+```
+
+Palindrome.
+
+---
+
+### Step 4 - Restore
+
+Reverse the second half again.
+
+Original list becomes
+
+```
+1 → 2 → 2 → 1
+```
+
+---
+
+## Java Implementation
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode() {}
+ *     ListNode(int val) { this.val = val; }
+ *     ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+ * }
+ */
+class Solution {
+    public boolean isPalindrome(ListNode head) {
+        if(head==null)
+            return true;
+
+        //head 1->2-> 2<-1 SHR
+        ListNode middleNode= middleNode(head);
+        ListNode secondHalfReversed= reverseListIterative(middleNode);
+        ListNode p1=head, p2=secondHalfReversed;
+        boolean flag=true;
+        while(p2!=null){
+            if(p1.val!=p2.val){
+                flag=false;
+                break;
+            }
+            p1=p1.next;
+            p2=p2.next;
+        }
+        reverseListIterative(secondHalfReversed);
+        return flag;
+    }
+
+
+    public ListNode middleNode(ListNode head) {
+        ListNode slowPointer=head;
+        ListNode fastPointer=head;
+
+        while(fastPointer!=null && fastPointer.next!=null){
+            slowPointer=slowPointer.next;
+            fastPointer=fastPointer.next.next;
+        }
+        return slowPointer;
+    }
+
+    public ListNode reverseListIterative(ListNode head) {
+        ListNode prev=null,nextNode=null;
+        ListNode curr=head;
+        while(curr!=null){
+            nextNode=curr.next;
+            curr.next=prev;
+            prev=curr;
+            curr=nextNode;
+        }
+        return prev;
+    }
+}
+```
+
+---
+
+## Complexity
+
+**Time:** `O(n)`
+
+- Find middle → `O(n)`
+- Reverse second half → `O(n)`
+- Compare → `O(n)`
+- Restore → `O(n)`
+
+Overall: **O(n)**
+
+**Space:** `O(1)`
+
+---
+
+## Interview Tips
+
+- Use the **Fast & Slow Pointer** technique to find the middle.
+- Reverse only the **second half** of the list.
+- Compare node by node.
+- Restore the list if the original structure should remain unchanged (good practice in interviews).
+- Combines two common linked list patterns:
+  - Find Middle Node
+  - Reverse Linked List
+
+### Why do we compare until `p2 == null`?
+
+We compare until the second half is exhausted because `p2` traverses the reversed second half of the list.
+
+- **Even-length list:** The reversed second half contains exactly half of the nodes.
+- **Odd-length list:** The reversed second half contains the middle node plus the remaining nodes. Comparing the middle node with itself is harmless since it always matches.
+
+Therefore, once `p2` reaches `null`, we have compared every node required to determine whether the list is a palindrome.
+
+**Example (Even Length)**
+
+```
+1 → 2 → 2 → 1
+
+First Half:      1 → 2
+Second Half:     1 → 2 (after reversal)
+
+Compare:
+1 == 1 ✓
+2 == 2 ✓
+
+p2 becomes null → Done
+```
+
+**Example (Odd Length)**
+
+```
+1 → 2 → 3 → 2 → 1
+
+Middle = 3
+
+Reverse second half:
+
+3 → 2 → 1
+
+becomes
+
+1 → 2 → 3
+
+Compare:
+
+1 == 1 ✓
+2 == 2 ✓
+3 == 3 ✓
+
+p2 becomes null → Done
+```
+
+> **Interview Insight:**  
+> The stopping condition is **not** because the reversed list ends in `null` (every linked list does). It is because `p2` represents the **entire reversed second half** of the original list. Once we've traversed all nodes in the second half, we've compared every node necessary to determine whether the list is a palindrome.  
+
+
+# Intersection of Two Linked Lists
+
+## Problem
+
+Given the heads of two singly linked lists, return the node where the two lists intersect.
+
+If no intersection exists, return `null`.
+
+---
+
+## Solution 1 - HashSet
+
+### Approach
+
+- Traverse the first linked list and store every node in a `HashSet`.
+- Traverse the second linked list.
+- The first node already present in the set is the intersection.
+
+### Complexity
+
+**Time:** `O(m + n)`
+
+**Space:** `O(m)`
+
+---
+
+## Solution 2 - Length Difference (Optimal)
+
+### Approach
+
+1. Find the length of both linked lists.
+2. Advance the pointer of the longer list by the difference in lengths.
+3. Traverse both lists together.
+4. The first common node (`==`) is the intersection.
+
+> **Note:** Compare node references (`==`), **not** node values.
+
+---
+
+## Algorithm
+
+```
+Find length of both lists
+
+↓
+
+Advance longer list by |m-n|
+
+↓
+
+Traverse both lists together
+
+↓
+
+If pointers are equal
+
+Return intersection node
+
+↓
+
+Otherwise return null
+```
+
+---
+
+## Example
+
+```
+List A
+
+1 → 2 → 3 → 4 → 5
+
+Length = 5
+```
+
+```
+List B
+
+9 → 4 → 5
+
+Length = 3
+```
+
+Difference
+
+```
+5 - 3 = 2
+```
+
+Advance List A by two nodes.
+
+```
+A
+
+3 → 4 → 5
+
+B
+
+9 → 4 → 5
+```
+
+Move both pointers together.
+
+```
+3 != 9
+
+↓
+
+4 == 4
+
+Intersection Found
+```
+
+---
+
+## Why Does This Work?
+
+After advancing the longer list by the length difference, both pointers have the **same number of nodes remaining**.
+
+If an intersection exists, both pointers will reach it at the same time.
+
+Otherwise, both pointers will reach `null`.
+
+---
+
+## Java Implementation
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode(int x) {
+ *         val = x;
+ *         next = null;
+ *     }
+ * }
+ */
+public class Solution {
+   /* public ListNode getIntersectionNode(ListNode headA, ListNode headB) {
+        Set<ListNode> hset= new HashSet<>();
+        ListNode pA= headA;
+        while(pA!=null){
+            hset.add(pA);
+            pA=pA.next;
+        }
+
+        ListNode pB=headB;
+        while(pB!=null){
+            if(hset.contains(pB))
+                return pB;
+            pB=pB.next;
+        }
+        return null;
+    }*/
+
+    public ListNode getIntersectionNode(ListNode headA, ListNode headB) {
+        int lengthA= length(headA);
+        int lengthB=length(headB);
+        int diff= Math.abs(lengthA-lengthB);
+        ListNode longerLL= lengthA>=lengthB? headA:headB;
+        ListNode shorterLL= lengthA<lengthB?headA:headB;
+
+        for(int i=0;i<diff;i++){
+            longerLL=longerLL.next;
+        }
+
+        while(longerLL!=null && shorterLL!=null){
+            if(longerLL==shorterLL)
+                return longerLL;
+
+            longerLL=longerLL.next;
+            shorterLL=shorterLL.next;
+        }
+
+        return null;
+    }
+
+    public int length(ListNode head){
+        ListNode temp=head;
+        int length=0;
+        while(temp!=null){
+            length++;
+            temp=temp.next;
+        }
+        return length;
+    }
+}
+```
+
+---
+
+## Complexity
+
+### HashSet
+
+- **Time:** `O(m + n)`
+- **Space:** `O(m)`
+
+### Length Difference
+
+- **Time:** `O(m + n)`
+- **Space:** `O(1)`
+
+---
+
+## Interview Tips
+
+- Compare **node references (`==`)**, not node values.
+- Align both lists before traversing.
+- After alignment, both pointers have the same distance from the end.
+- If no intersection exists, both pointers eventually become `null`.
+- This is the optimal solution with **O(m + n)** time and **O(1)** extra space.
+
+# Plus One Linked List
+
+## Problem
+
+A non-negative integer is represented as a singly linked list where each node contains a single digit.
+
+Add one to the number and return the updated linked list.
+
+Example
+
+```
+Input
+
+1 → 2 → 9
+```
+
+```
+Output
+
+1 → 3 → 0
+```
+
+---
+
+## Key Observation
+
+The carry propagates through all trailing `9`s.
+
+Instead of adding from the last node, we:
+
+1. Find the **rightmost node that is not 9**.
+2. Increment it.
+3. Set all nodes after it to `0`.
+
+---
+
+# Solution 1 (Without Dummy Node)
+
+### Approach
+
+- Find the rightmost non-nine node.
+- If none exists, create a new head with value `1`.
+- Increment the rightmost non-nine node.
+- Change all following nodes to `0`.
+
+### Java Implementation
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode() {}
+ *     ListNode(int val) { this.val = val; }
+ *     ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+ * }
+ */
+class Solution {
+    public ListNode plusOne(ListNode head) {
+        //9,9,9
+        //first rightmost non nine digit
+        //increment by one
+        //if not there create a new carry and change head..
+        ListNode temp=head;
+        ListNode rightMostNonNineNode=null;
+
+        while(temp!=null){
+            if(temp.val!=9){
+                rightMostNonNineNode=temp;
+            }
+            temp=temp.next;
+        }
+
+        if(rightMostNonNineNode==null){
+            rightMostNonNineNode= new ListNode(1);
+            rightMostNonNineNode.next=head;
+            head=rightMostNonNineNode;
+        }
+        else{
+            rightMostNonNineNode.val++;
+        }
+
+        temp=rightMostNonNineNode.next;
+
+        while(temp!=null){
+            temp.val=0;
+            temp=temp.next;
+        }
+
+        return head;
+    }
+}
+```
+
+---
+
+# Solution 2 (Using Dummy Node)
+
+### Approach
+
+Introduce a dummy node before the head.
+
+The dummy node naturally handles the edge case where all digits are `9`, eliminating the need for a separate `if` condition.
+
+### Java Implementation
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode() {}
+ *     ListNode(int val) { this.val = val; }
+ *     ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+ * }
+ */
+class Solution {
+    public ListNode plusOne(ListNode head) {
+        ListNode dummyNode= new ListNode(0);
+        dummyNode.next=head;
+        ListNode temp=dummyNode;
+        ListNode rightMostNonNineNode=null;
+
+        while(temp!=null){
+            if(temp.val!=9){
+                rightMostNonNineNode=temp;
+            }
+            temp=temp.next;
+        }
+
+        rightMostNonNineNode.val++;
+
+        temp=rightMostNonNineNode.next;
+
+        while(temp!=null){
+            temp.val=0;
+            temp=temp.next;
+        }
+
+        return dummyNode.val==0 ? dummyNode.next : dummyNode;
+    }
+}
+```
+
+---
+
+## Example 1
+
+```
+1 → 2 → 9 → 9
+```
+
+Rightmost non-nine:
+
+```
+2
+```
+
+Increment:
+
+```
+1 → 3 → 9 → 9
+```
+
+Set remaining digits to zero:
+
+```
+1 → 3 → 0 → 0
+```
+
+---
+
+## Example 2
+
+```
+9 → 9 → 9
+```
+
+### Solution 1
+
+```
+No non-nine node found
+
+↓
+
+Create new head
+
+↓
+
+1 → 9 → 9 → 9
+
+↓
+
+1 → 0 → 0 → 0
+```
+
+### Solution 2
+
+```
+Dummy
+
+0 → 9 → 9 → 9
+
+↓
+
+Increment dummy
+
+1 → 9 → 9 → 9
+
+↓
+
+Set remaining digits to zero
+
+1 → 0 → 0 → 0
+```
+
+---
+
+## Complexity
+
+**Time:** `O(n)`
+
+**Space:** `O(1)`
+
+---
+
+## Interview Tips
+
+- The carry only propagates until the **rightmost non-nine digit**.
+- Every trailing `9` becomes `0`.
+- The dummy node solution removes the explicit edge case for an all-9s list and is generally considered the cleaner implementation.
+```
+# Add Two Numbers
+
+## Problem
+
+Two non-empty linked lists represent two non-negative integers.
+
+- Digits are stored in **reverse order**.
+- Each node contains a single digit.
+- Return the sum as a linked list.
+
+Example
+
+```
+Input
+
+2 → 4 → 3
+
+5 → 6 → 4
+```
+
+```
+Output
+
+7 → 0 → 8
+```
+
+Because
+
+```
+342 + 465 = 807
+```
+
+---
+
+## Approach
+
+Simulate elementary addition.
+
+For each pair of digits:
+
+- Add both digits and the carry.
+- Create a new node with the current digit.
+- Carry forward the remaining value.
+
+A **dummy node** is used to simplify linked list construction.
+
+---
+
+## Algorithm
+
+```
+Initialize
+
+dummy
+curr = dummy
+carry = 0
+
+↓
+
+While either list has nodes
+
+    value1 = l1.val (or 0)
+    value2 = l2.val (or 0)
+
+    sum = value1 + value2 + carry
+
+    digit = sum % 10
+    carry = sum / 10
+
+    Append digit
+
+↓
+
+If carry remains
+
+Append carry
+
+↓
+
+Return dummy.next
+```
+
+---
+
+## Example
+
+```
+2 → 4 → 3
+
+5 → 6 → 4
+```
+
+### Iteration 1
+
+```
+2 + 5 + 0 = 7
+
+Digit = 7
+
+Carry = 0
+
+Result
+
+7
+```
+
+---
+
+### Iteration 2
+
+```
+4 + 6 + 0 = 10
+
+Digit = 0
+
+Carry = 1
+
+Result
+
+7 → 0
+```
+
+---
+
+### Iteration 3
+
+```
+3 + 4 + 1 = 8
+
+Digit = 8
+
+Carry = 0
+
+Result
+
+7 → 0 → 8
+```
+
+---
+
+## Example (Carry Remaining)
+
+```
+9 → 9 → 9
+
+1
+```
+
+Iterations
+
+```
+9 + 1 = 10
+
+↓
+
+0 Carry 1
+
+↓
+
+9 + 0 + 1 = 10
+
+↓
+
+0 Carry 1
+
+↓
+
+9 + 0 + 1 = 10
+
+↓
+
+0 Carry 1
+```
+
+Carry still remains.
+
+Append one final node.
+
+Result
+
+```
+0 → 0 → 0 → 1
+```
+
+---
+
+## Java Implementation
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode() {}
+ *     ListNode(int val) { this.val = val; }
+ *     ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+ * }
+ */
+class Solution {
+    public ListNode addTwoNumbers(ListNode l1, ListNode l2) {
+        ListNode dummy= new ListNode(0);
+        ListNode l=dummy;
+        int val1=0,val2=0,sum=0,digit=0,carry=0;
+
+        // less restrictive
+        while(l1!=null || l2!=null){
+            val1=l1==null?0:l1.val;
+            val2=l2==null?0:l2.val;
+
+            sum=val1+val2+carry;
+
+            digit=sum%10;
+            carry=sum/10;
+
+            l.next=new ListNode(digit);
+            l=l.next;
+
+            if(l1!=null)
+                l1=l1.next;
+
+            if(l2!=null)
+                l2=l2.next;
+        }
+
+        // Handles cases like 999 + 1
+        if(carry!=0)
+            l.next=new ListNode(carry);
+
+        return dummy.next;
+    }
+}
+```
+
+---
+
+## Why Use a Dummy Node?
+
+Without a dummy node, the first node of the result requires special handling.
+
+Using a dummy node lets us use the same logic for every digit.
+
+Pattern:
+
+```java
+ListNode dummy = new ListNode(0);
+ListNode curr = dummy;
+
+curr.next = new ListNode(value);
+curr = curr.next;
+
+return dummy.next;
+```
+
+---
+
+## Why Use `||` Instead of `&&`?
+
+We continue as long as **either** list has remaining digits.
+
+Example
+
+```
+999
+
++
+
+1
+```
+
+Even after the shorter list ends, we still need to process the remaining digits of the longer list.
+
+Hence:
+
+```java
+while(l1 != null || l2 != null)
+```
+
+---
+
+## Complexity
+
+**Time:** `O(max(m, n))`
+
+**Space:** `O(max(m, n))` *(output list)*
+
+---
+
+## Interview Tips
+
+- Use a **dummy node** to simplify linked list construction.
+- Continue while **either** list has nodes.
+- Treat missing digits as `0`.
+- Always append a final carry if it exists.
+- This is the standard optimal solution with **O(max(m, n))** time.
+
+## Why is the Time Complexity `O(max(m, n))` and not `O(m + n)`?
+
+For this problem, both linked lists are traversed **simultaneously**.
+
+```java
+while(l1 != null || l2 != null)
+```
+
+During each iteration:
+
+- `l1` moves one step (if not `null`)
+- `l2` moves one step (if not `null`)
+
+Therefore, the loop continues until the **longer** linked list is exhausted.
+
+### Example
+
+```
+l1
+
+1 → 2 → 3 → 4 → 5
+
+Length = 5
+```
+
+```
+l2
+
+9 → 8 → 7
+
+Length = 3
+```
+
+Iterations:
+
+```
+1
+
+2
+
+3
+
+4
+
+5
+```
+
+Total iterations = **5**, not **8**.
+
+Hence,
+
+```
+Time = O(max(m, n))
+```
+
+---
+
+### Why was **Intersection of Two Linked Lists** `O(m + n)`?
+
+In the intersection problem, we first traverse each list independently to compute their lengths.
+
+```
+Traverse List A
+
+O(m)
+
++
+
+Traverse List B
+
+O(n)
+```
+
+These are **separate traversals**, so the total work is
+
+```
+O(m + n)
+```
+
+---
+
+### Rule of Thumb
+
+- **Sequential traversals of two independent linked lists** → `O(m + n)`
+- **Simultaneous traversal of two linked lists** → `O(max(m, n))`
+
+> **Note:** `O(max(m, n))` is a tighter bound. Since `max(m, n) ≤ m + n`, writing `O(m + n)` is also technically correct, but `O(max(m, n))` more accurately reflects the actual number of iterations.
