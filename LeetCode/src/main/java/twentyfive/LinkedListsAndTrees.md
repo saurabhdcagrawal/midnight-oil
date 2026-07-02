@@ -3232,7 +3232,7 @@ No node has exactly one child.
 
 ✔ Complete
 
-✔ Full
+❌ Full
 
 ❌ Perfect
 
