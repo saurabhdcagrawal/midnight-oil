@@ -3515,7 +3515,7 @@ Recursive Space = `O(N)`
 ---
 
 ### DFS vs BFS Space
-
+Space complexity is the max height of the stack in recursive calls
 **DFS (Recursion)**
 
 - Stores the **current root-to-node path**
