@@ -3296,3 +3296,81 @@ A BST may or may not be:
 - **Maximum Depth of a Tree** = Maximum depth among all nodes.
 - **Height of a Tree** = Height of the root node.
 - Under the standard convention (root depth = 0, leaf height = 0), the **Maximum Depth of the Tree** and the **Height of the Tree** are numerically equal.
+
+# Recursive Tree Traversals
+
+All recursive tree traversals follow the same template.
+
+```java
+if(root == null)
+    return;
+```
+
+The only difference is **where we process the current node**.
+
+---
+
+## Preorder Traversal (Root → Left → Right)
+
+```java
+public List<Integer> preorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    preorderTraversal(root, result);
+    return result;
+}
+
+public void preorderTraversal(TreeNode root, List<Integer> result){
+    if(root == null)
+        return;
+
+    result.add(root.val);
+    preorderTraversal(root.left, result);
+    preorderTraversal(root.right, result);
+}
+```
+
+---
+
+## Inorder Traversal (Left → Root → Right)
+
+```java
+public void inorderTraversal(TreeNode root, List<Integer> result){
+    if(root == null)
+        return;
+
+    inorderTraversal(root.left, result);
+    result.add(root.val);
+    inorderTraversal(root.right, result);
+}
+```
+
+---
+
+## Postorder Traversal (Left → Right → Root)
+
+```java
+public void postorderTraversal(TreeNode root, List<Integer> result){
+    if(root == null)
+        return;
+
+    postorderTraversal(root.left, result);
+    postorderTraversal(root.right, result);
+    result.add(root.val);
+}
+```
+
+---
+
+## Complexity
+
+- **Time:** `O(n)`
+- **Space:** `O(h)` (Recursive Stack), where `h` is the height of the tree.
+
+---
+
+## Interview Tips
+
+- **Preorder:** Root → Left → Right (**NLR**)
+- **Inorder:** Left → Root → Right (**LNR**)
+- **Postorder:** Left → Right → Root (**LRN**)
+- For a **BST**, **Inorder Traversal** always produces the nodes in **sorted order**.
