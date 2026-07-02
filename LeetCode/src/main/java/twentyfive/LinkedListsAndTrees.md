@@ -3374,3 +3374,154 @@ public void postorderTraversal(TreeNode root, List<Integer> result){
 - **Inorder:** Left → Root → Right (**LNR**)
 - **Postorder:** Left → Right → Root (**LRN**)
 - For a **BST**, **Inorder Traversal** always produces the nodes in **sorted order**.
+
+**Space:** `O(h)` (Recursive Call Stack), where `h` is the height of the tree.
+
+- **Balanced Tree:** `O(log N)`
+- **Worst Case (Skewed Tree):** `O(N)`
+
+### Why is the Recursive Space Complexity `O(h)`?
+
+The recursive call stack stores **only the current path from the root to the current node**, **not** all the nodes at the same level.
+
+For example, consider the following tree:
+
+```
+        1
+      /   \
+     2     3
+    / \   / \
+   4  5  6   7
+```
+
+During a **Preorder DFS**, the recursive call stack evolves as follows.
+
+Visit `1`
+
+```
+1
+```
+
+Visit `2`
+
+```
+1
+2
+```
+
+Visit `4`
+
+```
+1
+2
+4
+```
+
+Node `4` is a leaf, so we return.
+
+Stack becomes
+
+```
+1
+2
+```
+
+Now visit `5`
+
+```
+1
+2
+5
+```
+
+Notice that we **never** have all nodes of the same level on the stack.
+
+For example, the following never happens:
+
+```
+4
+5
+6
+7
+```
+
+At any point, the stack contains only **one root-to-current-node path**.
+
+Therefore,
+
+```
+Maximum Recursive Stack Size = Height of the Tree
+```
+
+Hence,
+
+```
+Space = O(h)
+```
+
+where `h` is the height of the tree.
+
+---
+
+### Balanced Tree
+
+```
+        1
+      /   \
+     2     3
+    / \   / \
+   4  5  6   7
+```
+
+Longest path:
+
+```
+1 → 2 → 4
+```
+
+Height = `O(log N)`
+
+Recursive Space = `O(log N)`
+
+---
+
+### Skewed Tree
+
+```
+1
+ \
+  2
+   \
+    3
+     \
+      4
+```
+
+Recursive call stack:
+
+```
+1
+2
+3
+4
+```
+
+Every node lies on the same path.
+
+Height = `O(N)`
+
+Recursive Space = `O(N)`
+
+---
+
+### DFS vs BFS Space
+
+**DFS (Recursion)**
+
+- Stores the **current root-to-node path**
+- Space = `O(height)`
+
+**BFS (Queue)**
+
+- Stores **all nodes at the current level**
+- Space = `O(width)` (Worst Case `O(N)`)
