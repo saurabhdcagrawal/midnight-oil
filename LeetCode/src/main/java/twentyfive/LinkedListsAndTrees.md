@@ -3012,3 +3012,283 @@ O(N)
 - BFS always uses a queue.
 - Learn both recursive and iterative traversals.
 - Diameter, LCA, Balanced Tree, BST Validation, Insert, Delete, and BST Iterator are among the highest-frequency tree interview questions.
+
+---
+
+# Height vs Depth
+
+## Depth
+
+**Depth** tells you how far a node is from the **root**.
+
+- Measured **top → down**
+- Root has depth **0**
+
+Example
+
+```
+        A
+      /   \
+     B     C
+    / \
+   D   E
+```
+
+| Node | Depth |
+|------|------:|
+| A | 0 |
+| B | 1 |
+| C | 1 |
+| D | 2 |
+| E | 2 |
+
+> **Depth = Distance from the Root**
+
+---
+
+## Height
+
+**Height** tells you how far a node is from its **deepest leaf**.
+
+- Measured **bottom → up**
+- Leaf nodes have height **0**
+
+Example
+
+```
+        A
+      /   \
+     B     C
+    / \
+   D   E
+```
+
+| Node | Height |
+|------|-------:|
+| D | 0 |
+| E | 0 |
+| C | 0 |
+| B | 1 |
+| A | 2 |
+
+> **Height = Longest distance to a Leaf**
+
+---
+
+## Memory Trick
+
+- **Depth** → **Down** from the root.
+- **Height** → How **High** the subtree is beneath a node.
+
+---
+
+# Types of Binary Trees
+
+## Perfect Binary Tree
+
+Every internal node has **exactly two children**, and **all leaf nodes are at the same level**.
+
+```
+        1
+      /   \
+     2     3
+    / \   / \
+   4  5  6   7
+```
+
+Properties
+
+- Every non-leaf has exactly **2 children**
+- All levels are completely filled
+- Total Nodes = **2^(h+1) - 1**
+- Leaf Nodes = **2^h**
+
+> **Memory Trick:** Nothing is missing.
+
+---
+
+## Complete Binary Tree
+
+Every level is completely filled **except possibly the last**.
+
+The last level must be filled **from left to right**.
+
+### Valid
+
+```
+        1
+      /   \
+     2     3
+    / \   /
+   4  5  6
+```
+
+Last level:
+
+```
+4  5  6
+```
+
+No gaps.
+
+---
+
+### Invalid
+
+```
+        1
+      /   \
+     2     3
+    /     /
+   4     6
+```
+
+Last level:
+
+```
+4  _  6
+```
+
+❌ There is a gap before `6`.
+
+---
+
+### Another Invalid Example
+
+```
+        1
+      /   \
+     2     3
+          / \
+         6   7
+```
+
+❌ The left subtree should have been filled first.
+
+> **Memory Trick:** The last level fills **left → right**, just like people filling seats in a theater.
+
+---
+
+## Full Binary Tree
+
+Every node has either:
+
+- **0 children**, or
+- **2 children**
+
+No node has exactly one child.
+
+### Valid
+
+```
+      1
+     / \
+    2   3
+       / \
+      4   5
+```
+
+### Invalid
+
+```
+      1
+     /
+    2
+```
+
+`1` has only one child.
+
+---
+
+# Visual Comparison
+
+## Perfect
+
+```
+        1
+      /   \
+     2     3
+    / \   / \
+   4  5  6   7
+```
+
+✔ Full
+
+✔ Complete
+
+✔ Perfect
+
+---
+
+## Complete
+
+```
+        1
+      /   \
+     2     3
+    / \   /
+   4  5  6
+```
+
+✔ Complete
+
+✔ Full
+
+❌ Perfect
+
+---
+
+## Full but NOT Complete
+
+```
+        1
+      /   \
+     2     3
+          / \
+         6   7
+```
+
+✔ Full
+
+❌ Complete
+
+---
+
+# Binary Search Tree Reminder
+
+These tree classifications are **structural properties** and are unrelated to ordering.
+
+A Binary Search Tree satisfies:
+
+```
+Left Subtree < Root < Right Subtree
+```
+
+A BST may or may not be:
+
+- Complete
+- Full
+- Perfect
+- Balanced
+
+---
+
+# Quick Revision
+
+| Tree Type | Rule |
+|------------|------|
+| **Perfect** | Every internal node has 2 children and all levels are full |
+| **Complete** | Only the last level may be incomplete, but it fills left → right |
+| **Full** | Every node has either 0 or 2 children |
+| **Balanced** | Height difference ≤ 1 at every node |
+| **BST** | Left < Root < Right |
+
+---
+
+# Interview Memory Tricks
+
+- **Perfect** → Nothing is missing.
+- **Complete** → Last level fills **left → right**.
+- **Full** → 0 or 2 children only.
+- **Balanced** → Height difference ≤ 1.
+- **BST** → Ordered by value (`Left < Root < Right`).
