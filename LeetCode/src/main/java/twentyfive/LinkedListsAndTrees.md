@@ -2593,7 +2593,7 @@ From the caller's perspective, it appears as though the head node was deleted.
   - `node = null` → Changes only the local reference.
   - `node.next = ...` or `node.val = ...` → Modifies the actual linked list.
   - Delete a non tail node given the reference of the node in O(1)
-```
+
 
 ---
 
