@@ -3292,3 +3292,7 @@ A BST may or may not be:
 - **Full** → 0 or 2 children only.
 - **Balanced** → Height difference ≤ 1.
 - **BST** → Ordered by value (`Left < Root < Right`).
+- Every node has exactly one **depth** (distance from the root).
+- **Maximum Depth of a Tree** = Maximum depth among all nodes.
+- **Height of a Tree** = Height of the root node.
+- Under the standard convention (root depth = 0, leaf height = 0), the **Maximum Depth of the Tree** and the **Height of the Tree** are numerically equal.
