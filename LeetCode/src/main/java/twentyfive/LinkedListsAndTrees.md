@@ -3525,3 +3525,214 @@ Space complexity is the max height of the stack in recursive calls
 
 - Stores **all nodes at the current level**
 - Space = `O(width)` (Worst Case `O(N)`)
+
+
+# Binary Tree Level Order Traversal (BFS)
+
+Uses a **Queue** to process nodes level by level.
+
+## Java Implementation (Null Marker Approach)
+
+```java
+class Solution {
+    public List<List<Integer>> levelOrder(TreeNode root) {
+        List<List<Integer>> result = new ArrayList<>();
+
+        if(root == null)
+            return result;
+
+        Queue<TreeNode> q = new LinkedList<>();
+        q.offer(root);
+        q.offer(null);
+
+        List<Integer> level = new ArrayList<>();
+
+        while(!q.isEmpty()){
+
+            TreeNode node = q.poll();
+
+            if(node == null){
+
+                result.add(level);
+                level = new ArrayList<>();
+
+                if(!q.isEmpty())
+                    q.offer(null);
+            }
+            else{
+
+                level.add(node.val);
+
+                if(node.left != null)
+                    q.offer(node.left);
+
+                if(node.right != null)
+                    q.offer(node.right);
+            }
+        }
+
+        return result;
+    }
+}
+```
+
+---
+
+## Complexity
+
+**Time:** `O(N)`
+
+Every node is enqueued and dequeued exactly once.
+
+---
+
+**Space:** `O(W)`
+
+Where **W** is the **maximum width** of the tree (maximum number of nodes at any level).
+
+### Balanced / Complete Binary Tree
+
+```
+            1
+         /     \
+        2       3
+      /  \     /  \
+     4    5   6    7
+```
+
+Queue progression:
+
+```
+[1]
+
+↓
+
+[2, 3]
+
+↓
+
+[4, 5, 6, 7]
+```
+
+The queue stores an entire level.
+
+For a perfect binary tree,
+
+```
+Maximum Width ≈ N/2
+```
+
+Since constant factors are ignored,
+
+```
+O(N/2) = O(N)
+```
+
+So the **worst-case space complexity is `O(N)`**.
+
+---
+
+### Skewed Binary Tree
+
+```
+1
+ \
+  2
+   \
+    3
+     \
+      4
+```
+
+Queue progression:
+
+```
+[1]
+
+↓
+
+[2]
+
+↓
+
+[3]
+
+↓
+
+[4]
+```
+
+The queue never contains more than one node.
+
+```
+Maximum Width = 1
+```
+
+Space complexity:
+
+```
+O(1)
+```
+
+---
+
+## DFS vs BFS Space
+
+**DFS (Recursion)**
+
+- Stores the current **root-to-node path**
+- Space = `O(Height)`
+
+**BFS (Queue)**
+
+- Stores an entire **level**
+- Space = `O(Maximum Width)`
+
+---
+
+## Interview Tips
+
+- Level Order Traversal uses **Breadth First Search (BFS)**.
+- Queue stores nodes **level by level**, not the entire tree.
+- General Space Complexity = **`O(Maximum Width)`**
+- Worst Case (Balanced / Complete Tree) = **`O(N)`**
+- Best Case (Skewed Tree) = **`O(1)`**
+
+---
+
+## Linked List vs Skewed Binary Tree
+
+A standard linked list is **not** a binary tree because each node has only one pointer (`next`).
+
+```java
+class ListNode {
+    int val;
+    ListNode next;
+}
+```
+
+However, a linked list can be **represented** as a completely skewed binary tree by treating the `next` pointer as either the left or right child.
+
+Example:
+
+```
+Linked List
+
+1 → 2 → 3 → 4
+```
+
+Equivalent Right-Skewed Binary Tree
+
+```
+1
+ \
+  2
+   \
+    3
+     \
+      4
+```
+
+This is a valid binary tree because every node has at most two children, but each node happens to have only one.
+
+> **Interview Note:** A linked list is a special case of a completely skewed binary tree from a structural perspective, although they are different data structures.
