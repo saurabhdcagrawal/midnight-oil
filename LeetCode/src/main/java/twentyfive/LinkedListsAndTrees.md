@@ -2595,6 +2595,8 @@ From the caller's perspective, it appears as though the head node was deleted.
   - Delete a non tail node given the reference of the node in O(1)
 ```
 
+---
+
 
 # Trees
 
