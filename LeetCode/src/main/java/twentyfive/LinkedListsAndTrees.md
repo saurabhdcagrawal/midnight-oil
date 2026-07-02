@@ -2427,3 +2427,170 @@ After
 
 1 → 2 → 3 → 4
 ```
+
+# Delete Middle Node
+
+## Problem
+
+You are given **only a reference to a node** in a singly linked list.
+
+Delete that node.
+
+> **Constraint:** The given node is **not** the tail (last) node.
+
+Example
+
+```
+Input
+
+1 → 2 → 3 → 4 → 5
+        ↑
+      node
+```
+
+Output
+
+```
+1 → 2 → 4 → 5
+```
+
+---
+
+## Approach
+
+Since we are **not given the head** of the linked list, we cannot access the previous node.
+
+Instead:
+
+1. Copy the value of the next node into the current node.
+2. Skip the next node.
+
+---
+
+## Java Implementation
+
+```java
+public void deleteMiddleNode(ListNode node){
+
+    if(node == null || node.next == null)
+        return;
+
+    ListNode nextNode = node.next;
+
+    node.val = nextNode.val;
+    node.next = nextNode.next;
+}
+```
+
+---
+
+## Why Can't We Delete the Last Node?
+
+Suppose we are given only a reference to the last node:
+
+```
+1 → 2 → 3
+        ↑
+      node
+```
+
+If we do:
+
+```java
+node = null;
+```
+
+we are **only changing the local reference variable**.
+
+The node containing `3` still exists in memory because the previous node (`2`) still points to it.
+
+```
+2.next ─────► 3
+```
+
+The correct way to delete the last node would be:
+
+```java
+previous.next = null;
+```
+
+However, we **cannot** do this because we are **not given a reference to the previous node**—only the node to be deleted.
+
+For a **non-tail node**, we can instead modify the node itself:
+
+```java
+node.val = node.next.val;
+node.next = node.next.next;
+```
+
+This works because we have access to the next node, allowing us to copy its value and bypass it.
+
+> **Key Takeaway:**  
+> `node = null` only changes the **local reference**. It does **not** modify the linked list because the previous node still points to the original node.
+
+---
+
+## What If the Given Node Is the First Node?
+
+The algorithm still works because the first node is **not** the tail.
+
+Example
+
+```
+Before
+
+1 → 2 → 3 → 4
+↑
+node
+```
+
+Copy the next node's value:
+
+```
+2 → 2 → 3 → 4
+↑
+node
+```
+
+Skip the next node:
+
+```
+2 → 3 → 4
+↑
+node
+```
+
+Notice that the first node itself is **not removed**. Instead:
+
+- Its value changes from `1` to `2`.
+- The original second node is bypassed.
+
+From the caller's perspective, it appears as though the head node was deleted.
+
+> **Therefore, this algorithm works for any non-tail node (including the first node), but it can never work for the last node.**
+
+---
+
+## Complexity
+
+**Time:** `O(1)`
+
+**Space:** `O(1)`
+
+---
+
+## Interview Tips
+
+- This problem is really **"Delete a Non-Tail Node"**, not just a middle node.
+- The algorithm works for:
+  - ✅ First node
+  - ✅ Any middle node
+- The algorithm does **not** work for:
+  - ❌ Last node
+- We are **modifying the current node**, not deleting it directly.
+- We cannot delete the last node because we have no reference to the previous node.
+- Remember the distinction:
+  - `node = null` → Changes only the local reference.
+  - `node.next = ...` or `node.val = ...` → Modifies the actual linked list.
+  - Delete a non tail node given the reference of the node in O(1)
+```
