@@ -1519,6 +1519,7 @@ class Solution {
         // Handles cases like 999 + 1
         if(carry!=0)
             l.next=new ListNode(carry);
+		//in the while loop you could add (l1!=null||l2!=null||carry!=0), then you wouldnt need this	
 
         return dummy.next;
     }
@@ -1676,6 +1677,144 @@ O(m + n)
 
 
 > **Note:** `O(max(m, n))` is a tighter bound. Since `max(m, n) ≤ m + n`, writing `O(m + n)` is also technically correct, but `O(max(m, n))` more accurately reflects the actual number of iterations.
+
+
+# Add Two Numbers II (MSB First)
+
+## Problem
+
+The digits are stored in **forward order (MSB at the head)**.
+
+Return the sum as a linked list.
+
+Example
+
+```
+Input
+
+7 → 2 → 4 → 3
+
+5 → 6 → 4
+```
+
+Output
+
+```
+7 → 8 → 0 → 7
+```
+
+---
+
+## Approach
+
+Since addition starts from the least significant digit, push the digits of both linked lists onto stacks.
+
+- Pop digits from both stacks.
+- Compute the sum and carry.
+- Insert each new digit at the **front** of the result list.
+
+---
+
+## Algorithm
+
+```
+Push all digits of l1 into Stack1
+
+↓
+
+Push all digits of l2 into Stack2
+
+↓
+
+While either stack has elements or carry exists
+
+    Pop values
+
+    Add carry
+
+    Create new head node
+
+↓
+
+Return result head
+```
+
+---
+
+## Java Implementation
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode() {}
+ *     ListNode(int val) { this.val = val; }
+ *     ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+ * }
+ */
+class Solution {
+    public ListNode addTwoNumbers(ListNode l1, ListNode l2) {
+        Stack<Integer> st1= new Stack<>();
+        Stack<Integer> st2= new Stack<>();
+        ListNode resultHead=null;
+        int val1,val2,sum,digit,carry=0;
+
+        while(l1!=null){
+            st1.push(l1.val);
+            l1=l1.next;
+        }
+
+        while(l2!=null){
+            st2.push(l2.val);
+            l2=l2.next;
+        }
+
+        while(!st1.isEmpty() || !st2.isEmpty() || carry!=0){
+            val1=st1.isEmpty()?0:st1.pop();
+            val2=st2.isEmpty()?0:st2.pop();
+
+            sum=val1+val2+carry;
+            digit=sum%10;
+            carry=sum/10;
+
+            ListNode newHead= new ListNode(digit);
+            newHead.next=resultHead;
+            resultHead=newHead;
+        }
+
+        return resultHead;
+    }
+}
+```
+
+---
+
+## Complexity
+
+**Time:** `O(m + n)`
+
+- Push to stacks → `O(m + n)`
+- Addition → `O(max(m, n))`
+- Build result → `O(max(m, n))`
+
+Overall:
+
+```
+O(m + n)
+```
+
+**Space:** `O(m + n)`
+
+---
+
+## Interview Tips
+
+- Use stacks because addition starts from the least significant digit.
+- Insert each computed digit at the **front** of the result list.
+- Continue while **either stack has elements or carry exists**.
+- If modifying the input lists is allowed, reversing both lists is another `O(m + n)` solution with `O(1)` extra space.
 
 
 # Merge Two Sorted Linked Lists
