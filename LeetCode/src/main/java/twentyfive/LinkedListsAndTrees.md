@@ -2594,3 +2594,419 @@ From the caller's perspective, it appears as though the head node was deleted.
   - `node.next = ...` or `node.val = ...` → Modifies the actual linked list.
   - Delete a non tail node given the reference of the node in O(1)
 ```
+
+
+# Trees
+
+Trees are one of the most important data structures for coding interviews. Many interview problems involving recursion, DFS, and BSTs are based on trees.
+
+---
+
+# Tree Terminology
+
+- **Root Node** – Top-most node in the tree.
+- **Parent Node** – A node having one or more children.
+- **Child Node** – A node directly connected below a parent.
+- **Leaf Node** – A node with no children.
+- **Subtree** – A tree rooted at any node.
+- **Height** – Number of edges on the longest path from the node to a leaf.
+- **Depth** – Number of edges from the root to a node.
+
+---
+
+# Properties of Trees
+
+- Have a single **root node**.
+- Every node can have **zero or more children**.
+- There is exactly **one unique path** between any two nodes.
+- Trees **cannot contain cycles**.
+- Child nodes may or may not maintain a reference to their parent.
+
+---
+
+# N-ary Tree
+
+Each node can have any number of children.
+
+```java
+class Node {
+    int val;
+    List<Node> children;
+}
+```
+
+Example
+
+```
+        1
+     /  |  \
+    2   3   4
+       / \
+      5   6
+```
+
+---
+
+# Binary Tree
+
+A **Binary Tree** is a tree where every node has **at most two children**.
+
+```java
+class TreeNode {
+    int val;
+    TreeNode left;
+    TreeNode right;
+}
+```
+
+Example
+
+```
+        10
+       /  \
+      5    20
+     / \
+    3   7
+```
+
+---
+
+# Perfect Binary Tree
+
+A binary tree where:
+
+- Every internal node has exactly **2 children**.
+- All leaf nodes are at the same level.
+
+Example
+
+```
+        1
+      /   \
+     2     3
+    / \   / \
+   4  5  6   7
+```
+
+Properties
+
+- Total Nodes = **2^(h+1) - 1**
+- Leaf Nodes = **2^h**
+
+where **h** is the height of the tree.
+
+---
+
+# Complete Binary Tree
+
+A binary tree where:
+
+- Every level is completely filled except possibly the last.
+- The last level is filled from **left to right**.
+
+Example
+
+```
+        1
+      /   \
+     2     3
+    / \   /
+   4  5  6
+```
+
+---
+
+# Full Binary Tree
+
+A binary tree where every node has either:
+
+- 0 children, or
+- 2 children.
+
+No node has only one child.
+
+---
+
+# Balanced Binary Tree
+
+A binary tree is balanced if, for every node,
+
+```
+|Height(left) - Height(right)| <= 1
+```
+
+Why is this important?
+
+Balanced trees provide
+
+```
+Search
+
+Insert
+
+Delete
+
+↓
+
+O(log N)
+```
+
+Examples
+
+- AVL Tree
+- Red-Black Tree
+
+---
+
+# Binary Search Tree (BST)
+
+A Binary Search Tree is a **special type of Binary Tree**.
+
+> Every BST is a Binary Tree, but **not every Binary Tree is a BST.**
+
+BST Property
+
+For every node:
+
+```
+Maximum value in Left Subtree
+        <
+Current Node
+        <
+Minimum value in Right Subtree
+```
+
+or equivalently,
+
+```
+Left Subtree < Node < Right Subtree
+```
+
+Example
+
+```
+        8
+      /   \
+     3     10
+    / \      \
+   1   6      14
+      / \     /
+     4   7   13
+```
+
+Searching in a balanced BST takes
+
+```
+O(log N)
+```
+
+---
+
+# Graph vs Tree
+
+## Tree
+
+- No cycles
+- Exactly one path between two nodes
+- Always connected
+- One root node
+
+## Graph
+
+- May contain cycles
+- Can be directed or undirected
+- May be disconnected
+- May have multiple paths between nodes
+
+---
+
+# Tree Traversals
+
+## Depth First Search (DFS)
+
+Explore one branch completely before backtracking.
+
+Recursive traversals:
+
+- Preorder
+- Inorder
+- Postorder
+
+Uses the **recursive call stack** (or an explicit stack).
+
+---
+
+## Breadth First Search (BFS)
+
+Visit all nodes at the same level before moving to the next level.
+
+Also called
+
+```
+Level Order Traversal
+```
+
+Uses a **Queue**.
+
+Applications
+
+- Shortest path in unweighted graphs
+- Social media friend recommendations
+- Level-wise processing
+
+---
+
+# DFS Traversals
+
+## Preorder
+
+```
+Root
+
+↓
+
+Left
+
+↓
+
+Right
+```
+
+Use Cases
+
+- Serialize trees
+- Copy trees
+- Prefix expressions
+
+---
+
+## Inorder
+
+```
+Left
+
+↓
+
+Root
+
+↓
+
+Right
+```
+
+For a BST, Inorder traversal always produces
+
+```
+Sorted Order
+```
+
+---
+
+## Postorder
+
+```
+Left
+
+↓
+
+Right
+
+↓
+
+Root
+```
+
+Use Cases
+
+- Delete tree
+- Evaluate expression trees
+
+---
+
+# BFS Traversal
+
+```
+Level 0
+
+↓
+
+Level 1
+
+↓
+
+Level 2
+
+↓
+
+...
+```
+
+Uses a Queue.
+
+Time
+
+```
+O(N)
+```
+
+Space
+
+```
+O(N)
+```
+
+---
+
+# Common Interview Problems
+
+## Binary Tree
+
+- Maximum Depth
+- Minimum Depth
+- Diameter of Binary Tree
+- Balanced Binary Tree
+- Lowest Common Ancestor (LCA)
+- Invert Binary Tree
+- Symmetric Tree
+- Same Tree
+- Path Sum
+- Maximum Path Sum
+- Level Order Traversal
+- Zigzag Traversal
+- Vertical Order Traversal
+
+---
+
+## Binary Search Tree
+
+- Search
+- Insert
+- Delete
+- Validate BST
+- Lowest Common Ancestor
+- Kth Smallest Element
+- BST Iterator
+- Recover BST
+- Convert Sorted Array to BST
+
+---
+
+# Time Complexities
+
+| Operation | Balanced BST | Skewed BST |
+|-----------|-------------:|-----------:|
+| Search | O(log N) | O(N) |
+| Insert | O(log N) | O(N) |
+| Delete | O(log N) | O(N) |
+
+---
+
+# Interview Tips
+
+- A **Binary Search Tree** is **not** the same as a Binary Tree.
+- A **Balanced BST** gives `O(log N)` operations.
+- **Inorder Traversal of a BST is always sorted.**
+- DFS generally uses recursion (or a stack).
+- BFS always uses a queue.
+- Learn both recursive and iterative traversals.
+- Diameter, LCA, Balanced Tree, BST Validation, Insert, Delete, and BST Iterator are among the highest-frequency tree interview questions.
