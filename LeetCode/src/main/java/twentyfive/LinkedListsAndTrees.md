@@ -5367,3 +5367,410 @@ Each subtree answers once:
 The parent combines the answers in constant time.
 
 This is one of the most common and powerful optimization patterns for recursive tree problems.
+
+# Serialize and Deserialize Binary Tree
+
+Convert a binary tree into a string (**Serialize**) and reconstruct the same tree back from the string (**Deserialize**).
+
+This solution uses **Preorder Traversal** with explicit `null` markers.
+
+---
+
+# Example
+
+## Original Tree
+
+```
+        1
+      /   \
+     2     3
+          / \
+         4   5
+```
+
+---
+
+## Serialized String
+
+```
+1,2,null,null,3,4,null,null,5,null,null,
+```
+
+Notice that every missing child is explicitly stored as `null`.
+
+Without the `null` markers, we would not be able to uniquely reconstruct the tree.
+
+---
+
+# Java Solution
+
+```java
+public class Codec {
+
+    int pointer = 0;
+
+    // Encodes a tree to a single string.
+    public String serialize(TreeNode root) {
+
+        StringBuilder sb = new StringBuilder();
+
+        serialize(root, sb);
+
+        return sb.toString();
+    }
+
+    public void serialize(TreeNode root, StringBuilder sb) {
+
+        if(root == null){
+            sb.append("null,");
+            return;
+        }
+
+        sb.append(root.val);
+        sb.append(",");
+
+        serialize(root.left, sb);
+        serialize(root.right, sb);
+    }
+
+    // Decodes your encoded data to tree.
+    public TreeNode deserialize(String data) {
+
+        pointer = 0;
+
+        String[] nodes = data.split(",");
+
+        return deserialize(nodes);
+    }
+
+    public TreeNode deserialize(String[] nodes){
+
+        String value = nodes[pointer];
+        pointer++;
+
+        if(value.equals("null"))
+            return null;
+
+        TreeNode node = new TreeNode(Integer.parseInt(value));
+
+        node.left = deserialize(nodes);
+        node.right = deserialize(nodes);
+
+        return node;
+    }
+}
+```
+
+---
+
+# Why Preorder?
+
+Serialization visits nodes in the order
+
+```
+Node
+
+↓
+
+Left
+
+↓
+
+Right
+```
+
+The serialized string is therefore a preorder traversal with explicit `null` markers.
+
+During deserialization, we read the tokens in exactly the same order.
+
+```
+Read Node
+
+↓
+
+Build Left
+
+↓
+
+Build Right
+```
+
+The two algorithms are perfect inverses of each other.
+
+---
+
+# Why does Deserialization stop?
+
+Every recursive call consumes **exactly one token**.
+
+```
+Read Token
+
+↓
+
+Advance Pointer
+
+↓
+
+Is it "null" ?
+
+        Yes → Return null
+
+        No
+
+↓
+
+Create Node
+
+↓
+
+Build Left
+
+↓
+
+Build Right
+```
+
+Whenever we encounter `"null"` we immediately stop building that branch.
+
+Eventually every token has been consumed exactly once.
+
+---
+
+# Walkthrough
+
+Serialized string
+
+```
+1,2,null,null,3,null,null
+```
+
+Array
+
+```
+Index   Value
+
+0       1
+1       2
+2       null
+3       null
+4       3
+5       null
+6       null
+```
+
+Execution
+
+```
+pointer = 0
+
+Read 1
+
+Create Node(1)
+
+↓
+
+Build Left
+
+Read 2
+
+Create Node(2)
+
+↓
+
+Read null
+
+Return
+
+↓
+
+Read null
+
+Return
+
+↓
+
+Return Node(2)
+
+↓
+
+Build Right
+
+Read 3
+
+↓
+
+Read null
+
+↓
+
+Read null
+
+↓
+
+Return Node(3)
+
+↓
+
+Return Node(1)
+```
+
+Every token is consumed exactly once.
+
+---
+
+# Complexity
+
+## Serialize
+
+**Time:** `O(N)`
+
+Every node is visited once.
+
+**Space:**
+
+- Output String: `O(N)`
+- Recursive Stack: `O(h)`
+
+---
+
+## Deserialize
+
+**Time:** `O(N)`
+
+Each serialized token is processed exactly once.
+
+**Space:**
+
+- Array created by `split()`: `O(N)`
+- Recursive Stack: `O(h)`
+
+where `h` is the height of the tree.
+
+- Balanced Tree: `O(log N)`
+- Skewed Tree: `O(N)`
+
+---
+
+# Why use a Class Variable (`pointer`)?
+
+Our recursive helper
+
+```java
+deserialize(String[] nodes)
+```
+
+needs to know which token should be processed next.
+
+Instead of passing an index through every recursive call, we maintain a single shared pointer.
+
+```
+pointer
+
+0
+
+↓
+
+1
+
+↓
+
+2
+
+↓
+
+3
+
+...
+```
+
+Every recursive call updates the same pointer.
+
+Before starting deserialization we simply reset it:
+
+```java
+pointer = 0;
+```
+
+This makes the recursive code much cleaner.
+
+---
+
+# Why NOT use a Class Variable for `StringBuilder`?
+
+Notice that we **do not** write:
+
+```java
+StringBuilder sb = new StringBuilder();
+```
+
+as a class member.
+
+Instead:
+
+```java
+public String serialize(TreeNode root){
+
+    StringBuilder sb = new StringBuilder();
+
+    serialize(root, sb);
+
+    return sb.toString();
+}
+```
+
+Every call to `serialize()` gets a brand-new `StringBuilder`.
+
+If it were a class variable, multiple calls could accidentally append to previous results unless we remembered to clear it.
+
+---
+
+# Interview Heuristic: When should I use Class Variables?
+
+Use a **class variable** when it represents **shared recursive state**.
+
+Examples:
+
+- `pointer` (Deserialize)
+- `prev` (BST Iterator / Recover BST)
+- `maxDiameter`
+- `maxPathSum`
+- `result`
+
+These variables naturally evolve during recursion and are shared by every recursive call.
+
+---
+
+Do **not** use a class variable for objects that belong to **one method invocation**.
+
+Examples:
+
+- `StringBuilder`
+- `List`
+- `HashMap`
+- `HashSet`
+
+Instead, create them once in the public method and pass them down recursively.
+
+---
+
+# Interview Rule
+
+Ask yourself:
+
+> **If I call this method twice on the same object, should this variable remember anything from the previous call?**
+
+If the answer is **No**, it usually should **not** be a class variable.
+
+If the answer is **Yes**, or it represents shared traversal state, then a class variable is often the cleanest solution.
+
+---
+
+# Takeaways
+
+- Serialize using **Preorder + null markers**.
+- Deserialize using the **same preorder order**.
+- Every recursive call consumes exactly **one token**.
+- `pointer` is shared recursive state, making it a good class variable.
+- `StringBuilder` belongs to a single serialization call, so keep it local and pass it to the helper.
+- Serialization and deserialization are mirror images of each other.
