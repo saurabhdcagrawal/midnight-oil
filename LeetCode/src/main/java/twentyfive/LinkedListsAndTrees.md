@@ -5774,3 +5774,283 @@ If the answer is **Yes**, or it represents shared traversal state, then a class 
 - `pointer` is shared recursive state, making it a good class variable.
 - `StringBuilder` belongs to a single serialization call, so keep it local and pass it to the helper.
 - Serialization and deserialization are mirror images of each other.
+
+
+# Why can't we pass `pointer` as a method parameter?
+
+Suppose we try:
+
+```java
+TreeNode deserialize(String[] nodes, int pointer)
+```
+
+instead of using a class variable.
+
+Consider the serialized tree:
+
+```
+1,2,null,null,3,null,null
+```
+
+---
+
+## Root Call
+
+```
+deserialize(nodes, 0)
+```
+
+```
+pointer = 0
+
+Read 1
+
+pointer++
+
+pointer = 1
+```
+
+Now build the left subtree.
+
+```
+deserialize(nodes, 1)
+```
+
+---
+
+## Left Subtree
+
+```
+pointer = 1
+
+Read 2
+
+pointer++
+
+pointer = 2
+```
+
+Build left child.
+
+```
+deserialize(nodes, 2)
+
+↓
+
+Read null
+
+↓
+
+Return
+```
+
+Build right child.
+
+```
+deserialize(nodes, 3)
+
+↓
+
+Read null
+
+↓
+
+Return
+```
+
+The left subtree is complete.
+
+```
+pointer = 4
+```
+
+inside the **left recursive call**.
+
+---
+
+## Return to the Root
+
+Here is the important part.
+
+The left recursive call finished with
+
+```
+pointer = 4
+```
+
+But the root call still has
+
+```
+pointer = 1
+```
+
+because Java passed `pointer` **by value**.
+
+The child modified **its own copy**.
+
+The parent never sees those updates.
+
+So the root now executes
+
+```java
+node.right = deserialize(nodes, pointer);
+```
+
+using
+
+```
+pointer = 1
+```
+
+again.
+
+It starts reading node `2` a second time.
+
+The traversal is now incorrect.
+
+---
+
+# Visualizing the Problem
+
+Without a shared pointer:
+
+```
+Root Call
+
+pointer = 1
+
+           |
+           |
+           v
+
+Left Call
+
+pointer = 1
+
+↓
+
+2
+
+↓
+
+3
+
+↓
+
+4
+
+(Return)
+```
+
+After returning,
+
+the root still has
+
+```
+pointer = 1
+```
+
+The updates made by the child are lost.
+
+---
+
+# Using a Class Variable
+
+Now consider
+
+```java
+int pointer;
+```
+
+There is only **one** pointer shared by every recursive call.
+
+```
+pointer
+
+0
+
+↓
+
+1
+
+↓
+
+2
+
+↓
+
+3
+
+↓
+
+4
+
+↓
+
+5
+
+↓
+
+6
+
+↓
+
+7
+```
+
+When the left subtree finishes,
+
+the pointer is already
+
+```
+4
+```
+
+The root immediately continues from token `4`, exactly where the left subtree stopped.
+
+Nothing is lost.
+
+---
+
+# Why doesn't `Integer` work?
+
+Passing
+
+```java
+Integer pointer
+```
+
+does **not** solve the problem.
+
+Although `Integer` is an object, it is **immutable**.
+
+When you write
+
+```java
+pointer++;
+```
+
+Java creates a **new Integer object**.
+
+The caller still points to the old object.
+
+Therefore the parent still does **not** observe the updated value.
+
+---
+
+# Interview Heuristic
+
+Ask yourself:
+
+> **Do all recursive calls need to share the same traversal state?**
+
+If **yes**, don't pass an `int` or `Integer`.
+
+Use one of these:
+
+- A class variable (recommended here)
+- A mutable wrapper object
+- A one-element array
+- `AtomicInteger`
+
+For tree serialization/deserialization, a **class-level pointer** is the cleanest and most common solution.
