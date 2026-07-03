@@ -4088,9 +4088,13 @@ Let
 
 In the worst case, `isSameTree()` may be called for every node in the main tree.
 
-**Space:** `O(h)`
+**Space:** `O(H1 + H2)`
 
-where `h` is the height of the main tree (recursive call stack).
+- `H1` = Height of the main tree.
+- `H2` = Height of the subtree.
+- Worst Case (Skewed Trees): `O(N + M)`
+- Balanced Trees: `O(log N + log M)`
+
 
 # Interview Heuristics for Recursive Tree Problems
 
