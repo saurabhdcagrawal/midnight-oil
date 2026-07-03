@@ -3736,3 +3736,174 @@ Equivalent Right-Skewed Binary Tree
 This is a valid binary tree because every node has at most two children, but each node happens to have only one.
 
 > **Interview Note:** A linked list is a special case of a completely skewed binary tree from a structural perspective, although they are different data structures.
+
+# Symmetric Tree
+
+A tree is symmetric if its left and right subtrees are **mirror images** of each other.
+
+---
+
+## Java Solution
+
+```java
+class Solution {
+
+    public boolean isSymmetric(TreeNode root) {
+        if(root == null)
+            return true;
+
+        return isMirror(root.left, root.right);
+    }
+
+    public boolean isSameTree(TreeNode root1, TreeNode root2){
+        if(root1 == null && root2 == null)
+            return true;
+        if(root1 == null || root2 == null)
+            return false;
+        if(root1.val != root2.val)
+            return false;
+
+        return isSameTree(root1.left, root2.left)
+            && isSameTree(root1.right, root2.right);
+    }
+
+    public boolean isMirror(TreeNode root1, TreeNode root2){
+        if(root1 == null && root2 == null)
+            return true;
+        if(root1 == null || root2 == null)
+            return false;
+        if(root1.val != root2.val)
+            return false;
+
+        return isMirror(root1.left, root2.right)
+            && isMirror(root1.right, root2.left);
+    }
+}
+```
+
+---
+
+## Why `isSameTree()` Does NOT Work
+
+Consider the following symmetric tree:
+
+```
+        1
+      /   \
+     2     2
+    /       \
+   3         3
+```
+
+The left and right subtrees are **mirror images**, not identical.
+
+### Left Subtree
+
+```
+    2
+   /
+  3
+```
+
+### Right Subtree
+
+```
+    2
+     \
+      3
+```
+
+---
+
+### What `isSameTree()` Compares
+
+```
+            2                  2
+           /                    \
+          3                      3
+```
+
+Comparison sequence:
+
+```
+2 == 2 ✔
+
+↓
+
+Compare Left vs Left
+
+3 vs null ✘
+```
+
+Since the right subtree has **no left child**, `isSameTree()` immediately returns `false`.
+
+It is checking:
+
+```
+Left Child  ↔ Left Child
+
+Right Child ↔ Right Child
+```
+
+which is correct for the **Same Tree** problem, but **not** for symmetry.
+
+---
+
+## Correct Comparison for Symmetry
+
+A mirror comparison should check:
+
+```
+Left Child  ↔ Right Child
+
+Right Child ↔ Left Child
+```
+
+For the same tree:
+
+```
+            2                  2
+           /                    \
+          3                      3
+```
+
+Comparison sequence:
+
+```
+2 == 2 ✔
+
+↓
+
+3 == 3 ✔
+
+↓
+
+null == null ✔
+
+↓
+
+Tree is Symmetric ✔
+```
+
+This is why the recursive calls are:
+
+```java
+isMirror(root1.left, root2.right)
+&&
+isMirror(root1.right, root2.left);
+```
+
+instead of
+
+```java
+isSameTree(root1.left, root2.left)
+&&
+isSameTree(root1.right, root2.right);
+```
+
+---
+
+## Complexity
+
+- **Time:** `O(N)`
+- **Space:** `O(h)` (Recursive Call Stack)
