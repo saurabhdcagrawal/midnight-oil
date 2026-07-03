@@ -6602,3 +6602,244 @@ Double
 # One Sentence to Remember
 
 > **Java passes a copy of the reference, not the object. If you mutate the object (e.g., `StringBuilder.append()`), everyone sees the change because both references point to the same object. If you reassign the reference (or use an immutable object like `Integer`, where `pointer++` creates a new object), only the local copy of the reference changes, so the caller never sees the update.**
+
+# Why `String` Behaves Like `Integer` (Immutability)
+
+`String` behaves exactly like `Integer` because **both are immutable objects**.
+
+Any "modification" actually creates a **new object** rather than changing the existing one.
+
+---
+
+# Example
+
+```java
+public void change(String s) {
+    s += " World";
+}
+
+public static void main(String[] args) {
+
+    String str = "Hello";
+
+    change(str);
+
+    System.out.println(str);
+}
+```
+
+Output:
+
+```
+Hello
+```
+
+**Not**
+
+```
+Hello World
+```
+
+---
+
+# What Happens in Memory?
+
+Initially
+
+```
+Caller
+
+str
+ |
+ |
+ +-------------------+
+                     |
+                     v
+                  "Hello"
+```
+
+When Java calls
+
+```java
+change(str);
+```
+
+it creates a **copy of the reference**.
+
+```
+Caller                    Helper
+
+str                       s
+ |                         |
+ |                         |
+ +------------+------------+
+              |
+              v
+           "Hello"
+```
+
+Both variables initially point to the same String object.
+
+---
+
+Now the helper executes
+
+```java
+s += " World";
+```
+
+This is equivalent to
+
+```java
+s = s + " World";
+```
+
+A **new String object** is created.
+
+Memory now becomes
+
+```
+Caller
+
+str
+ |
+ v
+"Hello"
+```
+
+```
+Helper
+
+s
+ |
+ v
+"Hello World"
+```
+
+The caller still points to the original String.
+
+Only the helper knows about the new String.
+
+When the helper returns, the new String becomes unreachable.
+
+---
+
+# Compare with `StringBuilder`
+
+```java
+public void change(StringBuilder sb){
+    sb.append(" World");
+}
+```
+
+Initially
+
+```
+Caller                    Helper
+
+sb                        sb
+ |                         |
+ +------------+------------+
+              |
+              v
+     StringBuilder("Hello")
+```
+
+Now the helper executes
+
+```java
+sb.append(" World");
+```
+
+The **same StringBuilder object** is modified.
+
+After the append
+
+```
+Caller                    Helper
+
+sb                        sb
+ |                         |
+ +------------+------------+
+              |
+              v
+StringBuilder("Hello World")
+```
+
+The caller immediately sees the change because both references still point to the same object.
+
+---
+
+# Why Does One Work and the Other Doesn't?
+
+### String
+
+```
+Reference changes.
+
+Object does NOT change.
+```
+
+A new String object is created.
+
+---
+
+### StringBuilder
+
+```
+Reference stays the same.
+
+Object changes.
+```
+
+The existing object is modified.
+
+---
+
+# Interview Rule
+
+Whenever you pass an object into a recursive helper (or any method), ask yourself:
+
+> **Does this method mutate the existing object or create a new one?**
+
+If it **mutates the existing object**, the caller sees the changes.
+
+Examples:
+
+- `StringBuilder.append()`
+- `List.add()`
+- `Map.put()`
+- `Set.remove()`
+
+---
+
+If it **creates a new object**, the caller does **not** see the changes unless you return the new object.
+
+Examples:
+
+- `String +`
+- `Integer++`
+- `Long++`
+- `Double++`
+
+---
+
+# Quick Reference
+
+| Type | Mutable? | Caller Sees Changes? |
+|------|----------|----------------------|
+| `String` | ❌ No | ❌ No |
+| `Integer` | ❌ No | ❌ No |
+| `Long` | ❌ No | ❌ No |
+| `Double` | ❌ No | ❌ No |
+| `StringBuilder` | ✅ Yes | ✅ Yes |
+| `ArrayList` | ✅ Yes | ✅ Yes |
+| `HashMap` | ✅ Yes | ✅ Yes |
+| `HashSet` | ✅ Yes | ✅ Yes |
+| Custom Mutable Class | ✅ Yes | ✅ Yes |
+
+---
+
+# One Sentence to Remember
+
+> **Passing an object to a method does not mean the caller will see changes. The caller only sees changes if the object itself is mutated. If the operation creates a new object (as with `String` or `Integer`), only the local reference changes, and the caller continues pointing to the original object.**
