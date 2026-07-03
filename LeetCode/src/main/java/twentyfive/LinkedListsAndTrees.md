@@ -6843,3 +6843,912 @@ Examples:
 # One Sentence to Remember
 
 > **Passing an object to a method does not mean the caller will see changes. The caller only sees changes if the object itself is mutated. If the operation creates a new object (as with `String` or `Integer`), only the local reference changes, and the caller continues pointing to the original object.**
+
+# 105. Construct Binary Tree from Preorder and Inorder Traversal
+
+Given the preorder and inorder traversal of a binary tree, reconstruct the original binary tree.
+
+---
+
+# Why isn't Preorder Alone Enough?
+
+Suppose we only know
+
+```
+Preorder
+
+1,2
+```
+
+This could represent
+
+```
+    1
+   /
+  2
+```
+
+or
+
+```
+1
+ \
+  2
+```
+
+Both have the same preorder traversal.
+
+Therefore, **preorder alone cannot uniquely reconstruct a binary tree.**
+
+---
+
+# Why didn't we need Inorder in Serialize/Deserialize?
+
+In Serialize/Deserialize, our preorder looked like:
+
+```
+1,2,null,null,3,null,null
+```
+
+The `null` markers completely describe the tree structure.
+
+```
+Node
+
+↓
+
+Left
+
+↓
+
+Right
+
+↓
+
+null means the subtree ends.
+```
+
+Therefore, preorder + null markers are sufficient.
+
+In this problem, however, the input is simply
+
+```
+Preorder
+
+3,9,20,15,7
+```
+
+There are **no null markers**.
+
+We therefore need another traversal to determine where each subtree begins and ends.
+
+That traversal is **Inorder**.
+
+---
+
+# The Two Traversals Have Different Responsibilities
+
+This is the most important idea in the problem.
+
+## Preorder
+
+Preorder answers
+
+> **Which node should I build next?**
+
+It gives the construction order.
+
+```
+3
+
+↓
+
+9
+
+↓
+
+20
+
+↓
+
+15
+
+↓
+
+7
+```
+
+We simply consume preorder from left to right.
+
+A single shared pointer is enough.
+
+---
+
+## Inorder
+
+Inorder answers
+
+> **Where does this node belong?**
+
+It tells us how to split the tree into
+
+```
+Left Subtree
+
+Root
+
+Right Subtree
+```
+
+Example
+
+```
+Inorder
+
+9  | 3 |  15 20 7
+```
+
+Everything left of **3**
+
+belongs to the left subtree.
+
+Everything right of **3**
+
+belongs to the right subtree.
+
+---
+
+# Key Insight
+
+Think of the two traversals as having different jobs.
+
+```
+Preorder
+
+↓
+
+"What node do I build next?"
+
+----------------------------
+
+Inorder
+
+↓
+
+"Where should that node be placed?"
+```
+
+This is the entire solution.
+
+---
+
+# Step 1 : Build a HashMap
+
+Instead of searching inorder every time,
+
+store
+
+```
+Value
+
+↓
+
+Index
+```
+
+Example
+
+```
+Inorder
+
+[9,3,15,20,7]
+```
+
+Map becomes
+
+```
+9  -> 0
+
+3  -> 1
+
+15 -> 2
+
+20 -> 3
+
+7  -> 4
+```
+
+Now finding the inorder position takes
+
+```
+O(1)
+```
+
+instead of
+
+```
+O(N)
+```
+
+---
+
+# Shared State
+
+We maintain
+
+```java
+int preorderIndex;
+```
+
+This answers
+
+> **What is the next root?**
+
+Every recursive call shares the same preorder pointer.
+
+```
+0
+
+↓
+
+1
+
+↓
+
+2
+
+↓
+
+3
+
+↓
+
+4
+```
+
+Exactly like Serialize / Deserialize.
+
+---
+
+# Recursive State
+
+Each recursive call receives
+
+```java
+left
+
+right
+```
+
+These represent
+
+```
+Current Inorder Range
+```
+
+Meaning
+
+```
+Build the subtree using
+
+inorder[left...right]
+```
+
+Notice something important.
+
+We **never traverse the inorder array**.
+
+We only use
+
+```
+value
+
+↓
+
+index
+```
+
+to determine the subtree boundaries.
+
+---
+
+# Recursive Algorithm
+
+```
+Take next preorder value
+
+↓
+
+Create node
+
+↓
+
+Find its inorder position
+
+↓
+
+Everything left belongs to left subtree
+
+↓
+
+Everything right belongs to right subtree
+
+↓
+
+Recursively build both subtrees
+```
+
+---
+
+# Dry Run
+
+## Input
+
+```
+Preorder
+
+[3,9,20,15,7]
+```
+
+```
+Inorder
+
+[9,3,15,20,7]
+```
+
+Initially
+
+```
+preorderIndex = 0
+```
+
+---
+
+## Call 1
+
+Current inorder range
+
+```
+0...4
+```
+
+Read preorder
+
+```
+preorder[0]
+
+↓
+
+3
+```
+
+```
+preorderIndex = 1
+```
+
+Create
+
+```
+      3
+```
+
+Lookup
+
+```
+3
+
+↓
+
+Index 1
+```
+
+Split
+
+```
+Left
+
+0...0
+
+Right
+
+2...4
+```
+
+---
+
+## Build Left
+
+Range
+
+```
+0...0
+```
+
+Read preorder
+
+```
+preorder[1]
+
+↓
+
+9
+```
+
+```
+preorderIndex = 2
+```
+
+Create
+
+```
+    9
+```
+
+Lookup
+
+```
+9
+
+↓
+
+Index 0
+```
+
+Split
+
+```
+Left
+
+0...-1
+
+Right
+
+1...0
+```
+
+Both ranges are invalid.
+
+Return
+
+```
+9
+```
+
+Now tree becomes
+
+```
+      3
+     /
+    9
+```
+
+---
+
+## Build Right
+
+Range
+
+```
+2...4
+```
+
+Read preorder
+
+```
+preorder[2]
+
+↓
+
+20
+```
+
+```
+preorderIndex = 3
+```
+
+Create
+
+```
+      20
+```
+
+Lookup
+
+```
+20
+
+↓
+
+Index 3
+```
+
+Split
+
+```
+Left
+
+2...2
+
+Right
+
+4...4
+```
+
+---
+
+## Build Left of 20
+
+Read preorder
+
+```
+preorder[3]
+
+↓
+
+15
+```
+
+```
+preorderIndex = 4
+```
+
+Create
+
+```
+15
+```
+
+Both recursive ranges become invalid.
+
+Return.
+
+---
+
+## Build Right of 20
+
+Read preorder
+
+```
+preorder[4]
+
+↓
+
+7
+```
+
+```
+preorderIndex = 5
+```
+
+Create
+
+```
+7
+```
+
+Return.
+
+---
+
+Final tree
+
+```
+        3
+      /   \
+     9     20
+          /  \
+         15   7
+```
+
+Every preorder element was consumed exactly once.
+
+---
+
+# Java Solution
+
+```java
+class Solution {
+
+    int preorderIndex;
+
+    public TreeNode buildTree(int[] preorder, int[] inorder) {
+
+        Map<Integer, Integer> inorderMap = new HashMap<>();
+
+        for(int i = 0; i < inorder.length; i++)
+            inorderMap.put(inorder[i], i);
+
+        return helper(
+                0,
+                inorder.length - 1,
+                inorderMap,
+                preorder
+        );
+    }
+
+    public TreeNode helper(
+            int left,
+            int right,
+            Map<Integer,Integer> inorderMap,
+            int[] preorder){
+
+        if(left > right)
+            return null;
+
+        int value = preorder[preorderIndex++];
+
+        TreeNode root = new TreeNode(value);
+
+        int inorderPosition = inorderMap.get(value);
+
+        root.left = helper(
+                left,
+                inorderPosition - 1,
+                inorderMap,
+                preorder);
+
+        root.right = helper(
+                inorderPosition + 1,
+                right,
+                inorderMap,
+                preorder);
+
+        return root;
+    }
+}
+```
+
+---
+
+# Why don't we need the inorder array anymore?
+
+Notice that after building the HashMap,
+
+we never actually use
+
+```java
+inorder[]
+```
+
+again.
+
+We only use
+
+```java
+value
+
+↓
+
+index
+```
+
+The inorder traversal is now simply a way of determining
+
+```
+Left Boundary
+
+Right Boundary
+```
+
+---
+
+# Comparison with Serialize / Deserialize
+
+## Serialize / Deserialize
+
+Shared State
+
+```
+pointer
+```
+
+Recursive State
+
+```
+Nothing
+```
+
+Why?
+
+Because the `null` markers already tell us exactly where every subtree ends.
+
+```
+1
+
+↓
+
+2
+
+↓
+
+null
+
+↓
+
+null
+
+↓
+
+3
+
+↓
+
+null
+
+↓
+
+null
+```
+
+The recursion naturally knows when to stop.
+
+---
+
+## Construct Binary Tree
+
+Shared State
+
+```
+preorderIndex
+```
+
+Recursive State
+
+```
+left
+
+right
+```
+
+Why?
+
+Because preorder contains **no null markers**.
+
+Instead,
+
+the inorder traversal tells us where the subtree boundaries are.
+
+---
+
+## Compare
+
+| Serialize / Deserialize | Construct Tree |
+|-------------------------|----------------|
+| Shared Pointer | Shared Preorder Index |
+| Preorder + Null Markers | Preorder + Inorder |
+| Null marks subtree end | Inorder range marks subtree boundaries |
+| Build Left then Right | Build Left then Right |
+
+---
+
+# Complexity
+
+Building HashMap
+
+```
+O(N)
+```
+
+Recursive Construction
+
+```
+O(N)
+```
+
+Overall
+
+**Time:** `O(N)`
+
+Every node is processed exactly once.
+
+---
+
+**Space**
+
+HashMap
+
+```
+O(N)
+```
+
+Recursive Stack
+
+```
+O(h)
+```
+
+Balanced Tree
+
+```
+O(log N)
+```
+
+Worst Case
+
+```
+O(N)
+```
+
+---
+
+# Interview Heuristics
+
+## Heuristic 1
+
+Whenever you see
+
+```
+Preorder + Inorder
+```
+
+immediately think
+
+```
+Shared preorder pointer
+
++
+
+Recursive inorder boundaries
+```
+
+---
+
+## Heuristic 2
+
+Ask yourself
+
+> **What information is shared across every recursive call?**
+
+Here
+
+```
+preorderIndex
+```
+
+is shared.
+
+---
+
+## Heuristic 3
+
+Ask yourself
+
+> **What information uniquely defines this recursive problem?**
+
+Answer
+
+```
+Current inorder range
+
+(left, right)
+```
+
+---
+
+## Heuristic 4
+
+Remember the roles
+
+```
+Preorder
+
+↓
+
+"What node do I build next?"
+
+------------------------------
+
+Inorder
+
+↓
+
+"Where should I place that node?"
+```
+
+This single idea is enough to derive the entire algorithm.
+
+---
+
+# One Sentence to Remember
+
+> **Preorder determines the order in which nodes are created, while inorder determines the boundaries of each subtree. A shared preorder pointer selects the next root, and the inorder range tells the recursion where that root belongs.**
