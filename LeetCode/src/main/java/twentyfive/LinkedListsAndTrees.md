@@ -6171,3 +6171,434 @@ If **No**, simply pass the value as a method parameter.
 # One Sentence to Remember
 
 > **Java is always pass-by-value. When you pass an object, Java passes a copy of the reference. If the object is mutable (e.g., `StringBuilder`, `List`), everyone modifies the same object. If the object is immutable (e.g., `Integer`, `String`), any "modification" creates a new object, so the caller never sees the change.**
+
+# Understanding Java Pass-by-Value with Mutable and Immutable Objects
+
+One of the most common sources of confusion in Java recursion is understanding **what is actually passed to a method**.
+
+---
+
+# Java is Always Pass-by-Value
+
+When you pass an object to a method, Java **does not pass the original object**.
+
+Instead, Java passes a **copy of the reference** (memory address) to that object.
+
+```
+Caller Variable
+
+↓
+
+Reference
+
+↓
+
+Object
+```
+
+The caller and callee each have **their own reference variable**, but both initially point to the **same object**.
+
+---
+
+# Case 1: Mutable Object (`StringBuilder`)
+
+Suppose we write:
+
+```java
+StringBuilder sb = new StringBuilder();
+
+serialize(root, sb);
+```
+
+Initially:
+
+```
+Caller
+
+sb
+ |
+ |
+ +----------------------+
+                        |
+                        v
+               +----------------+
+               | StringBuilder  |
+               | ""             |
+               +----------------+
+```
+
+When Java calls
+
+```java
+serialize(root, sb);
+```
+
+it creates a **copy of the reference**.
+
+```
+Caller                  Helper
+
+sb                      sb
+ |                       |
+ |                       |
+ +-----------+-----------+
+             |
+             v
+      +----------------+
+      | StringBuilder  |
+      | ""             |
+      +----------------+
+```
+
+Notice:
+
+There are now **two reference variables**,
+
+but they both point to **the same object**.
+
+---
+
+Now the helper executes
+
+```java
+sb.append("1,");
+```
+
+The **StringBuilder object itself changes**.
+
+```
+Caller                  Helper
+
+sb                      sb
+ |                       |
+ +-----------+-----------+
+             |
+             v
+      +----------------+
+      | StringBuilder  |
+      | "1,"           |
+      +----------------+
+```
+
+Since both references point to the same object,
+
+the caller also sees
+
+```
+"1,"
+```
+
+The reference variables never changed.
+
+Only the object changed.
+
+---
+
+# Case 2: Immutable Object (`Integer`)
+
+Suppose we write
+
+```java
+Integer pointer = 0;
+
+deserialize(nodes, pointer);
+```
+
+Initially:
+
+```
+Caller
+
+pointer
+   |
+   |
+   +-------------------+
+                       |
+                       v
+                +-------------+
+                | Integer(0)  |
+                +-------------+
+```
+
+Java copies the reference during the method call.
+
+```
+Caller                    Helper
+
+pointer                   pointer
+   |                         |
+   |                         |
+   +------------+------------+
+                |
+                v
+         +-------------+
+         | Integer(0)  |
+         +-------------+
+```
+
+Everything still looks similar.
+
+---
+
+Now the helper executes
+
+```java
+pointer++;
+```
+
+Many people think this modifies the Integer.
+
+It **does not**.
+
+It is equivalent to
+
+```java
+pointer = Integer.valueOf(pointer.intValue() + 1);
+```
+
+A **new Integer object** is created.
+
+Now memory looks like this:
+
+```
+Caller
+
+pointer
+   |
+   v
+Integer(0)
+```
+
+```
+Helper
+
+pointer
+   |
+   v
+Integer(1)
+```
+
+The helper's reference now points to a **different Integer object**.
+
+The caller is still pointing to the original `Integer(0)`.
+
+When the helper returns,
+
+the updated pointer is lost.
+
+---
+
+# Why does `pointer++` fail?
+
+Because
+
+```java
+pointer++;
+```
+
+does **not** modify the Integer object.
+
+It changes **only the helper's local reference variable** to point to a newly created Integer.
+
+The caller's reference never changes.
+
+---
+
+# Why does `sb.append()` work?
+
+Because
+
+```java
+sb.append(...)
+```
+
+does **not** change the reference.
+
+It modifies the **same StringBuilder object** that both the caller and helper reference.
+
+---
+
+# Think of References as Addresses
+
+Imagine:
+
+- Reference = House Address
+- Object = House
+
+Initially
+
+```
+Caller Address
+
+123 Main Street
+
+↓
+
+House
+```
+
+Java copies the address.
+
+```
+Caller Address
+
+123 Main Street
+
+↓
+
+House
+
+↑
+
+Helper Address
+```
+
+Two address slips.
+
+One house.
+
+---
+
+## Mutable Object
+
+Helper paints the house blue.
+
+```
+House
+
+Blue
+```
+
+Caller also sees a blue house.
+
+Because everyone is looking at the same house.
+
+---
+
+## Immutable Object
+
+You are not allowed to repaint the house.
+
+Instead,
+
+Helper buys a brand-new house.
+
+```
+Caller Address
+
+123 Main Street
+
+↓
+
+House A
+```
+
+```
+Helper Address
+
+456 Main Street
+
+↓
+
+House B
+```
+
+The caller still points to House A.
+
+Only the helper knows about House B.
+
+---
+
+# Why does a Class Variable Work?
+
+In our `Codec` solution,
+
+```java
+int pointer;
+```
+
+is a **field of the Codec object**.
+
+There is only **one** `pointer`.
+
+Every recursive call updates the same variable.
+
+```
+pointer
+
+0
+
+↓
+
+1
+
+↓
+
+2
+
+↓
+
+3
+
+↓
+
+4
+
+↓
+
+5
+```
+
+When one recursive call increments the pointer,
+
+every other recursive call immediately sees the updated value.
+
+Nothing is copied.
+
+---
+
+# Interview Takeaway
+
+Remember the distinction:
+
+### Mutable Object
+
+```
+Reference stays the same.
+
+Object changes.
+```
+
+Example:
+
+```java
+StringBuilder
+List
+Map
+Set
+```
+
+---
+
+### Immutable Object
+
+```
+Object cannot change.
+
+Reference changes to a new object.
+```
+
+Example:
+
+```java
+Integer
+String
+Long
+Double
+```
+
+---
+
+# One Sentence to Remember
+
+> **Java passes a copy of the reference, not the object. If you mutate the object (e.g., `StringBuilder.append()`), everyone sees the change because both references point to the same object. If you reassign the reference (or use an immutable object like `Integer`, where `pointer++` creates a new object), only the local copy of the reference changes, so the caller never sees the update.**
