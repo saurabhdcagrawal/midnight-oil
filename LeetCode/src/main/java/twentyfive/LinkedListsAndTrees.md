@@ -6054,3 +6054,120 @@ Use one of these:
 - `AtomicInteger`
 
 For tree serialization/deserialization, a **class-level pointer** is the cleanest and most common solution.
+
+# Interview Rule: Mutable vs Immutable Objects in Recursion
+
+## Java Pass-by-Value Rule
+
+Java is **always pass-by-value**.
+
+When you pass an object to a method, Java passes a **copy of the reference**, **not** the object itself.
+
+Whether changes are visible to the caller depends on whether the object is **mutable** or **immutable**.
+
+---
+
+## 1. Mutable Objects ✅
+
+Examples:
+
+- `StringBuilder`
+- `List`
+- `Map`
+- `Set`
+
+Recursive calls modify the **same underlying object**.
+
+Example:
+
+```java
+public void serialize(TreeNode root, StringBuilder sb)
+```
+
+Every recursive call executes:
+
+```java
+sb.append(...);
+```
+
+Since all recursive calls point to the **same `StringBuilder`**, every append is visible to every caller.
+
+---
+
+## 2. Immutable Objects ❌
+
+Examples:
+
+- `Integer`
+- `String`
+- `Long`
+- `Double`
+
+Suppose we write:
+
+```java
+deserialize(nodes, Integer pointer);
+```
+
+Inside the helper:
+
+```java
+pointer++;
+```
+
+This **does not modify** the existing `Integer`.
+
+Instead, Java creates a **new Integer object**, and the helper's local variable points to that new object.
+
+The caller still points to the old `Integer`, so the updated value is lost when the recursive call returns.
+
+---
+
+## 3. Shared Class Variables ✅
+
+Examples:
+
+```java
+int pointer;
+
+TreeNode prev;
+
+int maxDiameter;
+
+int maxPathSum;
+```
+
+There is only **one copy** of these variables inside the object.
+
+Every recursive call reads and updates the **same shared state**.
+
+Example:
+
+```java
+pointer++;
+```
+
+The update is immediately visible to every recursive call.
+
+---
+
+# Interview Heuristic
+
+Ask yourself:
+
+> **Do all recursive calls need to share the same state?**
+
+If **Yes**, use:
+
+- A class variable (preferred in many tree problems)
+- A mutable wrapper object
+- A one-element array
+- `AtomicInteger`
+
+If **No**, simply pass the value as a method parameter.
+
+---
+
+# One Sentence to Remember
+
+> **Java is always pass-by-value. When you pass an object, Java passes a copy of the reference. If the object is mutable (e.g., `StringBuilder`, `List`), everyone modifies the same object. If the object is immutable (e.g., `Integer`, `String`), any "modification" creates a new object, so the caller never sees the change.**
