@@ -7752,3 +7752,16 @@ This single idea is enough to derive the entire algorithm.
 # One Sentence to Remember
 
 > **Preorder determines the order in which nodes are created, while inorder determines the boundaries of each subtree. A shared preorder pointer selects the next root, and the inorder range tells the recursion where that root belongs.**
+
+This problem has a beautiful pattern:
+
+Preorder tells us "what node to create next."
+
+Inorder tells us "where that node belongs."
+
+So:
+
+Preorder Index answers: What is the next root?
+Inorder Range (left, right) answers: Which subtree am I currently building?
+
+This is the key insight behind the optimal O(N) solution. Once you see those two pieces of state—one shared cursor through preorder and one recursive boundary in inorder—the implementation becomes almost mechanical.
