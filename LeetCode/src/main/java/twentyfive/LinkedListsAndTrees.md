@@ -4416,3 +4416,117 @@ Spend **30 seconds** defining:
 > **"This recursive function answers..."**
 
 Once that sentence is clear, the recursive code usually becomes almost mechanical.
+
+# Invert Binary Tree
+
+Invert a binary tree by swapping the left and right subtree of every node.
+
+---
+
+## Java Solution (Postorder)
+
+```java
+class Solution {
+
+    public TreeNode invertTree(TreeNode root) {
+
+        if(root == null)
+            return root;
+
+        TreeNode leftInvertedTree = invertTree(root.left);
+        TreeNode rightInvertedTree = invertTree(root.right);
+
+        root.left = rightInvertedTree;
+        root.right = leftInvertedTree;
+
+        return root;
+    }
+}
+```
+
+---
+
+## Example
+
+### Original Tree
+
+```
+        4
+      /   \
+     2     7
+    / \   / \
+   1   3 6   9
+```
+
+---
+
+### Left Subtree After Inversion
+
+```
+      2
+     / \
+    3   1
+```
+
+---
+
+### Right Subtree After Inversion
+
+```
+      7
+     / \
+    9   6
+```
+
+---
+
+### Final Tree
+
+```
+        4
+      /   \
+     7     2
+    / \   / \
+   9   6 3   1
+```
+
+---
+
+## Why Postorder?
+
+The recursion first inverts the left and right subtrees.
+
+Then the current node swaps the two inverted subtrees.
+
+```
+Left
+
+↓
+
+Right
+
+↓
+
+Swap Current Node
+```
+
+---
+
+## Complexity
+
+- **Time:** `O(N)`
+- **Space:** `O(h)` (Recursive Call Stack)
+  - Balanced Tree: `O(log N)`
+  - Skewed Tree: `O(N)`
+
+---
+
+## Interview Note
+
+Another equally valid approach is **Preorder**:
+
+1. Swap the left and right child.
+2. Recursively invert the left subtree.
+3. Recursively invert the right subtree.
+
+Both approaches are correct and run in `O(N)` time.
