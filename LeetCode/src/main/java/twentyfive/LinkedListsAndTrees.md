@@ -4530,3 +4530,371 @@ Another equally valid approach is **Preorder**:
 3. Recursively invert the right subtree.
 
 Both approaches are correct and run in `O(N)` time.
+
+# Merge Two Binary Trees
+
+Merge two binary trees by summing overlapping nodes. If one node is `null`, use the non-null node directly.
+
+---
+
+## Java Solution
+
+```java
+class Solution {
+
+    public TreeNode mergeTrees(TreeNode root1, TreeNode root2) {
+
+        if(root1 == null)
+            return root2;
+
+        if(root2 == null)
+            return root1;
+
+        root1.val += root2.val;
+
+        root1.left = mergeTrees(root1.left, root2.left);
+        root1.right = mergeTrees(root1.right, root2.right);
+
+        return root1;
+    }
+}
+```
+
+---
+
+## Example
+
+### Tree 1
+
+```
+      1
+     / \
+    3   2
+   /
+  5
+```
+
+### Tree 2
+
+```
+      2
+     / \
+    1   3
+     \   \
+      4   7
+```
+
+### Merged Tree
+
+```
+        3
+      /   \
+     4     5
+    / \     \
+   5   4     7
+```
+
+---
+
+## Why do we attach the returned subtree?
+
+The recursive function returns:
+
+```java
+TreeNode mergeTrees(TreeNode root1, TreeNode root2)
+```
+
+It **returns the root of the merged subtree**.
+
+Suppose we recurse on the left child:
+
+```java
+mergeTrees(root1.left, root2.left);
+```
+
+Imagine this call returns:
+
+```
+    4
+```
+
+If we simply call the function without assigning its return value, the merged subtree is discarded.
+
+Instead, we must attach it back to its parent.
+
+```java
+root1.left = mergeTrees(root1.left, root2.left);
+```
+
+Now the returned subtree becomes the new left child.
+
+The same applies to the right subtree.
+
+```java
+root1.right = mergeTrees(root1.right, root2.right);
+```
+
+---
+
+## Visual Example
+
+Suppose
+
+### Tree 1
+
+```
+    1
+   /
+ null
+```
+
+### Tree 2
+
+```
+    2
+   /
+  4
+```
+
+Recursive call:
+
+```java
+mergeTrees(root1.left, root2.left)
+```
+
+becomes
+
+```java
+mergeTrees(null, node(4))
+```
+
+The function returns
+
+```
+4
+```
+
+If we ignore the return value:
+
+```java
+mergeTrees(root1.left, root2.left);
+```
+
+the node `4` is lost.
+
+Correct:
+
+```java
+root1.left = mergeTrees(root1.left, root2.left);
+```
+
+Result:
+
+```
+    3
+   /
+  4
+```
+
+---
+
+## Complexity
+
+- **Time:** `O(N)`
+- **Space:** `O(h)` (Recursive Call Stack)
+  - Balanced Tree: `O(log N)`
+  - Skewed Tree: `O(N)`
+
+---
+
+# Interview Heuristic
+
+Whenever a recursive function returns a **TreeNode**, ask yourself:
+
+> **Who owns the returned subtree?**
+
+Usually the answer is:
+
+> **The parent node.**
+
+Therefore you'll frequently write:
+
+```java
+root.left = helper(root.left);
+
+root.right = helper(root.right);
+```
+
+Examples:
+
+- Merge Two Binary Trees
+- Trim a BST
+- Delete Node in a BST
+- Prune Binary Tree
+- Remove Leaf Nodes
+
+If you simply write:
+
+```java
+helper(root.left);
+```
+
+without assigning the result, ask yourself:
+
+> **"Where did the returned subtree go?"**
+
+If the answer is **nowhere**, then you probably forgot to attach it back to the parent.
+
+# Leaf-Similar Trees
+
+Two binary trees are **leaf-similar** if their leaf nodes appear in the **same left-to-right order**.
+
+---
+
+## Java Solution
+
+```java
+class Solution {
+
+    public boolean leafSimilar(TreeNode root1, TreeNode root2) {
+
+        List<Integer> leaves1 = new ArrayList<>();
+        List<Integer> leaves2 = new ArrayList<>();
+
+        findLeafNodes(root1, leaves1);
+        findLeafNodes(root2, leaves2);
+
+        return leaves1.equals(leaves2);
+    }
+
+    public void findLeafNodes(TreeNode root, List<Integer> leaves){
+
+        if(root == null)
+            return;
+
+        if(root.left == null && root.right == null)
+            leaves.add(root.val);
+
+        findLeafNodes(root.left, leaves);
+        findLeafNodes(root.right, leaves);
+    }
+}
+```
+
+---
+
+## Example
+
+### Tree 1
+
+```
+        3
+       / \
+      5   1
+     / \   \
+    6   2   9
+       / \
+      7   4
+```
+
+Leaf sequence:
+
+```
+[6, 7, 4, 9]
+```
+
+---
+
+### Tree 2
+
+```
+        3
+       / \
+      5   1
+     /     \
+    6       2
+           / \
+          7   4
+               \
+                9
+```
+
+Leaf sequence:
+
+```
+[6, 7, 4, 9]
+```
+
+Since both leaf sequences are identical,
+
+```
+true
+```
+
+---
+
+## Why Preorder DFS Works
+
+We recursively traverse:
+
+```
+Root
+
+↓
+
+Left
+
+↓
+
+Right
+```
+
+Whenever we encounter a leaf node,
+
+```java
+if(root.left == null && root.right == null)
+    leaves.add(root.val);
+```
+
+we record its value.
+
+Because recursion visits the **left subtree before the right subtree**, the leaves are naturally collected in **left-to-right order**.
+
+---
+
+## Complexity
+
+Let
+
+- `N` = Number of nodes in Tree 1
+- `M` = Number of nodes in Tree 2
+
+**Time:** `O(N + M)`
+
+Each node in both trees is visited exactly once.
+
+**Space:** `O(L1 + L2 + H1 + H2)`
+
+where
+
+- `L1`, `L2` = Number of leaf nodes stored in the lists.
+- `H1`, `H2` = Heights of the two trees (recursive call stack).
+
+Worst case:
+
+- Lists: `O(N + M)`
+- Recursive Stack: `O(H1 + H2)`
+
+---
+
+## Interview Note
+
+This is a common pattern:
+
+> Traverse the tree using DFS, collect information in a list, and compare the collected results.
+
+The recursive helper performs a simple task:
+
+> **"Collect all leaf nodes from left to right."**
+
+The main function simply compares the two resulting sequences.
