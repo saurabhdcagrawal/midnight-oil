@@ -7765,3 +7765,809 @@ Preorder Index answers: What is the next root?
 Inorder Range (left, right) answers: Which subtree am I currently building?
 
 This is the key insight behind the optimal O(N) solution. Once you see those two pieces of state—one shared cursor through preorder and one recursive boundary in inorder—the implementation becomes almost mechanical.
+
+# 106. Construct Binary Tree from Inorder and Postorder Traversal
+
+Given the inorder and postorder traversal of a binary tree, reconstruct the original binary tree.
+
+---
+
+# Why isn't Postorder Alone Enough?
+
+Suppose we only know
+
+```
+Postorder
+
+2,1
+```
+
+This could represent
+
+```
+    1
+   /
+  2
+```
+
+or
+
+```
+1
+ \
+  2
+```
+
+Both have the same postorder traversal.
+
+Therefore, **postorder alone cannot uniquely reconstruct a binary tree.**
+
+We need another traversal to determine the subtree boundaries.
+
+That traversal is **Inorder**.
+
+---
+
+# The Two Traversals Have Different Responsibilities
+
+## Postorder
+
+Postorder answers
+
+> **Which node should I build next?**
+
+However, the root is visited **last**.
+
+```
+Left
+
+↓
+
+Right
+
+↓
+
+Root
+```
+
+Since we reconstruct the tree starting from the root, we process the postorder array **backwards**.
+
+```
+Root
+
+↓
+
+Right
+
+↓
+
+Left
+```
+
+Therefore,
+
+we maintain a shared pointer starting from the end of the postorder array.
+
+---
+
+## Inorder
+
+Inorder answers
+
+> **Where should this node be placed?**
+
+Example
+
+```
+Inorder
+
+9 | 3 | 15 20 7
+```
+
+Everything left of **3**
+
+belongs to the left subtree.
+
+Everything right of **3**
+
+belongs to the right subtree.
+
+---
+
+# Key Insight
+
+Think of the traversals as having different responsibilities.
+
+```
+Postorder
+
+↓
+
+"What node should I build next?"
+
+-------------------------------
+
+Inorder
+
+↓
+
+"Where should that node be placed?"
+```
+
+---
+
+# Step 1 : Build a HashMap
+
+Instead of searching inorder repeatedly,
+
+store
+
+```
+Value
+
+↓
+
+Index
+```
+
+Example
+
+```
+Inorder
+
+[9,3,15,20,7]
+```
+
+Map
+
+```
+9  -> 0
+
+3  -> 1
+
+15 -> 2
+
+20 -> 3
+
+7  -> 4
+```
+
+Now every lookup takes
+
+```
+O(1)
+```
+
+---
+
+# Shared State
+
+We maintain
+
+```java
+int postorderIndex;
+```
+
+Initially
+
+```java
+postorderIndex = postorder.length - 1;
+```
+
+The pointer moves
+
+```
+4
+
+↓
+
+3
+
+↓
+
+2
+
+↓
+
+1
+
+↓
+
+0
+```
+
+Each recursive call consumes exactly one node from the end of the postorder traversal.
+
+---
+
+# Recursive State
+
+Each recursive call receives
+
+```java
+left
+
+right
+```
+
+representing
+
+```
+Current Inorder Range
+```
+
+Meaning
+
+```
+Build the subtree represented by
+
+inorder[left...right]
+```
+
+Notice that we never traverse the inorder array.
+
+We only use
+
+```
+Value
+
+↓
+
+Index
+```
+
+to determine subtree boundaries.
+
+---
+
+# Why Build the Right Subtree First?
+
+Postorder traversal is
+
+```
+Left
+
+↓
+
+Right
+
+↓
+
+Root
+```
+
+Since we process the array **backwards**, we actually encounter
+
+```
+Root
+
+↓
+
+Right
+
+↓
+
+Left
+```
+
+Therefore,
+
+after creating the root,
+
+we must construct
+
+```
+Right Subtree
+
+↓
+
+Left Subtree
+```
+
+otherwise the traversal order becomes incorrect.
+
+---
+
+# Dry Run
+
+## Input
+
+```
+Inorder
+
+[9,3,15,20,7]
+```
+
+```
+Postorder
+
+[9,15,7,20,3]
+```
+
+Initially
+
+```
+postorderIndex = 4
+```
+
+---
+
+## Call 1
+
+Current inorder range
+
+```
+0...4
+```
+
+Read
+
+```
+postorder[4]
+
+↓
+
+3
+```
+
+```
+postorderIndex = 3
+```
+
+Create
+
+```
+      3
+```
+
+Lookup
+
+```
+3
+
+↓
+
+Index 1
+```
+
+Split
+
+```
+Left
+
+0...0
+
+Right
+
+2...4
+```
+
+Since we are processing postorder backwards,
+
+we must build
+
+```
+Right
+
+↓
+
+Left
+```
+
+---
+
+## Build Right
+
+Current range
+
+```
+2...4
+```
+
+Read
+
+```
+postorder[3]
+
+↓
+
+20
+```
+
+```
+postorderIndex = 2
+```
+
+Create
+
+```
+      20
+```
+
+Lookup
+
+```
+20
+
+↓
+
+Index 3
+```
+
+Split
+
+```
+Left
+
+2...2
+
+Right
+
+4...4
+```
+
+Again,
+
+build right first.
+
+---
+
+### Build Right of 20
+
+Read
+
+```
+postorder[2]
+
+↓
+
+7
+```
+
+Create
+
+```
+7
+```
+
+Return.
+
+---
+
+### Build Left of 20
+
+Read
+
+```
+postorder[1]
+
+↓
+
+15
+```
+
+Create
+
+```
+15
+```
+
+Return.
+
+Now the tree becomes
+
+```
+      3
+       \
+        20
+       /  \
+      15   7
+```
+
+---
+
+## Build Left of Root
+
+Current range
+
+```
+0...0
+```
+
+Read
+
+```
+postorder[0]
+
+↓
+
+9
+```
+
+Create
+
+```
+9
+```
+
+Return.
+
+Final Tree
+
+```
+        3
+      /   \
+     9     20
+          /  \
+         15   7
+```
+
+Every postorder element is consumed exactly once.
+
+---
+
+# Java Solution
+
+```java
+class Solution {
+
+    int postorderIndex;
+
+    public TreeNode buildTree(int[] inorder, int[] postorder) {
+
+        Map<Integer,Integer> inorderMap = new HashMap<>();
+
+        for(int i = 0; i < inorder.length; i++)
+            inorderMap.put(inorder[i], i);
+
+        postorderIndex = postorder.length - 1;
+
+        return helper(
+                0,
+                inorder.length - 1,
+                inorderMap,
+                postorder
+        );
+    }
+
+    // In postorder traversal, the root is visited last.
+    // Since we process the array backwards,
+    // we encounter Root → Right → Left.
+    // Therefore we build the right subtree first.
+
+    public TreeNode helper(
+            int left,
+            int right,
+            Map<Integer,Integer> inorderMap,
+            int[] postorder){
+
+        if(left > right)
+            return null;
+
+        int value = postorder[postorderIndex--];
+
+        int inorderPosition = inorderMap.get(value);
+
+        TreeNode root = new TreeNode(value);
+
+        root.right = helper(
+                inorderPosition + 1,
+                right,
+                inorderMap,
+                postorder);
+
+        root.left = helper(
+                left,
+                inorderPosition - 1,
+                inorderMap,
+                postorder);
+
+        return root;
+    }
+}
+```
+
+---
+
+# Comparison with Preorder + Inorder
+
+| Preorder + Inorder | Postorder + Inorder |
+|---------------------|---------------------|
+| Pointer starts at beginning | Pointer starts at end |
+| `preorderIndex++` | `postorderIndex--` |
+| Root → Left → Right | Read backwards: Root → Right → Left |
+| Build Left first | Build Right first |
+| Shared preorder pointer | Shared postorder pointer |
+| Inorder determines subtree boundaries | Inorder determines subtree boundaries |
+
+---
+
+# Complexity
+
+## Time
+
+Building HashMap
+
+```
+O(N)
+```
+
+Tree Construction
+
+```
+O(N)
+```
+
+Overall
+
+```
+O(N)
+```
+
+Every node is processed exactly once.
+
+---
+
+## Space
+
+HashMap
+
+```
+O(N)
+```
+
+Recursive Stack
+
+```
+O(h)
+```
+
+Balanced Tree
+
+```
+O(log N)
+```
+
+Worst Case
+
+```
+O(N)
+```
+
+---
+
+# Interview Heuristics
+
+## Heuristic 1
+
+Whenever you see
+
+```
+Inorder + Postorder
+```
+
+immediately think
+
+```
+Shared postorder pointer
+
++
+
+Recursive inorder boundaries
+```
+
+---
+
+## Heuristic 2
+
+Remember the traversal order.
+
+Original postorder
+
+```
+Left
+
+↓
+
+Right
+
+↓
+
+Root
+```
+
+During reconstruction we read backwards
+
+```
+Root
+
+↓
+
+Right
+
+↓
+
+Left
+```
+
+So always build
+
+```
+Right
+
+↓
+
+Left
+```
+
+---
+
+## Heuristic 3
+
+Ask yourself
+
+> **What information is shared across every recursive call?**
+
+Answer
+
+```
+postorderIndex
+```
+
+---
+
+## Heuristic 4
+
+Ask yourself
+
+> **What information uniquely defines each recursive subproblem?**
+
+Answer
+
+```
+Current inorder range
+
+(left, right)
+```
+
+---
+
+# One Sentence to Remember
+
+> **Postorder determines the order in which roots are created (reading from the end), while inorder determines the boundaries of each subtree. A shared postorder pointer selects the next root, and the inorder range tells the recursion where that root belongs.**
+
+---
+
+# Mirror Pattern
+
+The preorder and postorder construction problems are perfect mirrors of each other.
+
+```
+Preorder + Inorder
+
+Pointer starts at beginning
+
+↓
+
+Build Left
+
+↓
+
+Build Right
+```
+
+```
+Postorder + Inorder
+
+Pointer starts at end
+
+↓
+
+Build Right
+
+↓
+
+Build Left
+```
+
+The recursive structure, inorder boundaries, and HashMap optimization remain exactly the same. Only the traversal direction and subtree construction order change.
