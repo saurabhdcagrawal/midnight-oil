@@ -4898,3 +4898,472 @@ The recursive helper performs a simple task:
 > **"Collect all leaf nodes from left to right."**
 
 The main function simply compares the two resulting sequences.
+
+# Maximum Depth of Binary Tree
+
+The **maximum depth** (or height using the node-count convention) is the number of nodes on the longest path from the root to a leaf.
+
+---
+
+## Example
+
+```
+        1
+       / \
+      2   3
+     /
+    4
+```
+
+Longest path:
+
+```
+1 → 2 → 4
+```
+
+Maximum Depth:
+
+```
+3
+```
+
+---
+
+## Idea
+
+For every node:
+
+1. Compute the maximum depth of the left subtree.
+2. Compute the maximum depth of the right subtree.
+3. Return the larger depth plus the current node.
+
+This is a classic **bottom-up recursive** problem.
+
+---
+
+## Java Solution
+
+```java
+class Solution {
+
+    public int maxDepth(TreeNode root) {
+
+        if(root == null)
+            return 0;
+
+        return 1 + Math.max(
+                maxDepth(root.left),
+                maxDepth(root.right)
+        );
+    }
+}
+```
+
+---
+
+## Complexity
+
+**Time:** `O(N)`
+
+Each node is visited exactly once.
+
+**Space:** `O(h)` (Recursive Call Stack)
+
+- Balanced Tree: `O(log N)`
+- Skewed Tree: `O(N)`
+
+---
+
+## Interview Note
+
+LeetCode's `maxDepth()` uses the **node-count convention**:
+
+```
+height(null) = 0
+
+leaf = 1
+```
+
+This is the same convention used throughout the following **Balanced Binary Tree** solution.
+
+# Balanced Binary Tree
+
+A binary tree is **balanced** if, for **every node**, the height difference between its left and right subtrees is **at most 1**.
+
+---
+
+# Why Checking Only the Root is Incorrect
+
+Consider the following tree (LeetCode example):
+
+```
+            1
+          /   \
+         2     2
+        /       \
+       3         3
+      /           \
+     4             4
+```
+
+Level-order representation:
+
+```
+[1,2,2,3,null,null,3,4,null,null,4]
+```
+
+---
+
+## Check Only the Root
+
+```
+Left Height  = 3
+
+Right Height = 3
+
+Difference = 0
+```
+
+Looks perfectly balanced.
+
+If we only checked the root, we would incorrectly return:
+
+```
+true
+```
+
+---
+
+## But Look at Node 2
+
+```
+      2
+     /
+    3
+   /
+  4
+```
+
+```
+Left Height  = 2
+
+Right Height = 0
+
+Difference = 2
+```
+
+This subtree is **not balanced**.
+
+The same happens on the right subtree.
+
+Therefore,
+
+**every node** must satisfy the balance condition—not just the root.
+
+---
+
+# Brute Force Solution (Top-Down)
+
+## Idea
+
+For every node:
+
+1. Compute the height of the left subtree.
+2. Compute the height of the right subtree.
+3. Check if the difference is greater than 1.
+4. Recursively verify both subtrees.
+
+The drawback is that subtree heights are recomputed many times.
+
+---
+
+## Java Solution
+
+```java
+class Solution {
+
+    public boolean isBalancedBruteForce(TreeNode root) {
+
+        if(root == null)
+            return true;
+
+        if(Math.abs(height(root.left) - height(root.right)) > 1)
+            return false;
+
+        return isBalancedBruteForce(root.left)
+            && isBalancedBruteForce(root.right);
+    }
+
+    public int height(TreeNode root){
+
+        if(root == null)
+            return 0;
+
+        return 1 + Math.max(height(root.left), height(root.right));
+    }
+}
+```
+
+---
+
+## Complexity
+
+**Time:** `O(N²)`
+
+Reason:
+
+For every node, the height of its subtree may be recomputed.
+
+**Space:** `O(h)`
+
+where `h` is the height of the tree.
+
+- Balanced Tree: `O(log N)`
+- Skewed Tree: `O(N)`
+
+---
+
+# Optimized Solution (Bottom-Up)
+
+## Observation
+
+Instead of computing
+
+- Height
+- Balance
+
+separately,
+
+compute both together.
+
+Each subtree returns:
+
+- Height
+- Is Balanced
+
+The parent combines those results.
+
+---
+
+## Helper Class
+
+```java
+class TreeNodeInfo{
+
+    public int height;
+
+    public boolean isBalanced;
+
+    public TreeNodeInfo(int height, boolean isBalanced){
+        this.height = height;
+        this.isBalanced = isBalanced;
+    }
+}
+```
+
+---
+
+## Java Solution
+
+```java
+class Solution {
+
+    public boolean isBalanced(TreeNode root){
+        return isBalancedHelper(root).isBalanced;
+    }
+
+    public TreeNodeInfo isBalancedHelper(TreeNode root){
+
+        if(root == null)
+            return new TreeNodeInfo(0, true);
+
+        TreeNodeInfo left = isBalancedHelper(root.left);
+
+        if(!left.isBalanced)
+            return new TreeNodeInfo(-1, false);
+
+        TreeNodeInfo right = isBalancedHelper(root.right);
+
+        if(!right.isBalanced)
+            return new TreeNodeInfo(-1, false);
+
+        if(Math.abs(left.height - right.height) > 1)
+            return new TreeNodeInfo(-1, false);
+
+        return new TreeNodeInfo(
+            1 + Math.max(left.height, right.height),
+            true
+        );
+    }
+}
+
+class TreeNodeInfo{
+
+    public int height;
+
+    public boolean isBalanced;
+
+    public TreeNodeInfo(int height, boolean isBalanced){
+        this.height = height;
+        this.isBalanced = isBalanced;
+    }
+}
+```
+
+---
+
+# Why is the Optimized Solution O(N)?
+
+Each node is visited exactly once.
+
+Each recursive call returns:
+
+- Height
+- Balance Status
+
+The parent combines the results in constant time.
+
+No subtree height is recomputed.
+
+---
+
+# Why Use a Helper Object?
+
+Instead of returning only
+
+```java
+int
+```
+
+return
+
+```java
+(height, isBalanced)
+```
+
+Now the parent immediately knows:
+
+- Height of left subtree
+- Height of right subtree
+- Whether left subtree is balanced
+- Whether right subtree is balanced
+
+without making additional recursive calls.
+
+---
+
+# Why Return `(-1, false)`?
+
+Our implementation uses
+
+```
+height(null) = 0
+```
+
+to stay consistent with LeetCode's `maxDepth()` (height measured using node count).
+
+When a subtree is already known to be unbalanced, we return
+
+```java
+new TreeNodeInfo(-1, false);
+```
+
+The value `-1` is **not treated as a height**.
+
+It is simply a sentinel value indicating failure.
+
+The parent always checks
+
+```java
+if(!left.isBalanced)
+```
+
+before ever using `left.height`.
+
+---
+
+# Complexity
+
+### Brute Force
+
+- **Time:** `O(N²)`
+- **Space:** `O(h)`
+
+---
+
+### Optimized
+
+- **Time:** `O(N)`
+- **Space:** `O(h)`
+
+where `h` is the height of the tree.
+
+- Balanced Tree: `O(log N)`
+- Skewed Tree: `O(N)`
+
+---
+
+# Interview Heuristics
+
+### Bottom-Up Tree DP
+
+Whenever you find yourself repeatedly computing the same property (such as subtree height), ask:
+
+> **Can the child return everything I need?**
+
+Instead of repeatedly asking for a subtree's height, let each child return:
+
+```
+(height, isBalanced)
+```
+
+The parent simply combines those results.
+
+---
+
+### Return Multiple Values
+
+If recursion naturally requires multiple pieces of information, return a helper object instead of making multiple recursive calls.
+
+Examples:
+
+- Balanced Binary Tree
+- Diameter of Binary Tree
+- Maximum Path Sum
+- Largest BST in a Binary Tree
+
+---
+
+### Top-Down vs Bottom-Up
+
+**Top-Down (Brute Force)**
+
+For every node:
+
+```
+Compute Left Height
+
+↓
+
+Compute Right Height
+
+↓
+
+Recursively check children
+```
+
+The same heights are computed repeatedly.
+
+---
+
+**Bottom-Up (Optimized)**
+
+Each subtree answers once:
+
+```
+(height, isBalanced)
+```
+
+The parent combines the answers in constant time.
+
+This is one of the most common and powerful optimization patterns for recursive tree problems.
