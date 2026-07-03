@@ -3907,3 +3907,508 @@ isSameTree(root1.right, root2.right);
 
 - **Time:** `O(N)`
 - **Space:** `O(h)` (Recursive Call Stack)
+
+# Subtree of Another Tree
+
+Given two binary trees `root` and `subRoot`, determine whether `subRoot` exists as a subtree of `root`.
+
+---
+
+## Java Solution
+
+```java
+class Solution {
+
+    public boolean isSubtree(TreeNode root, TreeNode subRoot) {
+
+        if(root == null && subRoot == null)
+            return true;
+
+        if(root == null)
+            return false;
+
+        if(subRoot == null)
+            return true;
+		/*
+		if(subRoot==null)
+			return true;
+		if(root==null)	
+			return false */
+	
+        if(isSameTree(root, subRoot))
+            return true;
+			
+
+        return isSubtree(root.left, subRoot)
+            || isSubtree(root.right, subRoot);
+    }
+
+    public boolean isSameTree(TreeNode root1, TreeNode root2){
+
+        if(root1 == null && root2 == null)
+            return true;
+
+        if(root1 == null || root2 == null)
+            return false;
+
+        if(root1.val != root2.val)
+            return false;
+
+        return isSameTree(root1.left, root2.left)
+            && isSameTree(root1.right, root2.right);
+    }
+}
+```
+
+---
+
+# Idea
+
+At every node in the main tree, ask:
+
+> **"Is the subtree rooted here exactly the same as `subRoot`?"**
+
+If yes, return `true`.
+
+Otherwise, continue searching in the left or right subtree.
+
+---
+
+## Example
+
+### Main Tree
+
+```
+          3
+        /   \
+       4     5
+      / \
+     1   2
+```
+
+### Subtree
+
+```
+      4
+     / \
+    1   2
+```
+
+---
+
+## Execution
+
+Start at node `3`
+
+```
+isSameTree(3,4)
+
+↓
+
+false
+```
+
+Search left subtree
+
+```
+isSubtree(4,4)
+```
+
+Now
+
+```
+isSameTree(4,4)
+
+↓
+
+true
+```
+
+Return
+
+```
+true
+```
+
+The recursion stops.
+
+---
+
+## Why `||` and NOT `&&`?
+
+The recursive function answers:
+
+> **"Does `subRoot` exist anywhere in the tree rooted at `root`?"**
+
+If it exists in **either** subtree, we have found it.
+
+```
+return isSubtree(root.left, subRoot)
+    || isSubtree(root.right, subRoot);
+```
+
+Using `&&` would incorrectly require the subtree to exist in **both** the left and right subtrees.
+
+---
+
+## Common Mistake
+
+Avoid writing:
+
+```java
+if(isSameTree(root, subRoot)
+    || isSameTree(root.left, subRoot)
+    || isSameTree(root.right, subRoot))
+```
+
+This duplicates work because the recursive calls will naturally check `root.left` and `root.right`.
+
+Simply write:
+
+```java
+if(isSameTree(root, subRoot))
+    return true;
+
+return isSubtree(root.left, subRoot)
+    || isSubtree(root.right, subRoot);
+```
+
+Trust the recursion.
+
+---
+
+## Complexity
+
+Let
+
+- `N` = Number of nodes in `root`
+- `M` = Number of nodes in `subRoot`
+
+**Time:** `O(N × M)`
+
+In the worst case, `isSameTree()` may be called for every node in the main tree.
+
+**Space:** `O(h)`
+
+where `h` is the height of the main tree (recursive call stack).
+
+# Interview Heuristics for Recursive Tree Problems
+
+These are patterns that repeatedly appear in tree interview questions.
+
+---
+
+# 1. First Ask: What is my recursive function answering?
+
+Before writing recursion, complete this sentence:
+
+> **This function answers...**
+
+Example:
+
+```java
+boolean isSubtree(root, subRoot)
+```
+
+answers
+
+> **"Does `subRoot` exist anywhere in the tree rooted at `root`?"**
+
+Now ask:
+
+- If it's in the left subtree, should I return `true`?
+- If it's in the right subtree, should I return `true`?
+
+Immediately tells you:
+
+```java
+return isSubtree(root.left, subRoot)
+    || isSubtree(root.right, subRoot);
+```
+
+Don't memorize `&&` vs `||`. Derive it from the question.
+
+---
+
+# 2. Validation vs Search
+
+This is one of the most useful interview heuristics.
+
+### Validation Problems
+
+Every subtree must satisfy a condition.
+
+Usually use:
+
+```java
+&&
+```
+
+Examples:
+
+- Validate BST
+- Balanced Binary Tree
+- Same Tree
+- Symmetric Tree (mirror validation)
+
+Example:
+
+```java
+return validate(left)
+    && validate(right);
+```
+
+---
+
+### Search Problems
+
+We are searching for one occurrence.
+
+Usually use:
+
+```java
+||
+```
+
+Examples:
+
+- Subtree of Another Tree
+- Path Sum
+- Find Target Node
+- Search in BST
+
+Example:
+
+```java
+return search(left)
+    || search(right);
+```
+
+---
+
+# 3. Trust the Recursion
+
+One of the most common mistakes is doing work that recursion will already perform.
+
+Example:
+
+Instead of
+
+```java
+if(isSameTree(root, subRoot)
+    || isSameTree(root.left, subRoot)
+    || isSameTree(root.right, subRoot))
+```
+
+write
+
+```java
+if(isSameTree(root, subRoot))
+    return true;
+
+return isSubtree(root.left, subRoot)
+    || isSubtree(root.right, subRoot);
+```
+
+The recursive calls will naturally check `root.left` and `root.right`.
+
+Don't duplicate work.
+
+---
+
+# 4. Process Current Node or Delegate?
+
+Many tree problems follow this template.
+
+```java
+if(root == null)
+    return ...
+
+// Process current node
+
+...
+
+// Delegate to children
+
+return recursive(left) ...
+```
+
+Always ask:
+
+> Does the answer depend on the current node?
+
+or
+
+> Should I simply ask my children?
+
+---
+
+# 5. Bottom-Up vs Top-Down
+
+## Top-Down
+
+Parent passes information to children.
+
+Examples:
+
+- Validate BST using Min/Max
+- Path Sum
+- Root-to-Leaf Problems
+
+---
+
+## Bottom-Up
+
+Children return information to parent.
+
+Examples:
+
+- Height
+- Diameter
+- Balanced Tree
+- Maximum Path Sum
+
+Usually uses **Postorder Traversal**.
+
+---
+
+# 6. Return One Thing or Multiple Things?
+
+If recursion naturally needs multiple values, create a helper object.
+
+Instead of
+
+```java
+int
+```
+
+return
+
+```java
+class TreeInfo {
+
+    int height;
+
+    boolean balanced;
+}
+```
+
+Examples:
+
+- Balanced Tree
+- Diameter
+- Largest BST
+- House Robber III
+
+---
+
+# 7. Mirror vs Same Tree
+
+## Same Tree
+
+Compare
+
+```
+Left  ↔ Left
+
+Right ↔ Right
+```
+
+Recursive call
+
+```java
+isSameTree(root1.left, root2.left)
+&&
+isSameTree(root1.right, root2.right)
+```
+
+---
+
+## Symmetric Tree
+
+Compare
+
+```
+Left  ↔ Right
+
+Right ↔ Left
+```
+
+Recursive call
+
+```java
+isMirror(root1.left, root2.right)
+&&
+isMirror(root1.right, root2.left)
+```
+
+---
+
+# 8. Recognize the Traversal
+
+Think about **when** you need information.
+
+### Need children before processing current node?
+
+Use **Postorder**
+
+Examples:
+
+- Height
+- Diameter
+- Balanced Tree
+
+---
+
+### Process current node first?
+
+Use **Preorder**
+
+Examples:
+
+- Clone Tree
+- Serialize
+- Prefix style problems
+
+---
+
+### Need sorted order in BST?
+
+Use **Inorder**
+
+Produces nodes in ascending order.
+
+---
+
+### Process level by level?
+
+Use **BFS**
+
+Examples:
+
+- Level Order Traversal
+- Minimum Depth
+- Right Side View
+
+---
+
+# 9. Before Coding, Ask Yourself
+
+1. What is my recursive function returning?
+2. What question is it answering?
+3. Is this a **Search** problem (`||`) or a **Validation** problem (`&&`)?
+4. Am I duplicating work that recursion already performs?
+5. Does the parent need information from the children first?
+6. Should I use DFS or BFS?
+
+---
+
+# Biggest Lesson
+
+Most implementation mistakes happen because we start coding before clearly defining the recursive contract.
+
+Spend **30 seconds** defining:
+
+> **"This recursive function answers..."**
+
+Once that sentence is clear, the recursive code usually becomes almost mechanical.
