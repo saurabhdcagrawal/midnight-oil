@@ -14658,3 +14658,132 @@ O(n) + O(n) = O(n)
 The outer loop iterates over every unique number once. The inner while loop executes only when the current number is the beginning of a sequence (num - 1 doesn't exist). Since every sequence has exactly one beginning, each sequence is traversed only once. Therefore, the total work done by all the inner while loops is O(n). Hence, the overall time complexity is O(n).
 
 **Space Complexity:** `O(n)` (HashSet stores all unique numbers.)
+
+
+# Asteroid Collision (Nice-to-Have)
+
+> **Category:** Stack Simulation
+> **Difficulty:** Medium
+> **Priority:** ⭐⭐⭐☆☆ (Nice to have, not a must)
+
+---
+
+## Problem
+
+Given an array of integers representing asteroids:
+
+* Positive value (`+`) → asteroid moving right.
+* Negative value (`-`) → asteroid moving left.
+* The absolute value represents the asteroid's size.
+
+When two asteroids moving towards each other collide:
+
+* Larger asteroid survives.
+* If both are the same size, both explode.
+
+Return the state of the asteroids after all collisions.
+
+---
+
+## Why do we need a Stack?
+
+A collision is only possible when:
+
+```text
+Stack Top  ->  →
+Current    ->  ←
+```
+
+i.e.
+
+```java
+stack.peek() > 0 && current < 0
+```
+
+The incoming asteroid can only collide with the **most recent right-moving asteroid** that hasn't already been destroyed.
+
+Since we always compare with the latest surviving asteroid first, a **Stack (LIFO)** is the perfect data structure.
+
+---
+
+## Solution
+
+```java
+class Solution {
+    public int[] asteroidCollision(int[] asteroids) {
+
+        Stack<Integer> st = new Stack<>();
+
+        for (int asteroid : asteroids) {
+
+            int current = asteroid;
+            boolean incomingDestroyed = false;
+
+            // Collision is possible only when:
+            // stack top is moving right and current is moving left.
+            while (!st.isEmpty() && st.peek() > 0 && current < 0) {
+
+                if (st.peek() > Math.abs(current)) {
+                    // Stack asteroid survives.
+                    incomingDestroyed = true;
+                    break;
+                } else if (st.peek() == Math.abs(current)) {
+                    // Both explode.
+                    incomingDestroyed = true;
+                    st.pop();
+                    break;
+                } else {
+                    // Current survives.
+                    // Pop and continue checking because the current asteroid
+                    // may collide with earlier asteroids.
+                    st.pop();
+                }
+            }
+
+            if (!incomingDestroyed)
+                st.push(current);
+        }
+
+        int[] result = new int[st.size()];
+
+        for (int i = result.length - 1; i >= 0; i--)
+            result[i] = st.pop();
+
+        return result;
+    }
+}
+```
+
+---
+
+## Time Complexity
+
+**Time:** `O(n)` (Amortized)
+
+At first glance, it looks like `O(n²)` because of the nested `while` loop.
+
+However:
+
+* The outer loop runs `O(n)` times.
+* The inner `while` loop is **not** `O(n)` for every outer iteration.
+* Its work is **amortized** across the entire algorithm because **each asteroid is pushed onto the stack at most once and popped from the stack at most once.**
+
+Therefore:
+
+```text
+Outer loop                    = O(n)
+
+All executions of while loop  = O(n)
+
+Overall                       = O(n) + O(n) = O(n)
+```
+
+### Interview Explanation
+
+> The outer loop runs O(n) times. The inner `while` loop is not O(n) for every outer iteration. Instead, its O(n) work is amortized across the entire algorithm because each asteroid is pushed once and popped at most once. Therefore, the total work is O(n) + O(n) = O(n), not O(n²).
+
+---
+
+## Space Complexity
+
+* **O(n)** (Stack)
