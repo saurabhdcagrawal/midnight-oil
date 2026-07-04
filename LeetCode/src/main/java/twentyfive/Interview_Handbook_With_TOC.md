@@ -3144,6 +3144,1125 @@ O(N log K)
 
 ---
 
+# LeetCode 3408 - Design Task Manager
+
+---
+
+# Problem Summary
+
+Design a task manager supporting the following operations:
+
+- Add a task
+- Edit a task's priority
+- Remove a task
+- Execute the highest priority task
+
+Rules:
+
+- Every task has
+  - `taskId`
+  - `userId`
+  - `priority`
+- `taskId` is globally unique.
+- Highest priority executes first.
+- If priorities are equal, execute the **largest taskId**.
+
+---
+
+# Questions to Ask the Interviewer
+
+These questions demonstrate senior-level thinking.
+
+## 1. Can multiple tasks have the same priority?
+
+Yes.
+
+If yes,
+
+ask
+
+> **How are ties broken?**
+
+For this problem
+
+```
+Higher priority
+
+↓
+
+If equal priority
+
+↓
+
+Larger taskId
+```
+
+---
+
+## 2. Is taskId globally unique?
+
+If not,
+
+our map would become
+
+```java
+Map<Pair<UserId, TaskId>, Task>
+```
+
+instead of
+
+```java
+Map<TaskId, Task>
+```
+
+Fortunately, the problem guarantees uniqueness.
+
+---
+
+## 3. What are the maximum constraints?
+
+This determines whether
+
+```
+O(N)
+```
+
+operations are acceptable.
+
+For
+
+```
+100 tasks
+```
+
+nobody cares.
+
+For
+
+```
+10 million tasks
+```
+
+linear removal from a heap becomes unacceptable.
+
+---
+
+## 4. Can duplicate requests arrive because of retries?
+
+In distributed systems this happens frequently.
+
+Example
+
+```
+Add Task 10
+
+↓
+
+Timeout
+
+↓
+
+Client retries
+
+↓
+
+Add Task 10 again
+```
+
+Need clarification.
+
+Possible handling
+
+- Ignore duplicates
+- Update existing task
+- Throw exception
+
+LeetCode ignores this.
+
+---
+
+## 5. Is this a single server?
+
+Important production question.
+
+Single server
+
+↓
+
+Simple HashMap + Heap
+
+Multiple servers
+
+↓
+
+Need coordination.
+
+We'll discuss this later.
+
+---
+
+## 6. Can I change the data structures?
+
+Usually interviewers only specify
+
+```
+Operations
+```
+
+They don't tell you
+
+```
+HashMap
+
+PriorityQueue
+```
+
+Choosing the data structures is part of the interview.
+
+---
+
+# First Design
+
+Initially we considered
+
+```
+Map<TaskId, UserTask>
+
++
+
+PriorityQueue<TaskId>
+```
+
+where
+
+```
+Map
+
+↓
+
+Stores latest priority
+
+PriorityQueue
+
+↓
+
+Stores taskId only
+```
+
+Example
+
+```
+Map
+
+10 -> priority 5
+```
+
+Heap
+
+```
+10
+```
+
+Looks good.
+
+---
+
+# Why Doesn't This Work?
+
+Suppose
+
+```
+Task 10
+
+Priority = 5
+```
+
+Later
+
+```
+Edit
+
+Priority = 100
+```
+
+Map becomes
+
+```
+10 -> priority 100
+```
+
+If we push
+
+```
+10
+```
+
+again,
+
+heap becomes
+
+```
+10
+
+10
+```
+
+Now both heap entries refer to
+
+```
+Map
+
+↓
+
+Priority = 100
+```
+
+We've lost the old priority.
+
+Therefore,
+
+we cannot distinguish
+
+```
+Old heap entry
+
+vs
+
+New heap entry
+```
+
+Lazy deletion becomes impossible.
+
+---
+
+# Solution
+
+The heap must store a **snapshot**.
+
+Instead of
+
+```
+PriorityQueue<TaskId>
+```
+
+we use
+
+```
+PriorityQueue<HeapNode>
+```
+
+where
+
+```java
+class HeapNode{
+
+    int taskId;
+
+    int priority;
+}
+```
+
+Now the heap contains
+
+```
+(taskId=10, priority=5)
+
+(taskId=10, priority=100)
+```
+
+The map contains only
+
+```
+10
+
+↓
+
+priority = 100
+```
+
+Now stale entries are detectable.
+
+---
+
+# Final Design
+
+```
+HashMap
+
+↓
+
+Current Truth
+
+---------------------------
+
+PriorityQueue
+
+↓
+
+Historical Snapshots
+```
+
+Map
+
+```java
+Map<Integer, UserTask>
+```
+
+stores
+
+```java
+class UserTask{
+
+    int userId;
+
+    int priority;
+}
+```
+
+Priority Queue
+
+```java
+PriorityQueue<HeapNode>
+```
+
+stores
+
+```java
+class HeapNode{
+
+    int taskId;
+
+    int priority;
+}
+```
+
+---
+
+# Why Two Classes?
+
+The two structures have different responsibilities.
+
+## UserTask
+
+Represents
+
+```
+Latest version
+```
+
+Example
+
+```
+Task 10
+
+Priority 100
+```
+
+---
+
+## HeapNode
+
+Represents
+
+```
+Priority when inserted into heap
+```
+
+Example
+
+```
+Task 10
+
+Priority 5
+```
+
+This separation enables lazy deletion.
+
+---
+
+# Lazy Deletion
+
+Instead of removing stale entries from the heap,
+
+we simply update the map.
+
+Example
+
+Initially
+
+```
+Task 10
+
+Priority = 5
+```
+
+Map
+
+```
+10 -> priority 5
+```
+
+Heap
+
+```
+(10,5)
+```
+
+Edit
+
+```
+Priority = 100
+```
+
+Map
+
+```
+10 -> priority 100
+```
+
+Heap
+
+```
+(10,5)
+
+(10,100)
+```
+
+Notice
+
+we never removed
+
+```
+(10,5)
+```
+
+Later
+
+during execution
+
+Pop
+
+```
+(10,100)
+```
+
+Compare
+
+```
+Heap Priority
+
+100
+
+↓
+
+Map Priority
+
+100
+```
+
+Valid.
+
+Execute.
+
+Later
+
+Pop
+
+```
+(10,5)
+```
+
+Compare
+
+```
+Heap Priority
+
+5
+
+↓
+
+Map Priority
+
+No task
+
+OR
+
+100
+```
+
+Mismatch.
+
+Discard.
+
+This is
+
+```
+Lazy Deletion
+```
+
+---
+
+# Why Not Remove from the Heap?
+
+Initially we considered
+
+```java
+pq.remove(taskId);
+```
+
+Unfortunately,
+
+Java's PriorityQueue is implemented as an array-backed binary heap.
+
+Removing an arbitrary element requires
+
+```
+Linear Search
+
+↓
+
+Heapify
+```
+
+Complexity
+
+```
+Search
+
+O(N)
+
++
+
+Heapify
+
+O(logN)
+
+=
+
+O(N)
+```
+
+This becomes expensive.
+
+---
+
+# Why Doesn't the Heap Automatically Rebalance?
+
+Suppose
+
+```
+Heap
+
+Task 10
+
+Priority 5
+```
+
+We update
+
+```java
+task.priority = 100;
+```
+
+The heap structure has **no idea** the priority changed.
+
+Java's PriorityQueue never reorders itself when external data changes.
+
+Therefore,
+
+after changing priority,
+
+you must either
+
+```
+Remove + Reinsert
+
+or
+
+Lazy Delete
+```
+
+---
+
+# Final Java Solution
+
+```java
+class TaskManager {
+
+    Map<Integer, UserTask> taskMap = new HashMap<>();
+
+    PriorityQueue<HeapNode> pq = new PriorityQueue<>((a, b) -> {
+
+        if (a.priority == b.priority)
+            return Integer.compare(b.taskId, a.taskId);
+
+        return Integer.compare(b.priority, a.priority);
+    });
+
+    // O(N log N)
+    // Insert every task into the heap.
+
+    public TaskManager(List<List<Integer>> tasks) {
+
+        for (List<Integer> task : tasks) {
+
+            add(
+                task.get(0),
+                task.get(1),
+                task.get(2)
+            );
+        }
+    }
+
+    // O(log N)
+
+    public void add(int userId,
+                    int taskId,
+                    int priority) {
+
+        taskMap.put(
+            taskId,
+            new UserTask(userId, priority)
+        );
+
+        pq.offer(
+            new HeapNode(taskId, priority)
+        );
+    }
+
+    // O(log N)
+
+    public void edit(int taskId,
+                     int newPriority) {
+
+        // Do NOT remove from the heap.
+        // PriorityQueue.remove(Object) is O(N).
+
+        UserTask editedTask =
+            taskMap.get(taskId);
+
+        editedTask.priority = newPriority;
+
+        pq.offer(
+            new HeapNode(taskId, newPriority)
+        );
+    }
+
+    // O(1)
+
+    public void rmv(int taskId) {
+
+        // Lazy deletion.
+        // Heap entries are discarded later.
+
+        taskMap.remove(taskId);
+    }
+
+    // Amortized O(log N)
+
+    public int execTop() {
+
+        while (!pq.isEmpty()) {
+
+            HeapNode heapEntry = pq.poll();
+
+            UserTask userTask =
+                taskMap.get(heapEntry.taskId);
+
+            if (userTask == null)
+                continue;
+
+            if (userTask.priority !=
+                heapEntry.priority)
+                continue;
+
+            taskMap.remove(heapEntry.taskId);
+
+            return userTask.userId;
+        }
+
+        return -1;
+    }
+}
+
+class UserTask {
+
+    int userId;
+    int priority;
+
+    UserTask(int userId,
+             int priority) {
+
+        this.userId = userId;
+        this.priority = priority;
+    }
+}
+
+class HeapNode {
+
+    int taskId;
+    int priority;
+
+    HeapNode(int taskId,
+             int priority) {
+
+        this.taskId = taskId;
+        this.priority = priority;
+    }
+}
+```
+
+---
+
+# Complexity
+
+| Operation | Complexity |
+|------------|------------|
+| Constructor | O(N log N) |
+| add | O(log N) |
+| edit | O(log N) |
+| rmv | O(1) |
+| execTop | Amortized O(log N) |
+
+---
+
+# Why is execTop() Amortized O(log N)?
+
+At first glance
+
+```java
+while(!pq.isEmpty())
+```
+
+looks scary.
+
+Could it become
+
+```
+O(N)
+```
+
+Yes,
+
+a **single** execution might discard many stale entries.
+
+However,
+
+each stale heap entry
+
+```
+Inserted once
+
+↓
+
+Discarded once
+```
+
+Never again.
+
+Across
+
+```
+N operations
+```
+
+each heap node is processed exactly once.
+
+Therefore
+
+Total work
+
+```
+O(N log N)
+```
+
+Average
+
+```
+O(log N)
+```
+
+per operation.
+
+---
+
+# Production Discussion
+
+## Would I Use Lazy Deletion?
+
+Probably not.
+
+Lazy deletion is excellent for interviews.
+
+Production systems often use an
+
+```
+Indexed Priority Queue
+```
+
+instead.
+
+---
+
+# What is an Indexed Priority Queue?
+
+Maintain
+
+```
+Heap
+
++
+
+Map<TaskId, HeapIndex>
+```
+
+Example
+
+```
+Heap
+
+Index 0
+
+Task 20
+
+Priority 100
+
+------------------
+
+HeapIndex Map
+
+20 -> 0
+```
+
+Now
+
+editing priority becomes
+
+```
+Find heap index
+
+↓
+
+Update priority
+
+↓
+
+Heapify Up
+
+or
+
+Heapify Down
+```
+
+No duplicate heap entries.
+
+No stale entries.
+
+True
+
+```
+O(log N)
+```
+
+update.
+
+This requires implementing your own heap instead of Java's `PriorityQueue`.
+
+---
+
+# Multiple Server Instances
+
+Suppose
+
+```
+Server A
+
+Server B
+```
+
+Both receive
+
+```
+Execute Highest Priority
+```
+
+at the same time.
+
+Without coordination
+
+both may execute
+
+```
+Task 10
+```
+
+This creates duplicate execution.
+
+Solutions
+
+- Distributed lock
+- Leader election
+- Atomic queue service
+
+---
+
+## ZooKeeper
+
+One common solution is
+
+```
+Apache ZooKeeper
+```
+
+Servers first acquire a distributed lock.
+
+Only the server holding the lock may execute
+
+```
+execTop()
+```
+
+Others wait.
+
+---
+
+## Redis
+
+Another approach
+
+```
+Redis
+```
+
+using
+
+```
+SETNX
+```
+
+or RedLock.
+
+---
+
+## Better Architecture
+
+Instead of every application server owning its own heap,
+
+use
+
+```
+Central Queue
+
+↓
+
+Kafka
+
+RabbitMQ
+
+Redis Sorted Set
+```
+
+Application servers consume from the central scheduler.
+
+Only one consumer receives a task.
+
+---
+
+# Coding Style Notes
+
+Using
+
+```java
+continue;
+```
+
+is perfectly acceptable.
+
+Example
+
+```java
+if(userTask == null)
+    continue;
+
+if(userTask.priority != heapEntry.priority)
+    continue;
+```
+
+This is called a
+
+```
+Guard Clause
+```
+
+or
+
+```
+Early Continue
+```
+
+It keeps the
+
+```
+Happy Path
+```
+
+unindented and is common in production code.
+
+---
+
+# Interview Explanation
+
+If the interviewer asks
+
+> **Why didn't you remove from the PriorityQueue?**
+
+A good answer is:
+
+> Java's `PriorityQueue.remove(Object)` is O(N) because it performs a linear search before restoring the heap. To avoid that cost, I use lazy deletion. The HashMap stores the latest state of each task, while the PriorityQueue stores immutable snapshots. During `execTop()`, stale heap entries are discarded until a snapshot matches the current state in the map. This gives amortized O(log N) performance.
+
+---
+
+# Key Design Pattern
+
+This problem demonstrates an important interview pattern.
+
+```
+HashMap
+
+↓
+
+Source of Truth
+
+-------------------------
+
+Priority Queue
+
+↓
+
+Immutable Snapshots
+
+↓
+
+Lazy Deletion
+```
+
+Whenever
+
+- priorities change,
+- arbitrary heap removal is expensive,
+- and stale data is acceptable,
+
+consider this pattern.
+
+---
+
+# One Sentence to Remember
+
+> **The HashMap stores the latest version of every task, the PriorityQueue stores immutable snapshots ordered by priority, and lazy deletion eliminates expensive heap removals while maintaining amortized O(log N) performance.**
+
+
+
+
 # Task Scheduler
 
 ## Recognition
