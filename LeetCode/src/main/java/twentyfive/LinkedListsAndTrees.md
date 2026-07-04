@@ -8571,3 +8571,627 @@ Build Left
 ```
 
 The recursive structure, inorder boundaries, and HashMap optimization remain exactly the same. Only the traversal direction and subtree construction order change.
+
+
+# 98. Validate Binary Search Tree
+
+Given the root of a binary tree, determine whether it is a valid Binary Search Tree (BST).
+
+A BST satisfies:
+
+- Every node in the left subtree is **strictly smaller** than the current node.
+- Every node in the right subtree is **strictly larger** than the current node.
+- Both left and right subtrees must themselves be valid BSTs.
+
+---
+
+# Solution 1 : Brute Force
+
+## Idea
+
+For every node:
+
+- Find the **maximum value** in the left subtree.
+- Find the **minimum value** in the right subtree.
+- Verify
+
+```
+Maximum(left)
+
+<
+
+Current
+
+<
+
+Minimum(right)
+```
+
+Then recursively validate both subtrees.
+
+---
+
+## Java Solution
+
+```java
+class Solution {
+
+    Integer prev = null;
+
+    public boolean isValidBSTPreOrder(TreeNode root) {
+
+        if(root == null)
+            return true;
+
+        if(root.left != null && findMaximum(root.left).val >= root.val)
+            return false;
+
+        if(root.right != null && findMinimum(root.right).val <= root.val)
+            return false;
+
+        return isValidBSTPreOrder(root.left)
+                && isValidBSTPreOrder(root.right);
+    }
+
+    public TreeNode findMinimum(TreeNode root){
+
+        if(root == null)
+            return root;
+
+        if(root.left == null)
+            return root;
+
+        return findMinimum(root.left);
+    }
+
+    public TreeNode findMaximum(TreeNode root){
+
+        if(root == null)
+            return root;
+
+        if(root.right == null)
+            return root;
+
+        return findMaximum(root.right);
+    }
+}
+```
+
+---
+
+## Complexity
+
+### Time
+
+```
+O(N²)
+```
+
+Each node may repeatedly search for the minimum or maximum of its subtree.
+
+---
+
+### Space
+
+Recursive Stack
+
+```
+O(h)
+```
+
+Balanced Tree
+
+```
+O(log N)
+```
+
+Worst Case
+
+```
+O(N)
+```
+
+---
+
+# Solution 2 : Optimal (Inorder Traversal)
+
+## Key Insight
+
+The inorder traversal of a valid BST is always
+
+```
+Strictly Increasing
+```
+
+Example
+
+```
+        5
+       / \
+      3   8
+     / \   \
+    2   4   9
+```
+
+Inorder traversal
+
+```
+2
+
+↓
+
+3
+
+↓
+
+4
+
+↓
+
+5
+
+↓
+
+8
+
+↓
+
+9
+```
+
+Every newly visited node must be **greater** than the previously visited node.
+
+---
+
+# Shared State
+
+We maintain
+
+```java
+Integer prev = null;
+```
+
+`prev` stores the previously visited node during the inorder traversal.
+
+Every recursive call shares this variable.
+
+---
+
+# Java Solution
+
+```java
+class Solution {
+
+    Integer prev = null;
+
+    public boolean isValidBST(TreeNode root) {
+
+        if(root == null)
+            return true;
+
+        if(!isValidBST(root.left))
+            return false;
+
+        if(prev != null && root.val <= prev)
+            return false;
+
+        prev = root.val;
+
+        return isValidBST(root.right);
+    }
+}
+```
+
+---
+
+# Dry Run
+
+Tree
+
+```
+        5
+       / \
+      3   8
+     / \   \
+    2   4   9
+```
+
+Traversal
+
+```
+Visit 2
+
+prev = null
+
+↓
+
+Valid
+
+prev = 2
+
+↓
+
+Visit 3
+
+3 > 2
+
+Valid
+
+prev = 3
+
+↓
+
+Visit 4
+
+4 > 3
+
+Valid
+
+prev = 4
+
+↓
+
+Visit 5
+
+5 > 4
+
+Valid
+
+prev = 5
+
+↓
+
+Visit 8
+
+8 > 5
+
+Valid
+
+prev = 8
+
+↓
+
+Visit 9
+
+9 > 8
+
+Valid
+```
+
+Every node is greater than the previous node.
+
+Therefore,
+
+```
+Valid BST
+```
+
+---
+
+# Invalid Example
+
+```
+      5
+     / \
+    3   8
+       /
+      4
+```
+
+Inorder traversal
+
+```
+3
+
+↓
+
+5
+
+↓
+
+4
+
+↓
+
+8
+```
+
+When visiting
+
+```
+4
+```
+
+we compare
+
+```
+4 <= 5
+```
+
+which violates the BST property.
+
+Immediately return
+
+```
+false
+```
+
+---
+
+# Why Does `prev` Need to be Shared?
+
+Suppose we passed
+
+```java
+isValidBST(TreeNode root, Integer prev)
+```
+
+instead.
+
+The left recursive call might update
+
+```
+prev = 5
+```
+
+but after returning,
+
+the parent still has
+
+```
+prev = 3
+```
+
+because `Integer` is immutable and Java passes a **copy of the reference**.
+
+The updated value is lost.
+
+We need **one shared previous value** across the entire inorder traversal.
+
+Therefore,
+
+```java
+Integer prev;
+```
+
+as a class variable is the correct design.
+
+---
+
+# Should We Reset `prev`?
+
+## LeetCode
+
+Your solution is perfectly fine.
+
+```java
+class Solution {
+
+    Integer prev = null;
+
+    public boolean isValidBST(TreeNode root) {
+        ...
+    }
+}
+```
+
+LeetCode creates a **new `Solution` object** for every test case.
+
+Therefore,
+
+```
+prev
+
+↓
+
+null
+```
+
+at the beginning of every execution.
+
+No helper is required.
+
+---
+
+## Production Code / Reusable Library
+
+Suppose someone writes
+
+```java
+Solution sol = new Solution();
+
+sol.isValidBST(tree1);
+
+sol.isValidBST(tree2);
+```
+
+Now,
+
+after validating the first tree,
+
+```
+prev
+```
+
+still contains the last visited value.
+
+The second call starts with stale state.
+
+To make the class reusable,
+
+reset the shared state before beginning the recursion.
+
+```java
+class Solution {
+
+    Integer prev;
+
+    public boolean isValidBST(TreeNode root) {
+
+        prev = null;
+
+        return validate(root);
+    }
+
+    private boolean validate(TreeNode root){
+
+        if(root == null)
+            return true;
+
+        if(!validate(root.left))
+            return false;
+
+        if(prev != null && root.val <= prev)
+            return false;
+
+        prev = root.val;
+
+        return validate(root.right);
+    }
+}
+```
+
+This guarantees every invocation starts with a clean state.
+
+---
+
+# Complexity
+
+## Time
+
+```
+O(N)
+```
+
+Every node is visited exactly once.
+
+---
+
+## Space
+
+Recursive Stack
+
+```
+O(h)
+```
+
+Balanced Tree
+
+```
+O(log N)
+```
+
+Worst Case
+
+```
+O(N)
+```
+
+---
+
+# Interview Heuristics
+
+## Heuristic 1
+
+Whenever you see
+
+```
+BST
+```
+
+ask yourself
+
+> **Can inorder traversal simplify the problem?**
+
+Very often,
+
+the answer is **Yes**.
+
+---
+
+## Heuristic 2
+
+Brute Force Thinking
+
+```
+Maximum(left)
+
+<
+
+Current
+
+<
+
+Minimum(right)
+```
+
+Correct,
+
+but repeatedly recomputes subtree information.
+
+```
+O(N²)
+```
+
+---
+
+## Heuristic 3
+
+Optimal Thinking
+
+Ask yourself
+
+> **What unique property does a BST have?**
+
+Answer
+
+```
+Inorder traversal is strictly increasing.
+```
+
+Therefore,
+
+instead of comparing
+
+```
+Parent
+
+↓
+
+Child
+```
+
+compare
+
+```
+Current node
+
+↓
+
+Previously visited inorder node
+```
+
+---
+
+# Another Pattern to Recognize
+
+Notice how similar this problem is to several tree problems you've already studied.
+
+| Problem | Shared State |
+|----------|--------------|
+| Serialize / Deserialize | `pointer` |
+| Construct Tree (Preorder + Inorder) | `preorderIndex` |
+| Construct Tree (Postorder + Inorder) | `postorderIndex` |
+| Validate BST | `prev` |
+
+All four follow the same recursive design pattern.
+
+> **Maintain one piece of shared traversal state that every recursive call must observe and update.**
+
+This is one of the most important recursion patterns in binary tree problems.
+
+---
+
+# One Sentence to Remember
+
+> **A BST's inorder traversal must be strictly increasing. During the traversal, maintain a single shared `prev` variable representing the previously visited node. If the current node is ever less than or equal to `prev`, the tree is not a valid BST.**
