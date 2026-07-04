@@ -3859,6 +3859,13 @@ class TaskManager {
     }
 
     // Amortized O(log N)
+	 //remove entries deleted //lazy deletion
+            /*while(!taskMap.containsKey(pq.peek().taskId)&& !pq.isEmpty()){
+                 pq.poll();
+            }*/
+            //if task has priority 3 downgraded to 10.. taskid 3, taskId 10.. encounter 3.. dont remove from map 
+            //if task has priority 7 upgraded to 2...we would have removed it from map.. in that case the while loop abve
+            //should solve it..
 
     public int execTop() {
 
@@ -14535,3 +14542,119 @@ Maximum Size Subarray Sum Equals K
 Count of Range Sum
 Binary Subarrays With Sum
 ```
+# Longest Consecutive Sequence
+
+## Problem
+
+Given an unsorted integer array `nums`, return the length of the longest sequence of consecutive integers.
+
+Example:
+
+```text
+Input:  [100,4,200,1,3,2]
+Output: 4
+
+Sequence: 1,2,3,4
+```
+
+**Expected Complexity:**
+
+* Time: **O(n)**
+* Space: **O(n)**
+
+---
+
+## Solution (HashSet)
+
+```java
+class Solution {
+    public int longestConsecutive(int[] nums) {
+        int lcs = 0, cs = 0;
+
+        Set<Integer> hset = new HashSet<>();
+
+        // Store all numbers for O(1) lookup
+        for (int num : nums) {
+            hset.add(num);
+        }
+
+        // Iterate over unique numbers
+        for (int num : hset) {
+
+            // This small hack:
+            // If a smaller value exists, then this number cannot be
+            // the beginning of a sequence.
+            //
+            // So don't even bother counting.
+            //
+            // Example:
+            // Sequence = 1,2,3,4,5
+            // When we reach 4, we know 3 exists.
+            // The sequence would have already been counted starting from 1.
+            int current = num;
+
+            if (hset.contains(current - 1))
+                continue;
+
+            cs = 1;
+
+            while (hset.contains(++current))
+                cs++;
+
+            lcs = Math.max(lcs, cs);
+        }
+
+        return lcs;
+    }
+}
+```
+
+---
+
+## Why is the algorithm O(n)?
+
+At first glance, it looks like **O(n²)** because of the nested `while` loop.
+
+The trick is:
+
+* The **inner `while` loop runs only when the current number is the beginning of a sequence** (`current - 1` is not present).
+* Every consecutive sequence has **exactly one beginning**.
+* So each sequence is traversed only once.
+
+Example:
+
+```text
+1 2 3 4 5
+```
+
+Only `1` starts counting:
+
+```text
+1 → 2 → 3 → 4 → 5
+```
+
+When the outer loop reaches:
+
+```text
+2
+3
+4
+5
+```
+
+they are immediately skipped because they have predecessors.
+
+Therefore:
+
+* Outer loop = **O(n)**
+* Total work done by all `while` loops combined = **O(n)**
+
+Overall:
+
+```text
+O(n) + O(n) = O(n)
+```
+
+The outer loop iterates over every unique number once. The inner while loop executes only when the current number is the beginning of a sequence (num - 1 doesn't exist). Since every sequence has exactly one beginning, each sequence is traversed only once. Therefore, the total work done by all the inner while loops is O(n). Hence, the overall time complexity is O(n).
+
+**Space Complexity:** `O(n)` (HashSet stores all unique numbers.)
