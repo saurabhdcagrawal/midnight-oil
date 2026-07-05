@@ -3128,67 +3128,102 @@ Heap
 ```
 
 ---
+# Top K Frequent Elements - Interview Notes
 
-# Approach
+## Clarifying Questions
 
-## Step 1
-
-Build frequency map.
-
-```java
-Map<Integer,Integer> frequencyMap =
-    new HashMap<>();
-```
+* What is the maximum input size?
+* Is `k` always valid (`1 <= k <= number of unique elements`)?
+* Does the output need to be in any specific order?
 
 ---
 
-## Step 2
+## Key Idea
 
-Maintain Min Heap of size K.
+* Build a frequency map.
+* Maintain a **Min Heap** of size at most **K**.
+* The heap always contains the **K most frequent elements seen so far**.
+* Whenever the heap size exceeds `K`, remove the least frequent element.
+* At the end, the heap contains exactly the **K most frequent elements**.
 
-Heap stores:
-
-```text
-(number, frequency)
-```
-
----
-
-## Step 3
-
-If heap grows beyond K:
-
-```java
-heap.poll();
-```
-
-Remove smallest frequency.
+> **Note:** A heap is **not sorted**.
+> Only the **root** is guaranteed to be the minimum frequency.
+> The remaining elements (including the most frequent one) can be anywhere in the heap—they are **not necessarily at the bottom**.
 
 ---
 
-# Complexity
+## Why Min Heap?
 
-Frequency Map:
+* Sorting all unique elements would cost **O(U log U)**.
+* Instead, keep only the best `K` candidates.
+* Heap size never exceeds `K`.
+* `offer()` = **O(log K)**
+* `poll()` = **O(log K)**
+
+---
+
+## Understanding the Complexity
+
+Let:
+
+* `N` = total number of elements.
+* `U` = number of unique elements.
+
+### Frequency Map
 
 ```text
 O(N)
 ```
 
-Heap:
+### Heap
+
+Every unique element is:
+
+* inserted **once** → `U` offers
+* removed **at most once** → `U - K` polls (worst case)
+
+Total heap operations:
 
 ```text
-O(N log K)
+(U + U - K) × log K
+= (2U - K) log K
+= O(U log K)
 ```
 
-Total:
+Since:
 
 ```text
-O(N log K)
+U ≤ N
+```
+
+Overall:
+
+```text
+O(N) + O(U log K)
+
+Worst Case:
+
+O(N) + O(N log K)
+= O(N log K)
+```
+
+---
+
+## Space Complexity
+
+* Frequency Map: **O(U)**
+* Min Heap: **O(K)**
+
+Overall:
+
+```text
+O(U + K)
 ```
 
 ---
 
 # Interview Sound Bite
+> Build a frequency map first. Then maintain a Min Heap of size at most `K`. For every unique element, insert it into the heap. If the heap grows beyond `K`, remove the least frequent element. This guarantees the heap always contains the `K` most frequent elements seen so far. Each unique element is inserted once and removed at most once, so the heap work is `O(U log K)`.
 
 > Since I only need the top K elements, sorting the entire dataset would perform unnecessary work. Instead, I maintain a min heap of size K and discard weaker candidates as I process the input.
 
