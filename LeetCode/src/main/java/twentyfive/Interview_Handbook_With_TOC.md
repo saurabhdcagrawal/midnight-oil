@@ -3292,7 +3292,20 @@ x² + y²
 instead.
 
 ---
-
+# Comparator hint
+```text
+	PriorityQueue<Integer> maxHeap= new PriorityQueue<>((a,b)->{
+		int ax= Math.abs(a-x);
+		int bx= Math.abs(b-x);
+		if(ax==bx){
+			return Integer.compare(b, a);
+		}
+		else{
+			return Integer.compare(bx,ax);
+		}
+	});
+	//Also check the binary search implementation towards the end
+```text
 # Complexity
 
 ```text
