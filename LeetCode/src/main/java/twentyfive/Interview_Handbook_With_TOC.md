@@ -629,47 +629,87 @@ is sufficient.
 
 ```java
 class Solution {
+
+    // What happens when k = 0?
+    // At most 0 distinct characters can exist, so return 0.
+    //
+    // Clarifying questions:
+    // - What is the maximum constraint on input size?
+    // - Can I assume lowercase alphabets, full ASCII, extended ASCII, or Unicode?
+    // - How should the system behave when the input is null?
+
+    // We will use a Sliding Window approach.
+    //
+    // We start by expanding the right edge of the window while keeping track
+    // of the frequency of characters inside the current window.
+    //
+    // If the number of distinct characters exceeds K, we shrink the window
+    // by moving the left edge until the window becomes valid again.
+    //
+    // We keep track of the maximum window length throughout the traversal.
+    //
+    // Although the code contains two while loops, every character enters the
+    // sliding window exactly once when the right pointer moves and leaves the
+    // window exactly once when the left pointer moves.
+    //
+    // Therefore, each character is processed at most twice.
+    // The total number of pointer movements across the entire execution
+    // is bounded by 2N.
+    //
+    // Time Complexity: O(N) (Amortized)
+    // Space Complexity: O(1) (Frequency array has fixed size)
+
     public int lengthOfLongestSubstringKDistinct(String s, int k) {
 
-        if(s == null || s.isEmpty() || k == 0)
+        if (k == 0 || s == null || s.isBlank()) {
             return 0;
+        }
 
         int[] char_set = new int[128];
 
+        // Example:
+        // eceba
+        int l = 0, r = 0; //,maxLength=0;
         int distinctChars = 0;
+		
 
-        int i = 0;
-        int j = 0;
+        // result[0] = max length
+        // result[1] = left index
+        // result[2] = right index
+        int[] result = new int[3];
 
-        int longest = 0;
+        while (r < s.length()) {
+			char r_char = s.charAt(r);
+			char_set[r_char]++;
 
-        while(j < s.length()) {
-
-            char c = s.charAt(j);
-
-            char_set[c]++;
-
-            if(char_set[c] == 1)
+            if (char_set[r_char] == 1)
                 distinctChars++;
 
-            while(distinctChars > k) {
+            while (distinctChars > k) {
+				char l_char = s.charAt(l);
+				char_set[l_char]--;
 
-                char left = s.charAt(i);
-
-                char_set[left]--;
-
-                if(char_set[left] == 0)
+                if (char_set[l_char] == 0)
                     distinctChars--;
-
-                i++;
+                l++;
             }
 
-            longest = Math.max(longest, j - i + 1);
+            // Update longest window
+		    //maxLength=Math.max(maxLength, r-l+1);
 
-            j++;
+            if (r - l + 1 >= result[0]) {
+                result[0] = r - l + 1;
+                result[1] = l;
+                result[2] = r;
+            }
+
+            r++;
         }
 
-        return longest;
+        // substring is always [left, right + 1)
+        System.out.println(s.substring(result[1], result[2] + 1));
+		// return maxLength;
+        return result[0];
     }
 }
 ```
