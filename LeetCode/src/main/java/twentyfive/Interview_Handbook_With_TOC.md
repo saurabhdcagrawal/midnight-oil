@@ -2431,6 +2431,63 @@ Production systems should validate malformed data.
 
 ---
 
+```java
+class Solution {
+
+    public int minMeetingRooms(int[][] intervals) {
+
+        // Audible collects playback sessions from millions of listeners.
+        // Each session: [startTime, endTime]
+        // Determine the maximum number of concurrent users.
+
+        // Clarifying Questions:
+        // - Is the data statically loaded in memory or coming as a stream?
+        // - What is the maximum input size (number of session logs)?
+        // - Can duplicate intervals exist due to retries or network failures?
+        // - Do we need to validate or discard malformed data?
+        // - Is every session associated with a different user?
+        // - Are session events already sorted chronologically?
+
+        Arrays.sort(intervals, (a, b) -> Integer.compare(a[0], b[0]));
+
+        // Example:
+        // [0,30] [5,10] [15,20]
+
+        PriorityQueue<Integer> pq = new PriorityQueue<>();
+
+        int maxConcurrentUsers = 0;
+
+        for (int i = 0; i < intervals.length; i++) {
+
+            // Remove all stale (finished) sessions before processing
+            // the current session. The heap should contain only active users.
+            while (!pq.isEmpty() && pq.peek() <= intervals[i][0]) {
+                pq.poll();
+            }
+
+            pq.offer(intervals[i][1]);
+
+            // Initially I considered inserting first and then removing stale entries.
+            // However, that conceptually allows the current session to participate
+            // in the cleanup. It is cleaner to remove completed sessions first,
+            // then add the current one.
+            //
+            // If zero-duration sessions (start == end) are considered invalid,
+            // they can simply be skipped using 'continue' before inserting.
+            //
+            // At any point, the heap size represents the number of active users.
+            // Useful for telemetry/debugging:
+            // System.out.println(pq.size());
+
+            maxConcurrentUsers = Math.max(maxConcurrentUsers, pq.size());
+        }
+
+        return maxConcurrentUsers;
+    }
+}
+```
+
+
 # Merge Intervals
 
 ## Recognition
