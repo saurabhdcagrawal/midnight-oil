@@ -2541,57 +2541,72 @@ Start a new interval.
 ---
 
 # Solution
+# Merge Intervals
 
 ```java
 class Solution {
 
     public int[][] merge(int[][] intervals) {
 
-        List<int[]> mergedIntervals =
-            new LinkedList<>();
+        // Clarifying Questions:
+        // - Can there be duplicate intervals?
+        // - Should we validate faulty input (end < start)?
+        // - Is the interval data already sorted?
+        // - Is the data statically loaded in memory or coming as a stream?
+        //
+        // Assumption:
+        // - Input is valid and loaded in memory.
 
-        if(intervals == null ||
-           intervals.length <= 1)
+         if(intervals == null || intervals.length <= 1)
             return intervals;
 
-        Arrays.sort(
-            intervals,
-            (a,b) -> Integer.compare(a[0],b[0])
-        );
 
-        int[] currentInterval = intervals[0];
+        // Sort intervals by start time.
+        Arrays.sort(intervals, (a, b) -> Integer.compare(a[0], b[0]));
 
-        mergedIntervals.add(currentInterval);
+        // LinkedList provides O(1) access to the last merged interval
+		//Java's LinkedList is a doubly linked list, so getLast() is O(1).
+        // using getLast(), making it convenient to merge intervals.
+        LinkedList<int[]> mergedIntervals = new LinkedList<>();
 
-        for(int i=1;i<intervals.length;i++){
+        // Example:
+        // [1,4] [2,3]
+        // [1,4] [2,10]
+        // [1,4] [5,10]
 
-            if(currentInterval[1] >=
-               intervals[i][0]){
+        for (int[] interval : intervals) {
+		//in my orig solution, I used while.this is an interview improvement..
+            // If this is the first interval or there is no overlap,
+            // simply add it.
+            if (mergedIntervals.isEmpty() ||
+                interval[0] > mergedIntervals.getLast()[1]) {
 
-                currentInterval[1] =
-                    Math.max(
-                        currentInterval[1],
-                        intervals[i][1]
-                    );
-            }
-            else{
+                mergedIntervals.add(interval);
 
-                mergedIntervals.add(
-                    intervals[i]
-                );
+            } else {
 
-                currentInterval =
-                    intervals[i];
+                // Since intervals are sorted by start time,
+                // an interval can only overlap with the most recently
+                // merged interval.
+                mergedIntervals.getLast()[1] =
+                        Math.max(mergedIntervals.getLast()[1], interval[1]);
             }
         }
 
-        return mergedIntervals.toArray(
-            new int[mergedIntervals.size()][]
-        );
+        // Time Complexity:
+        // We first sort the intervals by start time in O(n log n).
+        // Then we scan the sorted intervals once.
+        // Since each interval is processed exactly once,
+        // the merge step takes O(n).
+        // Therefore, the overall time complexity is O(n log n).
+        //
+        // Space Complexity:
+        // O(n) for the merged intervals.
+
+        return mergedIntervals.toArray(new int[mergedIntervals.size()][2]);
     }
 }
 ```
-
 ---
 
 # Complexity
