@@ -3057,6 +3057,9 @@ PriorityQueue<Integer> maxHeap =
     new PriorityQueue<>(
         (a,b) -> b-a
     );
+	
+Similar to reverse sort comparator
+list.sort((a, b) -> Integer.compare(b[1], a[1]));	
 ```
 
 ---
@@ -3145,6 +3148,8 @@ Heap
 * The heap always contains the **K most frequent elements seen so far**.
 * Whenever the heap size exceeds `K`, remove the least frequent element.
 * At the end, the heap contains exactly the **K most frequent elements**.
+* Brute force way=> convert map to a list [num,freq] i.e. List<int[]> and then use Collections.sort(list,(a,b)->Integer.compare(b[1],a[1]) or list.sort(same comparator) to Sort
+* in descending order of freq
 
 > **Note:** A heap is **not sorted**.
 > Only the **root** is guaranteed to be the minimum frequency.
@@ -3218,6 +3223,9 @@ Overall:
 
 ```text
 O(U + K)
+
+Worst case: All elements are unique
+O(N+K)
 ```
 
 ---
