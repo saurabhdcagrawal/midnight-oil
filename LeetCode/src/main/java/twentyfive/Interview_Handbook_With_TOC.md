@@ -3148,8 +3148,11 @@ Heap
 * The heap always contains the **K most frequent elements seen so far**.
 * Whenever the heap size exceeds `K`, remove the least frequent element.
 * At the end, the heap contains exactly the **K most frequent elements**.
-* Brute force way=> convert map to a list [num,freq] i.e. List<int[]> and then use Collections.sort(list,(a,b)->Integer.compare(b[1],a[1]) or list.sort(same comparator) to Sort
-* in descending order of freq
+* **Brute-force approach:** Convert the frequency map to a list of `[num, freq]` pairs (e.g., `List<int[]>`), then sort it in **descending order of frequency** using either:
+
+  * `Collections.sort(list, (a, b) -> Integer.compare(b[1], a[1]))`, or
+  * `list.sort((a, b) -> Integer.compare(b[1], a[1]))`.
+  * Return the first `K` elements from the sorted list.
 
 > **Note:** A heap is **not sorted**.
 > Only the **root** is guaranteed to be the minimum frequency.
