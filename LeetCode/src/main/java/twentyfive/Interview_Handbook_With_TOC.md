@@ -14950,3 +14950,91 @@ Overall                       = O(n) + O(n) = O(n)
 ## Space Complexity
 
 * **O(n)** (Stack)
+
+
+# Find K Closest Elements (Binary Search)
+
+```java
+class Solution {
+
+    public List<Integer> findClosestElements(int[] arr, int k, int x) {
+
+        // Example:
+        // arr = [1,2,3,4,5], k = 4, x = 3
+
+        int n = arr.length;
+
+        int lo = 0;
+        int hi = n - k;
+
+        // Search space:
+        // We are searching for the starting index of the optimal window.
+        // Possible starting indices range from 0 to (n - k).
+		// between 0 and n-k what is best starting point..
+        //Since the array is sorted, the k closest elements to x will always form a contiguous subarray (window). Therefore, instead of selecting individual elements, we only //need to find the correct window of size k.
+        //The starting index of this window can range from 0 to N - k, so we perform a binary search over these possible starting positions. Once we determine the correct //starting index, we simply return the k elements in that window. This gives us a time complexity of O(log(N - k) + k).
+        //The sophisticated part of the algorithm is deciding whether the optimal window lies to the left or the right of the current midpoint. That's what the comparison logic in Step 2 determines */
+        /*"If I slide the window one position to the right, is the new element entering (arr[mid + k]) closer to x than the old element leaving (arr[mid])?"*/
+        //"If I slide the window one step to the right, I'm throwing away A and gaining B. Is B a better choice than A?"
+        
+        //
+        // Since the array is sorted, the k closest elements to x will always
+        // form a contiguous subarray (window). Therefore, instead of selecting
+        // individual elements, we only need to find the correct window of size k.
+        //
+        // Once we determine the starting index, we simply return the k elements
+        // in that window.
+        //
+        // Time Complexity:
+        // O(log(n - k) + k)
+        //
+        // The sophisticated part of this algorithm is deciding whether the
+        // optimal window lies to the left or right of the current midpoint.
+        // That's exactly what the comparison logic below determines.
+
+        while (lo < hi) {
+
+            int mid = (lo + hi) / 2;
+
+            // Current Window:
+            // [mid ............... mid + k - 1]
+            //
+            // Next Window:
+            // [mid + 1 ........... mid + k]
+            //
+            // Only two elements differ:
+            //
+            // Leaving:  arr[mid]      (A)
+            // Entering: arr[mid + k]  (B)
+            //
+            // If I slide the window one position to the right,
+            // I'm throwing away A and gaining B.
+            // Is B a better choice than A?
+            //
+            // Common intuition:
+            //
+            // A -------- x -------- B
+            //
+            // Compare:
+            // Distance from x to A  -> x - A
+            // Distance from x to B  -> B - x
+
+            if (x - arr[mid] > arr[mid + k] - x) {
+                lo = mid + 1;
+            }
+            // Standard binary search convergence.
+            else {
+                hi = mid;
+            }
+        }
+
+        List<Integer> result = new ArrayList<>();
+
+        for (int i = lo; i < lo + k; i++) {
+            result.add(arr[i]);
+        }
+
+        return result;
+    }
+}
+```
