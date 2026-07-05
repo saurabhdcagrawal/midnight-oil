@@ -14725,6 +14725,118 @@ Maximum Size Subarray Sum Equals K
 Count of Range Sum
 Binary Subarrays With Sum
 ```
+# Insert Delete GetRandom O(1)
+
+## Data Structure Comparison
+
+| Operation        |                   ArrayList | Java `LinkedList` (DLL) | Singly Linked List (Head Only) | Singly Linked List (Head + Tail) |
+| ---------------- | --------------------------: | ----------------------: | -----------------------------: | -------------------------------: |
+| `get(index)`     |                    **O(1)** |                **O(n)** |                       **O(n)** |                         **O(n)** |
+| `addLast()`      |          Amortized **O(1)** |                **O(1)** |                       **O(n)** |                         **O(1)** |
+| `removeLast()`   |                    **O(1)** |                **O(1)** |                       **O(n)** |                         **O(n)** |
+| `add(index)`     |                    **O(n)** |                **O(n)** |                       **O(n)** |                         **O(n)** |
+| `remove(index)`  |                    **O(n)** |                **O(n)** |                       **O(n)** |                         **O(n)** |
+| `insert at head` | **O(n)** *(shift elements)* |                **O(1)** |                       **O(1)** |                         **O(1)** |
+| `remove head`    | **O(n)** *(shift elements)* |                **O(1)** |                       **O(1)** |                         **O(1)** |
+| Random Access    |                  ✅ **O(1)** |              ❌ **O(n)** |                     ❌ **O(n)** |                       ❌ **O(n)** |
+
+```java
+// We need random access in O(1), therefore we need an ArrayList.
+//
+// Otherwise, insert, remove and contains could all be handled by a HashSet.
+//
+// Caveat:
+// Removing an arbitrary element from an ArrayList is O(n)
+// because elements need to be shifted.
+//
+// To avoid shifting, always delete the last element.
+// If the element to delete is not the last element,
+// swap it with the last element, update its index,
+// then remove the last element.
+//
+// Since we must know the position of every value,
+// we use a HashMap<Value, Index> instead of a HashSet.
+//
+// Improvement:
+// Keep Random as a class member instead of creating
+// a new Random object for every getRandom() call.
+
+class RandomizedSet {
+
+    Map<Integer, Integer> hmap;
+    List<Integer> arrList;
+    Random r;
+
+    public RandomizedSet() {
+        hmap = new HashMap<>();
+        arrList = new ArrayList<>();
+        r = new Random();
+    }
+
+    // ArrayList.add() at the end is amortized O(1).
+    //
+    // Native Singly Linked List (head only):
+    // Insert at end -> O(n)
+    //
+    // Java LinkedList is implemented as a Doubly Linked List
+    // and supports addLast() in O(1).
+
+    public boolean insert(int val) {
+
+        if (hmap.containsKey(val))
+            return false;
+
+        int index = arrList.size();
+
+        hmap.put(val, index);
+        arrList.add(val);
+
+        return true;
+    }
+
+    // Swap the element to delete with the last element.
+    // Update the HashMap with the new index.
+    // Remove the last element from the ArrayList in O(1).
+
+    public boolean remove(int val) {
+
+        if (!hmap.containsKey(val))
+            return false;
+
+        int indexOfVal = hmap.get(val);
+
+        int lastIndex = arrList.size() - 1;
+        int lastValue = arrList.get(lastIndex);
+
+        arrList.set(indexOfVal, lastValue);
+        hmap.put(lastValue, indexOfVal);
+
+        arrList.remove(lastIndex);
+        hmap.remove(val);
+
+        return true;
+    }
+
+    public int getRandom() {
+
+        // nextInt(size) generates [0, size)
+        // Upper bound is exclusive (similar to substring()).
+
+        return arrList.get(r.nextInt(arrList.size()));
+    }
+}
+
+/**
+ * Your RandomizedSet object will be instantiated and called as such:
+ *
+ * RandomizedSet obj = new RandomizedSet();
+ * boolean param_1 = obj.insert(val);
+ * boolean param_2 = obj.remove(val);
+ * int param_3 = obj.getRandom();
+ */
+```
+
+
 # Longest Consecutive Sequence
 
 ## Problem
@@ -14841,6 +14953,7 @@ O(n) + O(n) = O(n)
 The outer loop iterates over every unique number once. The inner while loop executes only when the current number is the beginning of a sequence (num - 1 doesn't exist). Since every sequence has exactly one beginning, each sequence is traversed only once. Therefore, the total work done by all the inner while loops is O(n). Hence, the overall time complexity is O(n).
 
 **Space Complexity:** `O(n)` (HashSet stores all unique numbers.)
+
 
 
 # Asteroid Collision (Nice-to-Have)
