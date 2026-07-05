@@ -660,8 +660,8 @@ class Solution {
     // Space Complexity: O(1) (Frequency array has fixed size)
 
     public int lengthOfLongestSubstringKDistinct(String s, int k) {
-
-        if (k == 0 || s == null || s.isBlank()) {
+		
+        if (k == 0 || s == null || s.length()==0) { //dont use s.isBlank(), blank string is a valid string
             return 0;
         }
 
