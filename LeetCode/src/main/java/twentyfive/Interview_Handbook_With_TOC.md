@@ -7708,6 +7708,46 @@ Use distributed storage
 
 ---
 
+### Production Considerations
+
+* If a user becomes inactive, their deque will eventually become empty after stale requests are removed.
+* To prevent the map from growing indefinitely, remove the user entry once their deque is empty.
+
+```java
+if (userRequest.isEmpty()) {
+    requests.remove(user);
+}
+```
+
+* This is primarily a **production concern** to avoid retaining inactive users in memory.
+
+---
+
+### Why `Deque` instead of `Queue`?
+
+* Conceptually, this solution only requires a **FIFO Queue**:
+
+  * New requests are added at the back.
+  * Expired requests are removed from the front.
+* Therefore, `Queue<Long>` would be sufficient.
+
+```java
+Queue<Long> userRequests = new ArrayDeque<>();
+```
+
+* However, `ArrayDeque` implements the `Deque` interface, and `Deque` provides more explicit methods:
+
+```java
+offerLast()
+peekFirst()
+pollFirst()
+```
+
+* These method names make it clear that requests are appended at the back and expired requests are removed from the front.
+* There is **no algorithmic advantage** to using `Deque` over `Queue` in this problem—it's primarily an API/readability choice.
+
+
+
 # Recognition Cheat Sheet
 
 Keywords:
