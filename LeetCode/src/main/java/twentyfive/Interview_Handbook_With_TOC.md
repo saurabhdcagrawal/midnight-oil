@@ -3292,20 +3292,27 @@ x² + y²
 instead.
 
 ---
-# Comparator hint
-```text
-	PriorityQueue<Integer> maxHeap= new PriorityQueue<>((a,b)->{
-		int ax= Math.abs(a-x);
-		int bx= Math.abs(b-x);
-		if(ax==bx){
-			return Integer.compare(b, a);
-		}
-		else{
-			return Integer.compare(bx,ax);
-		}
-	});
-	//Also check the binary search implementation towards the end
-```text
+# Comparator Hint
+
+```java
+PriorityQueue<Integer> maxHeap = new PriorityQueue<>((a, b) -> {
+    int ax = Math.abs(a - x);
+    int bx = Math.abs(b - x);
+
+    if (ax == bx) {
+        // If distances are equal, the larger value has lower priority
+        // (smaller value is preferred by the problem).
+        return Integer.compare(b, a);
+    }
+
+    // Max Heap based on distance from x.
+    // The farthest element stays at the top and gets removed first.
+    return Integer.compare(bx, ax);
+});
+
+// Also review the Binary Search solution in this doc for the optimal approach for sorted input.
+```
+---
 # Complexity
 
 ```text
