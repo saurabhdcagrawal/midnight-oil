@@ -3149,7 +3149,6 @@ Heap
 * Whenever the heap size exceeds `K`, remove the least frequent element.
 * At the end, the heap contains exactly the **K most frequent elements**.
 * **Brute-force approach:** Convert the frequency map to a list of `[num, freq]` pairs (e.g., `List<int[]>`), then sort it in **descending order of frequency** using either:
-
   * `Collections.sort(list, (a, b) -> Integer.compare(b[1], a[1]))`, or
   * `list.sort((a, b) -> Integer.compare(b[1], a[1]))`.
   * Return the first `K` elements from the sorted list.
@@ -3297,7 +3296,13 @@ instead.
 # Complexity
 
 ```text
+
+O(N log K + K log K)
+
+Since K ≤ N, many people simply write:
+
 O(N log K)
+
 ```
 
 ---
