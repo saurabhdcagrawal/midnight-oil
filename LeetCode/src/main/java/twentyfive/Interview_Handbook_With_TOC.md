@@ -14950,7 +14950,7 @@ Overall                       = O(n) + O(n) = O(n)
 ## Space Complexity
 
 * **O(n)** (Stack)
-
+---
 
 # Find K Closest Elements (Binary Search)
 
