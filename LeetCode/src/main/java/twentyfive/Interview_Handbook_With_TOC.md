@@ -9366,6 +9366,153 @@ Kafka + Streaming Aggregation
 
 This combination solves a large class of analytics and telemetry interview problems.
 
+# LeetCode 635 - Design Log Storage System
+
+## Key Idea
+
+* **Query-driven schema design.**
+* Since all queries are **time-range based**, use a `TreeMap<Timestamp, List<LogId>>`.
+* Removing `:` from the timestamp (`YYYY:MM:DD:HH:MM:SS`) preserves chronological ordering lexicographically.
+* `TreeMap` enables efficient range queries using `subMap()`.
+
+```java
+class LogSystem {
+    // TreeMap<Timestamp, List<LogId>>
+    TreeMap<String, List<Integer>> eventLog;
+    Map<String, Integer> granularityMap = new HashMap<>();
+
+    public LogSystem() {
+        eventLog = new TreeMap<>();
+        populateGranularityMap();
+    }
+
+    public void put(int id, String timestamp) {
+        String formattedTs = getFormattedTsWithGranularity(timestamp, "Second", false);
+
+        if (!eventLog.containsKey(formattedTs))
+            eventLog.put(formattedTs, new ArrayList<Integer>());
+
+        eventLog.get(formattedTs).add(id);
+    }
+
+    public List<Integer> retrieve(String start, String end, String granularity) {
+
+        String formattedTsStart = getFormattedTsWithGranularity(start, granularity, false);
+        String formattedTsEnd = getFormattedTsWithGranularity(end, granularity, true);
+
+        NavigableMap<String, List<Integer>> timeSlice =
+                eventLog.subMap(formattedTsStart, true, formattedTsEnd, true);
+
+        List<Integer> result = new ArrayList<>();
+
+        for (String time : timeSlice.keySet()) {
+            result.addAll(timeSlice.get(time));
+        }
+
+        return result;
+    }
+
+    public String getFormattedTsWithGranularity(String timestamp,
+                                                String granularity,
+                                                boolean isEnd) {
+
+        String[] ts = timestamp.split(":");
+        StringBuilder sb = new StringBuilder();
+
+        for (String t : ts) {
+            if (sb.length() == granularityMap.get(granularity))
+                break;
+            sb.append(t);
+        }
+
+        String appendVal = isEnd ? "99" : "00";
+
+        while (sb.length() < 14) {
+            sb.append(appendVal);
+        }
+
+        return sb.toString();
+    }
+
+    public void populateGranularityMap() {
+        granularityMap.put("Year", 4);
+        granularityMap.put("Month", 6);
+        granularityMap.put("Day", 8);
+        granularityMap.put("Hour", 10);
+        granularityMap.put("Minute", 12);
+        granularityMap.put("Second", 14);
+    }
+}
+```
+
+---
+
+## Time Complexity
+
+### put()
+
+* TreeMap insertion: **O(log T)**
+
+where
+
+* **T** = Number of distinct timestamps stored in the `TreeMap`.
+
+---
+
+### retrieve()
+
+* `subMap()` lookup: **O(log T)**
+* Scan returned log IDs: **O(A)**
+
+Overall:
+
+```text
+O(log T + A)
+```
+
+where
+
+* **T** = Number of distinct timestamps.
+* **A** = Number of log IDs (requests) returned within the queried time range.
+
+---
+
+## Space Complexity
+
+```text
+O(N)
+```
+
+where
+
+* **N** = Total number of log IDs (requests) stored in the system.
+
+Each log ID is stored exactly once.
+
+---
+
+## Why does appending `"99"` work?
+
+When searching an **end** boundary, the missing fields are padded with `"99"` instead of `"00"`.
+
+Example:
+
+```text
+Granularity = Year
+
+Start = 20170000000000
+End   = 20179999999999
+```
+
+Although values like Month = `99` or Day = `99` are **not valid timestamps**, they are **never parsed as dates**.
+
+They are only used as **lexicographical upper bounds** for the `TreeMap` search.
+
+Since every valid timestamp is less than `"99"` for each component, all timestamps belonging to the requested granularity are included.
+
+This avoids dealing with month lengths, leap years, or other calendar calculations.
+
+
 # Chapter 11: Java Collections & Interview Cheat Sheet
 
 ## Why This Chapter Matters
