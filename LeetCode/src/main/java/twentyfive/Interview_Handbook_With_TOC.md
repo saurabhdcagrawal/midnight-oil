@@ -1601,7 +1601,12 @@ return mid;
 because:
 
 ```text
-mid itself may be the answer.
+* **`mid` itself may be the answer** 
+* **Note:**Search Insert Position**. When the search terminates, `lo` points to the **insertion position**, which is also the **ceiling** (smallest value ≥ target), while `hi` points to the **floor** (greatest value ≤ target). Therefore:
+
+  * `return lo` → Search Insert Position / Ceiling
+  * `return hi` → Floor
+
 ```
 
 ---
@@ -9874,7 +9879,7 @@ Therefore:
 | Ceiling (smallest value ≥ target) | `lo`   |
 
 This is why the algorithm naturally handles all edge cases:
-
+* lo gives us the insert position as also the ceiling, while hi gives us the floor
 * Exact match → returns the matching index.
 * Target lies between two timestamps → `hi` points to the floor.
 * Target is smaller than every timestamp → `hi = -1`.
