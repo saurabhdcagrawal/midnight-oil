@@ -9690,6 +9690,195 @@ where
 * Each timestamp-value pair is stored exactly once.
 ---
 
+# LeetCode 981 - Time Based Key-Value Store (Optimal)
+
+```java
+class TimeMap {
+
+    // Time-based Key-Value Store.
+    //
+    // Query-driven schema design.
+    //
+    // Since timestamps for a given key are guaranteed to be inserted in
+    // strictly increasing order, we can simply append them to a list.
+    //
+    // The list therefore remains sorted, allowing us to perform Binary Search
+    // during retrieval instead of maintaining a TreeMap.
+    //
+    // Map<Key, List<(Timestamp, Value)>>
+
+    Map<String, List<TimeValue>> datastore;
+
+    public TimeMap() {
+        datastore = new HashMap<>();
+    }
+
+    // HashMap lookup + ArrayList append.
+    //
+    // Since timestamps are inserted in increasing order,
+    // appending to the list is amortized O(1).
+    public void set(String key, String value, int timestamp) {
+
+        if (!datastore.containsKey(key))
+            datastore.put(key, new ArrayList<>());
+
+        datastore.get(key).add(new TimeValue(timestamp, value));
+    }
+
+    public String get(String key, int timestamp) {
+
+        if (!datastore.containsKey(key))
+            return "";
+
+        List<TimeValue> timeValueList = datastore.get(key);
+
+        int floorIndex = getFloorIndex(timeValueList, timestamp);
+
+        return floorIndex == -1
+                ? ""
+                : timeValueList.get(floorIndex).value;
+    }
+
+    public int getFloorIndex(List<TimeValue> timeValueList, int timestamp) {
+
+        int lo = 0;
+        int hi = timeValueList.size() - 1;
+
+        // Standard Binary Search.
+        //
+        // If an exact timestamp is found, return immediately.
+        //
+        // Otherwise, when the search terminates:
+        //
+        // lo = insertion position
+        // hi = insertion position - 1
+        //
+        // Therefore:
+        //
+        // return lo  -> Search Insert Position
+        // return hi  -> Floor (greatest timestamp <= requested timestamp)
+        //
+        // Nice property:
+        // If the requested timestamp is smaller than every stored timestamp,
+        // hi naturally becomes -1, so no special edge-case handling is needed.
+
+        while (lo <= hi) {
+
+            int mid = (lo + hi) / 2;
+
+            int currentTimestamp = timeValueList.get(mid).timestamp;
+
+            if (currentTimestamp == timestamp)
+                return mid;
+
+            if (currentTimestamp < timestamp)
+                lo = mid + 1;
+            else
+                hi = mid - 1;
+        }
+
+        return hi;
+    }
+}
+
+class TimeValue {
+
+    int timestamp;
+    String value;
+
+    public TimeValue(int timestamp, String value) {
+        this.timestamp = timestamp;
+        this.value = value;
+    }
+}
+```
+
+---
+
+# Time Complexity
+
+### `set()`
+
+```text
+HashMap lookup + ArrayList append
+
+= O(1) amortized
+```
+
+---
+
+### `get()`
+
+```text
+HashMap lookup + Binary Search
+
+= O(log T)
+```
+
+where
+
+* **T** = Number of timestamps stored for the requested key.
+
+**Notice:**
+
+* `T` refers to the **stored timestamps**, **not** the requested timestamp value.
+* Even if the requested timestamp is **1,000,000**, the search complexity remains **O(log T)**.
+* The requested timestamp is merely the **search key**. The runtime is **independent of its numeric value** and depends only on the number of timestamps stored for that key.
+
+---
+
+# Space Complexity
+
+```text
+O(K + N) ≈ O(N)
+```
+
+where
+
+* **K** = Number of unique keys.
+* **N** = Total number of `(timestamp, value)` pairs stored across all keys.
+
+Since every key has at least one `(timestamp, value)` pair,
+
+```text
+K ≤ N
+```
+
+therefore,
+
+```text
+O(K + N) ≈ O(N)
+```
+
+---
+
+# Binary Search Insight
+
+This is the same Binary Search variant used in **Search Insert Position**.
+
+When the search terminates:
+
+```text
+lo = insertion position
+hi = insertion position - 1
+```
+
+Therefore:
+
+| Requirement                       | Return |
+| --------------------------------- | ------ |
+| Search Insert Position            | `lo`   |
+| Floor (greatest value ≤ target)   | `hi`   |
+| Ceiling (smallest value ≥ target) | `lo`   |
+
+This is why the algorithm naturally handles all edge cases:
+
+* Exact match → returns the matching index.
+* Target lies between two timestamps → `hi` points to the floor.
+* Target is smaller than every timestamp → `hi = -1`.
+* Target is greater than every timestamp → `hi = last index`.
+
+---
 
 # Chapter 11: Java Collections & Interview Cheat Sheet
 
