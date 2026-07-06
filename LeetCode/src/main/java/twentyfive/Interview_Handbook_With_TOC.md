@@ -7714,8 +7714,8 @@ Use distributed storage
 * To prevent the map from growing indefinitely, remove the user entry once their deque is empty.
 
 ```java
-if (userRequest.isEmpty()) {
-    requests.remove(user);
+if (timestamps.isEmpty()) {
+    requestMap.remove(userId);
 }
 ```
 
@@ -8018,7 +8018,7 @@ class HitCounter {
 
     public void hit(int timestamp) {
 
-        // Same timestamp as latest bucket
+        // Same timestamp as latest bucket. Check peekLast not peekFirst
         if (!hits.isEmpty() && hits.peekLast()[0] == timestamp) {
             hits.peekLast()[1]++;
         } else {
