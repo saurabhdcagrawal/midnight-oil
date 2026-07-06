@@ -3153,9 +3153,7 @@ Heap
   * `list.sort((a, b) -> Integer.compare(b[1], a[1]))`.
   * Return the first `K` elements from the sorted list.
 
-> **Note:** A heap is **not sorted**.
-> Only the **root** is guaranteed to be the minimum frequency.
-> The remaining elements (including the most frequent one) can be anywhere in the heap—they are **not necessarily at the bottom**.
+> **Note:** A heap is **not sorted**. Only the **root** is guaranteed to have the highest priority (minimum for a min heap, maximum for a max heap). The remaining elements (including the most frequent one in a min heap) can be anywhere in the heap—they are **not necessarily at the bottom**. Therefore, **do not iterate** over a `PriorityQueue` expecting sorted order. To retrieve elements in priority order, repeatedly call `poll()`, which removes the root, restores the heap property, and returns the next highest-priority element.If the final answer requires the reverse order (e.g., highest frequency first), simply reverse the result list.
 
 ---
 
