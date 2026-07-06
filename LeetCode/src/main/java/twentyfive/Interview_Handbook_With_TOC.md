@@ -1713,27 +1713,56 @@ return mid;
 ```
 
 ---
-
 ## Boundary Search
 
-Question:
+Ask yourself:
 
 ```text
-Am I searching for the first valid answer?
+Am I searching for the first valid answer (boundary)?
 ```
 
-Use:
+If yes, use:
 
 ```java
-while(lo < hi)
+while (lo < hi)
 ```
 
-and:
+and return:
 
 ```java
 return lo;
 ```
 
+This template is commonly used to find the **first position satisfying a monotonic condition** (the first `true`).
+
+### Lower Bound
+
+**Lower Bound** = The **first element greater than or equal to the target (`>= target`)**.
+
+Example:
+
+```text
+Array  = [1, 4, 7, 10]
+Target = 8
+
+Lower Bound = 10
+```
+
+The boundary search template naturally returns the index of **10**.
+
+### Upper Bound
+
+**Upper Bound** = The **first element strictly greater than the target (`> target`)**.
+
+Example:
+
+```text
+Array  = [1, 4, 7, 7, 7, 10]
+Target = 7
+
+Lower Bound → first 7
+Upper Bound → 10
+```
 ---
 
 # Koko Eating Bananas
