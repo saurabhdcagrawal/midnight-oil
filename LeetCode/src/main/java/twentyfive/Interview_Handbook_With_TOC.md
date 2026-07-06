@@ -8651,6 +8651,108 @@ Where:
 
 ---
 
+# Java PriorityQueue Comparator Cheat Sheet
+
+* **Java's `PriorityQueue` is always a Min Heap.** The element considered **smallest by the comparator** rises to the top and is returned by `poll()`.
+
+* **Comparator Contract**
+
+  * `compare(x, y) < 0` → `x` comes **before** `y`
+  * `compare(x, y) > 0` → `x` comes **after** `y`
+  * `compare(x, y) == 0` → equal
+
+---
+
+## Integer Comparators
+
+### Min Heap (Smaller value at top)
+
+```java
+(a, b) -> Integer.compare(a, b)
+```
+
+Example:
+
+```text
+compare(5, 10) = -1
+
+5 comes before 10
+
+Heap Top → 5
+```
+
+---
+
+### Max Heap (Larger value at top)
+
+```java
+(a, b) -> Integer.compare(b, a)
+```
+
+Example:
+
+```text
+compare(5, 10)
+→ Integer.compare(10, 5)
+→ +1
+
+5 comes after 10
+
+Heap Top → 10
+```
+
+---
+
+## String Comparators
+
+Assume:
+
+```text
+LOGIN < LOGOUT
+```
+
+### Min Heap (Alphabetically smaller first)
+
+```java
+(a, b) -> a.compareTo(b)
+```
+
+```text
+Heap Top → LOGIN
+```
+
+---
+
+### Max Heap (Alphabetically larger first)
+
+```java
+(a, b) -> b.compareTo(a)
+```
+
+```text
+Heap Top → LOGOUT
+```
+
+---
+
+## Top-K Rule
+
+* **Top K Largest / Best** → Use a **Min Heap** (remove the worst element).
+* **Top K Smallest / Worst** → Use a **Max Heap** (remove the largest element).
+
+---
+
+## Mental Model
+
+Don't memorize `a.compareTo(b)` vs `b.compareTo(a)`.
+
+Instead ask:
+
+> **What should `poll()` return?**
+
+Then write the comparator so that **that element rises to the top**.
+
+
 # Scalability Discussion
 
 This design optimizes **locating the time range** but query performance is still proportional to the amount of data in that window.
