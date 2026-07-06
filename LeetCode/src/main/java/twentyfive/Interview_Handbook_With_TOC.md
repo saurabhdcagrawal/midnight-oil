@@ -13430,6 +13430,7 @@ ca
 class TrieNode {
 
     Map<Character,TrieNode> children = new HashMap<>();
+	//Alternately if dictionary only contains lower chase letters we can use : TrieNode[] children= new int[26] 
     boolean isWord;
 }
 ```
