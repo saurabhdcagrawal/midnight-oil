@@ -9722,7 +9722,9 @@ class TimeMap {
         if (!datastore.containsKey(key))
             datastore.put(key, new ArrayList<>());
 
-        datastore.get(key).add(new TimeValue(timestamp, value));
+        List<TimeValue> timeValueList = datastore.get(key);
+		
+		timeValueList.add(new TimeValue(timestamp, value));
     }
 
     public String get(String key, int timestamp) {
