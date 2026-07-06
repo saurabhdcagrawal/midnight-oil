@@ -1598,16 +1598,17 @@ You can return immediately:
 return mid;
 ```
 
-because:
+because **`mid` itself may already be the answer** (an exact match).
 
-```text
-* **`mid` itself may be the answer** 
-* **Note:**Search Insert Position**. When the search terminates, `lo` points to the **insertion position**, which is also the **ceiling** (smallest value ≥ target), while `hi` points to the **floor** (greatest value ≤ target). Therefore:
-
-  * `return lo` → Search Insert Position / Ceiling
-  * `return hi` → Floor
-
-```
+> **Note:** This variant is used in **Search Insert Position**. When the search terminates:
+>
+> - `lo` points to the **insertion position**, which is also the **ceiling** (smallest value ≥ target).
+> - `hi` points to the **floor** (greatest value ≤ target).
+>
+> Therefore:
+>
+> - `return lo` → Search Insert Position / Ceiling
+> - `return hi` → Floor
 
 ---
 
