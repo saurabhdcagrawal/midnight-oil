@@ -13353,12 +13353,37 @@ Reversal
 Merge
 Multi-Step Linked List Design
 ```
-
 # Chapter 15: Trie & Autocomplete
+
+## Why Trie?
+
+```java
+// Without a Trie, we could store all dictionary words in a HashSet/HashMap.
+//
+// While exact word lookup is O(1), operations involving prefixes
+// (e.g., startsWith(), autocomplete, spell check) require scanning
+// the entire dictionary, making them inefficient.
+//
+// A Trie is a specialized tree data structure for efficiently storing
+// and searching a collection of strings by sharing common prefixes.
+//
+// Instead of storing each word independently, common prefixes are stored
+// only once, reducing redundancy and enabling linear-time traversal
+// with respect to the length of the query.
+//
+// Common Applications:
+// - Autocomplete
+// - Spell Check
+// - Prefix Search (startsWith)
+// - Dictionary / Word Search
+// - IP Routing (Longest Prefix Match)
+```
+
+---
 
 ## Pattern Recognition
 
-Keywords:
+**Keywords:**
 
 ```text
 Prefix
@@ -13366,6 +13391,10 @@ Dictionary
 Autocomplete
 Suggestions
 Search
+StartsWith
+Word Search
+Spell Check
+Longest Prefix
 ```
 
 Think:
@@ -13394,6 +13423,25 @@ ca
 ```
 
 Trie stores prefixes efficiently.
+// Without a Trie, we could store all dictionary words in a HashSet/HashMap.
+//
+// While exact word lookup is O(1), operations involving prefixes
+// (e.g., startsWith(), autocomplete, spell check) require scanning
+// the entire dictionary, making them inefficient.
+//
+// A Trie is a specialized tree data structure for efficiently storing
+// and searching a collection of strings by sharing common prefixes.
+//
+// Instead of storing each word independently, common prefixes are stored
+// only once, reducing redundancy and enabling linear-time traversal
+// with respect to the length of the query.
+//
+// Common Applications:
+// - Autocomplete
+// - Spell Check
+// - Prefix Search (startsWith)
+// - Dictionary / Word Search
+// - IP Routing (Longest Prefix Match)
 ---
 
 # Trie Node
