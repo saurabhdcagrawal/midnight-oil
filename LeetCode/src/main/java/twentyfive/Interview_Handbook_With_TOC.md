@@ -9366,6 +9366,9 @@ Kafka + Streaming Aggregation
 
 This combination solves a large class of analytics and telemetry interview problems.
 
+---
+
+
 # LeetCode 635 - Design Log Storage System
 
 ## Key Idea
@@ -9480,10 +9483,11 @@ where
 ## Space Complexity
 
 ```text
-O(N)
+O(T+N) ~ O(N) assuming T<<N 
 ```
 
 where
+* **T** = Number of distinct timestamps stored in system.
 
 * **N** = Total number of log IDs (requests) stored in the system.
 
@@ -9512,6 +9516,7 @@ Since every valid timestamp is less than `"99"` for each component, all timestam
 
 This avoids dealing with month lengths, leap years, or other calendar calculations.
 
+---
 
 # Chapter 11: Java Collections & Interview Cheat Sheet
 
