@@ -3153,7 +3153,7 @@ Heap
   * `list.sort((a, b) -> Integer.compare(b[1], a[1]))`.
   * Return the first `K` elements from the sorted list.
 
-> **Note:** A heap is **not sorted**. Only the **root** is guaranteed to have the highest priority (minimum for a min heap, maximum for a max heap). The remaining elements (including the most frequent one in a min heap) can be anywhere in the heap—they are **not necessarily at the bottom**. Therefore, **do not iterate** over a `PriorityQueue` expecting sorted order. To retrieve elements in priority order, repeatedly call `poll()`, which removes the root, restores the heap property, and returns the next highest-priority element.If the final answer requires the reverse order (e.g., highest frequency first), simply reverse the result list.
+> **Note:** A heap is **not sorted**. Only the **root** is guaranteed to have the highest priority (minimum for a min heap, maximum for a max heap). The remaining elements (including the most frequent one in a min heap) can be anywhere in the heap—they are **not necessarily at the bottom**. Therefore, **do not iterate** over a `PriorityQueue` expecting sorted order. To retrieve elements in priority order, repeatedly call `poll()`, which removes the root, restores the heap property, and returns the next highest-priority element. If the final answer requires the reverse order (e.g., highest frequency first), simply reverse the result list.
 
 ---
 
@@ -9515,6 +9515,181 @@ Since every valid timestamp is less than `"99"` for each component, all timestam
 This avoids dealing with month lengths, leap years, or other calendar calculations.
 
 ---
+
+# LeetCode 981 - Time Based Key-Value Store
+
+```java
+class TimeMap {
+
+    // Time-based key-value store.
+
+    // Query-driven schema design.
+    //
+    // Map<Key, Map<Timestamp, Value>>
+    //
+    // A HashMap gives O(1) lookup for a key and an exact timestamp.
+    //
+    // However, if the requested timestamp does not exist, the problem asks
+    // for the value associated with the greatest timestamp <= requested timestamp.
+    //
+    // Since HashMap is unordered, finding the closest earlier timestamp
+    // requires scanning all timestamps for that key, resulting in O(T),
+    // where T is the number of timestamps stored for that key.
+    //
+    // Optimize the inner HashMap to a TreeMap.
+    // TreeMap supports floorKey()/floorEntry() in O(log T).
+
+    // Map<String, Map<Integer, String>> datastore;
+    Map<String, TreeMap<Integer, String>> datastore;
+
+    public TimeMap() {
+        datastore = new HashMap<>();
+    }
+
+    // HashMap version:
+    // O(1)
+    //
+    // TreeMap version:
+    // HashMap lookup + TreeMap insertion
+    // = O(log T)
+    public void set(String key, String value, int timestamp) {
+
+        if (!datastore.containsKey(key))
+            datastore.put(key, new TreeMap<>());
+
+        Map<Integer, String> timeValueKeyMap = datastore.get(key);
+        timeValueKeyMap.put(timestamp, value);
+    }
+
+    // Brute Force:
+    //
+    // Approach 1:
+    // Start from the requested timestamp and decrement until a match is found.
+    //
+    // Complexity:
+    // O(RT), where RT is the requested timestamp value.
+    //
+    // Example:
+    // Only one stored timestamp = 1
+    // Requested timestamp = 1,000,000
+    //
+    // Nearly one million iterations are performed.
+    //
+    // Approach 2:
+    // Iterate through all stored timestamps for that key and keep track of
+    // the greatest timestamp <= requested timestamp.
+    //
+    // Complexity:
+    // O(T), where T is the number of timestamps stored for that key.
+
+    /*
+    Approach 2
+
+    Set<Integer> tsValues = keyData.keySet();
+
+    int closestTs = 0;
+
+    for (int ts : tsValues) {
+        if (ts > closestTs && ts <= timestamp) {
+            closestTs = ts;
+        }
+    }
+    */
+
+    public String get(String key, int timestamp) {
+
+        if (!datastore.containsKey(key))
+            return "";
+
+        TreeMap<Integer, String> timeValueKeyMap = datastore.get(key);
+
+        // TreeMap is implemented as a Red-Black Tree.
+        // All key-based operations are O(log T), including:
+        // put(), get(), containsKey(), floorKey(), ceilingKey().
+
+        /*
+        Old brute-force code
+
+        Map<Integer, String> timeValueKeyMap = datastore.get(key);
+
+        for (int i = timestamp; i >= 0; i--) {
+            if (timeValueKeyMap.containsKey(i))
+                return timeValueKeyMap.get(i);
+        }
+
+        return "";
+        */
+
+        Integer nearestLowerTS = timeValueKeyMap.floorKey(timestamp);
+
+        // floorKey() can return null.
+        // Example:
+        // Stored timestamp = 5
+        // Requested timestamp = 3
+
+        // If an exact timestamp exists, floorKey() returns it.
+        // Otherwise, it returns the closest smaller timestamp.
+
+        return nearestLowerTS == null
+                ? ""
+                : timeValueKeyMap.get(nearestLowerTS);
+    }
+}
+```
+
+---
+
+## Time Complexity
+
+### Before Optimization (Inner HashMap)
+
+| Operation                                     | Complexity |
+| --------------------------------------------- | ---------: |
+| `set()`                                       |   **O(1)** |
+| `get()` (Approach 1 - decrement timestamp)    |  **O(RT)** |
+| `get()` (Approach 2 - scan stored timestamps) |   **O(T)** |
+
+where
+
+* **RT** = Requested timestamp value.
+* **T** = Number of timestamps stored for the requested key.
+
+---
+
+### After Optimization (Inner TreeMap)
+
+| Operation                        |   Complexity |
+| -------------------------------- | -----------: |
+| `set()`                          | **O(log T)** |
+| `get()` (`floorKey()` + `get()`) | **O(log T)** |
+
+where
+
+* **T** = Number of timestamps stored for the requested key.
+
+  * **Notice:** `T` refers to the **stored timestamps**, **not** the requested timestamp value.
+  * Even if the requested timestamp is **1,000,000**, the search complexity remains **O(log T)**.
+  * The requested timestamp is merely the **search key**. The runtime is **independent of its numeric value** and depends only on the height of the underlying **Red-Black Tree**, which is determined by the number of timestamps stored for that key.
+  
+* **`floorKey(k)`** → Returns the **greatest key ≤ `k`** (inclusive). If an exact match exists, it returns that key; otherwise, it returns the closest smaller key. Returns `null` if no such key exists.
+
+* **`ceilingKey(k)`** → Returns the **smallest key ≥ `k`** (inclusive). If an exact match exists, it returns that key; otherwise, it returns the closest larger key. Returns `null` if no such key exists.
+  
+
+---
+
+## Space Complexity
+
+```text
+O(N)
+```
+
+where
+
+* **N** = Total number of `(key, timestamp, value)` entries stored across all keys.
+* Each timestamp-value pair is stored exactly once.
+---
+
 
 # Chapter 11: Java Collections & Interview Cheat Sheet
 
