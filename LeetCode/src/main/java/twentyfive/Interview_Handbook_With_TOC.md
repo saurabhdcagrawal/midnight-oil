@@ -865,6 +865,7 @@ can never become the maximum in any future window.
 
 Remove them immediately.
 
+Value check is at the back , not at the front
 ---
 
 ## Solution
@@ -1343,10 +1344,14 @@ O(N)
 Example:
 
 ```text
+Bottom 
+
 1
 3
 5
 8
+
+Top
 ```
 
 Used for:
@@ -1364,10 +1369,14 @@ patterns.
 Example:
 
 ```text
+bottom
+
 8
 5
 3
 1
+
+Top
 ```
 
 Used for:
@@ -6384,7 +6393,7 @@ In high-concurrency systems, `ReentrantLock` often provides better control over 
 
 A concise senior-level explanation:
 
-> I used a combination of a HashMap and a doubly linked list. The HashMap gives O(1) access to cache nodes by key, while the doubly linked list maintains access order. The head of the list represents the most recently used entry and the tail represents the least recently used entry. Every access moves the node to the front, and when capacity is exceeded, I remove the tail node in O(1). I use a doubly linked list because arbitrary node removal requires a previous pointer, which a singly linked list cannot provide efficiently.
+> I used a combination of a HashMap and a doubly linked list. The HashMap gives O(1) access to cache nodes by key, while the doubly linked list maintains access order. The head of the list represents the most recently used entry and the tail represents the least recently used entry. Every access moves the node to the front, and when capacity is exceeded, I remove the tail node in O(1). I use a doubly linked list because arbitrary node removal requires a previous pointer, which a singly linked list cannot provide efficiently in O(1).A Doubly Linked List stores both prev and next pointers, allowing any node to be removed or moved in O(1) time.
 
 ```
 ```
