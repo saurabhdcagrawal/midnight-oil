@@ -13558,21 +13558,23 @@ This turns the search into a DFS over the Trie.
 
 ```java
 public boolean search(String word) {
+	//can check for null word here 
     return search(root,word);
 }
 
 public boolean search(TrieNode node,String word) {
 
-    if(word!=null && word.length()==0) // b** or word fully consumed
+    if(word.length()==0) // b** or word fully consumed
         return node.isEnd;
 
     for(int i=0;i<word.length();i++) {
 
         char ch = word.charAt(i);
-
+		
         if(ch=='.') {
-
-            for(Character k: node.children.keySet()) {
+			
+			// Wildcard: try every possible child.
+			for(Character k: node.children.keySet()) {
 
                 TrieNode child = node.children.get(k);
 
@@ -13734,8 +13736,7 @@ Wildcard search worst case:
 ```text
 O(26^L)
 ```
-
-because each wildcard can branch into multiple child nodes.
+Each character in search query can be a wild card and because each wildcard can branch into multiple child nodes (as many as 26).
 
 ## Search Suggestions System
 
@@ -13857,62 +13858,155 @@ No sorting needed during search
 ```
 
 ---
-
 ## Implementation
-
 ```java
 class Solution {
-    public static int K=3;
-	TrieNode root;
-
-    public Solution(){
-        root= new TrieNode();
-    }
-
-//O(L) where L is max lenght of product
-    public void addProductsToDictionary(String product){
-        TrieNode node=root;
-        for(char ch :product.toCharArray()){
-            if(!node.children.containsKey(ch))
-                node.children.put(ch,new TrieNode());
-            node= node.children.get(ch);
-            if(node.suggestions.size()<K)
-                node.suggestions.add(product);    
-        }
-    }
-
+	public static int K=3;
     public List<List<String>> suggestedProducts(String[] products, String searchWord) {
-        //N number of products we have O(Nlog N)
+
+        // Sort products first so that while inserting into the Trie,
+        // the first three products reaching any prefix are already the
+        // three lexicographically smallest suggestions.
         Arrays.sort(products);
-        //O(NL);
-        for(String product: products){
-            addProductsToDictionary(product);
+
+        TrieNode root = new TrieNode();
+        addProductsToTrie(products, root);
+
+        List<List<String>> result = new ArrayList<>();
+
+        TrieNode node = root;
+
+        for (char ch : searchWord.toCharArray()) {
+
+            List<String> suggestionsPerChar = new ArrayList<>();
+
+            // Once a prefix is not found, all longer prefixes are also absent.
+            // Keep node as null and return empty lists for the remaining prefixes.
+            if (node != null && node.children.containsKey(ch)) {
+
+                node = node.children.get(ch);
+                suggestionsPerChar.addAll(node.suggestedProducts);
+
+            } else {
+
+                node = null;
+            }
+
+            result.add(suggestionsPerChar);
         }
 
-        List<List<String>> result = new ArrayList();
-        TrieNode node = root;
-        //O(S)
-        //Total : O(NL)+O(S)+O(NlogN)
-        for(char ch: searchWord.toCharArray()){
-            if(node== null || !node.children.containsKey(ch)){
-                result.add(new ArrayList<String>());
-                node=null;
-            }
-            else{
-                node= node.children.get(ch);
-                result.add(new ArrayList<>(node.suggestions));
-            }
-        }
         return result;
     }
+
+    public void addProductsToTrie(String[] products, TrieNode root) {
+
+        for (String product : products) {
+
+            TrieNode node = root;
+
+            for (char ch : product.toCharArray()) {
+
+                if (!node.children.containsKey(ch))
+                    node.children.put(ch, new TrieNode());
+
+                node = node.children.get(ch);
+
+                // Store only the first three (K) products for every prefix.
+                if (node.suggestedProducts.size() < K)
+                    node.suggestedProducts.add(product);
+            }
+        }
+    }
 }
 
+class TrieNode {
 
-class TrieNode{
-    public Map<Character,TrieNode> children = new HashMap<>();
-    public List<String> suggestions= new ArrayList();
+    Map<Character, TrieNode> children = new HashMap<>();
+
+    // Top 3 lexicographically smallest products for this prefix.
+    List<String> suggestedProducts = new ArrayList<>();
 }
 ```
+
+---
+
+# Time Complexity
+
+Let
+
+* **N** = Number of products
+* **L** = Average product length
+* **M** = Length of `searchWord`
+
+### Build Trie
+
+```text
+Sort products      : O(N log N)
+
+Insert into Trie   : O(N × L)
+
+Overall            : O(N log N + N × L)
+```
+
+---
+
+### Search
+
+For each character of the search word:
+
+* Trie lookup = **O(1)**
+* Copy at most 3 suggestions = **O(1)**
+
+```text
+Overall = O(M)
+```
+
+---
+
+# Space Complexity
+
+```text
+Trie Nodes = O(N × L)
+```
+
+where
+
+* **N** = Number of products
+* **L** = Average product length
+
+Each Trie node stores:
+
+* A map of children.
+* At most **3 product references**.
+
+Since the suggestion list size is bounded by a constant (3), it contributes only a constant-factor overhead.
+
+```text
+Overall Space = O(N × L)
+```
+
+---
+
+## Why sort first?
+
+Sorting guarantees that products are inserted in lexicographical order.
+
+Therefore, while building the Trie:
+
+```java
+if (node.suggestedProducts.size() < 3)
+    node.suggestedProducts.add(product);
+```
+
+automatically stores the **3 lexicographically smallest products** for every prefix.
+
+This avoids:
+
+* DFS during search.
+* Sorting suggestions after every query.
+* Maintaining a heap at each node.
+
+As a result, each search is simply a Trie traversal with precomputed answers.
 
 ---
 
