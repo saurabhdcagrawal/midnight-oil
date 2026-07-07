@@ -14109,47 +14109,9 @@ for all remaining characters without additional Trie lookups.
 
 ---
 
-## Complexity
-
-Let:
-
-```text
-N = number of products
-L = average/max product length
-S = searchWord length
-```
-
-Build:
-
-```text
-Sort Products: O(N log N)
-
-Build Trie:    O(NL)
-```
-
-Query:
-
-```text
-O(S)
-```
-
-Total:
-
-```text
-O(N log N + NL + S)
-```
-
-Space:
-
-```text
-O(NL)
-```
-
----
-
 ## Interview Sound Bite
 
-Sort products first. While inserting into the Trie, store up to three products at every prefix node. Since products are inserted in lexicographical order, the first three products reaching a node are automatically the lexicographically smallest suggestions. During search, simply walk the Trie once and return the precomputed suggestions stored at each node, giving O(S) query time.
+Sort products first. While inserting into the Trie, store up to three products at every prefix node. Since products are inserted in lexicographical order, the first three products reaching a node are automatically the lexicographically smallest suggestions. During search, simply walk the Trie once and return the precomputed suggestions stored at each node, giving O(M) query time.
 
 
 ---
