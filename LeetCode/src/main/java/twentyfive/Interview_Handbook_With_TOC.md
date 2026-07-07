@@ -1442,6 +1442,242 @@ class StockSpanner {
 }
 ```
 
+## Why can we discard smaller values?
+
+Consider the prices arriving in order:
+
+```text
+100, 80, 60, 70, 65
+```
+
+The Stock Span asks:
+
+> **How many consecutive previous days have a price less than or equal to today's price?**
+
+Notice the word **consecutive**.
+
+---
+
+### Step 1
+
+```text
+Price = 100
+
+Stack:
+(100,1)
+```
+
+---
+
+### Step 2
+
+```text
+Price = 80
+
+80 < 100
+
+Stack:
+(100,1)
+(80,1)
+```
+
+---
+
+### Step 3
+
+```text
+Price = 60
+
+60 < 80
+
+Stack:
+(100,1)
+(80,1)
+(60,1)
+```
+
+---
+
+### Step 4
+
+```text
+Price = 70
+```
+
+We compare with the top of the stack.
+
+```text
+70 >= 60
+```
+
+So `60` contributes to today's span.
+
+Pop it.
+
+Current span:
+
+```text
+1 + 1 = 2
+```
+
+Now compare again.
+
+```text
+70 >= 80 ?
+
+No.
+```
+
+Stop.
+
+Push
+
+```text
+(70,2)
+```
+
+Stack becomes
+
+```text
+(100,1)
+(80,1)
+(70,2)
+```
+
+### Why can we discard 60?
+
+Suppose a future price is
+
+```text
+65
+```
+
+We look backward:
+
+```text
+65
+← 70
+```
+
+Since
+
+```text
+70 > 65
+```
+
+the span stops immediately.
+
+We never even reach `60`.
+
+Although
+
+```text
+60 <= 65
+```
+
+it is **blocked** by `70`.
+
+Therefore, `60` will never again contribute independently to any future span.
+
+Its contribution has already been **absorbed** into `(70,2)`.
+
+---
+
+### Step 5
+
+Now process
+
+```text
+Price = 65
+```
+
+Stack:
+
+```text
+(100,1)
+(80,1)
+(70,2)
+```
+
+Compare:
+
+```text
+65 >= 70 ?
+
+No.
+```
+
+Stop immediately.
+
+Push
+
+```text
+(65,1)
+```
+
+Stack:
+
+```text
+(100,1)
+(80,1)
+(70,2)
+(65,1)
+```
+
+Notice that **60 is never needed again**.
+
+Even though
+
+```text
+60 <= 65
+```
+
+we cannot count it because `70` blocks the consecutive span.
+
+---
+
+## Key Insight
+
+When a larger price arrives, all smaller prices popped from the stack become **irrelevant**.
+
+Any future search looking backward will encounter the larger price first.
+
+If that larger price blocks the span, the popped prices are unreachable.
+
+If that larger price is also popped in the future, it already carries the combined span of all the smaller prices it absorbed.
+
+Therefore, the popped prices **no longer carry any independent information** and can be safely discarded.
+
+This is why we store:
+
+```java
+(price, span)
+```
+
+instead of every individual price.
+
+Each remaining stack entry represents a **compressed summary** of one or more previous days.
+
+---
+
+### Monotonic Stack Property
+
+The stack is **monotonically decreasing** from bottom to top.
+
+```text
+Bottom
+
+100
+80
+70
+65
+
+Top
+```
+
+Whenever a larger (or equal) price arrives, smaller prices are popped and their spans are merged into the new price, effectively compressing the history while preserving all information needed for future span calculations.
+
+---
 
 # Modern Java Note
 
