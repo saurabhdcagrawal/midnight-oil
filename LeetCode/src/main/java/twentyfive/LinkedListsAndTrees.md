@@ -6844,6 +6844,333 @@ Examples:
 
 > **Passing an object to a method does not mean the caller will see changes. The caller only sees changes if the object itself is mutated. If the operation creates a new object (as with `String` or `Integer`), only the local reference changes, and the caller continues pointing to the original object.**
 
+
+
+# Java: Object References, Mutability & Pass-by-Value
+
+## Java is always Pass-by-Value
+
+A common misconception is that Java is "pass-by-reference."
+
+Java is **always pass-by-value**.
+
+For objects, the **value being copied is the object reference (memory address)**.
+
+```java
+TrieNode root = new TrieNode();
+
+addProductsToTrie(products, root);
+```
+
+Memory:
+
+```text
+Caller
+
+root
+ |
+ v
+TrieNode A
+```
+
+When the method is called:
+
+```text
+Caller                    Method
+
+root                      root
+ |                         |
+ |                         |
+ +-------------------------+
+            |
+            v
+        TrieNode A
+```
+
+There are **two reference variables**, but both point to the **same object**.
+
+Therefore, modifying the object inside the method is visible to the caller.
+
+---
+
+## Modifying the object
+
+```java
+void foo(TrieNode root) {
+    root.isEnd = true;
+}
+```
+
+After the method returns:
+
+```java
+root.isEnd == true
+```
+
+because the object itself was modified.
+
+---
+
+## Reassigning the reference
+
+```java
+void foo(TrieNode root) {
+    root = new TrieNode();
+}
+```
+
+Memory:
+
+```text
+Caller
+
+root
+ |
+ v
+TrieNode A
+
+
+Method
+
+root
+ |
+ v
+TrieNode B
+```
+
+Only the **method's local copy** of the reference changes.
+
+After returning:
+
+```text
+Caller
+
+root
+ |
+ v
+TrieNode A
+```
+
+The caller is completely unaffected.
+
+---
+
+# Why doesn't this happen with String?
+
+```java
+void foo(String s) {
+    s = s + " World";
+}
+```
+
+Caller:
+
+```java
+String s = "Hello";
+
+foo(s);
+
+System.out.println(s);
+```
+
+Output:
+
+```text
+Hello
+```
+
+### Why?
+
+`String` is **immutable**.
+
+This statement:
+
+```java
+s = s + " World";
+```
+
+does **not** modify `"Hello"`.
+
+Instead it creates a **new String object**:
+
+```text
+Caller
+
+s
+ |
+ v
+"Hello"
+
+
+Method
+
+s
+ |
+ v
+"Hello World"
+```
+
+The caller still points to the original String.
+
+---
+
+# Mutable vs Immutable
+
+The difference is **not** how Java passes the object.
+
+The difference is whether the object itself can be modified.
+
+## Mutable Objects
+
+Changes are visible to the caller.
+
+Examples:
+
+```text
+ArrayList
+HashMap
+HashSet
+TreeMap
+TreeSet
+StringBuilder
+TrieNode
+TreeNode
+Most custom classes
+```
+
+Example:
+
+```java
+void foo(List<Integer> list) {
+    list.add(10);
+}
+```
+
+The caller's list now contains `10`.
+
+---
+
+## Immutable Objects
+
+Operations create a **new object** instead of modifying the existing one.
+
+Examples:
+
+```text
+String
+Integer
+Long
+Double
+LocalDate
+LocalDateTime
+BigInteger
+BigDecimal
+```
+
+Example:
+
+```java
+void foo(String s) {
+    s = s + " World";
+}
+```
+
+The caller's String remains unchanged.
+
+---
+
+# Are Custom Objects Mutable?
+
+**Yes, by default.**
+
+Example:
+
+```java
+class Employee {
+    String name;
+}
+```
+
+```java
+Employee emp = new Employee();
+emp.name = "Mike";
+
+foo(emp);
+```
+
+```java
+void foo(Employee emp) {
+    emp.name = "John";
+}
+```
+
+After returning:
+
+```text
+emp.name == "John"
+```
+
+because the same object was modified.
+
+---
+
+# How to Make a Custom Object Immutable
+
+```java
+final class Employee {
+
+    private final String name;
+
+    Employee(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+}
+```
+
+Characteristics:
+
+* `final` class (optional but recommended)
+* `private final` fields
+* No setters
+* State cannot be modified after construction
+
+---
+
+# Easy Rule to Remember
+
+If you can write:
+
+```java
+obj.someField = value;
+```
+
+or
+
+```java
+obj.someCollection.add(value);
+```
+
+the object is **mutable**.
+
+If every "change" requires:
+
+```java
+obj = new SomeObject(...);
+```
+
+the object is **immutable**.
+
+---
+
+# Interview Takeaway
+
+> **Java always passes object references by value. If the object is mutable, modifying its state is visible to the caller. If the object is immutable (e.g., `String`), any "modification" creates a new object, so the caller continues to reference the original object.**
+
+
 # 105. Construct Binary Tree from Preorder and Inorder Traversal
 
 Given the preorder and inorder traversal of a binary tree, reconstruct the original binary tree.
