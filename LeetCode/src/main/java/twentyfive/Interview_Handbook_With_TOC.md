@@ -14165,6 +14165,93 @@ Trie
 ```
 
 ---
+# Autocomplete System (Trie) - Design
+
+## Core Idea
+
+Unlike **Search Suggestions System**, the autocomplete system is **dynamic**—users can continuously add new sentences and existing sentence frequencies change over time.
+
+Therefore, instead of storing the **Top 3 suggestions** at every Trie node, each node stores **all sentences passing through that prefix along with their frequencies**.
+
+This allows frequencies to be updated easily whenever a user completes a sentence. 
+
+---
+
+## Trie Node
+
+```java
+class TrieNode {
+    Map<Character, TrieNode> children;
+    Map<String, Integer> sentenceFrequency;
+}
+```
+
+* `children` → Traverses the Trie character by character.
+* `sentenceFrequency` → Stores every sentence having this prefix along with its current frequency.
+
+---
+
+## Constructor
+
+* Insert every sentence into the Trie.
+* While inserting, visit every prefix node and update:
+
+```text
+sentenceFrequency.put(sentence, frequency)
+```
+
+Thus, every prefix node knows all candidate sentences for that prefix.
+
+---
+
+## User Input Flow
+
+Suppose the user types:
+
+```text
+i
+```
+
+* Traverse from the root to the `'i'` node.
+* Retrieve that node's `sentenceFrequency` map.
+* Iterate through all `(sentence, frequency)` pairs.
+* Insert them into a **PriorityQueue** ordered by:
+
+  * Higher frequency first.
+  * Lexicographically smaller sentence first if frequencies are equal.
+* Keep only the top 3 candidates.
+* Return those 3 suggestions.
+
+As the user types additional characters, simply continue traversing the Trie to the next prefix node and repeat the same process.
+
+If at any point the prefix does not exist, all remaining inputs naturally return an empty list.
+
+---
+
+## Updating Frequency (`'#'`)
+
+When the user presses `'#'`:
+
+* The accumulated input becomes a complete sentence.
+* Increase its frequency (or initialize it to `1` if it is new).
+* Insert/update the sentence along every prefix in the Trie.
+* Update the `sentenceFrequency` map at each visited node.
+
+This keeps the Trie synchronized with the latest usage frequencies.
+
+---
+
+## Design Insight
+
+Storing the complete `sentenceFrequency` map at every prefix node makes queries straightforward:
+
+1. Traverse to the prefix node.
+2. Retrieve all candidate sentences from that node.
+3. Use a PriorityQueue to extract the Top 3 suggestions.
+
+The trade-off is higher memory usage (the same sentence and frequency are stored at multiple prefix nodes), but it greatly simplifies query processing and dynamic frequency updates.
+
+---
 
 # Audible Mapping
 
