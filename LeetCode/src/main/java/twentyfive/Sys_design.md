@@ -2878,6 +2878,422 @@ Solutions:
 
 7. The best systems usually use multiple databases, choosing each one based on its strengths.
 
+# Read-After-Write Consistency & Replication Lag
+
+## Interview Question
+
+**What happens if a client writes to the primary database, but the next read goes to a secondary replica? How is consistency maintained?**
+
+---
+
+## Primary-Replica Architecture
+
+In a primary-replica architecture:
+
+- **Writes** always go to the **Primary**
+- **Reads** are usually served by **Replica** databases
+
+```text
+           WRITE
+             │
+             ▼
+        Primary DB
+             │
+     Async Replication
+             │
+      ┌──────┴──────┐
+      ▼             ▼
+ Replica 1      Replica 2
+      ▲             ▲
+      └──── READS ──┘
+```
+
+---
+
+## The Problem: Replication Lag
+
+Replication is typically **asynchronous**.
+
+Timeline:
+
+```text
+t0
+
+Primary : Balance = $100
+Replica : Balance = $100
+```
+
+User updates the balance:
+
+```text
+UPDATE Balance = $80
+```
+
+Immediately after the update:
+
+```text
+Primary : Balance = $80
+Replica : Balance = $100
+```
+
+Before replication completes, another request reads from the replica.
+
+Result:
+
+```text
+Primary Returns : $80
+
+Replica Returns : $100
+```
+
+The client receives **stale data**.
+
+This is called:
+
+```text
+Replication Lag
+
+or
+
+Stale Read
+```
+
+---
+
+## Does This Affect Every Read?
+
+**No.**
+
+The consistency issue only matters when the read depends on data that was just modified.
+
+Example:
+
+```text
+User 123
+Updates Profile
+        ↓
+Reads Profile
+```
+
+This user expects to immediately see the updated data.
+
+However:
+
+```text
+User 456
+Reads Their Own Profile
+```
+
+is completely unrelated and can safely read from a replica.
+
+Therefore, **read-after-write consistency is usually enforced only for the affected user, account, or entity**, not for every client.
+
+---
+
+## Why Do Databases Replicate Asynchronously?
+
+Asynchronous replication provides:
+
+```text
+Lower Write Latency
+
+Higher Throughput
+
+Better Scalability
+```
+
+The trade-off is:
+
+```text
+Eventual Consistency
+```
+
+Replicas eventually become consistent with the primary.
+
+---
+
+# How Does The System Know Replication Has Finished?
+
+A common misconception is that databases simply wait a fixed amount of time.
+
+**They do not.**
+
+Replication is tracked using the database's transaction log.
+
+Example:
+
+```text
+Primary Transaction Log
+
+100
+101
+102
+103
+104
+105
+```
+
+Replica:
+
+```text
+Applied
+
+100
+101
+102
+103
+104
+```
+
+Replica state:
+
+```text
+Replica Position = 104
+
+Primary Position = 105
+```
+
+The replica knows it is one transaction behind.
+
+Once it applies:
+
+```text
+105
+```
+
+it has fully caught up.
+
+This is very similar to how Kafka consumers track offsets.
+
+---
+
+# How Applications Handle Read-After-Write Consistency
+
+## Option 1 — Read From Primary (Most Common)
+
+Immediately after a write:
+
+```text
+Update Customer 123
+        ↓
+Read Customer 123
+        ↓
+Primary
+```
+
+This guarantees:
+
+```text
+Read-After-Write Consistency
+```
+
+---
+
+## Option 2 — Sticky Reads (Very Common)
+
+Many applications temporarily route reads for the affected user to the primary.
+
+Example:
+
+```text
+Customer 123
+
+Primary Read Until
+
+10:05:15
+```
+
+For a few seconds:
+
+```text
+Customer 123
+        ↓
+Primary
+```
+
+After that:
+
+```text
+Customer 123
+        ↓
+Replica
+```
+
+The timer is **not** because replication takes five seconds.
+
+Replication usually completes within milliseconds.
+
+The timer is simply a safe and inexpensive buffer.
+
+---
+
+## Option 3 — Check Replica Progress (Advanced)
+
+Instead of using a timer, some systems compare replication positions.
+
+Example:
+
+```text
+Primary Position = 105
+
+Replica Position = 104
+```
+
+Application checks:
+
+```text
+Replica == Primary ?
+```
+
+If:
+
+```text
+Yes
+```
+
+Read from replica.
+
+Otherwise:
+
+```text
+Read from primary.
+```
+
+This provides stronger consistency but requires additional coordination.
+
+---
+
+## Option 4 — Synchronous Replication
+
+Instead of:
+
+```text
+Primary
+↓
+ACK
+↓
+Replica
+```
+
+the database waits:
+
+```text
+Primary
+↓
+Replica
+↓
+ACK
+```
+
+Benefits:
+
+```text
+Strong Consistency
+```
+
+Trade-off:
+
+```text
+Higher Write Latency
+```
+
+---
+
+## Option 5 — Quorum Reads/Writes
+
+Distributed databases such as Cassandra use quorum-based consistency.
+
+Example:
+
+```text
+Replication Factor (N) = 3
+
+Write Quorum (W) = 2
+
+Read Quorum (R) = 2
+```
+
+Since:
+
+```text
+R + W > N
+```
+
+at least one replica participating in the read always contains the latest version.
+
+---
+
+# Real-World Example
+
+Suppose a banking application updates an account balance.
+
+```text
+Transfer $500
+        ↓
+Primary Updated
+```
+
+Immediately afterwards:
+
+```text
+GET Balance
+```
+
+The application routes this request to the primary to ensure the customer sees the latest balance.
+
+Meanwhile:
+
+```text
+Another Customer
+Checking Their Own Account
+```
+
+can safely read from a replica because their data was not modified.
+
+---
+
+# Key Takeaways
+
+```text
+Writes
+=
+Primary
+
+Reads
+=
+Usually Replicas
+
+Replication
+=
+Usually Asynchronous
+
+Problem
+=
+Replication Lag
+
+Result
+=
+Stale Reads
+
+Read-After-Write Consistency
+=
+Only Needed For The Entity That Was Updated
+
+Common Solution
+=
+Temporarily Read From Primary
+
+Advanced Solution
+=
+Track Replica Replication Position
+```
+
+---
+
+# Interview Sound Bite
+
+> In a primary-replica architecture, writes are committed to the primary and then asynchronously replicated to secondary replicas. If a read occurs before replication completes, the client may receive stale data. This is typically addressed by providing read-after-write consistency for the affected user or entity, either by temporarily routing reads to the primary (sticky reads) or by checking whether the replica has caught up using replication progress. This balances strong consistency with the scalability benefits of read replicas.
+
 # Distributed Systems Fundamentals
 
 ---
