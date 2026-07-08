@@ -12517,9 +12517,69 @@ Time  O(M×N)
 Space O(M×N)
 ```
 
+Code Review by GPT:
+
+```text
+private static final int[] ROWS = {-1, 0, 1, 0};
+private static final int[] COLS = {0, 1, 0, -1};
+
+To avoid create these arrays for every DFS call
+
+```
+```java
+class Solution {
+
+    private static final int[] ROWS = {-1, 0, 1, 0};
+    private static final int[] COLS = {0, 1, 0, -1};
+
+    public int numIslands(char[][] grid) {
+
+        int m = grid.length;
+        int n = grid[0].length;
+
+        int count = 0;
+        boolean[][] visited = new boolean[m][n];
+
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+
+                if (grid[i][j] == '1' && !visited[i][j]) {
+                    count++;
+                    dfs(i, j, m, n, grid, visited);
+                }
+            }
+        }
+
+        return count;
+    }
+
+    public void dfs(int i, int j, int m, int n,
+                    char[][] grid, boolean[][] visited) {
+
+        if (i < 0 || j < 0 ||
+            i >= m || j >= n ||
+            grid[i][j] != '1' ||
+            visited[i][j]) {
+            return;
+        }
+
+        visited[i][j] = true;
+
+        for (int k = 0; k < 4; k++) {
+
+            int new_i = i + ROWS[k];
+            int new_j = j + COLS[k];
+
+            dfs(new_i, new_j, m, n, grid, visited);
+        }
+    }
+}
+```
+
+
 Interview Sound Bite:
 
-> Every unvisited land cell represents a new connected component. BFS explores the entire island before moving on.
+> I iterate through every cell in the grid. Whenever I encounter an unvisited land cell ('1'), I've discovered a new island, so I increment the count and start a DFS. The DFS marks all connected land cells as visited by changing them to '0'. This ensures every island is counted exactly once.
 
 ---
 
