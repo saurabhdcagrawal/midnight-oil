@@ -4459,6 +4459,663 @@ Then introduce the technology.
 
 ---
 
+# Appendix – Queue vs Publish/Subscribe (Pub/Sub)
+
+---
+
+# Why This Matters
+
+One of the most common interview questions is:
+
+> **"Should this use a Queue or a Pub/Sub model?"**
+
+The answer depends on **how many consumers should process the message.**
+
+Think about one question:
+
+> **"How many systems need this message?"**
+
+That determines the pattern.
+
+---
+
+# Queue (Point-to-Point Messaging)
+
+In a Queue,
+
+one message is processed by **exactly one consumer**.
+
+```
+Producer
+
+↓
+
+Queue
+
+↓
+
+Worker A
+
+Worker B
+
+Worker C
+```
+
+Suppose one message arrives.
+
+```
+Generate Invoice
+```
+
+Only one worker processes it.
+
+```
+Producer
+
+↓
+
+Queue
+
+↓
+
+Worker B
+```
+
+Workers A and C never see the message.
+
+---
+
+# Queue Analogy
+
+Imagine a restaurant kitchen.
+
+Customers place orders.
+
+```
+Burger Order
+
+↓
+
+Kitchen Queue
+```
+
+Three chefs are available.
+
+```
+Chef A
+
+Chef B
+
+Chef C
+```
+
+Only **one chef** cooks the burger.
+
+Having all three chefs cook the same burger would be wasteful.
+
+---
+
+# Characteristics of a Queue
+
+- One producer
+- One queue
+- One message
+- One consumer processes each message
+
+This is called **competing consumers**.
+
+Workers compete to process messages.
+
+---
+
+# Typical Queue Use Cases
+
+Queues are ideal when work should happen exactly once.
+
+Examples
+
+- Send Email
+- Generate PDF
+- Resize Images
+- Process Payments
+- Create Invoice
+- Video Encoding
+- Thumbnail Generation
+
+Each task should only be executed once.
+
+---
+
+# Queue Example
+
+```
+Upload Image
+
+↓
+
+Queue
+
+↓
+
+Image Worker
+
+↓
+
+Thumbnail Created
+```
+
+No other worker should create another thumbnail.
+
+---
+
+# Publish/Subscribe (Pub/Sub)
+
+Pub/Sub is different.
+
+One published event is delivered to **multiple independent consumers**.
+
+```
+Producer
+
+↓
+
+Topic
+
+↓
+
+Inventory
+
+↓
+
+Notification
+
+↓
+
+Analytics
+
+↓
+
+Recommendation
+```
+
+Every subscriber receives the event.
+
+---
+
+# Pub/Sub Analogy
+
+Think about YouTube.
+
+One creator uploads a video.
+
+```
+New Video
+
+↓
+
+YouTube
+
+↓
+
+Subscriber A
+
+Subscriber B
+
+Subscriber C
+```
+
+Every subscriber receives the notification.
+
+That is Pub/Sub.
+
+---
+
+# Pub/Sub Example
+
+Customer places an order.
+
+```
+Order Created
+```
+
+Many services care.
+
+```
+Order Event
+
+↓
+
+Inventory
+
+↓
+
+Email
+
+↓
+
+Analytics
+
+↓
+
+Recommendations
+
+↓
+
+Fraud Detection
+```
+
+Each service independently processes the event.
+
+---
+
+# Characteristics of Pub/Sub
+
+- One producer
+- One topic
+- Many subscribers
+- Every subscriber receives the message
+
+Subscribers are independent.
+
+One service failing does not stop the others.
+
+---
+
+# Queue vs Pub/Sub
+
+## Queue
+
+```
+Message
+
+↓
+
+Queue
+
+↓
+
+Worker A
+```
+
+Only one worker receives it.
+
+---
+
+## Pub/Sub
+
+```
+Message
+
+↓
+
+Topic
+
+↓
+
+Service A
+
+Service B
+
+Service C
+
+Service D
+```
+
+Every service receives the message.
+
+---
+
+# Visual Comparison
+
+## Queue
+
+```
+             Queue
+
+Producer
+
+↓
+
+Queue
+
+↓
+
+Worker 1
+
+Worker 2
+
+Worker 3
+
+↓
+
+Only ONE Worker Processes Message
+```
+
+---
+
+## Pub/Sub
+
+```
+Producer
+
+↓
+
+Topic
+
+↓
+
+Inventory
+
+Notification
+
+Analytics
+
+Fraud Detection
+
+Recommendation
+
+↓
+
+ALL Consumers Receive Event
+```
+
+---
+
+# Real Example – Queue
+
+Customer uploads a video.
+
+Should
+
+```
+Thumbnail Worker
+```
+
+run once
+
+or
+
+five times?
+
+Only once.
+
+Queue.
+
+---
+
+# Real Example – Pub/Sub
+
+Customer places an order.
+
+Should
+
+Inventory update?
+
+Yes.
+
+Should
+
+Analytics update?
+
+Yes.
+
+Should
+
+Email send?
+
+Yes.
+
+Should
+
+Recommendation update?
+
+Yes.
+
+Every service needs the event.
+
+Pub/Sub.
+
+---
+
+# Which Technologies Support Which?
+
+| Technology | Queue | Pub/Sub |
+|------------|-------|----------|
+| RabbitMQ | ✅ | ✅ |
+| Kafka | ⚠️ (via consumer groups) | ✅ |
+| Amazon SQS | ✅ | ❌ |
+| Amazon SNS | ❌ | ✅ |
+| Google Pub/Sub | ❌ | ✅ |
+
+---
+
+# Kafka is Interesting
+
+Kafka is usually used as Pub/Sub.
+
+```
+Orders Topic
+
+↓
+
+Inventory
+
+↓
+
+Email
+
+↓
+
+Analytics
+```
+
+Each consumer group gets every event.
+
+However,
+
+inside one consumer group,
+
+Kafka behaves like a Queue.
+
+Example
+
+```
+Inventory Consumer Group
+
+Worker A
+
+Worker B
+
+Worker C
+```
+
+Only one worker processes each partition's message.
+
+This allows Kafka to support both patterns.
+
+---
+
+# Kafka Consumer Groups
+
+Suppose
+
+```
+Orders Topic
+```
+
+Three consumer groups exist.
+
+```
+Inventory Group
+
+Notification Group
+
+Analytics Group
+```
+
+Each group receives every message.
+
+Inside
+
+```
+Inventory Group
+```
+
+there may be
+
+```
+Worker 1
+
+Worker 2
+
+Worker 3
+```
+
+Only one worker processes a given message.
+
+So Kafka provides
+
+```
+Topic
+
+↓
+
+Consumer Groups
+
+↓
+
+Workers
+```
+
+Pub/Sub between groups.
+
+Queue inside each group.
+
+---
+
+# Interview Decision Tree
+
+Ask yourself
+
+> **Should multiple independent systems process this event?**
+
+If YES
+
+↓
+
+Pub/Sub
+
+---
+
+Should only one worker perform this task?
+
+↓
+
+Queue
+
+---
+
+# Queue Examples
+
+- Email Sending
+- Invoice Generation
+- Payment Processing
+- Thumbnail Creation
+- PDF Generation
+- Image Compression
+- Video Encoding
+
+One worker should complete the task.
+
+---
+
+# Pub/Sub Examples
+
+- Order Created
+- User Registered
+- Payment Completed
+- Product Updated
+- Shipment Delivered
+
+Multiple systems react independently.
+
+---
+
+# Common Interview Questions
+
+### Why Queue?
+
+Only one worker should perform the task.
+
+Avoid duplicate work.
+
+---
+
+### Why Pub/Sub?
+
+Multiple independent services need the same event.
+
+Maintain loose coupling.
+
+---
+
+### Can Kafka behave like both?
+
+Yes.
+
+Kafka Topics provide Pub/Sub.
+
+Kafka Consumer Groups provide Queue-like processing within each subscriber.
+
+---
+
+# Common Mistakes
+
+❌ Using Queue when multiple systems require the same event.
+
+❌ Using Pub/Sub when only one worker should process the task.
+
+❌ Thinking Kafka is "just a queue."
+
+❌ Forgetting Consumer Groups.
+
+---
+
+# Key Takeaways
+
+- Queue = One Message → One Consumer.
+- Pub/Sub = One Message → Many Independent Consumers.
+- Queue is ideal for background jobs.
+- Pub/Sub is ideal for event-driven architectures.
+- Kafka supports both using Topics and Consumer Groups.
+- RabbitMQ supports both messaging patterns.
+- Amazon SQS is primarily a Queue service.
+- Amazon SNS is a Pub/Sub service.
+
+---
+
+# Interview Tip
+
+A simple rule to remember:
+
+Ask yourself:
+
+> **"How many systems should process this message?"**
+
+If the answer is:
+
+**One**
+
+→ Queue
+
+If the answer is:
+
+**Many**
+
+→ Pub/Sub
+
+This single question is usually enough to choose the correct messaging pattern during a system design interview.
+
 # Next Chapter
 
 **Scalability & Reliability**
@@ -4478,6 +5135,8 @@ We'll cover
 - Distributed Tracing
 - Logging
 - High Availability
+
+---
 
 # Chapter 6 – Scalability & Reliability
 
