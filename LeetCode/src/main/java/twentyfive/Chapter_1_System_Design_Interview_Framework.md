@@ -2411,6 +2411,592 @@ Always explain **why**.
 
 ---
 
+# Appendix – Cache Stampede (Thundering Herd Problem)
+
+---
+
+# Why This Matters
+
+One of the most common follow-up questions in a System Design interview is:
+
+> **"What happens if your cache expires?"**
+
+If you simply answer:
+
+> "The application reads from the database."
+
+The interviewer will usually ask:
+
+> **"What if 10,000 users request the same data at exactly the same time?"**
+
+This scenario is known as a **Cache Stampede** (also called the **Thundering Herd Problem**).
+
+Understanding this problem and its solutions demonstrates production-level system design knowledge.
+
+---
+
+# Normal Request Flow
+
+Suppose a popular product is already cached.
+
+```
+Redis
+
+product:123
+
+↓
+
+iPhone 17
+```
+
+Now imagine 10,000 users request the product.
+
+```
+10,000 Requests
+
+↓
+
+Redis
+
+↓
+
+Return Product
+```
+
+Notice something important.
+
+The database is never contacted.
+
+Redis serves every request.
+
+The system performs extremely well.
+
+---
+
+# Cache Expiration
+
+Assume the cache entry has a TTL (Time-To-Live).
+
+```
+TTL = 10 minutes
+```
+
+At exactly 10:00 AM
+
+Redis removes the key.
+
+```
+Redis
+
+product:123
+
+❌ Missing
+```
+
+The cache is now empty.
+
+---
+
+# What Happens Next?
+
+Now suppose 10,000 users request the same product immediately after the cache expires.
+
+Every request performs the following logic.
+
+```
+Service
+
+↓
+
+Redis
+
+↓
+
+Cache Miss
+```
+
+Since the cache no longer contains the product,
+
+every request falls back to the database.
+
+```
+Request 1
+
+↓
+
+Database
+
+Request 2
+
+↓
+
+Database
+
+Request 3
+
+↓
+
+Database
+
+...
+
+Request 10,000
+
+↓
+
+Database
+```
+
+Instead of executing
+
+```
+1 database query
+```
+
+the application suddenly executes
+
+```
+10,000 database queries
+```
+
+almost simultaneously.
+
+This sudden burst of database traffic is called a **Cache Stampede**.
+
+---
+
+# Why is this Dangerous?
+
+Suppose a database query normally takes
+
+```
+20 milliseconds
+```
+
+Normally
+
+```
+1 Query
+
+↓
+
+20 ms
+```
+
+During a cache stampede
+
+```
+10,000 Queries
+
+↓
+
+Database Queue
+
+↓
+
+High CPU
+
+↓
+
+Long Response Times
+
+↓
+
+Timeouts
+
+↓
+
+Application Errors
+```
+
+A single expired cache key can overload the entire database.
+
+---
+
+# Timeline
+
+## Before Cache Expiration
+
+```
+Redis
+
+↓
+
+Product
+
+↓
+
+10,000 Users
+
+↓
+
+No Database Traffic
+```
+
+Everything is fast.
+
+---
+
+## Cache Expires
+
+```
+Redis
+
+↓
+
+Key Removed
+```
+
+---
+
+## Immediately Afterwards
+
+```
+10,000 Requests
+
+↓
+
+Redis
+
+↓
+
+Cache Miss
+
+↓
+
+Database
+
+↓
+
+10,000 Queries
+```
+
+The database becomes overwhelmed.
+
+---
+
+# How Do We Prevent a Cache Stampede?
+
+Several techniques are commonly used.
+
+---
+
+# Solution 1 – Request Coalescing (Single Flight)
+
+This is one of the best solutions.
+
+Only **one request** is allowed to query the database.
+
+Everyone else waits briefly.
+
+```
+10,000 Requests
+
+↓
+
+Redis Miss
+
+↓
+
+Acquire Lock
+
+↓
+
+One Request
+
+↓
+
+Database
+
+↓
+
+Update Redis
+
+↓
+
+Remaining Requests
+
+↓
+
+Redis Hit
+```
+
+Instead of
+
+```
+10,000 database queries
+```
+
+the system performs only
+
+```
+1 database query.
+```
+
+---
+
+# Solution 2 – Distributed Lock
+
+Use a distributed lock (often implemented with Redis).
+
+```
+Redis Miss
+
+↓
+
+Acquire Lock
+
+↓
+
+Winner
+
+↓
+
+Database
+
+↓
+
+Update Cache
+
+↓
+
+Release Lock
+```
+
+All other requests wait until the cache is refreshed.
+
+---
+
+# Solution 3 – Randomized TTL
+
+Suppose every cache entry expires after exactly 10 minutes.
+
+```
+Product A
+
+10 min
+
+Product B
+
+10 min
+
+Product C
+
+10 min
+```
+
+All keys expire together.
+
+This creates traffic spikes.
+
+Instead, randomize the expiration.
+
+```
+Product A
+
+9 min
+
+Product B
+
+11 min
+
+Product C
+
+13 min
+
+Product D
+
+10 min
+```
+
+Now cache entries expire gradually instead of simultaneously.
+
+This significantly reduces the likelihood of a cache stampede.
+
+---
+
+# Solution 4 – Background Refresh
+
+Instead of waiting until the cache expires,
+
+refresh it before expiration.
+
+```
+Redis
+
+↓
+
+9 Minutes
+
+↓
+
+Background Refresh
+
+↓
+
+TTL Reset
+```
+
+Users never experience a cache miss.
+
+This works well for hot data.
+
+---
+
+# Solution 5 – Serve Stale Data
+
+Instead of deleting expired data immediately,
+
+temporarily serve slightly stale data.
+
+```
+Redis
+
+↓
+
+Expired
+
+↓
+
+Return Existing Data
+
+↓
+
+Refresh Cache in Background
+```
+
+For many applications,
+
+returning data that is a few seconds old is preferable to overloading the database.
+
+Examples include:
+
+- Product catalog
+- News articles
+- User profiles
+- Recommendations
+
+This strategy is generally **not** appropriate for:
+
+- Bank balances
+- Stock prices
+- Real-time financial transactions
+
+---
+
+# Comparing the Solutions
+
+| Solution | Advantages | Disadvantages |
+|-----------|------------|---------------|
+| Request Coalescing | Only one database query | Slight waiting time for other requests |
+| Distributed Lock | Prevents duplicate cache refresh | Lock management complexity |
+| Randomized TTL | Prevents synchronized expiration | Doesn't eliminate all cache misses |
+| Background Refresh | Users rarely see cache misses | Requires additional background jobs |
+| Serve Stale Data | Excellent user experience | Temporary stale data |
+
+---
+
+# Real-World Example
+
+Imagine there is only one water cooler in an office.
+
+Normally
+
+```
+Employees
+
+↓
+
+Water Cooler
+```
+
+Everything works smoothly.
+
+Now the water cooler becomes empty.
+
+Instead of one employee refilling it,
+
+everyone rushes to the basement to get water.
+
+```
+100 Employees
+
+↓
+
+Basement
+
+↓
+
+Chaos
+```
+
+This is exactly what happens during a cache stampede.
+
+Redis is the water cooler.
+
+The database is the basement.
+
+---
+
+# Interview Example
+
+**Question**
+
+> Your product page receives 500,000 requests per minute. The cache entry expires. What happens?
+
+**Strong Answer**
+
+> When the cache entry expires, many requests may simultaneously miss the cache and hit the database. This creates a cache stampede, which can overwhelm the database. To mitigate this, I would use request coalescing or a distributed lock so that only one request refreshes the cache while the others wait or temporarily receive stale data. I would also randomize TTL values and proactively refresh hot keys in the background.
+
+---
+
+# Common Interview Mistakes
+
+❌ Assuming cache misses are harmless.
+
+❌ Ignoring hot keys.
+
+❌ Using the same TTL for every cache entry.
+
+❌ Allowing every request to query the database after expiration.
+
+❌ Forgetting to discuss mitigation strategies.
+
+---
+
+# Key Takeaways
+
+- A Cache Stampede occurs when many requests simultaneously miss the cache and overload the database.
+- It is also known as the **Thundering Herd Problem**.
+- The problem usually occurs immediately after a popular cache entry expires.
+- Request Coalescing (Single Flight) is one of the most effective solutions.
+- Distributed Locks ensure only one request refreshes the cache.
+- Randomized TTL prevents synchronized expiration.
+- Background Refresh proactively updates popular cache entries.
+- Serving stale data is acceptable for many read-heavy workloads.
+- Hot keys require special attention because they are requested far more frequently than average data.
+
+---
+
+# Interview Tip
+
+Whenever you mention **Redis** or **TTL**, be prepared for the interviewer to ask:
+
+> **"What happens when a hot cache entry expires?"**
+
+A strong answer should immediately mention:
+
+1. Cache Stampede (Thundering Herd Problem)
+2. Request Coalescing / Distributed Lock
+3. Randomized TTL
+4. Background Refresh
+5. Serve Stale Data (when acceptable)
+
+Explaining both the problem and multiple mitigation strategies demonstrates strong production system design experience.
+
+---
+
+
 # Next Chapter
 
 **Messaging & Event-Driven Architecture**
