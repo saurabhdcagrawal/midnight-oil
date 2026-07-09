@@ -2996,6 +2996,663 @@ Explaining both the problem and multiple mitigation strategies demonstrates stro
 
 ---
 
+# Appendix – Request Coalescing vs Distributed Lock
+
+---
+
+# Why This Matters
+
+A very common follow-up question in System Design interviews is:
+
+> **"How would you prevent a Cache Stampede?"**
+
+Many candidates immediately answer:
+
+> "I'd use a distributed lock."
+
+While that is not wrong, it's actually incomplete.
+
+The better answer is:
+
+> **"I'd use Request Coalescing. In a distributed environment, I'd implement it using a Distributed Lock."**
+
+Understanding the difference demonstrates senior-level system design knowledge.
+
+---
+
+# The Big Picture
+
+Think of it this way:
+
+```
+Request Coalescing
+
+↓
+
+Goal / Strategy
+
+↓
+
+Distributed Lock
+
+↓
+
+One possible implementation
+```
+
+Request Coalescing is the **idea**.
+
+Distributed Lock is **one technique** used to achieve that idea.
+
+---
+
+# What is Request Coalescing?
+
+Request Coalescing means:
+
+> **If multiple requests need the same expensive data, only one request should perform the work.**
+
+All other requests wait for that result.
+
+Instead of
+
+```
+10,000 Requests
+
+↓
+
+10,000 Database Queries
+```
+
+we want
+
+```
+10,000 Requests
+
+↓
+
+ONE Database Query
+
+↓
+
+Cache Updated
+
+↓
+
+9,999 Requests Read Cache
+```
+
+The goal is to eliminate duplicate work.
+
+---
+
+# Example
+
+Suppose the cache entry for
+
+```
+product:123
+```
+
+expires.
+
+Immediately afterwards
+
+```
+10,000 users
+
+↓
+
+Request Product
+```
+
+Without Request Coalescing
+
+```
+Request 1
+
+↓
+
+Database
+
+Request 2
+
+↓
+
+Database
+
+Request 3
+
+↓
+
+Database
+
+...
+
+Request 10,000
+
+↓
+
+Database
+```
+
+The database receives
+
+```
+10,000 identical queries.
+```
+
+This is the Cache Stampede.
+
+---
+
+# With Request Coalescing
+
+```
+10,000 Requests
+
+↓
+
+One Request
+
+↓
+
+Database
+
+↓
+
+Redis Updated
+
+↓
+
+Remaining Requests
+
+↓
+
+Redis Hit
+```
+
+Only one request performs the expensive work.
+
+Everyone else benefits from it.
+
+---
+
+# How Do We Implement Request Coalescing?
+
+There are two common scenarios.
+
+---
+
+# Scenario 1 – Single Application (One JVM)
+
+Imagine one Spring Boot application.
+
+```
+           Spring Boot
+
+        ┌───────────────┐
+
+Request 1
+
+Request 2
+
+Request 3
+
+Request 4
+
+        └───────────────┘
+```
+
+Since every request runs inside the same process,
+
+they can coordinate using memory.
+
+No Redis lock is required.
+
+---
+
+# In-Memory Request Coalescing
+
+A common implementation uses
+
+```
+ConcurrentHashMap<String, CompletableFuture<T>>
+```
+
+The key is the cache key.
+
+Example
+
+```
+product:123
+```
+
+The value is a Future representing the ongoing database query.
+
+---
+
+# Request Flow
+
+Suppose
+
+```
+Request 1
+```
+
+arrives first.
+
+```
+Request 1
+
+↓
+
+No Future Exists
+
+↓
+
+Create Future
+
+↓
+
+Query Database
+```
+
+Now
+
+```
+Request 2
+```
+
+arrives.
+
+Instead of querying the database,
+
+it simply waits for the existing Future.
+
+```
+Request 2
+
+↓
+
+Future Exists
+
+↓
+
+Wait
+```
+
+Same for
+
+```
+Request 3
+
+↓
+
+Future Exists
+
+↓
+
+Wait
+```
+
+Eventually
+
+```
+Database Returns Product
+
+↓
+
+Complete Future
+
+↓
+
+Every Waiting Request Receives Result
+```
+
+Only **one** database query occurs.
+
+---
+
+# Java Example (Conceptual)
+
+```java
+ConcurrentHashMap<String, CompletableFuture<Product>> inFlight = new ConcurrentHashMap<>();
+
+public Product getProduct(String productId) {
+
+    CompletableFuture<Product> future =
+        inFlight.computeIfAbsent(productId,
+            id -> CompletableFuture.supplyAsync(() -> loadFromDatabase(id)));
+
+    try {
+        return future.get();
+    } finally {
+        inFlight.remove(productId);
+    }
+}
+```
+
+This pattern is often called **Single Flight**.
+
+No distributed lock.
+
+No Redis.
+
+No duplicate database queries.
+
+---
+
+# Advantages
+
+- Extremely fast
+- No network calls
+- Simple implementation
+- Perfect for a single JVM
+
+---
+
+# Limitation
+
+This only works inside **one application instance**.
+
+Now imagine
+
+```
+Load Balancer
+
+↓
+
+Server A
+
+Server B
+
+Server C
+```
+
+Each server has its own memory.
+
+Server A cannot see Server B's ConcurrentHashMap.
+
+---
+
+# Scenario 2 – Distributed System
+
+Suppose
+
+```
+100 Spring Boot Servers
+```
+
+receive the same request simultaneously.
+
+```
+Load Balancer
+
+↓
+
+Server A
+
+Server B
+
+Server C
+
+...
+
+Server Z
+```
+
+Each server sees
+
+```
+Cache Miss
+```
+
+Without coordination
+
+every server queries the database.
+
+```
+Server A
+
+↓
+
+Database
+
+Server B
+
+↓
+
+Database
+
+Server C
+
+↓
+
+Database
+```
+
+The cache stampede still occurs.
+
+---
+
+# Distributed Lock
+
+Instead of using local memory,
+
+every server coordinates through a shared locking system.
+
+Usually
+
+- Redis
+- ZooKeeper
+- etcd
+- Consul
+
+Example
+
+```
+Server A
+
+↓
+
+Acquire Lock
+
+↓
+
+Success
+
+↓
+
+Database
+
+↓
+
+Update Redis
+
+↓
+
+Release Lock
+```
+
+Meanwhile
+
+```
+Server B
+
+↓
+
+Acquire Lock
+
+↓
+
+Lock Busy
+
+↓
+
+Wait
+```
+
+```
+Server C
+
+↓
+
+Acquire Lock
+
+↓
+
+Lock Busy
+
+↓
+
+Wait
+```
+
+Once Server A refreshes the cache,
+
+Servers B and C simply read from Redis.
+
+---
+
+# Why is it called "Distributed"?
+
+Because the lock works across
+
+multiple machines.
+
+Unlike ConcurrentHashMap,
+
+the lock is shared by every application instance.
+
+---
+
+# Visual Comparison
+
+## Single Server
+
+```
+                One JVM
+
+      Request 1
+
+      Request 2
+
+      Request 3
+
+↓
+
+ConcurrentHashMap
+
+↓
+
+One Database Query
+```
+
+---
+
+## Multiple Servers
+
+```
+Load Balancer
+
+↓
+
+Server A
+
+Server B
+
+Server C
+
+↓
+
+Redis Lock
+
+↓
+
+One Database Query
+```
+
+---
+
+# Request Coalescing vs Distributed Lock
+
+| Request Coalescing | Distributed Lock |
+|--------------------|------------------|
+| Strategy | Implementation |
+| Goal is to avoid duplicate work | Guarantees only one server performs the work |
+| Can work in one JVM | Works across many servers |
+| May use Futures, Promises, Mutexes | Usually implemented using Redis, ZooKeeper, etcd |
+| No network coordination required | Shared coordination required |
+
+---
+
+# Which One Should I Use?
+
+## Single Application
+
+Use
+
+- ConcurrentHashMap
+- CompletableFuture
+- Mutex
+- Semaphore
+
+No distributed lock required.
+
+---
+
+## Multiple Application Servers
+
+Use
+
+- Redis Lock
+- ZooKeeper
+- etcd
+- Consul
+
+to coordinate cache refreshes.
+
+---
+
+# Interview Example
+
+**Question**
+
+> How would you prevent a Cache Stampede?
+
+**Strong Answer**
+
+> "I'd use Request Coalescing so that only one request refreshes the cache while all other requests wait for the result. If the application is running as a single JVM, I can implement this efficiently using a ConcurrentHashMap with CompletableFuture, allowing all requests for the same cache key to share a single in-flight database query. If the application is distributed across multiple servers behind a load balancer, local memory is no longer sufficient because each server has its own state. In that case, I'd use a distributed lock (for example, Redis) so that only one server refreshes the cache while the others wait and subsequently read the refreshed value."
+
+This answer demonstrates an understanding of both the architectural goal and the implementation details.
+
+---
+
+# Common Interview Mistakes
+
+❌ Assuming Request Coalescing and Distributed Lock are identical.
+
+❌ Using Redis locks inside a single JVM application.
+
+❌ Forgetting that each application server has its own memory.
+
+❌ Allowing every server to query the database after a cache miss.
+
+❌ Ignoring duplicate work across application instances.
+
+---
+
+# Key Takeaways
+
+- Request Coalescing is a **strategy** to eliminate duplicate work.
+- Distributed Lock is one **implementation** of that strategy.
+- In a single JVM, use in-memory coordination such as `ConcurrentHashMap` with `CompletableFuture`.
+- In a distributed system, use a shared coordination mechanism like Redis, ZooKeeper, etcd, or Consul.
+- Always choose the simplest solution that matches your deployment architecture.
+- Interviewers care more about **why** you chose the mechanism than the mechanism itself.
+
+---
 
 # Next Chapter
 
