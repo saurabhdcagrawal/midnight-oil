@@ -7317,6 +7317,740 @@ If you can answer these five questions, you'll make better architectural decisio
 
 ---
 
+# Chapter 0 – System Design Building Blocks & Decision Framework
+
+---
+
+# Why This Chapter Matters
+
+After designing a few systems, you'll notice something interesting.
+
+Most large-scale distributed systems are built using the same set of building blocks.
+
+Examples
+
+- Redis
+- SQL
+- NoSQL
+- Kafka
+- Load Balancer
+- API Gateway
+- Cache
+- Workers
+- Read Replicas
+- Sharding
+
+The real interview challenge is **not knowing these technologies**.
+
+It is knowing **when to use each one and why**.
+
+Interviewers are constantly asking questions like:
+
+- Why Redis instead of the database?
+- Why Kafka instead of synchronous APIs?
+- Why SQL instead of NoSQL?
+- Why Read Replicas?
+- Why Sharding?
+
+This chapter provides a decision framework that can be applied to almost every system design interview.
+
+---
+
+# The System Design Thought Process
+
+Whenever a request enters the system, mentally walk through the request path.
+
+```
+Client
+
+↓
+
+Load Balancer?
+
+↓
+
+API Gateway?
+
+↓
+
+Application Service?
+
+↓
+
+Cache?
+
+↓
+
+Database?
+
+↓
+
+Queue?
+
+↓
+
+Workers?
+
+↓
+
+External Services?
+```
+
+Every component should exist because it solves a specific problem.
+
+---
+
+# 1. Choosing the Right Storage
+
+Ask yourself:
+
+> What kind of data am I storing?
+
+| Requirement | Recommended Choice | Why |
+|-------------|--------------------|-----|
+| ACID Transactions | SQL | Strong consistency and transactions |
+| Flexible Schema | NoSQL | Schema evolution and horizontal scalability |
+| Fast Reads | Redis | In-memory performance |
+| Large Files | Object Storage (S3, GCS, Azure Blob) | Optimized for blobs |
+| Full-Text Search | Elasticsearch / OpenSearch | Inverted indexes |
+| Analytics | Data Warehouse | Optimized for OLAP queries |
+
+---
+
+# 2. Cache Decision Framework
+
+Ask
+
+```
+Is this data read frequently?
+
+↓
+
+YES
+
+↓
+
+Can slightly stale data be tolerated?
+
+↓
+
+YES
+
+↓
+
+Use Redis
+```
+
+Typical Redis use cases
+
+- User Profiles
+- Product Catalog
+- URL Mapping
+- Sessions
+- Leaderboards
+- Feature Flags
+- Frequently Accessed Configuration
+
+Avoid caching
+
+- Bank Balances
+- Payment Authorization
+- Inventory Counts (unless carefully designed)
+- Critical transactional data
+
+Redis improves performance.
+
+It should not be the source of truth.
+
+---
+
+# 3. Queue Decision Framework
+
+Ask
+
+```
+Does the user need to wait for this operation?
+
+↓
+
+YES
+
+↓
+
+Keep it synchronous
+
+NO
+
+↓
+
+Use Kafka / Queue
+```
+
+Examples
+
+Asynchronous
+
+- Email
+- SMS
+- Push Notifications
+- Analytics
+- Image Processing
+- Video Encoding
+- Audit Logging
+
+Synchronous
+
+- Login
+- Payment Authorization
+- OTP Validation
+- Inventory Check
+- User Registration
+
+---
+
+# 4. SQL vs NoSQL Decision Framework
+
+Instead of memorizing databases,
+
+ask these questions.
+
+```
+Need Transactions?
+
+↓
+
+SQL
+```
+
+```
+Need JOINs?
+
+↓
+
+SQL
+```
+
+```
+Need Flexible Schema?
+
+↓
+
+NoSQL
+```
+
+```
+Need Massive Horizontal Scaling?
+
+↓
+
+NoSQL
+```
+
+General guideline
+
+SQL
+
+- Orders
+- Payments
+- Banking
+- Users
+
+NoSQL
+
+- Product Catalog
+- Activity Feed
+- Shopping Cart
+- User Preferences
+- Event Storage
+
+---
+
+# 5. Redis Decision Framework
+
+Redis is commonly used for
+
+- Caching
+- Sessions
+- Rate Limiting
+- Counters
+- Leaderboards
+- Distributed Locks
+- Pub/Sub
+- Temporary Data
+
+Redis is ideal when
+
+- Low latency is required
+- Data can be regenerated
+- Data changes less frequently than it is read
+
+---
+
+# 6. Kafka Decision Framework
+
+Ask
+
+```
+Does this work have to happen immediately?
+
+↓
+
+NO
+
+↓
+
+Kafka
+```
+
+Kafka is commonly used for
+
+- Notifications
+- Audit Logs
+- Analytics
+- Recommendation Systems
+- Search Index Updates
+- ETL Pipelines
+- Event Streaming
+
+Kafka should not be used for
+
+- Immediate user responses
+- Payment Authorization
+- Login Authentication
+
+---
+
+# 7. Read Replica Decision Framework
+
+Ask
+
+```
+Does the system receive significantly more reads than writes?
+
+↓
+
+YES
+
+↓
+
+Use Read Replicas
+```
+
+Good examples
+
+- URL Shortener
+- Product Catalog
+- News Feed
+- Search Results
+
+Writes
+
+↓
+
+Primary Database
+
+Reads
+
+↓
+
+Read Replicas
+
+---
+
+# 8. Sharding Decision Framework
+
+Ask
+
+```
+Will a single database eventually become too large?
+
+↓
+
+YES
+
+↓
+
+Shard the data
+```
+
+Good shard keys
+
+- UserId
+- TenantId
+- CustomerId
+- OrderId
+- URL Hash
+
+Avoid
+
+- Timestamp
+- Sequential IDs (can create hotspots)
+
+---
+
+# 9. CDN Decision Framework
+
+Ask
+
+```
+Is this static content?
+
+↓
+
+YES
+
+↓
+
+CDN
+```
+
+Examples
+
+- Images
+- CSS
+- JavaScript
+- Videos
+- Documents
+- Downloads
+
+Some URL redirects can also be cached at the CDN layer.
+
+---
+
+# 10. Object Storage Decision Framework
+
+Ask
+
+```
+Am I storing large files?
+
+↓
+
+YES
+
+↓
+
+Object Storage
+```
+
+Examples
+
+- Images
+- Videos
+- PDFs
+- Audio
+- Backups
+
+Best Practice
+
+Store
+
+- Metadata → SQL
+
+Store
+
+- Actual File → Object Storage
+
+---
+
+# 11. Worker Pattern
+
+Whenever you encounter a long-running operation,
+
+think
+
+```
+Queue
+
+↓
+
+Workers
+```
+
+Examples
+
+- Email Sending
+- Image Resizing
+- Video Transcoding
+- Report Generation
+- Machine Learning Inference
+- Thumbnail Generation
+
+Workers allow the API to respond quickly while processing continues in the background.
+
+---
+
+# 12. Event-Driven Architecture
+
+Whenever multiple systems need to react to the same business event,
+
+consider publishing an event.
+
+Example
+
+```
+Order Created
+
+↓
+
+Payment Service
+
+↓
+
+Inventory Service
+
+↓
+
+Notification Service
+
+↓
+
+Analytics Service
+
+↓
+
+Recommendation Service
+```
+
+Instead of
+
+```
+Order Service
+
+↓
+
+Calls Every Service Directly
+```
+
+Benefits
+
+- Loose coupling
+- Independent scaling
+- Easier extensibility
+
+---
+
+# 13. Reliability Checklist
+
+Every distributed system should consider
+
+- Retries
+- Exponential Backoff
+- Timeouts
+- Circuit Breakers
+- Idempotency
+- Dead Letter Queue (DLQ)
+- Monitoring
+- Alerting
+
+Ask yourself
+
+```
+What happens if this component fails?
+```
+
+---
+
+# 14. Scalability Checklist
+
+Can each layer scale independently?
+
+```
+API Servers
+
+↓
+
+Cache
+
+↓
+
+Database
+
+↓
+
+Kafka
+
+↓
+
+Workers
+
+↓
+
+Search
+
+↓
+
+Storage
+```
+
+Avoid tightly coupling scaling decisions.
+
+---
+
+# 15. Monitoring Checklist
+
+Every production system should monitor
+
+API
+
+- Request Rate
+- Latency
+- Error Rate
+
+Database
+
+- Query Latency
+- Connection Pool
+- Slow Queries
+
+Redis
+
+- Cache Hit Ratio
+- Memory Usage
+
+Kafka
+
+- Consumer Lag
+- Queue Depth
+
+Workers
+
+- Success Rate
+- Retry Count
+- DLQ Size
+
+Infrastructure
+
+- CPU
+- Memory
+- Disk
+- Network
+
+---
+
+# The Golden Questions
+
+Almost every system design interview can be approached by asking these questions.
+
+### 1. Is the workload read-heavy or write-heavy?
+
+This determines
+
+- Caching
+- Read Replicas
+- Database strategy
+
+---
+
+### 2. Does the user need to wait?
+
+If not,
+
+move the work to
+
+- Kafka
+- Queue
+- Workers
+
+---
+
+### 3. Do I need strong consistency?
+
+If yes
+
+↓
+
+SQL
+
+If eventual consistency is acceptable
+
+↓
+
+Asynchronous processing
+
+---
+
+### 4. Can I cache this?
+
+Frequently read data usually belongs in Redis.
+
+---
+
+### 5. Can this be asynchronous?
+
+Background processing improves responsiveness and scalability.
+
+---
+
+### 6. What happens if this component fails?
+
+Always discuss
+
+- Retry
+- Fallback
+- Circuit Breaker
+- Monitoring
+
+---
+
+### 7. How will this scale?
+
+Think independently about
+
+- API Servers
+- Cache
+- Database
+- Workers
+- Messaging
+
+---
+
+### 8. What are the trade-offs?
+
+Every design decision has advantages and disadvantages.
+
+Interviewers value engineers who can explain both.
+
+---
+
+# Decision Cheat Sheet
+
+| Requirement | Recommended Building Block |
+|-------------|----------------------------|
+| Fast repeated reads | Redis |
+| Persistent transactional data | SQL |
+| Flexible schema | NoSQL |
+| Background processing | Kafka / Queue |
+| Large files | Object Storage |
+| Full-text search | Elasticsearch |
+| Static content | CDN |
+| High read traffic | Read Replicas |
+| Massive datasets | Sharding |
+| Long-running work | Workers |
+| Reliable event publishing | Transactional Outbox |
+| Distributed consistency | Saga |
+| Strong distributed transaction | Two-Phase Commit (2PC) |
+| Rate limiting | Redis + Token Bucket |
+| Analytics | Kafka + Consumers |
+
+---
+
+# Final Takeaways
+
+System design is not about memorizing architectures.
+
+It is about making informed engineering decisions based on the system's requirements.
+
+For every component you introduce, ask yourself:
+
+- Why do I need it?
+- What problem does it solve?
+- What trade-offs does it introduce?
+- How does it scale?
+- What happens if it fails?
+
+If you can answer these questions confidently, you'll be able to design and defend almost any distributed system in a senior backend interview.
+
 # Next Chapter
 
 # End-to-End Interview Problems
@@ -12614,3 +13348,4776 @@ A production-ready Notification Service should include
 - Monitoring and Observability
 
 This is the level of depth expected in Senior Backend and Staff-level System Design interviews.
+
+# URL Shortener – Part 1
+# Before High-Level Design
+
+---
+
+# Problem Statement
+
+Design a URL Shortener service similar to TinyURL or Bitly.
+
+The service should convert long URLs into short URLs and redirect users efficiently.
+
+Example
+
+Long URL
+
+```
+https://www.example.com/products/mobile/apple/iphone16?color=black
+```
+
+↓
+
+Short URL
+
+```
+https://tiny.ly/Ab3Kd9
+```
+
+When the short URL is opened,
+
+the user should be redirected to the original URL.
+
+---
+
+# Step 1 – Clarifying Questions
+
+Before designing the system, clarify the requirements.
+
+---
+
+## Functional Questions
+
+### 1. Should users be able to create short URLs?
+
+Assumption
+
+Yes.
+
+---
+
+### 2. Should custom aliases be supported?
+
+Example
+
+```
+tiny.ly/chatgpt
+```
+
+instead of
+
+```
+tiny.ly/A8dkL2
+```
+
+Assumption
+
+Yes.
+
+---
+
+### 3. Should URLs expire?
+
+Assumption
+
+Support optional expiration.
+
+---
+
+### 4. Should click analytics be supported?
+
+Examples
+
+- Click Count
+- Country
+- Browser
+- Device
+- Referrer
+
+Assumption
+
+Yes.
+
+---
+
+### 5. Should authenticated users manage URLs?
+
+Assumption
+
+Optional.
+
+Not required for the initial design.
+
+---
+
+### 6. Should duplicate long URLs generate the same short URL?
+
+Example
+
+```
+google.com
+
+↓
+
+abc123
+```
+
+If another user shortens the same URL,
+
+should we reuse
+
+```
+abc123
+```
+
+or create
+
+```
+xyz987
+```
+
+Assumption
+
+Create a new short URL each time.
+
+This simplifies ownership and analytics.
+
+---
+
+### 7. Should users edit or delete URLs?
+
+Assumption
+
+No.
+
+Read-only after creation.
+
+---
+
+# Non-Functional Questions
+
+---
+
+### Availability
+
+High Availability
+
+---
+
+### Latency
+
+Redirects should complete within
+
+```
+<100 ms
+```
+
+---
+
+### Scalability
+
+Support billions of URLs.
+
+---
+
+### Reliability
+
+URLs should never be lost.
+
+---
+
+### Read vs Write Ratio
+
+Very read-heavy.
+
+Millions of redirects.
+
+Relatively few URL creations.
+
+---
+
+### Consistency
+
+Eventual consistency is acceptable for analytics.
+
+Strong consistency required for URL mapping.
+
+---
+
+# Step 2 – Functional Requirements
+
+The system should support
+
+- Create Short URL
+- Redirect to Original URL
+- Optional Custom Alias
+- Optional Expiration
+- Click Analytics
+- URL Metadata
+
+---
+
+# Step 3 – Non-Functional Requirements
+
+The system should provide
+
+- High Availability
+- Low Latency
+- Horizontal Scalability
+- Fault Tolerance
+- High Read Throughput
+- Reliable URL Storage
+
+---
+
+# Step 4 – Capacity Estimation
+
+Assume
+
+```
+100 Million New URLs / Month
+```
+
+Average writes
+
+```
+≈40 URLs/sec
+```
+
+Assume
+
+```
+1000×
+
+More Reads Than Writes
+```
+
+Average redirects
+
+```
+≈40,000 redirects/sec
+```
+
+Peak traffic
+
+```
+400,000 redirects/sec
+```
+
+This tells us
+
+- The system is read-heavy.
+- Caching is essential.
+- Read replicas will likely be required.
+- Redirect latency should be minimal.
+
+---
+
+# Step 5 – API Design
+
+---
+
+## Create Short URL
+
+```
+POST /urls
+```
+
+Request
+
+```json
+{
+    "longUrl": "https://www.example.com/product/12345",
+    "customAlias": null,
+    "expiryDate": null
+}
+```
+
+Response
+
+```json
+{
+    "shortUrl": "https://tiny.ly/Ab3Kd9"
+}
+```
+
+---
+
+## Redirect
+
+```
+GET /{shortCode}
+```
+
+Example
+
+```
+GET /Ab3Kd9
+```
+
+Response
+
+```
+HTTP 302 Redirect
+
+Location:
+https://www.example.com/product/12345
+```
+
+---
+
+## Retrieve Analytics
+
+```
+GET /analytics/{shortCode}
+```
+
+Example Response
+
+```json
+{
+    "clickCount": 125430,
+    "createdAt": "2026-07-01",
+    "expiresAt": null
+}
+```
+
+---
+
+# Step 6 – Data Model
+
+---
+
+## URL Table
+
+```
+URL
+
+-------------------------
+
+id
+
+shortCode
+
+longUrl
+
+createdAt
+
+expiresAt
+
+createdBy
+
+isActive
+```
+
+---
+
+## Click Analytics
+
+```
+ClickEvent
+
+-------------------------
+
+eventId
+
+shortCode
+
+timestamp
+
+country
+
+device
+
+browser
+
+referrer
+```
+
+Analytics data is append-only.
+
+It can later be processed asynchronously.
+
+---
+
+# Database Choice
+
+A relational database is a good choice because
+
+- URL mapping is structured
+- Lookups are by primary key
+- Strong consistency is required
+- Relationships are simple
+
+Possible choices
+
+- PostgreSQL
+- MySQL
+
+Analytics can later be moved to a separate analytical store if needed.
+
+---
+
+# Design Decisions So Far
+
+We now know
+
+- The system is extremely read-heavy.
+- Redirect latency is critical.
+- URL mappings require strong consistency.
+- Analytics can be processed asynchronously.
+- Redis will likely play an important role.
+- Read replicas will help scale redirect traffic.
+
+At this point we have enough information to design the High-Level Architecture.
+
+The next step is to identify the major components, define the request flow, and explain how URL creation and redirection work end-to-end.
+
+# URL Shortener – Part 2
+# Generating Short URLs
+
+---
+
+# Why This Matters
+
+The primary responsibility of a URL Shortener is simple.
+
+```
+Long URL
+
+↓
+
+Short URL
+```
+
+The difficult question is
+
+> **How do we generate a short URL that is unique, scalable, and efficient?**
+
+There are several approaches.
+
+Each has advantages and trade-offs.
+
+---
+
+# Requirements
+
+A good short URL should be
+
+- Unique
+- Short
+- Easy to generate
+- Fast to lookup
+- Scalable
+- Difficult to guess (optional)
+
+---
+
+# Option 1 – Auto Increment ID
+
+Suppose the database generates
+
+```
+1
+
+2
+
+3
+
+4
+
+5
+```
+
+Example
+
+```
+id = 123456
+```
+
+Instead of exposing
+
+```
+123456
+```
+
+convert it to Base62.
+
+```
+123456
+
+↓
+
+W7E
+```
+
+Store
+
+```
+Long URL
+
+↓
+
+ID
+
+↓
+
+Base62
+
+↓
+
+Short URL
+```
+
+---
+
+## Advantages
+
+- Very simple
+- Guaranteed uniqueness
+- No collisions
+- Sequential IDs
+- Excellent performance
+
+---
+
+## Disadvantages
+
+- Easy to guess URLs
+
+```
+abc123
+
+↓
+
+abc124
+
+↓
+
+abc125
+```
+
+Competitors can enumerate links.
+
+---
+
+# Option 2 – UUID
+
+Generate
+
+```
+550e8400-e29b-41d4-a716-446655440000
+```
+
+Then hash or encode.
+
+---
+
+Advantages
+
+- Globally unique
+- Distributed generation
+- No central database
+
+---
+
+Disadvantages
+
+UUIDs are
+
+```
+128 bits
+```
+
+Much longer than necessary.
+
+Need hashing or truncation.
+
+---
+
+# Option 3 – Random String
+
+Generate
+
+```
+aB93Kd
+```
+
+Randomly.
+
+Check
+
+```
+Already Exists?
+
+↓
+
+No
+
+↓
+
+Use
+```
+
+Otherwise
+
+Generate another.
+
+---
+
+Advantages
+
+- Difficult to guess
+- No sequential pattern
+
+---
+
+Disadvantages
+
+Must check collisions.
+
+As the database grows,
+
+collision probability increases.
+
+---
+
+# Option 4 – Hash Long URL
+
+Input
+
+```
+https://google.com
+```
+
+Hash
+
+```
+SHA-256
+
+↓
+
+f4dce81...
+
+↓
+
+Take first 7 characters
+```
+
+Advantages
+
+Same URL
+
+↓
+
+Same Short URL
+
+---
+
+Disadvantages
+
+Collisions are still possible.
+
+Need collision handling.
+
+Hash computation is more expensive than using an ID.
+
+---
+
+# Option 5 – Snowflake IDs
+
+Distributed ID generators like Twitter Snowflake.
+
+Generate
+
+```
+64-bit ID
+
+↓
+
+Base62
+
+↓
+
+Short URL
+```
+
+Advantages
+
+- Globally unique
+- Ordered
+- Distributed
+- No database coordination
+
+Very common in large distributed systems.
+
+---
+
+# Comparing the Options
+
+| Approach | Unique | Distributed | Collision | Easy |
+|----------|---------|-------------|-----------|------|
+| Auto Increment | ✅ | ❌ | None | ⭐⭐⭐⭐⭐ |
+| UUID | ✅ | ✅ | None | ⭐⭐ |
+| Random | Usually | ✅ | Possible | ⭐⭐⭐ |
+| Hash | Usually | ✅ | Possible | ⭐⭐⭐ |
+| Snowflake | ✅ | ✅ | None | ⭐⭐⭐⭐ |
+
+---
+
+# Which Approach Should We Choose?
+
+For most interview solutions,
+
+Auto Increment + Base62
+
+is an excellent choice.
+
+Why?
+
+Because
+
+- IDs are unique.
+- Base62 produces compact URLs.
+- No collision handling required.
+- Very simple architecture.
+
+For very large distributed systems,
+
+Snowflake + Base62
+
+is often preferred because IDs can be generated without relying on a single database.
+
+---
+
+# What is Base62?
+
+Suppose our database generated
+
+```
+125
+```
+
+Instead of exposing
+
+```
+125
+```
+
+we encode it.
+
+Base62 uses
+
+```
+0-9
+
+A-Z
+
+a-z
+```
+
+Total
+
+```
+62 characters
+```
+
+Example
+
+```
+125
+
+↓
+
+21
+
+↓
+
+Z
+
+(example only)
+```
+
+Large decimal numbers become much shorter.
+
+---
+
+# Why Base62?
+
+Suppose we used Base10.
+
+```
+999999999
+```
+
+Still long.
+
+Suppose we use Base62.
+
+```
+999999999
+
+↓
+
+15ftG7
+```
+
+Much shorter.
+
+This is why URL shorteners almost always use Base62.
+
+---
+
+# URL Generation Flow
+
+```
+Long URL
+
+↓
+
+Generate Unique ID
+
+↓
+
+Convert to Base62
+
+↓
+
+Store Mapping
+
+↓
+
+Return
+
+https://tiny.ly/W7E3fK
+```
+
+---
+
+# What About Custom Aliases?
+
+Suppose the user wants
+
+```
+tiny.ly/chatgpt
+```
+
+instead of
+
+```
+tiny.ly/A91fKs
+```
+
+Flow
+
+```
+Custom Alias?
+
+↓
+
+YES
+
+↓
+
+Already Exists?
+
+↓
+
+No
+
+↓
+
+Use It
+
+↓
+
+Return
+```
+
+If already taken
+
+↓
+
+Return
+
+```
+HTTP 409 Conflict
+```
+
+Ask the user to choose another alias.
+
+---
+
+# What About Collisions?
+
+If using
+
+Auto Increment
+
+↓
+
+No collisions.
+
+If using
+
+UUID
+
+↓
+
+Practically impossible.
+
+If using
+
+Random IDs
+
+↓
+
+Possible.
+
+Need
+
+```
+Generate
+
+↓
+
+Check Database
+
+↓
+
+Collision?
+
+↓
+
+Generate Again
+```
+
+---
+
+# Should We Hash the Long URL?
+
+Example
+
+```
+google.com
+
+↓
+
+SHA-256
+
+↓
+
+Take First 7 Characters
+```
+
+Advantages
+
+Same URL
+
+↓
+
+Same Short URL
+
+Disadvantages
+
+- Collision handling
+- Longer computation
+- Harder to support multiple users shortening the same URL independently
+
+Most production systems prefer generating unique IDs rather than hashing the URL.
+
+---
+
+# Interview Follow-up Questions
+
+### Why Base62 instead of Base64?
+
+Base64 includes characters like
+
+```
++
+
+/
+
+=
+```
+
+These require escaping in URLs.
+
+Base62 uses only
+
+```
+0-9
+
+A-Z
+
+a-z
+```
+
+making it URL-safe.
+
+---
+
+### Why not use UUID directly?
+
+UUIDs are too long.
+
+Example
+
+```
+550e8400-e29b-41d4-a716-446655440000
+```
+
+Not user-friendly.
+
+---
+
+### Why not use random strings?
+
+Random generation eventually creates collisions.
+
+Collision detection adds additional database lookups.
+
+---
+
+### Why is Auto Increment difficult in distributed systems?
+
+Suppose you have
+
+```
+Server A
+
+Server B
+
+Server C
+```
+
+Who generates
+
+```
+ID = 123457
+```
+
+Only one database can guarantee uniqueness.
+
+This becomes a bottleneck.
+
+Distributed ID generators such as Snowflake solve this problem.
+
+---
+
+# Key Takeaways
+
+- Every URL shortener needs a strategy for generating unique short codes.
+- Auto Increment + Base62 is the simplest and most common interview solution.
+- UUIDs provide uniqueness but are too long for direct use.
+- Random IDs require collision detection.
+- Hashing the long URL can produce deterministic short URLs but introduces collision handling and flexibility trade-offs.
+- Snowflake IDs are a good choice for large distributed systems because they generate globally unique IDs without centralized coordination.
+- Base62 is preferred because it creates compact, URL-safe identifiers.
+
+# URL Shortener – Part 3
+# Base62 Encoding Deep Dive
+
+---
+
+# Why Do We Need Base62?
+
+Suppose our database generates an ID.
+
+```
+123456789
+```
+
+We could use this directly.
+
+```
+https://tiny.ly/123456789
+```
+
+But that's
+
+- Long
+- Easy to guess
+- Not user friendly
+
+Instead we encode the number into another numbering system.
+
+```
+123456789
+
+↓
+
+Base62
+
+↓
+
+8M0kX
+```
+
+Much shorter.
+
+---
+
+# What is a Number System?
+
+We're familiar with Decimal (Base10).
+
+```
+0 1 2 3 4 5 6 7 8 9
+```
+
+Ten symbols.
+
+Hence
+
+```
+Base10
+```
+
+---
+
+Computers use Binary.
+
+```
+0 1
+```
+
+Two symbols.
+
+Hence
+
+```
+Base2
+```
+
+---
+
+Hexadecimal
+
+```
+0-9
+
+A-F
+```
+
+16 symbols.
+
+```
+Base16
+```
+
+---
+
+The more symbols we have,
+
+the fewer digits we need.
+
+---
+
+# Base36
+
+Uses
+
+```
+0-9
+
+A-Z
+```
+
+Total
+
+```
+36 characters
+```
+
+---
+
+# Base62
+
+Uses
+
+```
+0-9
+
+A-Z
+
+a-z
+```
+
+Total
+
+```
+10
+
++
+
+26
+
++
+
+26
+
+=
+
+62 characters
+```
+
+This gives us many more possible values per character.
+
+---
+
+# Character Mapping
+
+```
+0  -> 0
+1  -> 1
+...
+9  -> 9
+
+10 -> A
+11 -> B
+...
+35 -> Z
+
+36 -> a
+37 -> b
+...
+61 -> z
+```
+
+This mapping is arbitrary,
+
+but it is the one commonly used.
+
+---
+
+# Why More Characters Matter
+
+Suppose we have
+
+```
+999999999
+```
+
+In decimal
+
+```
+999999999
+```
+
+Nine digits.
+
+Now convert it to Base62.
+
+```
+15ftG7
+```
+
+Only
+
+```
+6 characters
+```
+
+Same number.
+
+Much shorter.
+
+---
+
+# How Base Conversion Works
+
+Think about decimal.
+
+```
+123
+```
+
+Actually means
+
+```
+1 × 10²
+
++
+
+2 × 10¹
+
++
+
+3 × 10⁰
+```
+
+Similarly,
+
+Base62 means
+
+```
+digit × 62⁰
+
+digit × 62¹
+
+digit × 62²
+```
+
+Same mathematics.
+
+Different base.
+
+---
+
+# Manual Example
+
+Convert
+
+```
+125
+```
+
+to Base62.
+
+Step 1
+
+Divide by 62.
+
+```
+125 ÷ 62
+
+=
+
+2
+
+remainder
+
+1
+```
+
+Store
+
+```
+1
+```
+
+---
+
+Now divide
+
+```
+2 ÷ 62
+
+=
+
+0
+
+remainder
+
+2
+```
+
+Store
+
+```
+2
+```
+
+Now read remainders backwards.
+
+```
+2
+
+1
+```
+
+Result
+
+```
+21
+```
+
+Check
+
+```
+2 × 62
+
++
+
+1
+
+=
+
+125
+```
+
+Correct.
+
+---
+
+# Another Example
+
+Convert
+
+```
+3844
+```
+
+Notice
+
+```
+62²
+
+=
+
+3844
+```
+
+Therefore
+
+```
+100
+```
+
+in Base62.
+
+Because
+
+```
+1 × 62²
+
++
+
+0 × 62¹
+
++
+
+0 × 62⁰
+```
+
+equals
+
+```
+3844
+```
+
+---
+
+# General Algorithm
+
+```
+Number
+
+↓
+
+Divide by 62
+
+↓
+
+Store Remainder
+
+↓
+
+Repeat Until Quotient = 0
+
+↓
+
+Reverse Remainders
+```
+
+Very similar to decimal-to-binary conversion.
+
+---
+
+# Java Pseudocode
+
+```java
+String chars =
+"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+while(id > 0){
+
+    int remainder = id % 62;
+
+    result.append(chars.charAt(remainder));
+
+    id /= 62;
+}
+
+return result.reverse();
+```
+
+Simple.
+
+Efficient.
+
+Time Complexity
+
+```
+O(log₆₂ N)
+```
+
+---
+
+# Why Not Base64?
+
+Base64 uses
+
+```
+A-Z
+
+a-z
+
+0-9
+
++
+
+/
+
+=
+```
+
+Problem
+
+```
++
+
+/
+
+=
+```
+
+are special characters in URLs.
+
+They often require
+
+URL encoding.
+
+Example
+
+```
+abc+
+
+↓
+
+abc%2B
+```
+
+Longer URLs.
+
+More complexity.
+
+---
+
+Base62 contains only
+
+```
+A-Z
+
+a-z
+
+0-9
+```
+
+Every character is already URL-safe.
+
+---
+
+# Capacity Comparison
+
+| Characters | Possible Values |
+|------------|----------------:|
+| 1 | 62 |
+| 2 | 62² = 3,844 |
+| 3 | 62³ = 238,328 |
+| 4 | 62⁴ = 14.7 Million |
+| 5 | 62⁵ = 916 Million |
+| 6 | 62⁶ = 56.8 Billion |
+| 7 | 62⁷ = 3.5 Trillion |
+| 8 | 62⁸ = 218 Trillion |
+
+Notice
+
+A
+
+```
+7-character
+```
+
+Base62 code can represent
+
+```
+3.5 Trillion
+```
+
+unique URLs.
+
+More than enough for most systems.
+
+---
+
+# Why Not Use Decimal?
+
+Suppose IDs reach
+
+```
+8,239,145,127
+```
+
+The URL becomes
+
+```
+tiny.ly/8239145127
+```
+
+Ten digits.
+
+Now encode using Base62.
+
+```
+tiny.ly/G4mX9K
+```
+
+Only six characters.
+
+Much easier to type.
+
+Much easier to share.
+
+---
+
+# Interview Questions
+
+### Why Base62?
+
+Because
+
+- Compact
+- URL-safe
+- Human-friendly
+- Easy to encode/decode
+- Huge address space
+
+---
+
+### Why not Base64?
+
+Base64 contains
+
+```
++
+
+/
+
+=
+```
+
+which require escaping in URLs.
+
+Base62 avoids these characters.
+
+---
+
+### Is Base62 Encryption?
+
+No.
+
+Base62 is simply an encoding.
+
+Anyone can decode it.
+
+It provides
+
+No security.
+
+---
+
+### Is Base62 Hashing?
+
+No.
+
+Hashing
+
+```
+Input
+
+↓
+
+Hash
+
+↓
+
+Fixed Output
+```
+
+Base62
+
+```
+Number
+
+↓
+
+Shorter Representation
+```
+
+The mapping is reversible.
+
+---
+
+# Common Misconceptions
+
+❌ Base62 compresses data.
+
+It does not.
+
+It simply represents the same number using a larger alphabet.
+
+---
+
+❌ Base62 provides security.
+
+It does not.
+
+It is completely reversible.
+
+---
+
+❌ Base62 prevents collisions.
+
+It does not.
+
+Collision prevention comes from how IDs are generated,
+
+not from the encoding.
+
+---
+
+# Key Takeaways
+
+- Base62 is a number encoding system using 62 URL-safe characters.
+- It converts large numeric IDs into much shorter strings.
+- Encoding is reversible.
+- It is not encryption.
+- It is not hashing.
+- It does not prevent collisions.
+- Auto Increment IDs + Base62 is one of the simplest and most common URL shortener implementations.
+- Seven Base62 characters can represent approximately **3.5 trillion** unique values, making it suitable for very large systems.
+
+# URL Shortener – Part 4
+# High-Level Design (HLD)
+
+---
+
+# Objective
+
+Design a highly scalable URL Shortener capable of
+
+- Creating short URLs
+- Redirecting users with very low latency
+- Supporting billions of URLs
+- Supporting analytics
+- Handling extremely read-heavy traffic
+
+---
+
+# High-Level Architecture
+
+```
+                          Client
+                             │
+                             ▼
+                     DNS / Load Balancer
+                             │
+                             ▼
+                       API Gateway
+                             │
+          ┌──────────────────┴─────────────────┐
+          │                                    │
+          ▼                                    ▼
+ URL Shortening Service              Redirect Service
+          │                                    │
+          ▼                                    ▼
+      Redis Cache                      Redis Cache
+          │                                    │
+          ▼                                    ▼
+        Database <-----------------------------┘
+          │
+          ▼
+   Analytics Publisher
+          │
+          ▼
+        Kafka
+          │
+          ▼
+   Analytics Workers
+          │
+          ▼
+ Analytics Database
+```
+
+---
+
+# Major Components
+
+## Client
+
+The client may be
+
+- Web Browser
+- Mobile App
+- Another Service
+
+It either
+
+- Creates a short URL
+- Opens an existing short URL
+
+---
+
+## Load Balancer
+
+Responsibilities
+
+- Distribute requests
+- Health checks
+- High availability
+- Horizontal scalability
+
+---
+
+## API Gateway
+
+Responsibilities
+
+- Authentication
+- Authorization
+- Rate Limiting
+- Logging
+- Routing
+
+---
+
+## URL Shortening Service
+
+Responsible for
+
+- Validating URLs
+- Generating IDs
+- Base62 Encoding
+- Supporting Custom Aliases
+- Persisting mappings
+
+---
+
+## Redirect Service
+
+Responsible for
+
+- Receiving short URLs
+- Looking up long URLs
+- Returning HTTP Redirect
+
+This service is extremely read-heavy.
+
+---
+
+## Redis
+
+Caches
+
+```
+shortCode
+
+↓
+
+longUrl
+```
+
+Most redirects should never reach the database.
+
+---
+
+## Database
+
+Stores
+
+```
+shortCode
+
+↓
+
+longUrl
+```
+
+This is the source of truth.
+
+---
+
+## Kafka
+
+Redirects should be extremely fast.
+
+Analytics should not slow them down.
+
+Instead
+
+```
+Redirect
+
+↓
+
+Kafka
+
+↓
+
+Analytics
+```
+
+---
+
+## Analytics Workers
+
+Consume Kafka events
+
+Compute
+
+- Click Count
+- Browser
+- Device
+- Country
+- Referrer
+
+Store analytics separately.
+
+---
+
+# Write Flow (Create Short URL)
+
+The client creates a new URL.
+
+```
+Client
+
+↓
+
+POST /urls
+
+↓
+
+Load Balancer
+
+↓
+
+API Gateway
+
+↓
+
+URL Shortening Service
+```
+
+The service
+
+- Validates URL
+- Generates Unique ID
+- Converts ID to Base62
+- Stores Mapping
+
+```
+Database
+
+↓
+
+Return Short URL
+```
+
+Example
+
+```
+https://google.com
+
+↓
+
+ID = 983412
+
+↓
+
+Base62
+
+↓
+
+A9kLm2
+
+↓
+
+Store
+
+↓
+
+Return
+
+tiny.ly/A9kLm2
+```
+
+---
+
+# Read Flow (Redirect)
+
+A user opens
+
+```
+tiny.ly/A9kLm2
+```
+
+The request flows
+
+```
+Browser
+
+↓
+
+Load Balancer
+
+↓
+
+Redirect Service
+
+↓
+
+Redis
+```
+
+---
+
+## Cache Hit
+
+```
+Redis
+
+↓
+
+Long URL
+
+↓
+
+HTTP 302 Redirect
+```
+
+No database call.
+
+Fast.
+
+---
+
+## Cache Miss
+
+```
+Redis
+
+↓
+
+MISS
+
+↓
+
+Database
+
+↓
+
+Redis
+
+↓
+
+HTTP 302
+```
+
+The cache is populated for future requests.
+
+This is the **Cache-Aside Pattern**.
+
+---
+
+# Why Separate URL Creation and Redirect Services?
+
+Traffic characteristics are different.
+
+Creation
+
+```
+Few Writes
+```
+
+Redirect
+
+```
+Millions of Reads
+```
+
+Independent services allow
+
+- Independent scaling
+- Better resource utilization
+- Easier deployment
+
+---
+
+# Synchronous vs Asynchronous
+
+## Synchronous Path
+
+```
+Client
+
+↓
+
+Gateway
+
+↓
+
+Redirect Service
+
+↓
+
+Redis
+
+↓
+
+Database (only on cache miss)
+
+↓
+
+HTTP 302 Redirect
+```
+
+The user waits only for the redirect.
+
+---
+
+## Asynchronous Path
+
+After returning the redirect
+
+```
+Redirect Service
+
+↓
+
+Kafka
+
+↓
+
+Analytics Worker
+
+↓
+
+Analytics DB
+```
+
+Analytics should never slow down redirects.
+
+---
+
+# Why HTTP 302?
+
+The Redirect Service returns
+
+```
+HTTP 302 Found
+```
+
+with
+
+```
+Location:
+https://www.example.com
+```
+
+The browser automatically requests the destination URL.
+
+---
+
+# Scaling Strategy
+
+Each layer scales independently.
+
+```
+Load Balancer
+
+↓
+
+More Redirect Services
+
+↓
+
+Redis Cluster
+
+↓
+
+Read Replicas
+
+↓
+
+Kafka Partitions
+
+↓
+
+Analytics Workers
+```
+
+---
+
+# Failure Handling
+
+## Redis Down
+
+Fallback
+
+```
+Redis
+
+↓
+
+Database
+```
+
+Higher latency
+
+No downtime.
+
+---
+
+## Database Down
+
+New URL creation fails.
+
+Existing redirects may continue if Redis still contains mappings.
+
+---
+
+## Kafka Down
+
+Redirects should continue.
+
+Analytics events can be retried or temporarily buffered.
+
+Analytics is not part of the critical path.
+
+---
+
+# Why This Architecture?
+
+| Component | Responsibility |
+|------------|----------------|
+| Load Balancer | Distribute traffic |
+| API Gateway | Authentication, Rate Limiting |
+| URL Shortening Service | Generate short URLs |
+| Redirect Service | Resolve short URLs |
+| Redis | Fast lookups |
+| Database | Source of truth |
+| Kafka | Asynchronous analytics |
+| Analytics Workers | Process click events |
+
+---
+
+# Trade-offs
+
+Advantages
+
+- Extremely fast redirects
+- Read-heavy optimization
+- Horizontal scalability
+- Low latency
+- Decoupled analytics
+- Independent service scaling
+
+Trade-offs
+
+- Eventual consistency for analytics
+- Cache invalidation complexity
+- Additional operational components
+- Cache misses increase latency
+
+---
+
+# Interview Summary
+
+A client creates a short URL by sending a request through the Load Balancer and API Gateway to the URL Shortening Service. The service validates the URL, generates a unique ID, converts it to Base62, stores the mapping in the database, and returns the short URL.
+
+When a user accesses the short URL, the request is routed to the Redirect Service, which first checks Redis for the mapping. On a cache hit, the service immediately returns an HTTP 302 redirect. On a cache miss, it retrieves the mapping from the database, updates Redis, and then returns the redirect. Analytics events are published asynchronously to Kafka and processed by background workers, ensuring that click tracking never impacts redirect latency.
+
+---
+
+# Key Takeaways
+
+- Separate the write path from the read path.
+- Optimize redirects using Redis.
+- Use the Cache-Aside pattern for lookups.
+- Keep analytics asynchronous using Kafka.
+- Scale redirect services independently from URL creation services.
+- Design the redirect path to be as short and fast as possible.
+
+# URL Shortener – Part 5
+# Deep Dive, Scaling & Interview Follow-ups
+
+---
+
+# Why This Chapter Matters
+
+Drawing the architecture is only the beginning.
+
+A senior interviewer will now ask questions like
+
+- What if Redis goes down?
+- What if one URL receives 100 million clicks?
+- How do you shard the database?
+- How do you prevent cache stampede?
+- Why HTTP 301 vs 302?
+- How do you support analytics?
+
+This chapter answers those questions.
+
+---
+
+# 1. Cache-Aside Pattern
+
+Most redirect requests should never hit the database.
+
+Request
+
+```
+GET /Ab3Kd9
+```
+
+Flow
+
+```
+Redirect Service
+
+↓
+
+Redis
+
+↓
+
+Cache Hit?
+
+↓
+
+YES
+
+↓
+
+Return Long URL
+```
+
+Very fast.
+
+---
+
+## Cache Miss
+
+If Redis doesn't contain the URL
+
+```
+Redirect Service
+
+↓
+
+Redis
+
+↓
+
+MISS
+
+↓
+
+Database
+
+↓
+
+Redis
+
+↓
+
+Return Long URL
+```
+
+This is called the **Cache-Aside Pattern**.
+
+Advantages
+
+- Simple
+- Reduces database load
+- Easy to implement
+
+Trade-offs
+
+- First request is slower
+- Cache invalidation required
+
+---
+
+# 2. Hot Keys
+
+Suppose a celebrity tweets
+
+```
+tiny.ly/chatgpt
+```
+
+The URL suddenly receives
+
+```
+100 Million Requests
+```
+
+All requests hit the same Redis key.
+
+```
+Redis
+
+↓
+
+One Hot Key
+
+↓
+
+CPU Spike
+```
+
+Even Redis can become overloaded.
+
+---
+
+## Possible Solutions
+
+### Redis Replication
+
+```
+Redis Primary
+
+↓
+
+Replica 1
+
+Replica 2
+
+Replica 3
+```
+
+Read requests are distributed.
+
+---
+
+### Local In-Memory Cache
+
+Each Redirect Service stores
+
+```
+Most Popular URLs
+```
+
+inside local memory.
+
+```
+Redirect Service
+
+↓
+
+Local Cache
+
+↓
+
+Redis
+
+↓
+
+Database
+```
+
+Most requests never reach Redis.
+
+---
+
+### CDN
+
+Popular redirects can even be cached at the edge.
+
+```
+Browser
+
+↓
+
+CDN
+
+↓
+
+Redirect
+```
+
+No request reaches your servers.
+
+---
+
+# 3. Cache Stampede
+
+Suppose a very popular URL expires from Redis.
+
+```
+Redis
+
+↓
+
+Key Removed
+```
+
+Immediately
+
+```
+100,000 Requests
+
+↓
+
+Database
+```
+
+The database becomes overloaded.
+
+This is called a **Cache Stampede**.
+
+---
+
+## Solutions
+
+### Request Coalescing
+
+The first request reloads the cache.
+
+Everyone else waits.
+
+```
+100 Requests
+
+↓
+
+One Database Query
+
+↓
+
+Redis Updated
+
+↓
+
+All Requests Return
+```
+
+---
+
+### Distributed Lock
+
+```
+Acquire Lock
+
+↓
+
+One Server Reloads Cache
+
+↓
+
+Release Lock
+```
+
+Other servers wait until the cache is rebuilt.
+
+---
+
+### Refresh Before Expiry
+
+Instead of waiting for expiration
+
+Refresh the cache early.
+
+```
+Expires In
+
+↓
+
+30 Seconds
+
+↓
+
+Refresh
+```
+
+Users never experience a cache miss.
+
+---
+
+# 4. Database Read Replicas
+
+Redirects are read-heavy.
+
+```
+Reads
+
+>>
+
+Writes
+```
+
+Instead of one database
+
+```
+Primary
+
+↓
+
+Replica 1
+
+↓
+
+Replica 2
+
+↓
+
+Replica 3
+```
+
+Reads
+
+↓
+
+Replicas
+
+Writes
+
+↓
+
+Primary
+
+---
+
+# 5. Database Sharding
+
+Suppose we store
+
+```
+20 Billion URLs
+```
+
+One database becomes too large.
+
+Partition by
+
+```
+shortCode Hash
+```
+
+Example
+
+```
+Shard 1
+
+A-F
+
+Shard 2
+
+G-L
+
+Shard 3
+
+M-R
+
+Shard 4
+
+S-Z
+```
+
+Or more commonly
+
+```
+hash(shortCode) % NumberOfShards
+```
+
+This distributes data evenly.
+
+---
+
+# 6. URL Expiration
+
+Some URLs expire.
+
+Example
+
+```
+Expires
+
+July 31
+```
+
+Redirect Flow
+
+```
+Lookup
+
+↓
+
+Expired?
+
+↓
+
+YES
+
+↓
+
+HTTP 410 Gone
+```
+
+Instead of
+
+```
+302 Redirect
+```
+
+---
+
+# 7. Custom Aliases
+
+Example
+
+```
+tiny.ly/chatgpt
+```
+
+Flow
+
+```
+Alias Exists?
+
+↓
+
+YES
+
+↓
+
+HTTP 409 Conflict
+
+↓
+
+Choose Another Alias
+```
+
+---
+
+# 8. HTTP 301 vs HTTP 302
+
+Interviewers ask this surprisingly often.
+
+---
+
+## HTTP 301
+
+```
+Moved Permanently
+```
+
+Browser caches the redirect.
+
+Future requests may bypass your service.
+
+Advantages
+
+- Faster
+- Less traffic
+
+Disadvantages
+
+Hard to change later.
+
+---
+
+## HTTP 302
+
+```
+Temporary Redirect
+```
+
+Browser asks your server every time.
+
+Advantages
+
+- Track every click
+- Destination can change
+
+Most URL shorteners prefer
+
+```
+302
+```
+
+because analytics are important.
+
+---
+
+# 9. Analytics
+
+Should redirects wait?
+
+No.
+
+Bad
+
+```
+Redirect
+
+↓
+
+Store Analytics
+
+↓
+
+Return
+```
+
+Analytics slows every request.
+
+---
+
+Better
+
+```
+Redirect
+
+↓
+
+Return 302
+
+↓
+
+Publish Event
+
+↓
+
+Kafka
+
+↓
+
+Analytics Worker
+
+↓
+
+Analytics DB
+```
+
+Redirect remains fast.
+
+---
+
+# 10. Redis Failure
+
+Redis becomes unavailable.
+
+Fallback
+
+```
+Redirect Service
+
+↓
+
+Database
+```
+
+Higher latency
+
+No downtime.
+
+---
+
+# 11. Database Failure
+
+If Redis already contains the URL
+
+Redirects continue.
+
+```
+Redis
+
+↓
+
+302
+```
+
+New URLs cannot be created.
+
+Cache gradually expires.
+
+Eventually redirects fail.
+
+---
+
+# 12. Kafka Failure
+
+Redirects should continue.
+
+Analytics is non-critical.
+
+Possible approaches
+
+- Retry publishing
+- Temporary local buffer
+- Outbox Pattern (if analytics must never be lost)
+
+---
+
+# 13. Duplicate URLs
+
+Suppose two users shorten
+
+```
+google.com
+```
+
+Possible strategies
+
+Option 1
+
+Create two different short URLs.
+
+Simpler.
+
+Supports independent ownership and analytics.
+
+---
+
+Option 2
+
+Return the same short URL.
+
+Saves storage.
+
+Requires deduplication logic.
+
+---
+
+# 14. Monitoring
+
+Important metrics
+
+API
+
+- Request Rate
+- Error Rate
+- Latency
+
+Redis
+
+- Cache Hit Ratio
+- Memory Usage
+
+Database
+
+- Query Latency
+- Connections
+
+Kafka
+
+- Consumer Lag
+
+Analytics
+
+- Processing Delay
+
+---
+
+# 15. Scaling Strategy
+
+Scale every layer independently.
+
+```
+Load Balancer
+
+↓
+
+Redirect Services
+
+↓
+
+Redis Cluster
+
+↓
+
+Database Read Replicas
+
+↓
+
+Kafka
+
+↓
+
+Analytics Workers
+```
+
+---
+
+# Common Interview Questions
+
+## Q. Why use Redis?
+
+To reduce database reads and provide low-latency redirects.
+
+---
+
+## Q. Why Cache-Aside?
+
+Simple.
+
+Only cache frequently accessed data.
+
+---
+
+## Q. What if Redis crashes?
+
+Fallback to the database.
+
+---
+
+## Q. What if one URL becomes extremely popular?
+
+Use
+
+- Local Cache
+- Redis Replicas
+- CDN
+
+---
+
+## Q. Why use Kafka?
+
+Analytics should never slow down redirects.
+
+---
+
+## Q. Why HTTP 302 instead of 301?
+
+302 allows every request to reach the redirect service, enabling click tracking and destination updates.
+
+---
+
+## Q. Why not hash the long URL?
+
+Hash collisions.
+
+Difficult ownership.
+
+Harder analytics.
+
+Generated IDs are simpler.
+
+---
+
+# Final Architecture
+
+```
+Client
+
+↓
+
+Load Balancer
+
+↓
+
+API Gateway
+
+↓
+
+Redirect Service
+
+↓
+
+Redis
+
+↓
+
+Database
+
+↓
+
+302 Redirect
+
+----------------------
+
+Analytics Event
+
+↓
+
+Kafka
+
+↓
+
+Analytics Workers
+
+↓
+
+Analytics Database
+```
+
+---
+
+# Key Takeaways
+
+- URL Shorteners are highly read-heavy systems.
+- Cache-Aside keeps most reads in Redis.
+- Read Replicas reduce database load.
+- Sharding supports billions of URLs.
+- Hot keys require replication, local caching, or CDNs.
+- Cache Stampede should be mitigated with request coalescing, distributed locks, or proactive refresh.
+- Analytics should always be asynchronous.
+- HTTP 302 is generally preferred over HTTP 301 for URL shorteners because it supports analytics and flexible redirects.
+- Every layer should scale independently.
+
+
+# Distributed Rate Limiter – Part 1
+# Before High-Level Design
+
+---
+
+# Problem Statement
+
+Design a distributed Rate Limiter for an API platform.
+
+The system should protect backend services from excessive traffic by limiting the number of requests a client can make within a specified time period.
+
+Examples
+
+```
+100 requests/minute/user
+
+1000 requests/minute/API Key
+
+10 login attempts/hour/IP
+```
+
+The Rate Limiter should work correctly even when the application is running on many servers.
+
+---
+
+# Why Do We Need Rate Limiting?
+
+Without rate limiting,
+
+one client could send
+
+```
+1,000,000 Requests
+
+↓
+
+API
+
+↓
+
+CPU
+
+↓
+
+Memory
+
+↓
+
+Database
+
+↓
+
+Crash
+```
+
+Rate limiting protects
+
+- APIs
+- Databases
+- Authentication Services
+- Payment Systems
+- Search APIs
+- Third-party integrations
+
+It also helps prevent abuse and denial-of-service attacks.
+
+---
+
+# Step 1 – Clarifying Questions
+
+Before designing the system, gather requirements.
+
+---
+
+## Functional Questions
+
+### 1. What should be rate limited?
+
+Possible options
+
+- User
+- IP Address
+- API Key
+- OAuth Client
+- Organization
+- Endpoint
+
+Assumption
+
+Support all of the above.
+
+---
+
+### 2. Should different APIs have different limits?
+
+Example
+
+```
+Login
+
+↓
+
+10/hour
+
+Search
+
+↓
+
+1000/minute
+
+Payment
+
+↓
+
+20/minute
+```
+
+Assumption
+
+Yes.
+
+---
+
+### 3. Should rejected requests receive an error?
+
+Assumption
+
+Yes.
+
+Return
+
+```
+HTTP 429
+
+Too Many Requests
+```
+
+---
+
+### 4. Should burst traffic be allowed?
+
+Some systems allow temporary bursts.
+
+Others enforce a constant rate.
+
+Assumption
+
+Allow controlled bursts.
+
+---
+
+### 5. Should limits be configurable?
+
+Assumption
+
+Yes.
+
+Policies should be configurable without code changes.
+
+---
+
+## Non-Functional Questions
+
+### Latency
+
+The Rate Limiter should add
+
+```
+<5 ms
+```
+
+to request processing.
+
+---
+
+### Availability
+
+High Availability.
+
+The Rate Limiter should not become a single point of failure.
+
+---
+
+### Scalability
+
+Support
+
+Millions of users
+
+Millions of requests per second
+
+---
+
+### Reliability
+
+The Rate Limiter should behave consistently across multiple application servers.
+
+---
+
+# Step 2 – Functional Requirements
+
+The system should support
+
+- Limit requests by User
+- Limit requests by IP
+- Limit requests by API Key
+- Configurable policies
+- Return HTTP 429 when limits are exceeded
+- Allow policy updates
+
+---
+
+# Step 3 – Non-Functional Requirements
+
+The system should provide
+
+- Low latency
+- High throughput
+- Horizontal scalability
+- Fault tolerance
+- Distributed consistency
+- High availability
+
+---
+
+# Step 4 – Capacity Estimation
+
+Assume
+
+```
+10 Million Active Users
+```
+
+Average
+
+```
+100 Requests/User/Day
+```
+
+Total
+
+```
+1 Billion Requests/Day
+```
+
+Average Requests/Second
+
+```
+≈11,500 requests/sec
+```
+
+Peak traffic
+
+```
+10×
+
+≈115,000 requests/sec
+```
+
+This tells us
+
+- We need an in-memory solution.
+- A relational database is too slow for every request.
+- Redis is a strong candidate.
+
+---
+
+# Step 5 – API Design
+
+The Rate Limiter is usually internal.
+
+Example
+
+```
+allowRequest(
+    clientId,
+    apiName
+)
+```
+
+Returns
+
+```
+true
+
+or
+
+false
+```
+
+Example
+
+```
+allowRequest(
+    "user123",
+    "/payments"
+)
+
+↓
+
+true
+```
+
+---
+
+# Step 6 – Data Model
+
+Redis Key
+
+```
+rate_limit:user123:/payments
+```
+
+Value
+
+```
+Current Request Count
+```
+
+Example
+
+```
+Key
+
+rate_limit:user123:/payments
+
+↓
+
+Value
+
+57
+```
+
+An expiration time is associated with the key.
+
+Example
+
+```
+TTL
+
+60 seconds
+```
+
+When the window expires,
+
+Redis automatically removes the key.
+
+---
+
+# Database Choice
+
+Redis is the preferred choice because
+
+- In-memory
+- Extremely fast
+- Atomic operations
+- Built-in expiration
+- Distributed deployment support
+
+A relational database would introduce unnecessary latency and contention.
+
+---
+
+# Transition to the Next Chapter
+
+We now know
+
+- What we're limiting
+- Expected traffic
+- Why Redis is a good fit
+- How requests are identified
+
+The next step is choosing the rate limiting algorithm.
+
+Several algorithms exist, each with different trade-offs.
+
+The next chapter compares
+
+- Fixed Window
+- Sliding Window
+- Sliding Log
+- Token Bucket
+- Leaky Bucket
+
+and explains when to use each.
+
+# Distributed Rate Limiter – Part 2
+# Rate Limiting Algorithms
+
+---
+
+# Why This Chapter Matters
+
+There is no single "best" rate limiting algorithm.
+
+Different systems have different requirements.
+
+Some prioritize
+
+- Simplicity
+
+Others prioritize
+
+- Fairness
+
+Others prioritize
+
+- Burst traffic
+
+A senior engineer should understand the strengths and weaknesses of each algorithm.
+
+---
+
+# Overview
+
+The five most common algorithms are
+
+1. Fixed Window Counter
+2. Sliding Window Counter
+3. Sliding Log
+4. Token Bucket
+5. Leaky Bucket
+
+---
+
+# 1. Fixed Window Counter
+
+The simplest algorithm.
+
+Suppose the limit is
+
+```
+100 Requests
+
+Per Minute
+```
+
+Create a counter.
+
+```
+Minute 10:00
+
+↓
+
+Counter = 0
+```
+
+Every request increments the counter.
+
+```
+Request
+
+↓
+
+Counter++
+
+↓
+
+Counter <= 100 ?
+
+↓
+
+YES
+
+↓
+
+Allow
+```
+
+At
+
+```
+10:01
+```
+
+Reset the counter.
+
+---
+
+## Example
+
+```
+Limit
+
+100 Requests / Minute
+```
+
+User sends
+
+```
+100 Requests
+
+10:00:59
+```
+
+Allowed.
+
+One second later
+
+```
+10:01:00
+```
+
+Counter resets.
+
+User sends
+
+```
+100 More Requests
+```
+
+Allowed again.
+
+Total
+
+```
+200 Requests
+
+Within 2 Seconds
+```
+
+Even though the limit is
+
+```
+100/minute
+```
+
+---
+
+# Problem
+
+This is called the **Boundary Problem**.
+
+Traffic spikes occur at window boundaries.
+
+---
+
+## Advantages
+
+- Very simple
+- Fast
+- Low memory
+
+---
+
+## Disadvantages
+
+- Allows burst traffic
+- Unfair around window boundaries
+
+---
+
+# 2. Sliding Window Counter
+
+Instead of fixed one-minute buckets,
+
+consider the previous
+
+```
+60 Seconds
+```
+
+at any point in time.
+
+Suppose current time is
+
+```
+10:00:45
+```
+
+Count requests between
+
+```
+09:59:45
+
+↓
+
+10:00:45
+```
+
+This removes boundary spikes.
+
+---
+
+## Advantages
+
+- Fairer
+- Smooth traffic
+- Lower burst probability
+
+---
+
+## Disadvantages
+
+- More complex
+- Requires additional bookkeeping
+
+---
+
+# 3. Sliding Log
+
+Store the timestamp of every request.
+
+Example
+
+```
+10:00:01
+
+10:00:05
+
+10:00:10
+
+10:00:15
+```
+
+For every new request
+
+Remove timestamps older than
+
+```
+60 seconds
+```
+
+Count remaining timestamps.
+
+If
+
+```
+Count < Limit
+```
+
+Allow.
+
+Otherwise
+
+Reject.
+
+---
+
+## Advantages
+
+Most accurate algorithm.
+
+Perfect sliding window.
+
+---
+
+## Disadvantages
+
+High memory usage.
+
+Suppose
+
+```
+1 Million Users
+
+×
+
+100 Requests
+
+↓
+
+100 Million Timestamps
+```
+
+Expensive.
+
+Rarely used for very large systems.
+
+---
+
+# 4. Token Bucket
+
+One of the most popular algorithms.
+
+Imagine a bucket.
+
+```
+Capacity
+
+100 Tokens
+```
+
+Every request consumes
+
+```
+1 Token
+```
+
+If tokens remain
+
+↓
+
+Allow.
+
+If bucket becomes empty
+
+↓
+
+Reject.
+
+---
+
+## Token Refill
+
+Tokens refill continuously.
+
+Example
+
+```
+10 Tokens
+
+Every Second
+```
+
+Suppose the bucket size is
+
+```
+100
+```
+
+Initially
+
+```
+100 Tokens
+```
+
+User sends
+
+```
+40 Requests
+```
+
+Bucket now contains
+
+```
+60 Tokens
+```
+
+After
+
+```
+4 Seconds
+```
+
+Tokens refill.
+
+```
+100 Tokens
+```
+
+again.
+
+---
+
+## Advantages
+
+- Allows controlled bursts
+- Smooth traffic
+- Very efficient
+- Widely used
+
+---
+
+## Disadvantages
+
+Slightly more complex than Fixed Window.
+
+---
+
+# 5. Leaky Bucket
+
+Imagine a bucket with a hole.
+
+Requests enter quickly.
+
+```
+100 Requests
+
+↓
+
+Bucket
+```
+
+Water leaves
+
+```
+10 Requests/Second
+```
+
+at a constant rate.
+
+Even if
+
+```
+1000 Requests
+```
+
+arrive together,
+
+the output remains steady.
+
+---
+
+## Advantages
+
+Very smooth traffic.
+
+Excellent for protecting downstream systems.
+
+---
+
+## Disadvantages
+
+Burst requests experience delay.
+
+---
+
+# Visual Comparison
+
+## Fixed Window
+
+```
+████████████████████
+
+Reset
+
+████████████████████
+```
+
+Traffic spikes at boundaries.
+
+---
+
+## Sliding Window
+
+```
+██████████████████
+██████████████████
+██████████████████
+```
+
+Smooth.
+
+---
+
+## Token Bucket
+
+```
+Tokens
+
+██████████
+
+↓
+
+Consume
+
+↓
+
+Refill
+```
+
+Allows bursts.
+
+---
+
+## Leaky Bucket
+
+```
+Requests
+
+██████████████
+
+↓
+
+Constant Output
+
+████████
+```
+
+Smooth output.
+
+---
+
+# Algorithm Comparison
+
+| Algorithm | Burst Support | Accuracy | Memory | Complexity |
+|------------|--------------|-----------|----------|-------------|
+| Fixed Window | Poor | Low | Low | Very Low |
+| Sliding Window | Good | Medium | Medium | Medium |
+| Sliding Log | Excellent | High | High | High |
+| Token Bucket | Excellent | Medium | Low | Medium |
+| Leaky Bucket | No | High | Low | Medium |
+
+---
+
+# Which Algorithm Should I Choose?
+
+## Fixed Window
+
+Choose when
+
+- Simplicity matters
+- Small systems
+
+---
+
+## Sliding Window
+
+Choose when
+
+- Fairness matters
+- API Rate Limiting
+
+---
+
+## Sliding Log
+
+Choose when
+
+- Accuracy is critical
+- Traffic volume is manageable
+
+---
+
+## Token Bucket
+
+Choose when
+
+- Burst traffic should be allowed
+- High throughput
+- Cloud APIs
+
+Examples
+
+- AWS
+- Stripe
+- API Gateways
+
+---
+
+## Leaky Bucket
+
+Choose when
+
+- Constant request rate is required
+
+Examples
+
+- Network routers
+- Traffic shaping
+- Streaming systems
+
+---
+
+# Which One Is Asked Most Often?
+
+For backend interviews
+
+Most common answer
+
+```
+Token Bucket
+```
+
+because
+
+- Efficient
+- Allows bursts
+- Low memory
+- Easy to distribute
+
+---
+
+# Interview Questions
+
+## Why not Fixed Window?
+
+Boundary problem.
+
+Allows sudden bursts.
+
+---
+
+## Why not Sliding Log?
+
+Very memory intensive.
+
+Stores every request timestamp.
+
+---
+
+## Why Token Bucket?
+
+Allows short bursts while enforcing a long-term average request rate.
+
+---
+
+## Why Leaky Bucket?
+
+Protects downstream services by producing a constant output rate.
+
+---
+
+## Can Redis implement all of them?
+
+Yes.
+
+Redis supports
+
+- Atomic Counters
+- Sorted Sets
+- Expiration
+- Lua Scripts
+
+making it suitable for every algorithm.
+
+---
+
+# Key Takeaways
+
+- Fixed Window is simple but suffers from burst traffic at window boundaries.
+- Sliding Window improves fairness by evaluating the previous rolling time interval.
+- Sliding Log provides the most accurate rate limiting but consumes significantly more memory.
+- Token Bucket allows controlled bursts while enforcing a long-term average rate and is the most common choice for API rate limiting.
+- Leaky Bucket smooths traffic by processing requests at a constant rate, making it useful for protecting downstream services.
+- There is no universally best algorithm; the right choice depends on the application's requirements.
+
+# Distributed Rate Limiter – Part 3
+# High-Level Design (HLD)
+
+---
+
+# Objective
+
+Design a distributed Rate Limiter that
+
+- Supports millions of users
+- Works across multiple application servers
+- Adds minimal latency
+- Prevents abuse
+- Is highly available
+- Scales horizontally
+
+---
+
+# High-Level Architecture
+
+```
+                          Client
+                             │
+                             ▼
+                     DNS / Load Balancer
+                             │
+                             ▼
+                       API Gateway
+                             │
+                             ▼
+                     Rate Limiter Service
+                             │
+                     Check Request Limit
+                             │
+                             ▼
+                        Redis Cluster
+                             │
+                Allow?                 Reject?
+                  │                      │
+                  ▼                      ▼
+          Backend Service        HTTP 429 Too Many Requests
+```
+
+---
+
+# Why Place the Rate Limiter Before the Backend?
+
+Suppose a malicious client sends
+
+```
+1 Million Requests
+```
+
+If requests reach the backend first
+
+```
+Client
+
+↓
+
+Backend
+
+↓
+
+Database
+
+↓
+
+Reject
+```
+
+The backend still wastes CPU, memory, and database connections.
+
+Instead
+
+```
+Client
+
+↓
+
+Rate Limiter
+
+↓
+
+Reject Immediately
+```
+
+The backend never sees invalid requests.
+
+---
+
+# Major Components
+
+## Client
+
+The client could be
+
+- Browser
+- Mobile App
+- API Consumer
+- Another Microservice
+
+---
+
+## Load Balancer
+
+Responsibilities
+
+- Distribute traffic
+- Health checks
+- High availability
+
+---
+
+## API Gateway
+
+Responsibilities
+
+- Authentication
+- Authorization
+- Routing
+- Rate Limiting (sometimes integrated)
+
+Many API gateways (Kong, Envoy, NGINX, AWS API Gateway) provide built-in rate limiting.
+
+---
+
+## Rate Limiter Service
+
+Responsibilities
+
+- Identify the client
+- Determine the applicable policy
+- Check request count
+- Allow or reject request
+- Return HTTP 429 when the limit is exceeded
+
+---
+
+## Redis Cluster
+
+Redis stores request counters.
+
+Example
+
+```
+rate_limit:user123:/payments
+```
+
+Value
+
+```
+57
+```
+
+TTL
+
+```
+60 seconds
+```
+
+Redis automatically removes expired counters.
+
+---
+
+# Request Flow
+
+Suppose
+
+```
+Limit
+
+100 Requests / Minute
+```
+
+Current count
+
+```
+99
+```
+
+Client sends another request.
+
+```
+Client
+
+↓
+
+Gateway
+
+↓
+
+Rate Limiter
+
+↓
+
+Redis
+
+↓
+
+Counter = 99
+
+↓
+
+Increment
+
+↓
+
+100
+
+↓
+
+Allow
+
+↓
+
+Backend
+```
+
+The next request
+
+```
+Counter
+
+101
+
+↓
+
+Reject
+
+↓
+
+HTTP 429
+```
+
+---
+
+# Redis Operations
+
+The Rate Limiter needs three operations.
+
+1.
+
+```
+Read Counter
+```
+
+2.
+
+```
+Increment Counter
+```
+
+3.
+
+```
+Set Expiration
+```
+
+These must happen atomically.
+
+---
+
+# Why Atomic Operations?
+
+Suppose two requests arrive simultaneously.
+
+Server 1
+
+```
+Counter = 99
+```
+
+Server 2
+
+```
+Counter = 99
+```
+
+Both increment.
+
+Both think
+
+```
+100
+```
+
+Both allow.
+
+Now
+
+```
+101 Requests
+```
+
+were allowed.
+
+Incorrect.
+
+Atomic operations prevent race conditions.
+
+---
+
+# Redis Atomic Commands
+
+Redis provides
+
+```
+INCR
+```
+
+which is atomic.
+
+Example
+
+```
+INCR rate_limit:user123
+```
+
+No matter how many servers execute this,
+
+Redis guarantees correctness.
+
+---
+
+# Why Not Store Counters in SQL?
+
+Imagine
+
+```
+100,000 Requests / Second
+```
+
+Every request would perform
+
+```
+SELECT
+
+UPDATE
+```
+
+Database contention would become severe.
+
+Redis performs these operations in memory and is significantly faster.
+
+---
+
+# Distributed Deployment
+
+Suppose we have
+
+```
+Load Balancer
+
+↓
+
+Server 1
+
+Server 2
+
+Server 3
+```
+
+If each server stores its own counter
+
+```
+Server 1
+
+20 Requests
+
+Server 2
+
+20 Requests
+
+Server 3
+
+20 Requests
+```
+
+User effectively sends
+
+```
+60 Requests
+```
+
+while the limit is
+
+```
+20
+```
+
+Incorrect.
+
+Instead
+
+All servers use
+
+```
+One Shared Redis Cluster
+```
+
+Every request updates the same counter.
+
+---
+
+# Redis Key Design
+
+Key format
+
+```
+rate_limit:{clientId}:{api}
+```
+
+Example
+
+```
+rate_limit:user123:/payments
+```
+
+Value
+
+```
+57
+```
+
+TTL
+
+```
+60 seconds
+```
+
+When TTL expires,
+
+Redis automatically removes the key.
+
+---
+
+# Why TTL?
+
+Without TTL
+
+```
+Counter
+
+↓
+
+Forever
+```
+
+The user would eventually be blocked permanently.
+
+TTL resets the window automatically.
+
+---
+
+# Horizontal Scaling
+
+Every component scales independently.
+
+```
+Load Balancer
+
+↓
+
+Gateway Instances
+
+↓
+
+Rate Limiter Instances
+
+↓
+
+Redis Cluster
+
+↓
+
+Backend Services
+```
+
+The Rate Limiter is stateless.
+
+State lives in Redis.
+
+This allows unlimited horizontal scaling.
+
+---
+
+# Failure Handling
+
+## Redis Unavailable
+
+Two possible strategies.
+
+### Fail Open
+
+```
+Redis Down
+
+↓
+
+Allow Request
+```
+
+Advantages
+
+- High availability
+- Better user experience
+
+Disadvantages
+
+- Abuse possible
+
+Suitable for
+
+- Public APIs
+- Low-risk systems
+
+---
+
+### Fail Closed
+
+```
+Redis Down
+
+↓
+
+Reject Request
+```
+
+Advantages
+
+Protects backend.
+
+Disadvantages
+
+Legitimate users are rejected.
+
+Suitable for
+
+- Banking
+- Payments
+- Security-sensitive APIs
+
+---
+
+# Monitoring
+
+Monitor
+
+API
+
+- Request Rate
+- Rejection Rate
+- Latency
+
+Redis
+
+- Memory Usage
+- CPU
+- Command Latency
+
+Rate Limiter
+
+- Allowed Requests
+- Rejected Requests
+- Redis Errors
+
+---
+
+# Why Redis?
+
+Redis provides
+
+- In-memory performance
+- Atomic operations
+- Built-in expiration (TTL)
+- Horizontal scaling
+- High throughput
+- Low latency
+
+This makes it ideal for distributed rate limiting.
+
+---
+
+# Trade-offs
+
+Advantages
+
+- Fast
+- Horizontally scalable
+- Distributed
+- Simple architecture
+- Shared counters across servers
+
+Trade-offs
+
+- Additional infrastructure
+- Redis becomes a critical dependency
+- Need replication and failover
+- Multi-region deployments require additional design
+
+---
+
+# Interview Summary
+
+A request first reaches the Load Balancer and API Gateway before entering the Rate Limiter Service. The service identifies the client and the applicable rate limit policy, then checks a shared Redis Cluster. Redis atomically increments a request counter with an expiration time. If the updated count remains within the configured limit, the request is forwarded to the backend service. Otherwise, the Rate Limiter immediately returns **HTTP 429 Too Many Requests**. Using Redis ensures low latency, atomic updates, automatic window expiration through TTL, and consistent enforcement across multiple application servers.
+
+---
+
+# Key Takeaways
+
+- Place the Rate Limiter before the backend service.
+- Keep the Rate Limiter stateless.
+- Store counters in Redis.
+- Use atomic operations to avoid race conditions.
+- Use TTL to automatically reset rate limits.
+- Share Redis across all application servers.
+- Decide between Fail Open and Fail Closed based on business requirements.
+- Scale API servers, Rate Limiter instances, and Redis independently.
