@@ -10186,3 +10186,5 @@ Think about the difference like this:
 > "Everyone commits independently. If something later fails, undo the previous business operations."
 
 This single mental model is often enough to answer most interview questions on the topic.
+
+Saga is not a distributed transaction pattern in a traditional sense. Two-Phase Commit is a distributed transaction protocol because it coordinates one logical transaction across multiple participants. Saga does not create a global transaction. Instead, it coordinates a sequence of independent local transactions and uses compensating transactions to restore business consistency if a later step fails. So Saga is better described as a distributed consistency or workflow pattern rather than a distributed transaction.
