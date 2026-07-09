@@ -18121,3 +18121,1402 @@ A request first reaches the Load Balancer and API Gateway before entering the Ra
 - Share Redis across all application servers.
 - Decide between Fail Open and Fail Closed based on business requirements.
 - Scale API servers, Rate Limiter instances, and Redis independently.
+
+
+# Distributed Rate Limiter – Part 4
+# Redis Internals, Atomicity & Lua Scripts
+
+---
+
+# Why This Chapter Matters
+
+Most candidates stop after saying
+
+> "I'll store counters in Redis."
+
+A senior interviewer immediately asks
+
+> "How do you avoid race conditions?"
+
+or
+
+> "Why use Lua Scripts?"
+
+This chapter answers those questions.
+
+---
+
+# The Problem
+
+Suppose our limit is
+
+```
+100 Requests / Minute
+```
+
+Redis stores
+
+```
+Key
+
+rate_limit:user123
+
+↓
+
+Value
+
+57
+```
+
+Every request should
+
+1. Increment the counter
+2. Check the limit
+3. Set expiration (if first request)
+
+Sounds simple.
+
+Unfortunately,
+
+it's easy to implement incorrectly.
+
+---
+
+# Naive Implementation
+
+```
+GET Counter
+
+↓
+
+Increment
+
+↓
+
+Save
+
+↓
+
+Set Expiry
+```
+
+Example
+
+```
+counter = redis.get(key)
+
+counter++
+
+redis.set(key,counter)
+
+redis.expire(key,60)
+```
+
+Looks correct.
+
+It isn't.
+
+---
+
+# Race Condition
+
+Suppose two requests arrive simultaneously.
+
+```
+Counter = 99
+```
+
+Server A
+
+```
+Reads 99
+```
+
+Server B
+
+```
+Reads 99
+```
+
+Both increment.
+
+```
+100
+```
+
+Both save
+
+```
+100
+```
+
+Both allow.
+
+Actual requests
+
+```
+101
+```
+
+Allowed requests
+
+```
+100
+```
+
+One request was effectively lost.
+
+---
+
+# Solution
+
+Never use
+
+```
+GET
+
+↓
+
+Increment
+
+↓
+
+SET
+```
+
+Instead
+
+use
+
+```
+INCR
+```
+
+Redis executes
+
+```
+INCR
+```
+
+atomically.
+
+---
+
+# Why is INCR Atomic?
+
+Redis processes commands on a single thread.
+
+Example
+
+```
+Request A
+
+↓
+
+INCR
+
+↓
+
+Done
+
+↓
+
+Request B
+
+↓
+
+INCR
+
+↓
+
+Done
+```
+
+No two INCR operations execute simultaneously.
+
+No race condition.
+
+---
+
+# Is INCR Enough?
+
+Not quite.
+
+We still need
+
+```
+TTL
+```
+
+Example
+
+```
+INCR
+
+↓
+
+EXPIRE
+```
+
+---
+
+# The Hidden Bug
+
+Suppose
+
+Request A
+
+```
+INCR
+
+↓
+
+Counter = 1
+```
+
+Immediately after
+
+Redis crashes
+
+before
+
+```
+EXPIRE
+```
+
+executes.
+
+Now
+
+```
+Counter
+
+↓
+
+Never Expires
+```
+
+The user eventually becomes permanently blocked.
+
+---
+
+# Another Race Condition
+
+Suppose
+
+Two requests arrive simultaneously.
+
+Server A
+
+```
+INCR
+
+↓
+
+Counter = 1
+```
+
+Server B
+
+```
+INCR
+
+↓
+
+Counter = 2
+```
+
+Now both execute
+
+```
+EXPIRE 60
+```
+
+The expiration timer gets reset multiple times.
+
+Depending on timing, the effective rate limit window can drift.
+
+---
+
+# Why MULTI / EXEC Isn't Ideal
+
+Redis transactions
+
+```
+MULTI
+
+↓
+
+INCR
+
+↓
+
+EXPIRE
+
+↓
+
+EXEC
+```
+
+execute atomically as a group.
+
+However,
+
+they still execute every command,
+
+even if the counter already exists.
+
+Ideally,
+
+we only want to set the TTL when the counter is created.
+
+---
+
+# Better Solution — Lua Script
+
+Execute everything inside Redis.
+
+```
+Read Counter
+
+↓
+
+Increment
+
+↓
+
+If Counter == 1
+
+↓
+
+Set Expiry
+
+↓
+
+Return Count
+```
+
+All inside
+
+one atomic script.
+
+---
+
+# Lua Script (Conceptual)
+
+```lua
+count = redis.call("INCR", key)
+
+if count == 1 then
+    redis.call("EXPIRE", key, 60)
+end
+
+return count
+```
+
+Everything runs as
+
+one atomic operation.
+
+No other Redis command runs in between.
+
+---
+
+# Why Lua Scripts?
+
+Advantages
+
+- Atomic
+- Faster
+- One network round trip
+- Business logic executes inside Redis
+- Prevents race conditions
+
+---
+
+# Request Flow
+
+```
+Client
+
+↓
+
+Rate Limiter
+
+↓
+
+Lua Script
+
+↓
+
+Redis
+
+↓
+
+Return Current Count
+
+↓
+
+Allowed?
+
+↓
+
+YES
+
+↓
+
+Backend
+
+NO
+
+↓
+
+HTTP 429
+```
+
+---
+
+# Token Bucket in Redis
+
+Instead of
+
+```
+Counter
+```
+
+store
+
+```
+Current Tokens
+
+Last Refill Time
+```
+
+Each request
+
+```
+Calculate New Tokens
+
+↓
+
+Subtract One Token
+
+↓
+
+Save Updated Values
+```
+
+Again,
+
+all calculations should happen inside
+
+one Lua Script.
+
+---
+
+# Sliding Window in Redis
+
+Use
+
+```
+Sorted Set
+```
+
+Each request
+
+```
+Current Timestamp
+
+↓
+
+Add To Sorted Set
+
+↓
+
+Remove Old Entries
+
+↓
+
+Count Remaining Entries
+```
+
+If
+
+```
+Count < Limit
+```
+
+Allow.
+
+Otherwise
+
+Reject.
+
+---
+
+# Why Sorted Set?
+
+Redis Sorted Sets store
+
+```
+Timestamp
+
+↓
+
+Request
+```
+
+efficiently.
+
+Operations
+
+```
+ZADD
+
+ZREMRANGEBYSCORE
+
+ZCARD
+```
+
+make Sliding Window implementation straightforward.
+
+---
+
+# Hot Keys
+
+Suppose one API key belongs to a large enterprise.
+
+```
+Google API
+
+↓
+
+100 Million Requests
+```
+
+One Redis key becomes
+
+extremely hot.
+
+---
+
+## Possible Solutions
+
+### Redis Cluster
+
+Distribute keys across nodes.
+
+---
+
+### Local Cache
+
+Cache policy,
+
+not counters.
+
+---
+
+### Hierarchical Limits
+
+Instead of
+
+```
+Company
+
+↓
+
+One Counter
+```
+
+Use
+
+```
+Company
+
+↓
+
+Department
+
+↓
+
+User
+```
+
+Spread load.
+
+---
+
+# Multi-Region Deployment
+
+Suppose
+
+```
+US-East
+
+US-West
+
+Europe
+```
+
+Should all regions share one Redis?
+
+Usually
+
+No.
+
+Latency becomes too high.
+
+Instead
+
+Regional rate limiting
+
+or
+
+Global quotas with asynchronous synchronization,
+
+depending on business requirements.
+
+---
+
+# Monitoring
+
+Monitor
+
+Redis
+
+- Command Latency
+- Memory Usage
+- CPU
+- Evictions
+
+Rate Limiter
+
+- Allowed Requests
+- Rejected Requests
+- Lua Script Errors
+- Redis Failures
+
+---
+
+# Interview Questions
+
+## Why not use SQL?
+
+Too slow.
+
+High contention.
+
+Poor scalability.
+
+---
+
+## Why not GET + SET?
+
+Race conditions.
+
+Lost updates.
+
+---
+
+## Why Redis INCR?
+
+Atomic.
+
+Fast.
+
+Thread-safe.
+
+---
+
+## Why Lua Scripts?
+
+Need multiple Redis operations
+
+to execute atomically.
+
+---
+
+## Why Sorted Sets?
+
+Efficient Sliding Window implementation.
+
+---
+
+## Why Redis TTL?
+
+Automatically resets rate limit windows.
+
+No cleanup jobs required.
+
+---
+
+## What if Redis fails?
+
+Two strategies
+
+### Fail Open
+
+```
+Allow Requests
+```
+
+Higher availability.
+
+Possible abuse.
+
+---
+
+### Fail Closed
+
+```
+Reject Requests
+```
+
+Protects backend.
+
+May reject legitimate users.
+
+Choose based on business requirements.
+
+---
+
+# Common Interview Mistakes
+
+❌ Using SQL counters
+
+❌ Using GET → Increment → SET
+
+❌ Forgetting TTL
+
+❌ Ignoring race conditions
+
+❌ Assuming Redis automatically solves every concurrency issue
+
+❌ Not discussing Fail Open vs Fail Closed
+
+❌ Ignoring multi-region deployments
+
+---
+
+# Key Takeaways
+
+- Redis `INCR` is atomic and avoids lost updates.
+- `INCR` followed by `EXPIRE` can introduce subtle bugs if implemented naively.
+- Lua Scripts allow multiple Redis operations to execute atomically.
+- Sliding Window implementations commonly use Redis Sorted Sets.
+- Token Bucket implementations typically store the token count and last refill timestamp in Redis.
+- Redis TTL automatically resets counters, eliminating manual cleanup.
+- Choose between Fail Open and Fail Closed based on the application's risk profile.
+- A distributed Rate Limiter should remain stateless, with Redis acting as the shared state store.
+
+# Distributed Rate Limiter – Part 5
+# Deep Dive, Scaling & Interview Follow-ups
+
+---
+
+# Why This Chapter Matters
+
+The interviewer now assumes the Rate Limiter works.
+
+The remaining discussion is about
+
+- Scalability
+- Failure handling
+- Edge cases
+- Trade-offs
+- Production considerations
+
+This is where senior candidates differentiate themselves.
+
+---
+
+# 1. Where Should Rate Limiting Happen?
+
+Possible locations
+
+```
+Client
+```
+
+↓
+
+Easy to bypass.
+
+---
+
+```
+Application Server
+```
+
+↓
+
+Backend resources already consumed.
+
+---
+
+```
+API Gateway
+```
+
+↓
+
+Best choice.
+
+Reject requests before they reach backend services.
+
+---
+
+```
+Load Balancer
+```
+
+↓
+
+Possible for very simple IP-based rules,
+
+but usually lacks business context.
+
+---
+
+# Recommended Architecture
+
+```
+Client
+
+↓
+
+Load Balancer
+
+↓
+
+API Gateway
+
+↓
+
+Rate Limiter
+
+↓
+
+Backend Services
+```
+
+---
+
+# 2. Hierarchical Rate Limiting
+
+Sometimes one limit is not enough.
+
+Example
+
+```
+Organization
+
+↓
+
+100,000 requests/minute
+
+↓
+
+Users
+
+↓
+
+1,000 requests/minute
+```
+
+Now both limits are enforced.
+
+Example
+
+```
+Company Limit
+
+AND
+
+User Limit
+```
+
+Both must succeed.
+
+---
+
+# 3. Endpoint Specific Limits
+
+Different APIs require different protection.
+
+Example
+
+```
+GET /search
+
+↓
+
+1000/minute
+```
+
+```
+POST /payment
+
+↓
+
+20/minute
+```
+
+```
+POST /login
+
+↓
+
+10/hour
+```
+
+Policy becomes
+
+```
+User
+
++
+
+Endpoint
+```
+
+instead of
+
+```
+User Only
+```
+
+---
+
+# 4. Burst Handling
+
+Suppose
+
+```
+Limit
+
+100 Requests/Minute
+```
+
+Should users be allowed
+
+```
+100 Requests
+
+Immediately?
+```
+
+Depends.
+
+Fixed Window
+
+↓
+
+Yes.
+
+Token Bucket
+
+↓
+
+Controlled burst.
+
+Leaky Bucket
+
+↓
+
+No.
+
+---
+
+# 5. Dynamic Policies
+
+Different customers may have different plans.
+
+Example
+
+```
+Free
+
+↓
+
+100 Requests/Minute
+```
+
+```
+Premium
+
+↓
+
+1000 Requests/Minute
+```
+
+```
+Enterprise
+
+↓
+
+Unlimited
+```
+
+Policies should come from configuration,
+
+not hardcoded values.
+
+---
+
+# 6. Distributed Redis Cluster
+
+Single Redis server
+
+↓
+
+Eventually becomes a bottleneck.
+
+Use
+
+```
+Redis Cluster
+
+Node 1
+
+Node 2
+
+Node 3
+```
+
+Keys are distributed across nodes.
+
+Example
+
+```
+hash(userId)
+
+↓
+
+Redis Node
+```
+
+---
+
+# 7. Hot Keys
+
+Suppose one enterprise customer generates
+
+```
+50 Million Requests/Minute
+```
+
+One Redis key becomes extremely hot.
+
+Possible solutions
+
+- Redis Cluster
+- Separate rate limits per department
+- Local policy cache
+- Increase Redis capacity
+
+---
+
+# 8. Multi-Region Deployments
+
+Example
+
+```
+US-East
+
+US-West
+
+Europe
+```
+
+Question
+
+Should all regions share one Redis?
+
+Usually
+
+No.
+
+Reasons
+
+- High latency
+- Cross-region failures
+- Expensive network traffic
+
+Instead
+
+Regional Redis clusters
+
+with
+
+Regional rate limiting.
+
+Global quotas require additional synchronization.
+
+---
+
+# 9. Redis Replication
+
+Redis Primary
+
+↓
+
+Replica
+
+↓
+
+Replica
+
+Reads
+
+↓
+
+Replicas
+
+Writes
+
+↓
+
+Primary
+
+Remember
+
+Rate limiting writes on every request.
+
+Therefore
+
+Most traffic still reaches the primary.
+
+Replication mainly improves
+
+- Availability
+- Disaster recovery
+
+not write scalability.
+
+---
+
+# 10. Memory Management
+
+Millions of users
+
+↓
+
+Millions of Redis keys.
+
+Fortunately
+
+TTL automatically removes inactive counters.
+
+Memory usage remains manageable.
+
+---
+
+# 11. Observability
+
+Monitor
+
+API
+
+- Requests/sec
+- Rejected requests
+- Latency
+
+Redis
+
+- Memory
+- CPU
+- Command latency
+- Evictions
+
+Rate Limiter
+
+- Allowed Requests
+- Blocked Requests
+- Redis Failures
+- Lua Script Errors
+
+Infrastructure
+
+- Network
+- Disk
+- Availability
+
+---
+
+# 12. Security
+
+Prevent attackers from bypassing limits.
+
+Examples
+
+- Trust authenticated user IDs over client-supplied identifiers.
+- Validate API keys before applying limits.
+- Apply additional IP-based limits for anonymous traffic.
+
+---
+
+# 13. Common Failure Scenarios
+
+## Redis Down
+
+Two options
+
+### Fail Open
+
+```
+Allow Requests
+```
+
+Advantages
+
+- High availability
+
+Disadvantages
+
+- Possible abuse
+
+---
+
+### Fail Closed
+
+```
+Reject Requests
+```
+
+Advantages
+
+- Backend protected
+
+Disadvantages
+
+- Legitimate users blocked
+
+Choose based on business requirements.
+
+---
+
+## Redis Slow
+
+Use
+
+- Timeouts
+- Circuit Breakers
+- Monitoring
+- Fallback strategy
+
+---
+
+## Clock Synchronization
+
+Sliding Window and Token Bucket depend on time.
+
+Use a consistent time source.
+
+Avoid relying on unsynchronized application server clocks.
+
+---
+
+# 14. Trade-offs
+
+| Decision | Advantage | Trade-off |
+|----------|-----------|-----------|
+| Redis | Very fast | Extra infrastructure |
+| Token Bucket | Supports bursts | Slightly more complex |
+| Lua Scripts | Atomic | Harder to debug |
+| API Gateway | Protects backend | Gateway becomes critical |
+| Distributed Redis | Scalable | Operational complexity |
+
+---
+
+# 15. Interview Questions
+
+### Why Redis instead of SQL?
+
+Redis is in-memory, supports atomic operations, TTL, and much higher throughput.
+
+---
+
+### Why Token Bucket?
+
+Allows controlled bursts while enforcing a long-term average rate.
+
+---
+
+### Why Lua Scripts?
+
+Need conditional logic and multiple Redis operations to execute atomically.
+
+---
+
+### Why API Gateway?
+
+Reject requests before they consume backend resources.
+
+---
+
+### What if Redis crashes?
+
+Choose
+
+- Fail Open
+- Fail Closed
+
+based on business requirements.
+
+---
+
+### How do you support different subscription plans?
+
+Store policies separately and load them dynamically.
+
+---
+
+### How do you support millions of users?
+
+- Stateless Rate Limiter
+- Redis Cluster
+- Horizontal scaling
+- TTL cleanup
+- Monitoring
+
+---
+
+# Final Architecture
+
+```
+                    Client
+                       │
+                       ▼
+               Load Balancer
+                       │
+                       ▼
+                 API Gateway
+                       │
+                       ▼
+             Distributed Rate Limiter
+                       │
+                       ▼
+                 Redis Cluster
+                       │
+          Allow?              Reject?
+             │                  │
+             ▼                  ▼
+      Backend Services     HTTP 429
+```
+
+---
+
+# Final Takeaways
+
+- Place the Rate Limiter before backend services.
+- Keep it stateless and store counters in Redis.
+- Use atomic Redis operations or Lua Scripts for correctness.
+- Token Bucket is the most common choice for API rate limiting.
+- TTL automatically resets rate limit windows.
+- Use Redis Cluster for scalability and high availability.
+- Decide between Fail Open and Fail Closed based on risk.
+- Monitor latency, rejection rates, Redis health, and memory usage.
+- Design policies to be configurable and support different users, APIs, and subscription plans.
+
+This is the level of depth typically expected in Senior Backend and Staff-level system design interviews.
