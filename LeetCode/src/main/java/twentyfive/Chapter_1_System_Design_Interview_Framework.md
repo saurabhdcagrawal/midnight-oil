@@ -10192,6 +10192,9 @@ Saga is not a distributed transaction pattern in a traditional sense. Two-Phase 
 
 # Notification Service – High-Level Design (HLD)
 
+
+
+
 ---
 
 # Objective
@@ -10214,6 +10217,474 @@ Requirements
 - Fault Tolerance
 
 ---
+
+
+# Notification Service – Interview Preparation (Before High-Level Design)
+
+---
+
+# Problem Statement
+
+Design a highly scalable Notification Service that supports
+
+- Email
+- SMS
+- Push Notifications
+
+The system should be reliable, scalable, and fault tolerant.
+
+Before drawing the architecture, gather requirements and establish the design assumptions.
+
+---
+
+# Step 1 – Clarifying Questions
+
+Before jumping into the solution, ask clarifying questions.
+
+This demonstrates structured thinking and prevents incorrect assumptions.
+
+---
+
+## Functional Questions
+
+### 1. Which notification channels should be supported?
+
+- Email
+- SMS
+- Push Notifications
+- In-App Notifications
+
+Assumption
+
+We'll support
+
+- Email
+- SMS
+- Push
+
+---
+
+### 2. Should notifications be sent immediately?
+
+Possible answers
+
+- Immediate
+- Scheduled
+- Both
+
+Assumption
+
+Support both real-time and scheduled notifications.
+
+---
+
+### 3. Should failed notifications be retried?
+
+Assumption
+
+Yes.
+
+Retries are required.
+
+---
+
+### 4. Should duplicate notifications be prevented?
+
+Assumption
+
+Yes.
+
+The system should be idempotent.
+
+---
+
+### 5. Should users be able to configure notification preferences?
+
+Examples
+
+- Disable marketing emails
+- Disable SMS
+- Quiet hours
+
+Assumption
+
+Yes.
+
+---
+
+### 6. Should delivery status be tracked?
+
+Possible statuses
+
+- QUEUED
+- PROCESSING
+- SENT
+- FAILED
+
+Assumption
+
+Yes.
+
+---
+
+### 7. Should notification templates be supported?
+
+Example
+
+```
+Hi {{name}}
+
+Your order {{orderId}} has shipped.
+```
+
+Assumption
+
+Yes.
+
+---
+
+## Non-Functional Questions
+
+### Expected traffic?
+
+Assumption
+
+100 Million Notifications / Day
+
+---
+
+### Latency?
+
+Assumption
+
+Notification should be accepted within a few hundred milliseconds.
+
+Actual delivery may occur asynchronously.
+
+---
+
+### Availability?
+
+Assumption
+
+High Availability (99.9% or higher)
+
+---
+
+### Scalability?
+
+The system should support horizontal scaling.
+
+---
+
+### Reliability?
+
+No notification should be lost.
+
+---
+
+### Consistency?
+
+Eventual consistency is acceptable.
+
+---
+
+# Step 2 – Functional Requirements
+
+The system should support
+
+- Send Email
+- Send SMS
+- Send Push Notifications
+- Schedule Notifications
+- Retry Failed Notifications
+- Notification Templates
+- User Preferences
+- Delivery Tracking
+- Notification History
+
+---
+
+# Step 3 – Non-Functional Requirements
+
+The system should provide
+
+- High Availability
+- Low Latency
+- Horizontal Scalability
+- Fault Tolerance
+- Reliable Delivery
+- Idempotent Processing
+- Monitoring & Observability
+- Eventual Consistency
+
+---
+
+# Step 4 – Capacity Estimation
+
+Assume
+
+```
+100 Million Notifications / Day
+```
+
+Average requests per second
+
+```
+100,000,000
+
+÷
+
+86,400
+
+≈ 1,160 notifications/sec
+```
+
+Design for peak traffic.
+
+Assume
+
+```
+10×
+
+Peak Load
+
+≈12,000 notifications/sec
+```
+
+This immediately tells us
+
+- We need asynchronous processing.
+- We need horizontal scaling.
+- A single server is insufficient.
+- Background workers are required.
+
+---
+
+# Step 5 – API Design
+
+## Send Notification
+
+```
+POST /notifications
+```
+
+Request
+
+```json
+{
+    "userId": 123,
+    "channel": "EMAIL",
+    "templateId": "ORDER_CONFIRMED",
+    "data": {
+        "orderId": "A12345",
+        "amount": 250
+    }
+}
+```
+
+Response
+
+```json
+{
+    "notificationId": "N123456",
+    "status": "QUEUED"
+}
+```
+
+Notice
+
+The API returns
+
+```
+QUEUED
+```
+
+instead of
+
+```
+DELIVERED
+```
+
+because notification delivery is asynchronous.
+
+---
+
+## Retrieve Notification Status
+
+```
+GET /notifications/{notificationId}
+```
+
+Example Response
+
+```json
+{
+    "notificationId": "N123456",
+    "status": "SENT",
+    "deliveredAt": "2026-07-09T15:00:00Z"
+}
+```
+
+---
+
+# Step 6 – Data Model
+
+## Notification
+
+```
+Notification
+
+------------------------
+
+notificationId
+
+userId
+
+channel
+
+templateId
+
+status
+
+createdAt
+
+updatedAt
+```
+
+Possible statuses
+
+- QUEUED
+- PROCESSING
+- SENT
+- FAILED
+- RETRYING
+- DEAD_LETTER
+
+---
+
+## User Preference
+
+```
+UserPreference
+
+------------------------
+
+userId
+
+emailEnabled
+
+smsEnabled
+
+pushEnabled
+
+marketingOptIn
+
+quietHours
+```
+
+---
+
+## Notification Template
+
+```
+Template
+
+------------------------
+
+templateId
+
+channel
+
+subject
+
+body
+
+version
+```
+
+Templates contain placeholders.
+
+Example
+
+```
+Subject
+
+Order {{orderId}} Confirmed
+
+Body
+
+Hi {{name}},
+
+Your order {{orderId}} has been confirmed.
+```
+
+---
+
+## Delivery Log
+
+```
+DeliveryLog
+
+------------------------
+
+notificationId
+
+provider
+
+attemptNumber
+
+status
+
+errorMessage
+
+timestamp
+```
+
+Used for
+
+- Auditing
+- Monitoring
+- Retries
+- Customer Support
+
+---
+
+# Database Choice
+
+A relational database (PostgreSQL or MySQL) is a good fit because we require
+
+- Reliable persistence
+- Transactions
+- Delivery history
+- User preferences
+- Reporting
+
+Redis is used as a cache, not as the source of truth.
+
+---
+
+# Transition to High-Level Design
+
+At this point we have
+
+✅ Requirements
+
+✅ Scale
+
+✅ APIs
+
+✅ Data Model
+
+Now we can confidently design the High-Level Architecture because we understand
+
+- What we're building
+- How much traffic we expect
+- What data we store
+- How clients interact with the system
+- The major constraints and trade-offs
+
+The next step is the High-Level Design (HLD), where we identify the major components, explain how they interact, and walk through the end-to-end request flow.
 
 # High-Level Architecture
 
@@ -10281,6 +10752,8 @@ Example
   }
 }
 ```
+The client expects a response indicating whether the notification has been accepted.
+
 
 ---
 
@@ -10750,6 +11223,511 @@ Trade-offs
 
 A notification request first reaches the Load Balancer and API Gateway, where it is authenticated, rate-limited, and routed to the Notification Service. The service validates the request, checks Redis for templates and user preferences, stores the notification and an Outbox event in the database within a single transaction, and immediately returns **HTTP 202 Accepted**. A background Outbox Publisher reliably publishes events to Kafka. Dedicated Email, SMS, and Push workers consume messages independently, invoke external providers, retry transient failures, and update delivery status in the database. This architecture keeps the critical request path short while providing reliable, scalable, and fault-tolerant asynchronous notification delivery.
 
+# Notification Service – HLD Walkthrough (Step-by-Step Request Flow)
+
+---
+
+# Why This Section Matters
+
+Drawing the architecture is only half of the interview.
+
+The interviewer now wants you to explain
+
+> **"Walk me through what happens when a notification request arrives."**
+
+Think of this as narrating the journey of a single request through the system.
+
+---
+
+# Step 1 – Client Sends Request
+
+The client (Web Application, Mobile App, or another Microservice) sends a request.
+
+```
+POST /notifications
+```
+
+Example
+
+```json
+{
+    "userId": 123,
+    "channel": "EMAIL",
+    "templateId": "ORDER_CONFIRMED",
+    "data": {
+        "orderId": "A12345"
+    }
+}
+```
+
+The client expects a response indicating whether the notification has been accepted.
+
+---
+
+# Step 2 – Load Balancer
+
+The request first reaches the Load Balancer.
+
+Responsibilities
+
+- Distribute traffic across multiple Notification Service instances
+- Route traffic away from unhealthy instances
+- Improve availability
+- Enable horizontal scaling
+
+```
+Client
+
+↓
+
+Load Balancer
+
+↓
+
+Notification Service 1
+
+Notification Service 2
+
+Notification Service 3
+```
+
+---
+
+# Step 3 – API Gateway
+
+The request is forwarded to the API Gateway.
+
+Responsibilities
+
+- Authentication
+- Authorization
+- Rate Limiting
+- Request Validation
+- API Versioning
+- Logging
+- Routing
+
+Only authenticated and valid requests continue.
+
+---
+
+# Step 4 – Notification Service
+
+The Notification Service contains the core business logic.
+
+Responsibilities
+
+- Validate request payload
+- Generate Notification ID
+- Validate notification channel
+- Validate template
+- Check user preferences
+- Determine notification priority
+
+The service is stateless, allowing it to scale horizontally.
+
+---
+
+# Step 5 – Read Frequently Used Data from Redis
+
+Before accessing the database, the service checks Redis.
+
+Typical cached data
+
+- Notification Templates
+- User Preferences
+- Configuration
+- Rate Limit Counters
+
+```
+Notification Service
+
+↓
+
+Redis
+```
+
+### Cache Hit
+
+The required information is immediately returned.
+
+### Cache Miss
+
+Load the data from the database and populate Redis for future requests.
+
+Redis is an optimization layer, not the source of truth.
+
+---
+
+# Step 6 – Persist Notification
+
+The Notification Service creates a new notification record.
+
+Example
+
+```
+Notification
+
+notificationId
+
+userId
+
+channel
+
+status = QUEUED
+
+createdAt
+```
+
+This provides a durable record before attempting delivery.
+
+---
+
+# Step 7 – Transactional Outbox
+
+Within the same database transaction,
+
+the service writes
+
+```
+Notification Record
+
++
+
+Outbox Event
+```
+
+Example
+
+```
+BEGIN TRANSACTION
+
+Insert Notification
+
+Insert Outbox Event
+
+COMMIT
+```
+
+This ensures the notification and the event are either both saved or neither is saved.
+
+It eliminates the Dual Write Problem.
+
+---
+
+# Step 8 – Return Response to the Client
+
+At this point,
+
+the notification has been safely stored.
+
+The API immediately returns
+
+```
+HTTP 202 Accepted
+```
+
+Example
+
+```json
+{
+    "notificationId": "N123456",
+    "status": "QUEUED"
+}
+```
+
+Notice
+
+The notification has **not** been delivered yet.
+
+It has only been accepted for processing.
+
+The user's request ends here.
+
+Everything after this point is asynchronous.
+
+---
+
+# Step 9 – Outbox Publisher
+
+A background publisher continuously scans the Outbox table.
+
+```
+Outbox
+
+↓
+
+Publisher
+```
+
+Whenever unpublished events are found,
+
+they are published to Kafka.
+
+After Kafka acknowledges the message,
+
+the Outbox entry is marked as published.
+
+This guarantees reliable event delivery.
+
+---
+
+# Step 10 – Kafka
+
+Kafka acts as the messaging backbone.
+
+Instead of sending notifications directly,
+
+events are published to Kafka topics.
+
+Example
+
+```
+Email Topic
+
+SMS Topic
+
+Push Topic
+```
+
+Separating channels allows each to scale independently.
+
+---
+
+# Step 11 – Notification Workers
+
+Dedicated workers consume events.
+
+```
+Email Topic
+
+↓
+
+Email Worker
+```
+
+Worker responsibilities
+
+- Read notification
+- Load template
+- Replace placeholders
+- Call external provider
+- Update delivery status
+
+The same architecture applies to
+
+- SMS Workers
+- Push Workers
+
+Each worker group scales independently.
+
+---
+
+# Step 12 – External Notification Providers
+
+Workers invoke external providers.
+
+Examples
+
+Email
+
+- Amazon SES
+- SendGrid
+
+SMS
+
+- Twilio
+
+Push
+
+- Firebase Cloud Messaging (FCM)
+- Apple Push Notification Service (APNS)
+
+Since these providers are external,
+
+workers implement
+
+- Retry
+- Exponential Backoff
+- Timeout
+- Circuit Breaker
+
+to improve resilience.
+
+---
+
+# Step 13 – Update Delivery Status
+
+After attempting delivery,
+
+workers update the notification record.
+
+Possible states
+
+```
+QUEUED
+
+PROCESSING
+
+SENT
+
+FAILED
+
+RETRYING
+
+DEAD_LETTER
+```
+
+Clients can retrieve status later.
+
+```
+GET /notifications/{notificationId}
+```
+
+---
+
+# Failure Handling
+
+## Kafka Unavailable
+
+The notification remains safe.
+
+```
+Notification DB
+
+↓
+
+Outbox
+
+↓
+
+Retry Publisher
+```
+
+No notifications are lost.
+
+---
+
+## Redis Unavailable
+
+Fallback
+
+```
+Redis
+
+↓
+
+Database
+```
+
+Higher latency,
+
+but requests continue successfully.
+
+---
+
+## Email Provider Failure
+
+Workers retry.
+
+```
+1 second
+
+↓
+
+2 seconds
+
+↓
+
+4 seconds
+
+↓
+
+8 seconds
+```
+
+If retries are exhausted,
+
+the message moves to the Dead Letter Queue.
+
+---
+
+# End-to-End Request Flow
+
+```
+Client
+
+↓
+
+Load Balancer
+
+↓
+
+API Gateway
+
+↓
+
+Notification Service
+
+↓
+
+Redis (Templates / Preferences)
+
+↓
+
+Notification Database
+
+↓
+
+Transactional Outbox
+
+↓
+
+HTTP 202 Accepted
+
+---------------------------------------------------
+
+Outbox Publisher
+
+↓
+
+Kafka
+
+↓
+
+Email Topic
+
+↓
+
+Email Worker
+
+↓
+
+Email Provider
+
+↓
+
+Update Notification Status
+```
+
+---
+
+# Interview Walkthrough (30–60 Seconds)
+
+> The client sends a notification request through the Load Balancer and API Gateway. The Notification Service validates the request, checks Redis for templates and user preferences, stores the notification and an Outbox event within a single database transaction, and immediately returns **HTTP 202 Accepted**. A background Outbox Publisher reliably publishes events to Kafka. Dedicated Email, SMS, and Push workers consume the events, invoke external providers with retries and exponential backoff, and update the notification status in the database. This keeps the critical request path short while ensuring reliable, scalable, and fault-tolerant notification delivery.
+
+---
+
+# Key Takeaways
+
+- Keep the synchronous request path short.
+- Persist the notification before publishing events.
+- Use the Transactional Outbox Pattern for reliable event publishing.
+- Kafka decouples API processing from notification delivery.
+- Dedicated workers process each notification channel independently.
+- External providers are treated as unreliable systems.
+- Retries, Dead Letter Queues, and idempotent workers ensure reliable delivery.
+- Clients receive a fast response while notification delivery continues asynchronously.
 
 
 # Appendix – Notification Service Deep Dive & Interview Follow-up Questions
