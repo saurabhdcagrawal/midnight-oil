@@ -7249,6 +7249,325 @@ Memory depends on the **maximum width** of the tree.
   * **DFS:** `O(N)`
   * **BFS:** `O(1)`
 
+# DFS vs BFS — Time & Space Complexity Comparison
+
+## Time Complexity
+
+For a complete traversal of a tree, **both DFS and BFS have the same time complexity**.
+
+Both algorithms:
+
+* Visit every node exactly once.
+* Process every edge exactly once.
+
+Therefore:
+
+```text
+Time Complexity = O(N)
+```
+
+where **N** is the number of nodes.
+
+The shape of the tree (balanced, skewed, wide, etc.) **does not affect the time complexity** because every node must still be visited.
+
+---
+
+## Space Complexity
+
+The difference between DFS and BFS lies in **what they store in memory**.
+
+### DFS
+
+DFS stores **one path** from the root to the current node.
+
+Therefore, its memory depends on the **height** of the tree.
+
+```text
+Space = O(H)
+```
+
+where **H** is the height of the tree.
+
+---
+
+### BFS
+
+BFS stores the **current level (frontier)** in a queue.
+
+Therefore, its memory depends on the **maximum width** of the tree.
+
+```text
+Space = O(W)
+```
+
+where **W** is the maximum width of the tree.
+
+---
+
+# Balanced (Wide) Tree
+
+```text
+              1
+           /     \
+          2       3
+        /  \     /  \
+       4    5   6    7
+```
+
+### DFS
+
+Recursion stack:
+
+```text
+1
+↓
+2
+↓
+4
+```
+
+Maximum memory:
+
+```text
+O(log N)
+```
+
+---
+
+### BFS
+
+Queue:
+
+```text
+[4, 5, 6, 7]
+```
+
+Maximum memory:
+
+```text
+O(N)
+```
+
+**DFS uses significantly less memory.**
+
+---
+
+# Skewed (Vertical) Tree
+
+```text
+1
+|
+2
+|
+3
+|
+4
+|
+5
+```
+
+### DFS
+
+Recursion stack:
+
+```text
+1
+↓
+2
+↓
+3
+↓
+4
+↓
+5
+```
+
+Maximum memory:
+
+```text
+O(N)
+```
+
+---
+
+### BFS
+
+Queue:
+
+```text
+[1]
+
+↓
+
+[2]
+
+↓
+
+[3]
+
+↓
+
+[4]
+
+↓
+
+[5]
+```
+
+Maximum memory:
+
+```text
+O(1)
+```
+
+**BFS uses significantly less memory.**
+
+---
+
+# Summary
+
+| Traversal | Time   | Space  | Depends On                |
+| --------- | ------ | ------ | ------------------------- |
+| DFS       | `O(N)` | `O(H)` | Height of the tree        |
+| BFS       | `O(N)` | `O(W)` | Maximum width of the tree |
+
+where:
+
+* `N` = Number of nodes
+* `H` = Height of the tree
+* `W` = Maximum width of the tree
+
+---
+
+# Intuition
+
+### DFS
+
+DFS stores **one path** from the root to the current node.
+
+Think **Vertical**.
+
+```text
+1
+↓
+2
+↓
+3
+↓
+4
+```
+
+Memory depends on the **height**.
+
+---
+
+### BFS
+
+BFS stores **one entire level**.
+
+Think **Horizontal**.
+
+```text
+Level 0
+
+1
+
+↓
+
+Level 1
+
+2      3
+
+↓
+
+Level 2
+
+4   5   6   7
+```
+
+Memory depends on the **maximum width**.
+
+---
+
+# Which uses less memory?
+
+### If the tree is tall and skinny
+
+* The path is long.
+* Each level contains very few nodes.
+
+```text
+DFS  -> O(N)
+
+BFS  -> O(1)
+```
+
+✅ **BFS uses less memory.**
+
+---
+
+### If the tree is short and wide
+
+* The path is short.
+* The bottom level contains many nodes.
+
+```text
+DFS  -> O(log N)
+
+BFS  -> O(N)
+```
+
+✅ **DFS uses less memory.**
+
+---
+
+# Common Misconception
+
+Many people initially assume:
+
+```text
+❌ Vertical tree  → DFS is better.
+❌ Wide tree      → BFS is better.
+```
+
+The opposite is true **when comparing memory usage**:
+
+```text
+✅ Vertical (Skewed) Tree → BFS uses less memory.
+✅ Wide (Balanced) Tree   → DFS uses less memory.
+```
+
+---
+
+# Choosing DFS vs BFS
+
+Memory is only one consideration.
+
+Choose **BFS** when:
+
+* You need the **shortest path** in an unweighted graph.
+* You need **level-order traversal**.
+* The tree/graph is very deep but not very wide.
+
+Choose **DFS** when:
+
+* The problem is naturally recursive.
+* You need **backtracking**.
+* You need to explore one path completely before trying another.
+* The tree is relatively balanced and memory is a concern.
+
+---
+
+# Interview Takeaway
+
+* **Time Complexity:** Both DFS and BFS are **O(N)** because every node is visited exactly once.
+* **Space Complexity:** This is where they differ.
+
+  * **DFS** stores **one path**, so its space depends on the **height** of the tree.
+  * **BFS** stores **one level**, so its space depends on the **maximum width** of the tree.
+* For a **skewed tree**, BFS is more memory efficient.
+* For a **balanced (wide) tree**, DFS is more memory efficient.
+
 
 # Chapter 8: LRU Cache
 
