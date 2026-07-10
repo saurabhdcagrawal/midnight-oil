@@ -6832,6 +6832,423 @@ This ensures that **every connected component** is checked.
 
 > A disconnected graph consists of multiple independent connected components. Since there are no edges between components, each component can be colored independently. Therefore, a graph is bipartite **if and only if every connected component is bipartite**. To verify this, we must start a DFS/BFS from every uncolored node rather than assuming the graph is fully connected.
 
+# Bipartite Graph (DFS - Iterative Coloring)
+
+## Idea
+
+* A graph is **bipartite** if it can be colored using **two colors** such that every edge connects nodes of **opposite colors**.
+* We perform an iterative DFS using a stack.
+* Greedily assign every uncolored neighbor the **opposite color** of the current node.
+* If we ever encounter an edge connecting two nodes with the **same color**, the graph is **not bipartite**.
+* Since the graph may be **disconnected**, we must start a DFS from every uncolored node (each connected component).
+
+---
+
+```java
+class Solution {
+    public boolean isBipartite(int[][] graph) {
+
+        // A graph is bipartite if it can be colored using two colors
+        // such that every edge connects vertices of opposite colors.
+        //
+        // Greedily assign every uncolored neighbor the opposite color.
+        // If two adjacent nodes have the same color, the graph is not bipartite.
+        //
+        // A graph containing an odd cycle cannot be bipartite.
+
+        int n = graph.length;
+
+        // -1 = Uncolored
+        //  0 = Color A
+        //  1 = Color B
+        int[] colors = new int[n];
+        Arrays.fill(colors, -1);
+
+        Stack<Integer> st = new Stack<>();
+
+        // Iterate over every node since the graph may be disconnected.
+        for (int i = 0; i < n; i++) {
+
+            if (colors[i] != -1)
+                continue;
+
+            colors[i] = 0;
+            st.push(i);
+
+            while (!st.isEmpty()) {
+
+                int node = st.pop();
+
+                for (int neighbor : graph[node]) {
+
+                    // Adjacent nodes cannot have the same color.
+                    if (colors[neighbor] != -1 &&
+                        colors[neighbor] == colors[node])
+                        return false;
+
+                    if (colors[neighbor] == -1) {
+
+                        // Assign opposite color.
+                        colors[neighbor] = 1 - colors[node];
+
+                        // Equivalent alternatives:
+                        // colors[neighbor] = colors[node] == 1 ? 0 : 1;
+                        // colors[neighbor] = colors[node] ^ 1;
+
+                        st.push(neighbor);
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+}
+```
+
+---
+
+# Time Complexity
+
+```text
+O(V + E)
+```
+
+* Each vertex is colored exactly once.
+* Each edge is examined exactly once.
+
+---
+
+# Space Complexity
+
+```text
+O(V)
+```
+
+* `colors[]` array stores the color assigned to each vertex.
+* DFS stack stores at most `V` vertices in the worst case.
+
+
+
+# DFS vs BFS Space Complexity (Trees)
+
+A useful way to remember the space complexity difference is:
+
+* **DFS stores one path from the root to the current node.**
+* **BFS stores an entire level (frontier) of nodes.**
+
+Therefore:
+
+* **DFS space depends on the tree height.**
+* **BFS space depends on the tree width.**
+
+---
+
+# DFS (Recursive)
+
+DFS uses the **recursion stack**.
+
+The recursion stack stores the current path from the root to the current node.
+
+Example:
+
+```text
+        1
+       /
+      2
+     /
+    3
+   /
+  4
+```
+
+Recursion stack:
+
+```text
+1
+↓
+2
+↓
+3
+↓
+4
+```
+
+Maximum stack size:
+
+```text
+Height = 4
+```
+
+Therefore:
+
+```text
+Space = O(H)
+```
+
+where **H** is the height of the tree.
+
+---
+
+## Balanced Tree
+
+```text
+              1
+           /     \
+          2       3
+        /  \     /  \
+       4    5   6    7
+```
+
+Height:
+
+```text
+H ≈ log N
+```
+
+Therefore:
+
+```text
+DFS Space = O(log N)
+```
+
+---
+
+## Skewed Tree
+
+```text
+1
+|
+2
+|
+3
+|
+4
+|
+5
+```
+
+Recursion stack:
+
+```text
+1
+↓
+2
+↓
+3
+↓
+4
+↓
+5
+```
+
+Height:
+
+```text
+H = N
+```
+
+Therefore:
+
+```text
+DFS Space = O(N)
+```
+
+---
+
+# BFS
+
+BFS uses a **queue**.
+
+The queue stores the **current level (frontier)**.
+
+Example:
+
+```text
+              1
+           /     \
+          2       3
+        /  \     /  \
+       4    5   6    7
+```
+
+Queue evolution:
+
+```text
+[1]
+
+↓
+
+[2, 3]
+
+↓
+
+[4, 5, 6, 7]
+```
+
+Maximum queue size:
+
+```text
+Width = 4
+```
+
+Therefore:
+
+```text
+Space = O(W)
+```
+
+where **W** is the maximum width of the tree.
+
+---
+
+## Balanced Tree
+
+```text
+              1
+           /     \
+          2       3
+        /  \     /  \
+       4    5   6    7
+```
+
+Maximum width:
+
+```text
+W ≈ N / 2
+```
+
+Therefore:
+
+```text
+BFS Space = O(N)
+```
+
+---
+
+## Skewed Tree
+
+```text
+1
+|
+2
+|
+3
+|
+4
+|
+5
+```
+
+Queue evolution:
+
+```text
+[1]
+
+↓
+
+[2]
+
+↓
+
+[3]
+
+↓
+
+[4]
+
+↓
+
+[5]
+```
+
+Maximum queue size:
+
+```text
+Width = 1
+```
+
+Therefore:
+
+```text
+BFS Space = O(1)
+```
+
+---
+
+# Summary
+
+| Traversal       | Data Structure | Space Depends On |
+| --------------- | -------------- | ---------------- |
+| DFS (Recursive) | Call Stack     | Height (H)       |
+| DFS (Iterative) | Stack          | Height (H)       |
+| BFS             | Queue          | Width (W)        |
+
+---
+
+# Memory Trick
+
+### DFS
+
+Think **Vertical**.
+
+It follows **one path** from the root to a leaf.
+
+```text
+1
+↓
+2
+↓
+3
+↓
+4
+```
+
+Memory depends on the **height** of the tree.
+
+---
+
+### BFS
+
+Think **Horizontal**.
+
+It processes **one complete level** at a time.
+
+```text
+Level 0
+
+1
+
+↓
+
+Level 1
+
+2     3
+
+↓
+
+Level 2
+
+4    5    6    7
+```
+
+Memory depends on the **maximum width** of the tree.
+
+---
+
+# Interview Takeaway
+
+* **DFS** keeps only the current path in memory, so its space complexity is **O(H)**, where **H** is the height of the tree.
+* **BFS** keeps the current level (frontier) in memory, so its space complexity is **O(W)**, where **W** is the maximum width of the tree.
+* For a **balanced tree**, `H ≈ log N` while `W ≈ N/2`, giving:
+
+  * **DFS:** `O(log N)`
+  * **BFS:** `O(N)`
+* For a **skewed tree**, `H = N` and `W = 1`, giving:
+
+  * **DFS:** `O(N)`
+  * **BFS:** `O(1)`
+
 
 # Chapter 8: LRU Cache
 
