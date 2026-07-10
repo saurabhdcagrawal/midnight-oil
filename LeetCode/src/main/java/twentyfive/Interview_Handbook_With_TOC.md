@@ -6443,6 +6443,396 @@ Their only difference is the traversal strategy:
 * **BFS:** Explore the graph level by level.
 
 
+# Cycle Detection: Undirected vs Directed Graph
+
+Although both problems involve detecting cycles, the approach is different because of how edges are represented.
+
+---
+
+# 1. Undirected Graph
+
+In an undirected graph, every edge appears twice.
+
+```text
+A ----- B
+```
+
+Adjacency List:
+
+```text
+A -> B
+B -> A
+```
+
+Suppose DFS starts at `A`.
+
+```text
+A
+↓
+B
+```
+
+While processing `B`, we naturally see `A` again.
+
+However, this **does not** indicate a cycle—it is simply the edge we used to reach `B`.
+
+Therefore, we ignore the parent node during DFS.
+
+## Algorithm
+
+For every neighbor:
+
+* If the neighbor is **not visited**, continue DFS.
+* If the neighbor is **already visited** and **is not the parent**, then a cycle exists.
+
+```java
+class Solution {
+
+    public boolean hasCycle(List<Integer>[] graph) {
+
+        int n = graph.length;
+        boolean[] visited = new boolean[n];
+
+        for (int i = 0; i < n; i++) {
+            if (!visited[i]) {
+                if (dfs(i, -1, visited, graph))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean dfs(int node,
+                        int parent,
+                        boolean[] visited,
+                        List<Integer>[] graph) {
+
+        visited[node] = true;
+
+        for (int neighbor : graph[node]) {
+
+            if (!visited[neighbor]) {
+
+                if (dfs(neighbor, node, visited, graph))
+                    return true;
+
+            } else if (neighbor != parent) {
+
+                // Visited neighbor that is NOT the parent.
+                // A cycle exists.
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+```
+
+---
+
+# Why does the parent check work?
+
+Because every edge is bidirectional.
+
+```text
+A ----- B
+```
+
+DFS:
+
+```text
+A
+↓
+B
+```
+
+While exploring `B`, seeing `A` again is expected.
+
+The parent check prevents us from incorrectly treating this reverse edge as a cycle.
+
+Only if we encounter another previously visited node that is **not** our parent do we conclude that a cycle exists.
+
+---
+
+# 2. Directed Graph
+
+A directed graph is different because edges are one-way.
+
+```text
+A → B
+```
+
+There is no reverse edge back to `A`.
+
+Therefore, the concept of "parent" is no longer sufficient.
+
+Instead, we must determine whether we encounter a node that is **currently being explored**.
+
+---
+
+# White-Grey-Black Coloring
+
+Each node is assigned one of three states.
+
+```text
+White  -> Not visited
+
+Grey   -> Currently in the DFS recursion stack
+
+Black  -> Completely processed
+```
+
+During DFS:
+
+* White → visit it (becomes Grey)
+* Grey → currently on the recursion path
+* Black → already finished
+
+---
+
+## Detecting a Cycle
+
+Suppose we have:
+
+```text
+1 → 2 → 3
+↑       ↓
+└───────┘
+```
+
+DFS proceeds:
+
+```text
+1 (Grey)
+↓
+
+2 (Grey)
+↓
+
+3 (Grey)
+```
+
+From `3`, we encounter `1`.
+
+Node `1` is still **Grey**, meaning it is currently on the recursion stack.
+
+This is called a **back edge**, which indicates a cycle.
+
+If instead we encounter a **Black** node, it has already been fully processed, so no cycle exists.
+
+---
+
+# Why doesn't the parent approach work for directed graphs?
+
+Consider:
+
+```text
+1 → 2
+↑   ↓
+4 ← 3
+```
+
+DFS:
+
+```text
+1
+↓
+
+2
+↓
+
+3
+↓
+
+4
+↓
+
+1
+```
+
+The parent of `4` is `3`, but the cycle is detected through node `1`.
+
+Checking
+
+```java
+neighbor != parent
+```
+
+does not help here.
+
+What matters is whether node `1` is **currently on the recursion stack (Grey)**.
+
+---
+
+# Summary
+
+| Undirected Graph                                  | Directed Graph                                                    |
+| ------------------------------------------------- | ----------------------------------------------------------------- |
+| Edge is bidirectional                             | Edge is one-way                                                   |
+| Ignore the parent edge                            | Parent concept is insufficient                                    |
+| Use `visited[] + parent`                          | Use White-Grey-Black coloring (or `visited[] + recursionStack[]`) |
+| Cycle if a visited neighbor is **not** the parent | Cycle if we encounter a **Grey** node (back edge)                 |
+
+---
+
+# Interview Takeaway
+
+* **Undirected Graph:** Since every edge appears twice, ignore the edge leading back to the parent. A cycle exists if we encounter a previously visited neighbor that is **not** the parent.
+
+* **Directed Graph:** Parent tracking is insufficient because edges are one-way. Instead, detect cycles by checking whether DFS reaches a node that is **currently on the recursion stack (Grey)**, indicating a back edge.
+
+
+
+# Why must we check every connected component for Bipartite?
+
+A graph may consist of **multiple disconnected components**.
+
+For example:
+
+```text
+Component 1
+
+1 ----- 2
+
+
+Component 2
+
+3
+|\
+| \
+4--5
+```
+
+There are **no edges** between the two components.
+
+---
+
+## Component 1
+
+```text
+1 ----- 2
+```
+
+This graph is bipartite.
+
+We can color it as:
+
+```text
+Red ----- Blue
+```
+
+---
+
+## Component 2
+
+```text
+3
+|\
+| \
+4--5
+```
+
+This is a triangle (an odd cycle).
+
+Try coloring it:
+
+```text
+3 = Red
+
+4 = Blue
+
+5 ?
+```
+
+Since `5` is adjacent to both:
+
+* `3` (Red) ⇒ `5` should be **Blue**
+* `4` (Blue) ⇒ `5` should be **Red**
+
+This is impossible.
+
+Therefore, **Component 2 is not bipartite**.
+
+---
+
+## Is the entire graph bipartite?
+
+No.
+
+Although **Component 1** is bipartite, **Component 2** is not.
+
+A graph is bipartite **if and only if every connected component is bipartite**.
+
+If **any one** component cannot be 2-colored, the entire graph is **not bipartite**.
+
+---
+
+## Why starting DFS/BFS only from node `0` is incorrect
+
+Suppose the graph is:
+
+```text
+0 ----- 1
+
+
+2
+|\
+| \
+3--4
+```
+
+If we start only from node `0`, we visit:
+
+```text
+0
+1
+```
+
+and may incorrectly return:
+
+```text
+true
+```
+
+without ever exploring:
+
+```text
+2
+3
+4
+```
+
+which contains an odd cycle.
+
+---
+
+## Correct Approach
+
+Always iterate over every node.
+
+If a node is still uncolored, it belongs to a new connected component, so start a new DFS/BFS from it.
+
+```java
+for (int i = 0; i < n; i++) {
+
+    if (colors[i] == -1) {
+
+        // Start DFS/BFS for this connected component
+    }
+}
+```
+
+This ensures that **every connected component** is checked.
+
+---
+
+## Interview Takeaway
+
+> A disconnected graph consists of multiple independent connected components. Since there are no edges between components, each component can be colored independently. Therefore, a graph is bipartite **if and only if every connected component is bipartite**. To verify this, we must start a DFS/BFS from every uncolored node rather than assuming the graph is fully connected.
+
+
 # Chapter 8: LRU Cache
 
 ## Pattern Recognition
