@@ -5947,6 +5947,502 @@ DFS + White/Gray/Black
 
 This combination solves a large percentage of graph interview problems.
 
+# Clone Graph (DFS + HashMap)
+
+## Idea
+
+* Use **DFS** to clone the graph.
+* Use a **HashMap** to maintain a mapping from **Original Node → Cloned Node**.
+* The HashMap serves two purposes:
+
+  * Acts as a **visited** set to prevent revisiting nodes in cyclic graphs.
+  * Allows us to reuse already-created cloned nodes.
+
+```java
+/*
+// Definition for a Node.
+class Node {
+    public int val;
+    public List<Node> neighbors;
+
+    public Node() {
+        val = 0;
+        neighbors = new ArrayList<Node>();
+    }
+
+    public Node(int _val) {
+        val = _val;
+        neighbors = new ArrayList<Node>();
+    }
+
+    public Node(int _val, ArrayList<Node> _neighbors) {
+        val = _val;
+        neighbors = _neighbors;
+    }
+}
+*/
+
+class Solution {
+
+    public Node cloneGraph(Node node) {
+
+        // Map<Original Node, Cloned Node>
+        Map<Node, Node> hmap = new HashMap<>();
+
+        return cloneGraph(node, hmap);
+    }
+
+    public Node cloneGraph(Node node, Map<Node, Node> hmap) {
+
+        if (node == null)
+            return null;
+
+        // Already cloned.
+        if (hmap.containsKey(node))
+            return hmap.get(node);
+
+        // Create clone.
+        Node clonedNode = new Node(node.val);
+
+        // IMPORTANT:
+        // Store it immediately before exploring neighbors.
+        // This prevents infinite recursion for cyclic graphs.
+        hmap.put(node, clonedNode);
+
+        // Clone neighbors recursively.
+        for (Node neighbor : node.neighbors) {
+            clonedNode.neighbors.add(cloneGraph(neighbor, hmap));
+        }
+
+        return clonedNode;
+    }
+}
+```
+
+---
+
+# Why do we put the cloned node into the HashMap before cloning its neighbors?
+
+A common question is:
+
+> Why not put the node into the HashMap **after** cloning all of its neighbors?
+
+The answer is **cycles**.
+
+Suppose the graph is:
+
+```text
+1 ----- 2
+|       |
+|       |
+4 ----- 3
+```
+
+If we delay
+
+```java
+hmap.put(node, clonedNode);
+```
+
+until after cloning the neighbors, the recursion eventually comes back to node `1`.
+
+Since node `1` is **not yet in the HashMap**, the algorithm creates another clone of `1`, and the recursion repeats forever.
+
+Instead, we do:
+
+```java
+Node clonedNode = new Node(node.val);
+
+hmap.put(node, clonedNode);
+```
+
+immediately after creating the clone.
+
+Now, if DFS encounters the same original node again, it simply returns the existing clone:
+
+```java
+if (hmap.containsKey(node))
+    return hmap.get(node);
+```
+
+Thus:
+
+* No duplicate cloned nodes are created.
+* Infinite recursion is avoided.
+* Cyclic graphs are handled correctly.
+
+The HashMap therefore acts both as:
+
+* a **Visited Set**
+* an **Original Node → Cloned Node mapping**
+
+---
+
+# Time Complexity
+
+Let:
+
+* **V** = Number of vertices (nodes)
+* **E** = Number of edges
+
+Each node is cloned exactly once.
+
+Each edge is traversed exactly once while copying the adjacency lists.
+
+```text
+Time Complexity = O(V + E)
+```
+
+---
+
+# Space Complexity
+
+### Auxiliary Space
+
+The algorithm uses:
+
+* HashMap storing one entry per node → **O(V)**
+* DFS recursion stack (worst case) → **O(V)**
+
+```text
+Auxiliary Space = O(V)
+```
+
+### Output Space
+
+The cloned graph itself contains:
+
+* **V cloned nodes**
+* **E cloned edges**
+
+If the cloned graph is included in the analysis:
+
+```text
+Output Space = O(V + E)
+```
+
+Therefore:
+
+```text
+Auxiliary Space = O(V)
+
+Total Space (including cloned graph) = O(V + E)
+```
+
+# Clone Graph - DFS vs BFS Traversal
+
+## Example
+
+```text
+Input:
+
+adjList = [[2,4],[1,3],[2,4],[1,3]]
+```
+
+Adjacency List:
+
+```text
+1 -> 2, 4
+2 -> 1, 3
+3 -> 2, 4
+4 -> 1, 3
+```
+
+Graph:
+
+```text
+      1
+     / \
+    2   4
+     \ /
+      3
+```
+
+---
+
+# DFS Traversal
+
+DFS goes **as deep as possible** before backtracking.
+
+Starting from node `1`:
+
+```text
+clone(1)
+
+↓
+
+Go to first neighbor
+
+2
+
+↓
+
+Go to first unvisited neighbor
+
+3
+
+↓
+
+Go to first unvisited neighbor
+
+4
+
+↓
+
+No unvisited neighbors
+
+Backtrack
+```
+
+Traversal Order:
+
+```text
+1 → 2 → 3 → 4
+```
+
+Call Stack:
+
+```text
+clone(1)
+
+    clone(2)
+
+        clone(3)
+
+            clone(4)
+```
+
+After reaching node `4`, the recursion unwinds and returns back through `3`, `2`, and finally `1`.
+
+---
+
+# BFS Traversal
+
+BFS visits nodes **level by level** using a queue.
+
+### Initial State
+
+Queue:
+
+```text
+[1]
+```
+
+Map:
+
+```text
+1 -> 1'
+```
+
+---
+
+## Step 1
+
+Pop:
+
+```text
+1
+```
+
+Neighbors:
+
+```text
+2
+4
+```
+
+Neither has been cloned.
+
+Create:
+
+```text
+2'
+4'
+```
+
+Queue:
+
+```text
+[2, 4]
+```
+
+Map:
+
+```text
+1 -> 1'
+2 -> 2'
+4 -> 4'
+```
+
+---
+
+## Step 2
+
+Pop:
+
+```text
+2
+```
+
+Neighbors:
+
+```text
+1
+3
+```
+
+* `1` is already cloned.
+* Clone `3`.
+
+Queue:
+
+```text
+[4, 3]
+```
+
+Map:
+
+```text
+1 -> 1'
+2 -> 2'
+3 -> 3'
+4 -> 4'
+```
+
+---
+
+## Step 3
+
+Pop:
+
+```text
+4
+```
+
+Neighbors:
+
+```text
+1
+3
+```
+
+Both have already been cloned.
+
+Queue:
+
+```text
+[3]
+```
+
+---
+
+## Step 4
+
+Pop:
+
+```text
+3
+```
+
+Neighbors:
+
+```text
+2
+4
+```
+
+Both already cloned.
+
+Queue:
+
+```text
+[]
+```
+
+Traversal complete.
+
+---
+
+# Traversal Order
+
+### DFS
+
+```text
+1
+↓
+
+2
+↓
+
+3
+↓
+
+4
+```
+
+Traversal:
+
+```text
+1 → 2 → 3 → 4
+```
+
+---
+
+### BFS
+
+Visits level by level:
+
+```text
+Level 0
+
+1
+
+↓
+
+Level 1
+
+2    4
+
+↓
+
+Level 2
+
+3
+```
+
+Traversal:
+
+```text
+1 → 2 → 4 → 3
+```
+
+---
+
+# Comparison
+
+| DFS                                          | BFS                                  |
+| -------------------------------------------- | ------------------------------------ |
+| Uses recursion (or explicit stack)           | Uses a queue                         |
+| Goes as deep as possible before backtracking | Visits all immediate neighbors first |
+| Traversal: `1 → 2 → 3 → 4`                   | Traversal: `1 → 2 → 4 → 3`           |
+| Uses the call stack                          | Uses FIFO queue                      |
+
+---
+
+# Key Takeaway
+
+Although DFS and BFS visit nodes in different orders, **both**:
+
+* Visit every node exactly once.
+* Traverse every edge exactly once.
+* Produce the same cloned graph.
+
+Their only difference is the traversal strategy:
+
+* **DFS:** Explore one path completely before backtracking.
+* **BFS:** Explore the graph level by level.
+
+
 # Chapter 8: LRU Cache
 
 ## Pattern Recognition
@@ -12488,6 +12984,7 @@ Pattern:
 ```text
 Grid Traversal
 Connected Components
+Check for in graph problems
 ```
 
 Recognition:

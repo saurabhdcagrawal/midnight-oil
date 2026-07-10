@@ -7170,6 +7170,134 @@ the object is **immutable**.
 
 > **Java always passes object references by value. If the object is mutable, modifying its state is visible to the caller. If the object is immutable (e.g., `String`), any "modification" creates a new object, so the caller continues to reference the original object.**
 
+# Why does `HashMap<Node, Node>` work?
+
+A common question is:
+
+> **How can `HashMap<Node, Node>` work if we don't know how `Node.hashCode()` is implemented?**
+
+The key idea is that the map is **not comparing the state of the objects** (such as `val` or `neighbors`). It is comparing the **object references (identity)**.
+
+---
+
+## `Node` does not override `equals()` or `hashCode()`
+
+The LeetCode `Node` class is defined as:
+
+```java
+class Node {
+    public int val;
+    public List<Node> neighbors;
+}
+```
+
+Since it does **not** override `equals()` or `hashCode()`, it inherits both methods from `Object`.
+
+Therefore:
+
+* `equals()` uses **reference equality** (`==`).
+* `hashCode()` is identity-based (derived from the object's identity).
+
+---
+
+## Example
+
+```java
+Node a = new Node(1);
+Node b = new Node(1);
+```
+
+Memory:
+
+```text
+a -------> Node(val=1)
+
+b -------> Node(val=1)
+```
+
+Although both nodes have the same value,
+
+```java
+a == b          // false
+
+a.equals(b)     // false
+```
+
+because they are two different objects.
+
+The HashMap stores:
+
+```text
+Original Node Object        Cloned Node Object
+
+a ----------------------->  a'
+
+b ----------------------->  b'
+```
+
+Notice that the key is **not**
+
+```text
+1  ---> clone
+```
+
+It is
+
+```text
+Original Node Object  --->  Cloned Node Object
+```
+
+---
+
+## Why not use the node value?
+
+Suppose the graph contains:
+
+```text
+Node A (val = 1) ----- Node B (val = 1)
+```
+
+These are two distinct graph vertices that happen to have the same value.
+
+If we used:
+
+```java
+Map<Integer, Node>
+```
+
+both nodes would map to the same key:
+
+```text
+1 ---> clone
+```
+
+The cloned graph would become incorrect because two different nodes would share the same clone.
+
+Using the original object as the key avoids this problem.
+
+---
+
+## What if two nodes have the same hash code?
+
+Even if two different `Node` objects produce the same hash code, the `HashMap` still works correctly.
+
+Java handles hash collisions by:
+
+1. Computing the hash.
+2. Looking in the corresponding bucket.
+3. Comparing keys using `equals()`.
+
+Since `equals()` uses reference equality, the map can distinguish between different node objects even if their hash codes collide.
+
+Collisions may slightly affect performance, but **they do not affect correctness**.
+
+---
+
+## Interview Takeaway
+
+> The `HashMap` uses the original `Node` object itself as the key, not the node's value. Since `Node` inherits `Object`'s implementation of `equals()` and `hashCode()`, keys are compared using object identity (reference equality). This ensures every original graph node maps to exactly one cloned node, even when multiple nodes have the same value.
+
+
 
 # 105. Construct Binary Tree from Preorder and Inorder Traversal
 
