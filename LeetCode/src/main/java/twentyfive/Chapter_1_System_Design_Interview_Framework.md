@@ -41749,3 +41749,10071 @@ Every major component naturally appears during that journey:
 - Read/Delivery Receipts → Message Lifecycle
 
 If you can confidently explain the life of a single message from sender to receiver, you've effectively explained the entire WhatsApp architecture.
+
+# WhatsApp System Design
+
+# Chapter 14 - Common Interview Questions & Trade-offs
+
+---
+
+# 1. Why WebSockets instead of HTTP?
+
+HTTP is request-response.
+
+For every message,
+
+```
+Client
+
+↓
+
+HTTP Request
+
+↓
+
+Server
+
+↓
+
+HTTP Response
+
+↓
+
+Connection Closed
+```
+
+A chat application requires persistent bidirectional communication.
+
+WebSockets establish one connection that stays open.
+
+```
+Client
+
+⇅
+
+Server
+```
+
+Benefits
+
+- Lower latency
+- Lower network overhead
+- Real-time communication
+
+---
+
+# 2. Why not Polling?
+
+Polling repeatedly asks
+
+```
+Any new message?
+```
+
+Example
+
+Every second
+
+↓
+
+60 requests
+
+↓
+
+59 useless
+
+Waste of
+
+- CPU
+- Network
+- Database
+
+---
+
+# 3. Why not Server Sent Events (SSE)?
+
+SSE only supports
+
+```
+Server
+
+↓
+
+Client
+```
+
+Chat requires
+
+```
+Client
+
+⇅
+
+Server
+```
+
+Only WebSockets support true bidirectional communication.
+
+---
+
+# 4. Why separate WebSocket Server and Chat Service?
+
+WebSocket Servers manage
+
+- TCP connections
+- Heartbeats
+- Session objects
+
+Chat Service performs
+
+- Validation
+- Persistence
+- Routing
+- Business logic
+
+Connection count and request throughput scale differently.
+
+---
+
+# 5. Why is Chat Service stateless?
+
+Every request is independent.
+
+```
+Receive Request
+
+↓
+
+Process
+
+↓
+
+Return
+```
+
+No request-specific data remains in memory.
+
+Stateless services
+
+- Scale horizontally
+- Recover easily
+- Simplify load balancing
+
+---
+
+# 6. Why use Redis?
+
+Chat Service needs
+
+```
+Where is Bob?
+```
+
+Millions of times per second.
+
+Redis stores
+
+```
+Bob
+
+↓
+
+WS3
+```
+
+O(1) lookup.
+
+Databases are slower and optimized for durability.
+
+---
+
+# 7. Why doesn't Redis store socket objects?
+
+Socket objects exist only inside the WebSocket Server process.
+
+Redis stores only
+
+```
+Bob
+
+↓
+
+WS3
+```
+
+WS3 stores
+
+```java
+ConcurrentHashMap<UserId, WebSocketSession>
+```
+
+---
+
+# 8. Why Kafka?
+
+Without Kafka
+
+```
+Chat Service
+
+↓
+
+Notification
+
+↓
+
+Analytics
+
+↓
+
+Search
+
+↓
+
+Audit
+```
+
+Every downstream dependency increases latency.
+
+Kafka decouples producers from consumers.
+
+---
+
+# 9. Why publish after database write?
+
+Correct order
+
+```
+Persist
+
+↓
+
+Publish Event
+```
+
+Never
+
+```
+Publish
+
+↓
+
+Persist
+```
+
+Otherwise consumers process events for messages that were never saved.
+
+---
+
+# 10. Why is the database the source of truth?
+
+Messages are business data.
+
+Redis
+
+↓
+
+Temporary
+
+Kafka
+
+↓
+
+Event Stream
+
+Database
+
+↓
+
+Permanent
+
+Everything can be rebuilt from the database.
+
+---
+
+# 11. Why store media outside the database?
+
+Databases are optimized for structured data.
+
+Large binaries
+
+- Slow backups
+- Slow replication
+- Higher storage costs
+
+Object Storage is built for this use case.
+
+---
+
+# 12. Why use Pre-Signed URLs?
+
+Without them
+
+```
+Client
+
+↓
+
+Chat Service
+
+↓
+
+S3
+```
+
+Chat Service transfers gigabytes of data.
+
+With pre-signed URLs
+
+```
+Client
+
+↓
+
+S3
+```
+
+Chat Service only coordinates.
+
+---
+
+# 13. Why CDN?
+
+Millions of downloads
+
+↓
+
+CDN caches media near users
+
+↓
+
+Lower latency
+
+↓
+
+Lower storage traffic
+
+---
+
+# 14. Why ConversationId instead of Sender/Receiver?
+
+One query works for
+
+- Direct Chat
+- Group Chat
+
+```
+SELECT *
+
+WHERE conversationId=123
+```
+
+Much simpler than
+
+```
+sender=A
+
+receiver=B
+
+OR
+
+sender=B
+
+receiver=A
+```
+
+---
+
+# 15. Why Snowflake IDs?
+
+Advantages
+
+- Globally unique
+- Roughly time ordered
+- No database bottleneck
+- Scalable ID generation
+
+---
+
+# 16. Why partition Kafka by ConversationId?
+
+Kafka guarantees ordering
+
+within a partition.
+
+All messages for
+
+```
+Conversation123
+```
+
+go to one partition.
+
+Ordering preserved.
+
+---
+
+# 17. Why shard database by ConversationId?
+
+All messages remain together.
+
+Conversation queries stay local.
+
+Avoids cross-shard joins.
+
+---
+
+# 18. Why not shard by User?
+
+Alice
+
+↓
+
+Shard1
+
+Bob
+
+↓
+
+Shard2
+
+Conversation
+
+↓
+
+Multiple shards
+
+Poor performance.
+
+---
+
+# 19. Why persist before delivery?
+
+Suppose
+
+Deliver
+
+↓
+
+Database Crash
+
+Bob saw message
+
+↓
+
+Message lost forever
+
+Persisting first guarantees durability.
+
+---
+
+# 20. Why Redis instead of Database for Presence?
+
+Presence changes constantly.
+
+Users
+
+- Connect
+- Disconnect
+- Reconnect
+
+Millions of updates every minute.
+
+Redis is optimized for this.
+
+---
+
+# 21. Why Heartbeats?
+
+Network failures don't always close TCP connections.
+
+Heartbeat
+
+```
+PING
+
+↓
+
+PONG
+```
+
+helps detect dead connections.
+
+---
+
+# 22. Why Fan-out on Write?
+
+Advantages
+
+- Fast reads
+- Easy delivery tracking
+- Easy read receipts
+
+Best for
+
+Small groups.
+
+---
+
+# 23. Why Fan-out on Read?
+
+Advantages
+
+- Tiny storage
+- Small write amplification
+
+Best for
+
+Large communities.
+
+---
+
+# 24. Why store LastReadMessageId?
+
+Instead of storing
+
+Unread Messages
+
+Store
+
+```
+Last Read
+
+↓
+
+105
+```
+
+Everything after
+
+105
+
+is unread.
+
+Very efficient.
+
+---
+
+# 25. Why Object Storage?
+
+Optimized for
+
+- Large files
+- Cheap storage
+- Massive scalability
+- High durability
+
+---
+
+# 26. What happens if WebSocket Server crashes?
+
+Client reconnects.
+
+Redis mapping updates.
+
+Undelivered messages are fetched from the database.
+
+---
+
+# 27. What happens if Redis crashes?
+
+Presence is temporarily lost.
+
+Users reconnect.
+
+Mappings rebuild.
+
+Messages remain safe.
+
+---
+
+# 28. What happens if Kafka crashes?
+
+Kafka replicates partitions.
+
+Leader fails
+
+↓
+
+Follower becomes leader.
+
+---
+
+# 29. What happens if Chat Service crashes after DB write?
+
+Use
+
+```
+Transactional Outbox Pattern
+```
+
+Outbox Publisher later publishes to Kafka.
+
+No events lost.
+
+---
+
+# 30. What delivery guarantee does Kafka provide?
+
+Default
+
+```
+At Least Once
+```
+
+Duplicates are possible.
+
+Consumers should be idempotent.
+
+---
+
+# 31. How do you prevent duplicate messages?
+
+Client generates
+
+```
+ClientMessageId (UUID)
+```
+
+Server checks whether it has already processed that ID.
+
+If yes,
+
+return the previous result.
+
+---
+
+# 32. How do you preserve ordering?
+
+- Snowflake IDs
+- Kafka partition by ConversationId
+- Database queries ordered by MessageId
+
+---
+
+# 33. Why not use Kafka as the database?
+
+Kafka stores an event log.
+
+It is not optimized for
+
+- random queries
+- conversation history
+- indexes
+- pagination
+
+Use Kafka for event streaming, not as the primary data store.
+
+---
+
+# 34. Why not query Redis for message history?
+
+Redis is an in-memory cache.
+
+Message history is durable business data.
+
+Store it in the database.
+
+---
+
+# 35. What is the most important design principle?
+
+Always remember
+
+```
+Persist
+
+↓
+
+Then Deliver
+```
+
+Everything else
+
+- Notifications
+- Analytics
+- Search
+- Presence
+
+can be rebuilt.
+
+Messages cannot.
+
+---
+
+# Final Interview Cheat Sheet
+
+| Question | Short Answer |
+|----------|--------------|
+| Why WebSockets? | Persistent bidirectional communication |
+| Why Redis? | Fast routing & presence |
+| Why Kafka? | Decouple asynchronous work |
+| Why DB first? | Durability |
+| Why Object Storage? | Large media |
+| Why CDN? | Fast downloads |
+| Why Snowflake? | Unique ordered IDs |
+| Why ConversationId? | Efficient queries & ordering |
+| Why Chat Service stateless? | Horizontal scaling |
+| Why separate WS Server? | Independent scaling |
+| Why Fan-out on Write? | Fast reads |
+| Why Fan-out on Read? | Lower storage |
+| Why LastReadMessageId? | Efficient unread tracking |
+| Why Transactional Outbox? | Reliable DB → Kafka publishing |
+| Why Idempotency? | Safe retries and duplicate handling |
+
+---
+
+# Final Advice
+
+A senior system design interview is not about naming technologies.
+
+Interviewers care about **trade-offs**.
+
+For every major component, be prepared to answer:
+
+- Why did you choose it?
+- What problem does it solve?
+- What are the alternatives?
+- What are the trade-offs?
+- What happens when it fails?
+
+If you can confidently answer those five questions for every component in your architecture, you'll handle the vast majority of follow-up questions in a senior backend system design interview.
+
+
+	### 3.5 Audiobook Progress Synchronization
+
+	#### Quick Revision
+
+	Problem:
+	Sync audiobook position.
+
+	Core Data:
+	(userId, bookId) → position
+
+	Scale Reads:
+	Redis.
+
+	Scale Writes:
+	Kafka.
+
+	Conflict:
+	Versioning.
+
+	Partition:
+	userId.
+
+	Source of truth:
+	Database.
+
+
+	#### Key Bottlenecks
+
+	Reads:
+	Millions of devices requesting progress.
+
+	Solution:
+	Redis.
+
+	---
+
+	Writes:
+	Millions of heartbeats.
+
+	Solution:
+	Kafka.
+
+	---
+
+	Consistency:
+	Multiple devices update same book.
+
+	Solution:
+	Versioning / optimistic locking.
+
+	#### Problem
+
+	Design a system that allows users to synchronize audiobook playback progress across devices.
+
+	Example:
+
+	Phone pauses at 01:23:45
+
+	Tablet opens app
+
+	Resume from 01:23:45
+
+	#### Part A — Interview Evolution Flow ⭐⭐⭐
+
+	#### Functional Requirements
+
+	- Update progress.
+	- Retrieve latest progress.
+	- Support multiple devices.
+	- Near real-time synchronization.
+	- Support millions of users.
+
+
+	---
+
+	#### Non-Functional Requirements
+
+	- Low latency reads.
+	- High write throughput.
+	- High availability.
+	- Durability.
+	- Horizontal scalability.
+
+
+	---
+
+	#### Step 1: Start Simple
+
+	Architecture:
+
+	Device
+	 |
+	Load Balancer
+	 |
+	Progress Sync Service
+	 |
+	Database
+
+
+	Data Model:
+
+	Progress
+	---------
+	userId
+	bookId
+	position
+	updatedAt
+	version (optional)
+
+
+	Primary Key:
+
+	(userId, bookId)
+
+
+	Access Pattern:
+
+	GET progress by userId + bookId
+
+	UPDATE progress by userId + bookId
+
+
+	Database Choices:
+
+	- DynamoDB
+	- Cassandra
+	- SQL with proper indexing
+
+
+	Interview Note:
+
+	Always start with the simplest working system.
+	Do not introduce Redis or Kafka immediately.
+
+
+	---
+
+	#### Step 2: Scale Reads — Introduce Redis
+
+
+	Problem:
+
+	Millions of users may frequently request their latest playback position.
+
+	Reading from the database for every request increases:
+	- Latency.
+	- Database load.
+
+
+	Solution:
+
+	Use Redis as a low-latency cache.
+
+
+	Architecture:
+
+	Device
+	 |
+	Progress Service
+	 |
+	Redis
+	 |
+	Database
+
+
+	Redis Key:
+
+	progress:user123:bookABC
+
+
+	Cache Miss:
+
+	Redis does not have the key due to:
+	- TTL expiration.
+	- Memory eviction.
+	- Redis restart.
+
+	Flow:
+
+	Request
+	 |
+	Redis MISS
+	 |
+	Database
+	 |
+	Return data
+	 |
+	Populate Redis
+
+
+	---
+
+	#### Step 3: Keep Redis Updated
+
+
+	Write-Through Style:
+
+	The application manages both writes.
+
+
+	Flow:
+
+	Device
+	 |
+	Progress Service
+	 |
+	Database Update
+	 |
+	Redis Update
+	 |
+	Return Success
+
+
+	Database is the source of truth.
+
+
+	---
+
+	#### Step 4: What If Redis Update Fails?
+
+
+	Scenario:
+
+	Database:
+	1:23:45
+
+	Redis:
+	1:20:00 (stale)
+
+
+	Option 1: Retry Redis update
+
+	Retry 1
+	Retry 2
+	Retry 3
+
+
+	Problem:
+
+	A retry could overwrite a newer update.
+
+
+	Example:
+
+	Old retry:
+	1:23:45
+
+	New update:
+	1:25:00
+
+
+	If old retry executes later:
+
+	Redis becomes:
+	1:23:45 ❌
+
+
+	Solution:
+
+	Use:
+	- Version numbers.
+	- Timestamps.
+
+
+	Option 2: Invalidate only that key
+
+
+	DELETE progress:user123:bookABC
+
+
+	Next read:
+
+	Redis MISS
+	 |
+	Database
+	 |
+	Rebuild Redis
+
+
+	---
+
+	#### Step 5: Scale Writes — Introduce Kafka
+
+
+	Problem:
+
+	Millions of devices sending heartbeat updates can create huge write traffic.
+
+
+	Architecture:
+
+
+	Device
+	 |
+	Progress Service
+	 |
+	Kafka
+	 |
+	Consumers
+	 |
+	Database
+
+
+	Benefits:
+
+	- Absorbs traffic spikes.
+	- Provides buffering.
+	- Allows asynchronous processing.
+	- Handles backpressure.
+	- Supports retries.
+
+
+	---
+
+	#### Step 6: Hybrid Large Scale Design
+
+
+	Progress Update
+		   |
+		   v
+	Progress Service
+		   |
+	----------------------
+	|                    |
+	v                    v
+	Redis            Kafka
+	|                    |
+	Fast Reads       Consumers
+						  |
+						  v
+					  Database
+
+
+	Redis:
+
+	- Stores latest playback state.
+	- Provides low-latency reads.
+
+
+	Kafka:
+
+	- Handles high-frequency heartbeat writes.
+	- Smooths traffic spikes.
+	- Allows asynchronous persistence.
+
+
+	---
+
+	#### Step 7: Multiple Device Conflict (L6 Deep Dive)
+
+
+	Problem:
+
+	Phone:
+	1:30:00
+
+
+	Tablet:
+	1:25:00
+
+
+	Both send updates.
+
+
+	Possible strategies:
+
+
+	1. Last Write Wins
+
+	Use timestamps.
+
+	Problem:
+	Device clocks can be incorrect.
+
+
+	2. Server Generated Version
+
+	Server maintains:
+
+	version = 100
+
+	Next successful update:
+
+	version = 101
+
+	Why server generated?
+
+	Multiple devices may send concurrent updates.
+	Devices cannot reliably generate globally ordered versions.
+
+	Benefits:
+
+	- Detect stale updates.
+	- Prevent old retries from overwriting newer state.
+
+
+	3. Optimistic Locking
+
+
+	UPDATE progress
+	SET position=?, version=version+1
+	WHERE userId=?
+	AND bookId=?
+	AND version=?
+
+
+	If no rows are updated:
+	- Another update happened.
+	- Reload latest state.
+	- Apply conflict resolution.
+
+
+	---
+
+	#### Reliability
+
+	Discuss:
+
+	- Retry with exponential backoff.
+	- Idempotency.
+	- Duplicate requests.
+	- Cache invalidation.
+	- DLQ.
+	- Monitoring Kafka lag.
+	- API latency.
+	- Cache hit ratio.
+
+
+	---
+
+	#### Partitioning
+
+
+	Partition by userId.
+
+
+	Reason:
+
+	Most access patterns are:
+
+	(userId, bookId)
+
+
+	This keeps a user's data together and distributes load.
+
+
+	---
+
+	#### L6 Interview Flow
+
+
+	Do NOT start with everything.
+
+
+	Evolve the design:
+
+
+	Simple Database
+			|
+			v
+	Add Redis for read scaling
+			|
+			v
+	Handle cache failures
+			|
+			v
+	Add Kafka for massive writes
+			|
+			v
+	Handle multi-device conflicts
+			|
+			v
+	Versioning / Optimistic Locking
+
+
+	---
+
+	#### Key L6 Soundbite
+
+
+	"I would start with a simple progress service backed by a database. As read traffic grows, I would add Redis for low-latency access. If heartbeat writes become very high, I would introduce Kafka to absorb write spikes and process them asynchronously. Finally, I would handle multi-device conflicts using server-controlled versions and optimistic locking."
+
+					Device
+					   |
+				 Load Balancer
+					   |
+			  Progress Sync Service
+				   /          \
+				  /            \
+			   Redis          Kafka
+				 |              |
+		 Low latency reads  Consumers
+								 |
+							  Database
+
+	Read Path:
+	Device → Service → Redis → Database on miss
+
+	Write Path:
+	Device → Service → Redis (latest state) + Kafka → Consumer → Database
+
+	### Part B — Detailed Design Reference
+
+	#### 1. Problem Statement
+
+	#### 2. Functional Requirements
+
+	#### Core Features
+
+	* Update audiobook playback progress.
+	* Retrieve latest playback progress.
+	* Synchronize progress across multiple devices.
+	* Support near real-time synchronization.
+	* Handle millions of listeners.
+
+	---
+
+	#### 3. Non-Functional Requirements
+
+	* Low latency reads.
+	* High write throughput due to frequent heartbeat updates.
+	* High availability.
+	* Durable storage of playback progress.
+	* Horizontal scalability.
+	* Reliable handling of failures.
+
+	---
+
+	#### 4. Capacity Estimation
+
+	Example assumptions:
+
+	* 100 million active users.
+	* A heartbeat every 5 seconds.
+
+	Theoretical write volume:
+
+	```
+	100M users / 5 seconds = 20M updates per second
+	```
+
+	This may be too high, so clients can optimize by:
+
+	* Sending heartbeat every 15–30 seconds.
+	* Sending immediate updates when:
+
+	  * User pauses.
+	  * Application moves to background.
+	  * User closes the app.
+	  * Chapter changes.
+
+	---
+
+	#### 5. API Design
+
+	####
+	```
+	POST /progress
+	```
+
+	Request:
+
+	```json
+	{
+	  "userId": "123",
+	  "bookId": "ABC",
+	  "deviceId": "PHONE",
+	  "position": "01:23:45"
+	}
+	```
+
+	---
+
+	#### Get Latest Progress
+
+	```
+	GET /progress?userId=123&bookId=ABC
+	```
+
+	Response:
+
+	```json
+	{
+	  "position": "01:23:45",
+	  "updatedAt": "2026-01-01T10:30:00"
+	}
+	```
+
+	---
+
+	#### 6. Data Model
+
+	Access pattern:
+
+	* Retrieve progress by `userId + bookId`.
+	* Update progress by `userId + bookId`.
+
+	Progress table:
+
+	```
+	Progress
+	---------
+	userId
+	bookId
+	position
+	updatedAt
+	version (optional)
+	```
+
+	Primary key:
+
+	```
+	(userId, bookId)
+	```
+
+	Possible storage choices:
+
+	* DynamoDB
+	* Cassandra
+	* Relational database with proper indexing
+
+	---
+
+	#### 7. Initial Simple Architecture
+
+	Start with the simplest design:
+
+	```
+	Device
+	   |
+	Load Balancer
+	   |
+	Progress Sync Service
+	   |
+	Database
+	```
+
+	Flow:
+
+	1. Device sends current playback position.
+	2. Service updates database.
+	3. Another device requests latest position.
+	4. Service reads database and returns the value.
+
+	Always start the interview with the simplest working design.
+
+	---
+
+	#### 8. Scale Reads with Redis Cache
+
+	Problem:
+
+	Millions of devices frequently request the latest playback position. Reading the database for every request increases latency and database load.
+
+	Add Redis:
+
+	```
+	Device
+	   |
+	Progress Sync Service
+	   |
+	Redis Cache
+	   |
+	Database
+	```
+
+	Redis stores:
+
+	```
+	Key:
+	progress:user123:bookABC
+
+	Value:
+	{
+	  position: 01:23:45,
+	  updatedAt: timestamp
+	}
+	```
+
+	#### Cache Miss
+
+	A cache miss occurs when Redis does not have the key because of:
+
+	* Expiration (TTL).
+	* Eviction due to memory pressure.
+	* Redis restart/failure.
+
+	Flow:
+
+	```
+	Request
+	   |
+	Redis MISS
+	   |
+	Database
+	   |
+	Return data
+	   |
+	Populate Redis
+	```
+
+	---
+
+	#### 9. Keeping Cache Updated (Write-Through)
+
+	The application manages both database and cache writes.
+
+	Flow:
+
+	```
+	Device
+	   |
+	Progress Sync Service
+	   |
+	Database Update
+	   |
+	Redis Update
+	   |
+	Return Success
+	```
+
+	Database remains the source of truth.
+
+	---
+
+	#### 10. Cache Update Failure Handling
+
+	Scenario:
+
+	```
+	Database update succeeds.
+	Redis update fails.
+	```
+
+	Database:
+
+	```
+	1:23:45
+	```
+
+	Redis:
+
+	```
+	1:20:00 (stale)
+	```
+
+	Solutions:
+
+	#### Retry Redis Update
+
+	Useful for temporary failures.
+
+	Example:
+
+	```
+	Retry 1
+	Retry 2
+	Retry 3
+	```
+
+	#### Invalidate Only the Affected Cache Key
+
+	Example:
+
+	```
+	DELETE progress:user123:bookABC
+	```
+
+	The next read will cause a cache miss and reload the latest value from the database.
+
+	---
+
+	#### 11. Scale Writes with Kafka
+
+	Problem:
+
+	Millions of devices sending heartbeat updates can create very high write throughput.
+
+	Introduce Kafka:
+
+	```
+	Device
+	   |
+	Progress Sync Service
+	   |
+	Kafka
+	   |
+	Consumers
+	   |
+	Database
+	```
+
+	Benefits:
+
+	* Handles traffic spikes.
+	* Decouples producers from consumers.
+	* Provides buffering and backpressure.
+	* Supports retries and asynchronous processing.
+
+	---
+
+	#### 12. Hybrid Large-Scale Architecture
+
+	For very large systems:
+
+	```
+					   Progress Update
+							  |
+							  v
+					 Progress Sync Service
+							  |
+				------------------------------
+				|                            |
+				v                            v
+	   Redis (Latest State)               Kafka
+				|                            |
+		 Low Latency Reads                  |
+											 |
+									  Persistence Consumer
+											 |
+											 v
+										 Database
+	```
+
+	Redis provides immediate access to the latest playback position.
+
+	Kafka handles massive write throughput and asynchronously persists updates.
+
+	---
+
+	#### 13. Multiple Device Synchronization (L6 Discussion)
+
+	Multiple devices may update the same audiobook:
+
+	Example:
+
+	```
+	Phone:
+	1:30:00
+
+	Tablet:
+	1:25:00
+	```
+
+	Possible conflict resolution strategies:
+
+	#### Last Write Wins
+
+	Use timestamps.
+
+	The latest update replaces the older one.
+
+	Limitation:
+
+	* Device clocks may not be reliable.
+
+	---
+
+	#### Server-Generated Version Numbers
+
+	Maintain:
+
+	```
+	version
+	```
+
+	The server increments the version for each successful update.
+
+	Benefits:
+
+	* Detect stale updates.
+	* Prevent old retries from overwriting newer progress.
+
+	---
+
+	#### Optimistic Locking
+
+	Example:
+
+	```sql
+	UPDATE progress
+	SET position = ?, version = version + 1
+	WHERE userId = ?
+	AND bookId = ?
+	AND version = ?
+	```
+
+	If no rows are updated, another request modified the record and the conflict must be handled.
+
+	---
+
+	#### 14. Reliability Considerations
+
+	Discuss:
+
+	* Retry with exponential backoff.
+	* Idempotent updates.
+	* Handling duplicate requests.
+	* Cache invalidation.
+	* Dead Letter Queue (DLQ) for failed events.
+	* Monitoring Kafka consumer lag.
+	* API latency metrics.
+	* Cache hit ratio.
+
+	---
+
+	#### 15. Partitioning Strategy
+
+	Partition by:
+
+	```
+	userId
+	```
+
+	Reason:
+
+	Most access patterns are:
+
+	```
+	(userId, bookId)
+	```
+
+	This distributes users across partitions and keeps related data together.
+
+	---
+
+	#### 16. Interview Evolution Strategy
+
+	Do not start with Kafka, Redis, versioning, and concurrency.
+
+	Evolve the design:
+
+	```
+	1. Simple Database Design
+				|
+				v
+	2. Add Redis for Low-Latency Reads
+				|
+				v
+	3. Handle Cache Failures
+				|
+				v
+	4. Add Kafka for Massive Write Throughput
+				|
+				v
+	5. Discuss Multi-Device Conflicts
+				|
+				v
+	6. Add Versioning and Optimistic Locking
+	```
+
+	---
+
+	#### L6 Interview Soundbite
+
+	"I would start with a simple Progress Sync Service backed by a database. As read traffic grows, I would introduce Redis to provide low-latency access to the latest playback position. If heartbeat writes become very high, I would introduce Kafka to absorb the write stream and asynchronously persist updates. Finally, I would handle multiple device updates using conflict resolution techniques such as server-generated versions and optimistic locking."
+	
+	
+# Design Twitter / X - Part 1
+## Requirements, Capacity Estimation, High-Level Architecture, Core Data Services
+
+---
+
+# 1. Problem Statement
+
+Design a Twitter-like social networking system where users can:
+
+- Create short text posts (tweets)
+- Upload photos and videos
+- Follow and unfollow users
+- View a personalized home timeline
+- Like, comment, and share tweets
+- Search tweets
+- View trending topics
+- Receive notifications and recommendations
+
+The system must support hundreds of millions of users with low latency and high availability.
+
+---
+
+# 2. Requirement Clarification
+
+## Functional Requirements (FR)
+
+### User Features
+
+- User registration and login
+- User profile management
+- Follow/unfollow other users
+
+---
+
+### Tweet Features
+
+Users should be able to:
+
+- Create tweets
+- Delete tweets
+- View tweets
+
+Tweets can contain:
+
+- Text
+- Images
+- Videos
+
+---
+
+### Timeline Features
+
+The system should generate:
+
+- Home timeline
+  - Tweets from users I follow
+  - Ordered by relevance and recency
+
+- User timeline
+  - Posts created by a specific user
+
+---
+
+### Social Features
+
+Users should be able to:
+
+- Like a tweet
+- Comment on a tweet
+- Retweet/share a tweet
+
+---
+
+### Extended Features
+
+- Search tweets
+- Trending topics
+- Personalized recommendations
+- Notifications
+- Re-engagement for inactive users
+
+---
+
+# 3. Non-Functional Requirements (NFR)
+
+## High Availability
+
+Twitter is a global consumer platform.
+
+The system should continue operating even if individual components fail.
+
+---
+
+## Low Latency
+
+Timeline rendering should be very fast.
+
+Target:
+
+- Timeline read latency: ~100-200ms
+
+---
+
+## Massive Scale
+
+Example assumptions:
+
+- 1 Billion registered users
+- 200 Million daily active users
+- 100 Million tweets created every day
+
+---
+
+## Read Heavy System
+
+Twitter has far more reads than writes.
+
+Users read timelines many times per day but create relatively few tweets.
+
+Therefore, the architecture is optimized for:
+
+- Fast reads
+- Caching
+- Pre-computation where possible
+
+---
+
+## Consistency
+
+The system can tolerate eventual consistency.
+
+Examples:
+
+Acceptable:
+- Like count delayed by a few seconds
+- A new tweet appearing slightly late
+
+Not acceptable:
+- Losing a user's tweet
+
+Availability and scalability are prioritized over strong consistency.
+
+---
+
+# 4. Capacity Estimation
+
+## Tweet Storage
+
+Assumptions:
+
+- 100 million tweets/day
+- Tweet length = 140 characters
+- Unicode = 2 bytes per character
+- Metadata = ~30 bytes
+
+Size per tweet:
+
+140 * 2 + 30 = 310 bytes
+
+Daily storage:
+
+100,000,000 * 310 bytes
+
+≈ 30 GB/day
+
+---
+
+## Media Storage
+
+Assume:
+
+- 20% of tweets contain images
+- 10% contain videos
+
+Media dominates storage.
+
+Approximation:
+
+- Images: ~4 TB/day
+- Videos: ~20 TB/day
+
+Total media storage:
+
+≈ 24 TB/day
+
+---
+
+## Read Traffic Estimation
+
+Assumptions:
+
+- 200M DAU
+- Each user visits timeline 2 times/day
+- Visits 5 other user profiles/day
+- Each page displays 20 tweets
+
+Requests/day:
+
+200M * (2 + 5) * 20
+
+≈ 28 Billion tweet views/day
+
+QPS:
+
+28 Billion / 86400
+
+≈ 325K reads/second
+
+This demonstrates why the system is heavily optimized for reads.
+
+---
+
+# 5. High-Level Architecture
+
+                      Client
+                         |
+                    Load Balancer
+                         |
+                    API Gateway
+                         |
+        ------------------------------------------------
+        |                 |               |
+        |                 |               |
+    User Service     Tweet Service   Timeline Service
+        |                 |               |
+      MySQL          Cassandra        Redis Cache
+                          |
+                       Kafka
+                          |
+       ------------------------------------------------
+       |                    |                         |
+ Feed Processor      Search Pipeline            Analytics
+       |                    |                         |
+ Cassandra         Elasticsearch             Hadoop/Spark
+
+
+---
+
+# 6. User Service
+
+## Responsibilities
+
+Stores:
+
+- User profile
+- Authentication information
+- Account metadata
+
+Example:
+
+User:
+{
+    userId,
+    name,
+    email,
+    preferences
+}
+
+---
+
+## Database Choice
+
+MySQL Cluster
+
+Reason:
+
+- User data is relational
+- Requires transactional consistency
+- Supports indexing and replication
+
+---
+
+# 7. Social Graph Service
+
+## Purpose
+
+Stores relationships:
+
+User A follows User B
+
+
+Example:
+
+User 1001 follows:
+
+[
+  2002,
+  3003,
+  5005
+]
+
+---
+
+## Data Model
+
+FollowerId → FollowingId
+
+or
+
+UserId → List of Followers
+
+
+---
+
+## Database Choices
+
+Possible options:
+
+- Graph database
+- Cassandra
+- Sharded MySQL
+
+Requirements:
+
+- Very high read throughput
+- Fast lookup:
+
+"Who does this user follow?"
+
+This information is heavily used during timeline generation.
+
+---
+
+# 8. Tweet Service
+
+## Responsibilities
+
+Handles:
+
+- Create tweets
+- Delete tweets
+- Fetch user tweets
+
+---
+
+## Database Choice
+
+Cassandra
+
+Reasons:
+
+- Extremely high write throughput
+- Horizontal scaling
+- Distributed architecture
+- High availability
+- Eventual consistency is acceptable
+
+---
+
+## Partition Strategy
+
+Partition Key:
+
+UserId
+
+Clustering Key:
+
+Timestamp
+
+Example:
+
+User 123
+
+10:01 -> Tweet A
+
+10:05 -> Tweet B
+
+10:15 -> Tweet C
+
+
+Allows efficient retrieval of a user's recent tweets.
+
+---
+
+# 9. Media Service
+
+Tweets containing images/videos are stored separately.
+
+Why?
+
+Media files are very large and would make tweet storage inefficient.
+
+---
+
+## Flow
+
+
+User Upload
+     |
+ Asset Service
+     |
+ Object Storage (S3)
+     |
+ CDN
+     |
+ End Users
+
+
+---
+
+## CDN Benefits
+
+Frequently accessed images/videos remain close to users.
+
+Example:
+
+A celebrity photo may be cached globally.
+
+Old content can be evicted.
+
+If an old image becomes popular again:
+
+CDN miss
+    |
+Fetch from S3
+    |
+Store in CDN cache
+
+---
+
+# 10. Event-Driven Architecture
+
+Tweet creation generates an event:
+
+Tweet Created Event
+          |
+        Kafka
+          |
+ -------------------------------------------------
+ |                    |                          |
+Timeline          Search                   Analytics
+Processor         Indexing                 Pipeline
+
+
+---
+
+## Why Kafka?
+
+A background worker could also perform asynchronous processing.
+
+Kafka is preferred because it provides:
+
+- Durable event storage
+- Replayability
+- Multiple independent consumers
+- Backpressure handling
+- Consumer-specific offsets
+- Decoupling between producer and consumers
+
+
+Example:
+
+Today:
+- Timeline Service
+- Search Service
+
+Tomorrow:
+- ML Recommendation Service
+
+A new consumer can replay historical tweet events.
+
+---
+
+# 11. Key L6 Trade-Off Talking Points
+
+## Why Cassandra instead of MySQL?
+
+Because tweets require:
+
+- Massive write throughput
+- Horizontal scaling
+- Global availability
+
+The trade-off is eventual consistency.
+
+---
+
+## Why Redis?
+
+Twitter is read-heavy.
+
+Caching prevents repeatedly generating the same timelines and reduces database load.
+
+---
+
+## Why not store media in Cassandra?
+
+Large binary objects increase storage and replication costs.
+
+Object storage like S3 is optimized for large files.
+
+---
+
+## Why accept eventual consistency?
+
+User experience is more important than strict consistency.
+
+A like count being delayed by a second is acceptable.
+
+A tweet being permanently lost is not.
+
+---
+
+# Part 1 Summary
+
+Core Components:
+
+- User Service → MySQL
+- Graph Service → Graph DB / Cassandra / Sharded MySQL
+- Tweet Service → Cassandra
+- Media Service → S3 + CDN
+- Timeline Cache → Redis
+- Event Backbone → Kafka
+- Search → Elasticsearch
+- Analytics → Spark/Hadoop
+
+The foundation of the system is designed around one major principle:
+
+Twitter is a read-heavy system, so we optimize reads using caching, pre-computation, and asynchronous event processing.
+
+# Design Twitter / X - Part 2
+# Timeline Generation, Fan-out Strategy, Celebrity Problem, Live Users
+
+---
+
+# 1. The Core Challenge
+
+Twitter is a read-heavy system.
+
+A user opens the home timeline and expects to immediately see:
+
+- Tweets from people they follow
+- Recent tweets
+- Relevant tweets
+
+The main question is:
+
+When a user creates a tweet, how should it reach their followers?
+
+There are three approaches:
+
+1. Pull Model (Fan-out on Read)
+2. Push Model (Fan-out on Write)
+3. Hybrid Model
+
+---
+
+# 2. Pull Model (Fan-out on Read)
+
+## Idea
+
+Do not distribute the tweet when it is created.
+
+Instead, when a user opens their timeline, generate the feed at that time.
+
+Example:
+
+User A follows:
+
+- User B
+- User C
+- User D
+
+
+When User A opens Twitter:
+
+
+Timeline Service
+       |
+       |
+Graph Service
+(Get users I follow)
+       |
+       |
+Tweet Service
+(Get recent tweets from B,C,D)
+       |
+       |
+Merge + Sort by timestamp/relevance
+       |
+       |
+Return timeline
+
+
+---
+
+## Advantages
+
+- Very cheap writes
+- No unnecessary work for inactive users
+- Easy to handle users with millions of followers
+
+---
+
+## Problems
+
+### Higher read latency
+
+Every timeline request requires:
+
+- Fetching follower graph
+- Fetching tweets
+- Merging timelines
+- Ranking results
+
+This increases response time.
+
+---
+
+### Empty or repeated refreshes
+
+Many users continuously refresh their feed.
+
+Even if there are no new tweets:
+
+- The server still has to compute the timeline again.
+- This creates unnecessary load.
+
+This was one of the issues identified in the notes.
+
+---
+
+# 3. Push Model (Fan-out on Write)
+
+## Idea
+
+When a user creates a tweet, immediately push it to every follower's timeline.
+
+Example:
+
+User B creates a tweet
+
+
+Tweet Service
+       |
+      Kafka
+       |
+Feed Processor
+       |
+Find followers using Graph Service
+       |
+Write tweet ID into each follower's timeline cache
+
+
+Now when a follower opens Twitter:
+
+Timeline Service
+       |
+      Redis
+       |
+Return cached timeline
+
+
+---
+
+## Advantages
+
+Very fast reads.
+
+Timeline generation has already happened.
+
+Redis can directly return:
+
+User Timeline Cache:
+
+User A:
+
+Tweet 101
+Tweet 102
+Tweet 103
+
+
+---
+
+## Problems
+
+### Celebrity / Hot Key Problem
+
+Imagine a celebrity with:
+
+100 million followers.
+
+
+One tweet causes:
+
+100 million writes.
+
+This creates:
+
+- Huge Kafka traffic
+- Massive fan-out load
+- Large Redis writes
+- Backlogs in feed processors
+
+
+This is the famous "hot celebrity" problem.
+
+---
+
+# 4. Hybrid Approach (Used by Twitter)
+
+The best approach is to combine both models.
+
+---
+
+## Normal Users
+
+Users with a small or medium number of followers:
+
+Use:
+
+Fan-out on Write
+
+
+Flow:
+
+
+Tweet Created
+      |
+    Kafka
+      |
+Feed Processor
+      |
+Graph Service
+      |
+Push tweet IDs to followers' Redis timelines
+
+
+Why?
+
+Because most users have a reasonable number of followers.
+
+The write amplification is manageable.
+
+The benefit is very low read latency.
+
+---
+
+## Celebrity Users
+
+For users with millions of followers:
+
+Use:
+
+Fan-out on Read
+
+
+Do NOT push their tweets to every follower.
+
+Instead:
+
+When a follower opens the timeline:
+
+Timeline Service
+       |
+Get celebrity list from Graph Service
+       |
+Get latest celebrity tweets from Tweet Service
+       |
+Merge with user's normal cached timeline
+       |
+Return result
+
+
+This avoids millions of writes.
+
+---
+
+# 5. Handling Active vs Passive Users
+
+Another optimization from the notes:
+
+Not all users are equally important.
+
+---
+
+## Active Users
+
+Users currently online:
+
+We can provide near real-time updates.
+
+Possible approaches:
+
+- WebSocket connection
+- Long polling
+
+
+Flow:
+
+New Tweet
+     |
+ Kafka
+     |
+ Live User Service
+     |
+ WebSocket
+     |
+ Push notification to active client
+
+
+---
+
+## Passive Users
+
+Users who have not logged in recently.
+
+Do not spend resources continuously updating their timelines.
+
+Their timelines can be generated when they return.
+
+---
+
+# 6. Timeline Cache using Redis
+
+Redis stores recent timeline data.
+
+Example:
+
+Key:
+
+UserId
+
+
+Value:
+
+[
+ TweetId1,
+ TweetId2,
+ TweetId3
+]
+
+
+Benefits:
+
+- Extremely fast reads
+- Reduces Cassandra queries
+- Reduces expensive timeline computation
+
+
+---
+
+# 7. Why Redis TTL?
+
+A timeline changes frequently for active users.
+
+Older timelines become less valuable.
+
+We can:
+
+- Keep recent timeline entries in Redis
+- Apply TTL
+- Evict old data automatically
+
+
+This saves memory.
+
+---
+
+# 8. Timeline Archival
+
+Old timeline data does not need to remain in Redis forever.
+
+An archival service can store older timeline data.
+
+Example:
+
+Redis:
+- Last few days of feed
+
+Long-term storage:
+- Cassandra aggregated timeline tables
+
+
+When a user scrolls far back:
+
+Timeline Service
+       |
+Archival Service
+       |
+Cassandra
+       |
+Return old posts
+
+
+---
+
+# 9. Why Store Tweet IDs Instead of Full Tweets in Redis?
+
+Store:
+
+User123 Timeline:
+
+[
+  Tweet101,
+  Tweet202,
+  Tweet303
+]
+
+
+Instead of storing full tweet objects.
+
+Reasons:
+
+- Smaller cache footprint
+- Avoid duplicate data
+- Tweet details can be fetched separately
+
+---
+
+# 10. L6 Trade-off Discussion
+
+## Why not always use Push?
+
+Because of celebrities.
+
+A user with 100M followers would cause enormous write amplification.
+
+---
+
+## Why not always use Pull?
+
+Because reads dominate writes.
+
+Generating timelines repeatedly causes high latency and compute cost.
+
+---
+
+## Why Hybrid?
+
+It balances:
+
+- Low read latency
+- Controlled write amplification
+- Efficient handling of celebrities
+
+---
+
+# Key Takeaways
+
+The most important Twitter design decision is timeline generation.
+
+Normal users:
+    Fan-out on Write
+
+Celebrity users:
+    Fan-out on Read
+
+Active users:
+    Real-time updates using WebSockets
+
+Passive users:
+    Generate timeline on demand
+
+Recent feeds:
+    Redis cache
+
+Historical feeds:
+    Cassandra archival storage
+
+Kafka acts as the asynchronous backbone connecting Tweet Service, Feed Processor, and real-time notification systems.
+
+# Design Twitter / X - Part 3
+# Likes, Comments, Activity Tracking, User Profiles, and ML Recommendation Pipeline
+
+---
+
+# 1. Social Interaction System
+
+Users can interact with tweets through:
+
+- Likes
+- Comments
+- Shares / Retweets
+- Clicks
+- Time spent viewing content
+
+These interactions are extremely valuable because they describe user preferences.
+
+Example:
+
+User 123:
+- Likes sports posts
+- Watches football videos completely
+- Follows sports journalists
+
+The system can use this information to personalize future content.
+
+---
+
+# 2. Like Service
+
+## Responsibilities
+
+Handles:
+
+- Like a tweet
+- Remove a like
+- Get total likes on a tweet
+- Determine whether a user has liked a tweet
+
+---
+
+## Data Model
+
+Like Table:
+
+Composite Key:
+
+(PostId, UserId)
+
+Example:
+
+PostId | UserId
+-------|--------
+1001   | 501
+1001   | 800
+1002   | 900
+
+
+Why this design?
+
+- Prevents duplicate likes
+- Efficient lookup:
+  "Has this user liked this post?"
+
+---
+
+## Database Choice
+
+Cassandra
+
+Reason:
+
+- Very high write throughput
+- Massive number of user interactions
+- Horizontal scalability
+
+---
+
+## Like Count Optimization
+
+The exact likes are stored in Cassandra.
+
+However, displaying like counts requires extremely frequent reads.
+
+Example:
+
+A celebrity post may receive millions of reads.
+
+Instead of counting every time:
+
+Cassandra:
+
+(PostId, UserId)
+
+
+Maintain a Redis cache:
+
+Key:
+PostId
+
+Value:
+LikeCount
+
+
+Example:
+
+Post 1001 → 1,500,000 likes
+
+
+Benefits:
+
+- O(1) reads
+- Reduced Cassandra load
+- Low latency UI updates
+
+---
+
+# 3. Comment Service
+
+## Responsibilities
+
+Handles:
+
+- Create comments
+- Retrieve comments for a post
+- Delete comments
+
+---
+
+## Data Model
+
+Comment Table:
+
+Partition Key:
+PostId
+
+Clustering Key:
+Timestamp
+
+Example:
+
+Post 1001:
+
+10:00 → Comment A
+10:02 → Comment B
+10:05 → Comment C
+
+
+Benefits:
+
+- Efficient retrieval of comments sorted by time
+- Supports very high write volume
+
+---
+
+# 4. Activity Tracking System
+
+One of the most important systems in Twitter.
+
+Every user action generates an event.
+
+Examples:
+
+- Like
+- Comment
+- Share
+- Follow
+- Click
+- View
+- Watch time
+
+
+---
+
+# Event Model
+
+
+Activity Event:
+
+{
+    userId,
+    actionType,
+    contentId,
+    timestamp
+}
+
+
+Example:
+
+{
+    userId: 123,
+    actionType: "LIKE",
+    postId: 567,
+    timestamp: 123456789
+}
+
+---
+
+# Event Streaming Pipeline
+
+
+User Action
+      |
+ Like / Comment Service
+      |
+    Kafka
+      |
+ Activity Tracker Consumer
+      |
+ Cassandra
+
+
+---
+
+## Why Kafka?
+
+The interaction path must remain fast.
+
+We should not block the user request while:
+
+- Updating analytics
+- Running ML pipelines
+- Generating reports
+
+Kafka allows asynchronous processing.
+
+---
+
+# 5. User Interest Profile Generation
+
+Raw activity data is valuable but not directly usable.
+
+We need to convert actions into user interests.
+
+Example:
+
+User activity:
+
+Likes:
+- NBA posts
+- Football videos
+- Cricket highlights
+
+
+After ML processing:
+
+User Profile:
+
+{
+ Sports: 0.95,
+ Technology: 0.30,
+ Politics: 0.10
+}
+
+---
+
+# 6. Batch Analytics Pipeline
+
+Large-scale analytics can run offline.
+
+Flow:
+
+
+Kafka
+  |
+Spark Streaming
+  |
+Hadoop / Data Lake
+  |
+ML Jobs
+
+
+Examples of analysis:
+
+- Most liked topics
+- Most shared posts
+- User interest classification
+- Trending categories
+- Similar user identification
+
+---
+
+# 7. Content Classification
+
+Posts can also be classified.
+
+Example:
+
+Tweet:
+
+"Great game between Lakers and Celtics"
+
+ML model tags it:
+
+Sports
+Basketball
+NBA
+
+
+This metadata is stored with the content.
+
+---
+
+# 8. Recommendation Engine
+
+The recommendation engine combines:
+
+## User profile
+
+Example:
+
+User likes:
+
+Sports = 0.95
+
+---
+
+## Content profile
+
+Post tags:
+
+Sports = 0.90
+
+
+---
+
+## Social Graph
+
+Friends with similar interests.
+
+Example:
+
+If many users similar to User A like a post,
+we can recommend it to User A.
+
+---
+
+# Graph-Based Recommendation
+
+Your notes mention using graph traversal.
+
+Example:
+
+User A follows User B.
+
+User B follows User C.
+
+User C produces content highly engaged by users similar to A.
+
+
+Algorithms:
+
+- BFS/DFS traversal
+- Graph ranking algorithms
+- Embedding-based similarity models
+
+
+---
+
+# 9. Re-engagement Pipeline
+
+Problem:
+
+Some users become inactive.
+
+Goal:
+
+Bring them back.
+
+---
+
+## Inputs:
+
+- User interests
+- Previously liked content
+- Trending topics
+- Social connections
+
+---
+
+## Pipeline:
+
+
+Activity Data
+       |
+    Hadoop
+       |
+ ML Recommendation Jobs
+       |
+ Recommendation Service
+       |
+ Notification Service
+       |
+ Email / Push Notification
+
+
+Example:
+
+"Your favorite football team just posted a new video."
+
+---
+
+# 10. Why Separate Online and Offline Processing?
+
+## Online Path
+
+Requirements:
+
+- Low latency
+- User facing
+
+Examples:
+
+- Like a post
+- Add a comment
+- View timeline
+
+
+---
+
+## Offline Path
+
+Requirements:
+
+- Large computation
+- Historical analysis
+
+Examples:
+
+- User profiling
+- ML training
+- Trend discovery
+
+
+---
+
+# L6 Trade-Off Discussion
+
+## Why not update recommendation models during every like?
+
+Because it increases user-facing latency.
+
+Instead:
+
+- Record events quickly
+- Stream them through Kafka
+- Process asynchronously
+
+---
+
+## Why keep activity history?
+
+Allows:
+
+- Personalized recommendations
+- Re-engagement campaigns
+- Trend analysis
+- ML training
+
+---
+
+## Why Redis for counts?
+
+Counting millions of likes by scanning a database is expensive.
+
+Maintain a cached aggregate.
+
+---
+
+# Part 3 Summary
+
+User interactions generate valuable signals.
+
+Real-time path:
+
+User Action
+      |
+ Service
+      |
+ Kafka
+
+
+Asynchronous systems consume events:
+
+- Activity Tracker
+- Analytics
+- ML Pipelines
+- Recommendation Systems
+
+
+Data stores:
+
+- Cassandra → Likes, comments, activity logs
+- Redis → Aggregated counts
+- Hadoop/Data Lake → Historical analytics
+- Spark → Large-scale processing
+
+
+The social network is not just a content platform; it is a data and recommendation engine that continuously learns from user behavior.
+
+# Design Twitter / X - Part 4
+# Search, Trending Topics, Ranking, and Real-Time Analytics
+
+---
+
+# 1. Search Requirements
+
+Users should be able to search for:
+
+- Tweets
+- Users
+- Hashtags
+- Topics
+
+Examples:
+
+Search:
+"NBA Finals"
+
+Results may include:
+
+- Recent tweets
+- Popular tweets
+- Verified accounts
+- Trending discussions
+
+---
+
+# 2. Challenges in Search
+
+Searching billions of tweets by scanning Cassandra is not practical.
+
+Example:
+
+Bad approach:
+
+Search Service
+       |
+ Cassandra
+       |
+ Scan billions of tweets
+
+
+Problems:
+
+- Extremely slow
+- High database load
+- Poor user experience
+
+
+We need a dedicated search engine.
+
+---
+
+# 3. Elasticsearch
+
+Use Elasticsearch because it provides:
+
+- Full-text search
+- Inverted indexes
+- Tokenization
+- Ranking algorithms
+- Distributed scaling
+
+---
+
+# 4. How Inverted Index Works
+
+Traditional database indexing:
+
+TweetID → Tweet Content
+
+
+Example:
+
+Tweet 101:
+
+"LeBron wins NBA finals"
+
+
+A search engine creates the reverse mapping:
+
+
+Word → Tweet IDs
+
+
+Example:
+
+"LeBron" → [101, 500, 800]
+
+"NBA" → [101, 200, 600]
+
+"Finals" → [101, 900]
+
+
+This allows very fast keyword lookup.
+
+---
+
+# 5. Search Indexing Pipeline
+
+
+Tweet Created
+      |
+      Kafka
+      |
+ Search Index Consumer
+      |
+ Elasticsearch
+
+
+Why asynchronous indexing?
+
+The user should not wait for search indexing before a tweet is successfully posted.
+
+Tweet creation path:
+
+User
+ |
+Tweet Service
+ |
+Cassandra
+ |
+Return Success
+
+
+Background path:
+
+Kafka
+ |
+Search Consumer
+ |
+Elasticsearch
+
+
+Trade-off:
+
+A newly created tweet may take a few seconds to appear in search.
+
+Eventual consistency is acceptable.
+
+---
+
+# 6. Search Ranking
+
+Not all matching tweets should appear in chronological order.
+
+The ranking system can consider:
+
+- Text relevance
+- Number of likes
+- Number of retweets
+- Number of comments
+- User reputation
+- Recency
+- User interests
+
+
+Example:
+
+Query:
+
+"World Cup"
+
+Two matching tweets:
+
+Tweet A:
+- Posted 5 seconds ago
+- 2 likes
+
+Tweet B:
+- Posted 30 minutes ago
+- 50,000 likes
+
+
+The ranking model determines which appears first.
+
+---
+
+# 7. Personalized Search
+
+Search results can vary by user.
+
+Example:
+
+User A:
+
+Interested in sports.
+
+Search:
+"Giants"
+
+Results:
+
+NFL New York Giants.
+
+
+User B:
+
+Interested in technology.
+
+Search:
+"Giants"
+
+Results:
+
+Technology companies or different context.
+
+
+Personalization signals:
+
+- User activity history
+- Likes
+- Follows
+- Previous searches
+- Location
+
+---
+
+# 8. Popular Query Caching
+
+Many users search for the same events.
+
+Examples:
+
+- Super Bowl
+- Olympics
+- Elections
+- Oscars
+
+
+Instead of running the same Elasticsearch query repeatedly:
+
+
+Search Request
+       |
+ Redis Cache
+       |
+    Hit
+       |
+ Return results
+
+
+On cache miss:
+
+
+Search Service
+       |
+ Elasticsearch
+       |
+ Redis
+       |
+ User
+
+
+---
+
+# 9. Cache Expiration (TTL)
+
+Search results change frequently.
+
+Example:
+
+Query:
+
+"World Cup"
+
+Results are very dynamic during a live match.
+
+
+Therefore:
+
+- Cache only hot queries.
+- Use short TTL values.
+- Refresh popular searches frequently.
+
+
+---
+
+# 10. Trending Topics
+
+Trending is a streaming analytics problem.
+
+Examples:
+
+A hashtag suddenly increases:
+
+#WorldCupFinal
+
+10 mentions/minute
+      ↓
+50 mentions/minute
+      ↓
+5000 mentions/minute
+
+
+The system must detect the spike.
+
+---
+
+# 11. Trending Pipeline
+
+
+Tweet Events
+      |
+      Kafka
+      |
+ Stream Processing (Spark/Flink)
+      |
+ Count Hashtags
+      |
+ Detect Growth Rate
+      |
+ Trending Service
+      |
+ Redis Cache
+
+
+---
+
+# 12. Why Kafka?
+
+Kafka allows:
+
+- High-throughput ingestion
+- Multiple consumers
+- Replayability
+- Durability
+
+
+The same tweet stream can feed:
+
+- Search indexing
+- Trending calculations
+- Analytics
+- ML systems
+
+
+---
+
+# 13. Real-Time vs Batch Analytics
+
+## Real-Time Streaming
+
+Purpose:
+
+Detect immediate events.
+
+Examples:
+
+- Breaking news
+- Viral hashtags
+- Live sports discussions
+
+
+Pipeline:
+
+Kafka
+ |
+Spark Streaming/Flink
+ |
+Redis
+
+
+Latency:
+
+Seconds
+
+
+---
+
+## Batch Analytics
+
+Purpose:
+
+Historical analysis.
+
+Examples:
+
+- Monthly trends
+- User behavior analysis
+- Recommendation model training
+
+
+Pipeline:
+
+Kafka
+ |
+Data Lake (HDFS/S3)
+ |
+Spark Batch Jobs
+
+
+Latency:
+
+Minutes to hours
+
+---
+
+# 14. Data Storage for Analytics
+
+Raw events are valuable.
+
+Store:
+
+- Tweet creation events
+- Search events
+- Likes
+- Shares
+- Clicks
+
+
+Reasons:
+
+- Historical reporting
+- Model training
+- Trend analysis
+- Replay new analytics pipelines
+
+
+---
+
+# 15. Scaling Elasticsearch
+
+A single Elasticsearch node cannot handle Twitter scale.
+
+Use:
+
+- Sharding
+- Replication
+
+
+Sharding:
+
+Tweet Index
+
+Shard 1:
+Tweets A-M
+
+Shard 2:
+Tweets N-Z
+
+
+Replication provides:
+
+- High availability
+- Higher read throughput
+
+
+---
+
+# 16. L6 Trade-Off Discussion
+
+## Why not use Cassandra for search?
+
+Cassandra is optimized for:
+
+- Key-based lookups
+- High write throughput
+
+
+It is not designed for:
+
+- Full-text search
+- Relevance ranking
+- Token matching
+
+
+Elasticsearch is specialized for search.
+
+---
+
+## Why not update Elasticsearch synchronously?
+
+Because it increases tweet posting latency.
+
+Instead:
+
+Tweet write path:
+
+Fast and reliable.
+
+Search indexing:
+
+Asynchronous.
+
+Trade-off:
+
+Search is eventually consistent.
+
+---
+
+## Why cache search results?
+
+Because many users search the same topics.
+
+Examples:
+
+- World Cup
+- Elections
+- Breaking news
+
+
+Caching reduces:
+
+- Elasticsearch load
+- Response latency
+
+
+---
+
+# Part 4 Summary
+
+Search Architecture:
+
+Tweet Service
+       |
+    Kafka
+       |
+ Search Consumer
+       |
+ Elasticsearch
+
+
+Trending Architecture:
+
+Tweet Events
+       |
+    Kafka
+       |
+ Spark Streaming/Flink
+       |
+ Trending Service
+       |
+ Redis
+
+
+Storage Choices:
+
+- Elasticsearch → Full-text search
+- Redis → Hot search results and trending topics
+- Kafka → Event backbone
+- Spark/Flink → Real-time processing
+- Data Lake → Historical analytics
+
+
+Key idea:
+
+Twitter search is not just keyword matching.
+
+It combines:
+
+- Inverted indexing
+- Relevance ranking
+- User personalization
+- Real-time trend detection
+- Large-scale analytics
+
+# Design Twitter / X - Part 5
+# Recommendation System, Notifications, Feed Ranking, and End-to-End Architecture
+
+---
+
+# 1. The Evolution of the Timeline
+
+Originally, Twitter timelines were simple:
+
+Timeline = Tweets from people I follow sorted by timestamp.
+
+Example:
+
+User follows:
+
+- Sports Account
+- Technology Account
+- Celebrity
+
+Feed:
+
+10:01 Sports tweet
+
+10:03 Celebrity tweet
+
+10:05 Technology tweet
+
+
+However, modern social networks optimize for engagement.
+
+The question becomes:
+
+"What content is most valuable for this specific user?"
+
+Therefore the feed becomes:
+
+Timeline = Ranking(User Profile, Content Features, Social Signals)
+
+
+---
+
+# 2. User Profile Generation
+
+The system continuously learns user interests.
+
+Signals include:
+
+- Likes
+- Comments
+- Retweets
+- Shares
+- Watch time
+- Clicks
+- Search history
+- Follow relationships
+
+
+Every action generates an event:
+
+
+User Action
+     |
+     Kafka
+     |
+ Activity Tracker
+     |
+ Data Lake
+
+
+Examples:
+
+User A:
+
+Likes:
+- NBA
+- NFL
+- Football
+
+
+Generated User Profile:
+
+{
+ Sports: 0.95,
+ Technology: 0.20,
+ Politics: 0.05
+}
+
+
+This profile is continuously updated.
+
+
+---
+
+# 3. Content Understanding
+
+Tweets also need a profile.
+
+Example Tweet:
+
+"Lakers defeat Celtics in Game 7"
+
+ML Classification:
+
+{
+ Sports: 0.98,
+ Basketball: 0.95,
+ NBA: 0.99
+}
+
+
+The content metadata is stored with the tweet.
+
+
+---
+
+# 4. Recommendation Engine
+
+
+Inputs:
+
+1. User Profile
+2. Content Features
+3. Social Graph
+4. Trending Topics
+5. Historical Engagement
+
+
+Example:
+
+User Profile:
+
+Sports: 0.95
+
+
+Candidate Tweet:
+
+Sports: 0.90
+
+
+The recommendation model calculates a score:
+
+Relevance Score =
+ User Interest
+ + Tweet Popularity
+ + Social Connections
+ + Freshness
+
+
+Tweets with higher scores appear earlier in the feed.
+
+
+---
+
+# 5. Candidate Generation and Ranking
+
+A major challenge:
+
+Twitter contains billions of tweets.
+
+We cannot rank every tweet for every user.
+
+Therefore we divide the problem into two stages.
+
+
+## Stage 1: Candidate Generation
+
+
+Retrieve a smaller set of candidate tweets from:
+
+- Followed users
+- Trending topics
+- Similar users
+- Popular tweets
+
+
+Example:
+
+1 billion tweets
+
+        ↓
+
+10,000 candidate tweets
+
+
+---
+
+## Stage 2: Ranking
+
+
+Apply ML ranking models using:
+
+- User preferences
+- Likes
+- Shares
+- Comments
+- Time spent viewing
+- Relationship strength
+- Recency
+
+
+Example:
+
+10,000 tweets
+
+        ↓
+
+Top 100 personalized tweets
+
+
+---
+
+# 6. Real-Time Recommendation Updates
+
+
+Some recommendations need to change quickly.
+
+Examples:
+
+- Breaking news
+- Sports events
+- Viral content
+
+
+Pipeline:
+
+
+Tweet Activity
+      |
+    Kafka
+      |
+ Stream Processing
+      |
+ Update Trending Signals
+      |
+ Recommendation Service
+
+
+---
+
+# 7. Notification System
+
+
+Notifications improve user engagement.
+
+
+Examples:
+
+- Someone liked your tweet.
+- A user you follow posted new content.
+- A topic you like is trending.
+- A celebrity you follow is live.
+
+
+---
+
+# 8. Notification Architecture
+
+
+Events:
+
+- Like Event
+- Follow Event
+- Tweet Event
+
+
+Flow:
+
+
+Application Services
+          |
+        Kafka
+          |
+ Notification Service
+          |
+ User Preference Service
+          |
+ Notification Queue
+          |
+ Push / Email / SMS Providers
+
+
+---
+
+# 9. Why Use Kafka for Notifications?
+
+
+A direct synchronous approach:
+
+
+Tweet Service
+       |
+Notification API
+       |
+External Push Provider
+
+
+Problems:
+
+- Increased tweet latency
+- Failure of notification provider affects tweeting
+- Difficult to support multiple consumers
+
+
+Event-driven approach:
+
+
+Tweet Service
+      |
+    Kafka
+      |
+ Notification Consumers
+
+
+Benefits:
+
+- Low latency tweet creation
+- Durable message storage
+- Retry capability
+- Independent scaling
+- Multiple notification channels
+
+
+---
+
+# 10. User Preferences
+
+
+Users can control:
+
+- Push notifications
+- Email notifications
+- Muted users
+- Blocked users
+
+
+Before sending a notification:
+
+Notification Service
+          |
+ Check Preferences
+          |
+ Send Message
+
+
+---
+
+# 11. Re-engagement Pipeline
+
+
+Some users become inactive.
+
+Goal:
+
+Bring them back.
+
+
+Example:
+
+User has not opened Twitter for 10 days.
+
+System checks:
+
+- Historical interests
+- New content from followed accounts
+- Trending events
+
+
+Pipeline:
+
+
+Activity History
+        |
+ Data Lake
+        |
+ ML Recommendation Jobs
+        |
+ Re-engagement Service
+        |
+ Notification Service
+
+
+Example Notification:
+
+"Your favorite team just won a championship."
+
+---
+
+# 12. Online vs Offline Processing
+
+
+## Online Systems
+
+Requirements:
+
+- Millisecond latency
+- User-facing requests
+
+
+Examples:
+
+- Load timeline
+- Like tweet
+- Post comment
+- Send notifications
+
+
+Technologies:
+
+- Redis
+- Cassandra
+- APIs
+
+
+---
+
+## Offline Systems
+
+
+Requirements:
+
+- Process enormous historical datasets
+
+
+Examples:
+
+- Train recommendation models
+- Build user profiles
+- Discover trends
+
+
+Technologies:
+
+- Spark
+- Hadoop
+- Data Lake
+
+
+---
+
+# 13. End-to-End Twitter Architecture
+
+
+                     Users
+                       |
+                 Load Balancer
+                       |
+                   API Gateway
+                       |
+ --------------------------------------------------
+ |             |             |                    |
+User      Tweet Service  Timeline          Social Graph
+Service                   Service
+ |             |             |
+MySQL      Cassandra       Redis
+              |
+            Kafka
+              |
+ ----------------------------------------------------------
+ |             |              |             |              |
+Feed       Search        Analytics     Notification     ML
+Processor  Service       Pipeline       Service       Pipeline
+ |             |              |             |
+Redis      Elasticsearch   Data Lake    Push Provider
+
+
+---
+
+# 14. Important L6 Trade-Offs
+
+
+## Why not calculate recommendations during every request?
+
+Because:
+
+- ML ranking is expensive.
+- It increases latency.
+- It does not scale.
+
+Instead:
+
+- Precompute user profiles.
+- Generate candidates.
+- Apply fast ranking online.
+
+
+---
+
+## Why use event-driven architecture?
+
+Because many systems need the same data:
+
+Tweet Created Event
+
+Consumers:
+
+- Timeline generation
+- Search indexing
+- Analytics
+- Recommendations
+- Notifications
+
+
+Kafka allows:
+
+- Independent consumers
+- Replayability
+- Durability
+- Backpressure handling
+
+
+---
+
+## Why separate online and offline systems?
+
+Online systems optimize for:
+
+- Latency
+- Availability
+
+
+Offline systems optimize for:
+
+- Throughput
+- Large-scale computation
+
+
+---
+
+# Final Twitter Design Summary
+
+
+Core Databases:
+
+MySQL:
+- User accounts
+- Profile information
+
+
+Cassandra:
+- Tweets
+- Likes
+- Comments
+- Activity logs
+
+
+Redis:
+- Timeline cache
+- Like counts
+- Trending topics
+- Search cache
+
+
+Elasticsearch:
+- Full-text search
+
+
+Object Storage + CDN:
+- Images and videos
+
+
+Kafka:
+- Event backbone
+
+
+Spark/Hadoop/Data Lake:
+- Analytics and ML
+
+
+---
+
+# The Most Important Interview Takeaways
+
+
+Timeline:
+- Normal users → Fan-out on Write
+- Celebrities → Fan-out on Read
+- Redis stores recent feeds
+- Cassandra stores historical data
+
+
+Search:
+- Kafka → Elasticsearch
+- Inverted indexes
+- Ranking and caching
+
+
+Recommendations:
+- User behavior → User Profile
+- Content → Feature extraction
+- Candidate generation → ML ranking
+
+
+Notifications:
+- Event-driven
+- Asynchronous
+- User preference aware
+
+
+The key architectural principle of Twitter is:
+
+"Optimize user-facing paths for low latency, and move heavy computation to asynchronous pipelines using Kafka and large-scale processing systems."
+
+# Social Feed Platform Differences
+## Twitter / Facebook / Instagram / LinkedIn Specific Design Considerations
+
+---
+
+# 1. Common Foundation (Applies to All Social Feed Systems)
+
+The following architecture is common across Twitter, Facebook, Instagram, and LinkedIn:
+
+- Content Creation Service
+- User / Social Graph Service
+- Feed Generation Service
+- Fan-out on Write vs Fan-out on Read
+- Redis Feed Cache
+- Cassandra or distributed storage for large-scale content
+- Kafka-based asynchronous pipelines
+- Activity Tracking
+- Recommendation Engine
+- Notifications
+- Data Lake + ML pipelines
+
+The first five parts of this design document cover these common concepts.
+
+This document only focuses on platform-specific differences.
+
+---
+
+# 2. Twitter / X Specific Design Considerations
+
+## 2.1 Directed Social Graph
+
+Twitter follows a directed relationship model.
+
+
+A follows B
+
+A can see B's content.
+
+B does not automatically follow A.
+
+
+Example:
+
+User A --------> User B
+
+
+Data Model:
+
+FollowerId → FollowingId
+
+
+---
+
+## 2.2 Celebrity Problem
+
+Twitter has a very high number of celebrity accounts.
+
+Example:
+
+Celebrity:
+100 million followers
+
+
+Problem:
+
+A single tweet can trigger:
+
+100 million feed updates.
+
+
+Solution:
+
+Use Hybrid Feed Generation.
+
+Normal users:
+- Fan-out on Write
+
+Celebrities:
+- Fan-out on Read
+
+
+---
+
+## 2.3 Search Is a Core Feature
+
+Twitter users frequently search:
+
+- Hashtags
+- Breaking news
+- Trending events
+- Public conversations
+
+
+Architecture:
+
+Tweet Created
+      |
+    Kafka
+      |
+Search Consumer
+      |
+Elasticsearch
+
+
+Use:
+
+- Inverted Indexes
+- Ranking Algorithms
+- Redis caching for hot searches
+
+
+---
+
+## 2.4 Trending Topics
+
+Twitter emphasizes real-time event discovery.
+
+
+Pipeline:
+
+Tweet Events
+      |
+    Kafka
+      |
+Stream Processing (Spark/Flink)
+      |
+Trending Service
+      |
+Redis
+
+
+Examples:
+
+- World Cup
+- Elections
+- Breaking News
+
+
+---
+
+# 3. Facebook Specific Design Considerations
+
+
+## 3.1 Friendship Graph (Bidirectional)
+
+Unlike Twitter follows, Facebook relationships are usually mutual.
+
+
+User A <-------> User B
+
+
+A friendship requires:
+
+- Friend Request
+- Pending State
+- Acceptance or Rejection
+
+
+Example:
+
+FriendRequest:
+
+{
+    requestId,
+    senderId,
+    receiverId,
+    status,
+    timestamp
+}
+
+
+---
+
+## 3.2 Privacy and Access Control (Most Important Difference)
+
+Facebook has complex visibility rules.
+
+A post can have visibility:
+
+- Public
+- Friends
+- Friends of Friends
+- Custom Groups
+- Only Me
+
+
+Feed generation becomes:
+
+
+Candidate Posts
+       |
+ ACL / Privacy Service
+       |
+ Filter Unauthorized Content
+       |
+ Ranking Service
+       |
+ User Feed
+
+
+This is one of the biggest design differences compared with Twitter.
+
+
+---
+
+## 3.3 Media and Photo Albums
+
+Facebook is more media-centric.
+
+Architecture:
+
+
+Photo Upload
+       |
+ Media Service
+       |
+ Object Storage (S3)
+       |
+ CDN
+
+
+Photo metadata may contain:
+
+- PhotoId
+- UserId
+- AlbumId
+- Tags
+- Location
+- Timestamp
+
+
+---
+
+## 3.4 Facebook Stories
+
+Stories are temporary content.
+
+Characteristics:
+
+- Available for 24 hours
+- High read traffic
+- Temporary storage
+
+
+Implementation:
+
+Redis / Cache
+       |
+ TTL
+       |
+ Automatic Expiration
+
+
+---
+
+# 4. Instagram Specific Design Considerations
+
+
+Instagram shares many concepts with Facebook but is even more media focused.
+
+
+## 4.1 Directed Follower Graph
+
+
+User A --------> User B
+
+
+---
+
+## 4.2 Media Processing Pipeline
+
+
+Image/Video Upload
+        |
+ Media Service
+        |
+ Transcoding Service
+        |
+ Multiple Resolutions
+        |
+ Object Storage
+        |
+ CDN
+
+
+Reasons:
+
+- Different device sizes
+- Different network speeds
+- Optimized streaming
+
+
+---
+
+## 4.3 Reels Recommendation System
+
+Reels are heavily ML driven.
+
+
+Ranking signals:
+
+User Features:
+- Watch Time
+- Likes
+- Shares
+- Comments
+- Following History
+
+
+Content Features:
+
+- Topic
+- Creator
+- Popularity
+- Engagement Rate
+
+
+ML Ranking decides which videos appear in the feed.
+
+
+---
+
+## 4.4 Stories
+
+Same concept as Facebook:
+
+- Ephemeral content
+- TTL based expiration
+- Cached for low latency
+
+
+---
+
+# 5. LinkedIn Specific Design Considerations
+
+
+## 5.1 Professional Social Graph
+
+
+Relationships are based on:
+
+- Connections
+- Companies
+- Schools
+- Skills
+- Professional Interests
+
+
+---
+
+## 5.2 Feed Ranking
+
+Ranking signals are different from consumer social networks.
+
+
+Examples:
+
+Professional relevance:
+- Same company
+- Similar industry
+- Shared connections
+- Job interests
+
+
+Engagement:
+
+- Likes
+- Comments
+- Shares
+
+
+Recency:
+
+- Recent posts
+
+
+---
+
+## 5.3 Job Recommendation System
+
+
+Inputs:
+
+User Profile:
+- Skills
+- Experience
+- Industry
+
+
+Job Features:
+- Required skills
+- Location
+- Company
+
+
+ML Matching:
+
+User Profile
+       +
+Job Features
+       +
+Historical Engagement
+       |
+ Recommendation Score
+
+
+---
+
+## 5.4 Notifications
+
+
+Examples:
+
+- Someone viewed your profile
+- New job matches your skills
+- Your connection changed companies
+- Someone liked your post
+
+
+---
+
+# 6. Interview Strategy
+
+Do not memorize four separate architectures.
+
+
+Think in terms of a common social feed platform:
+
+Core Components:
+
+User
+ |
+API Gateway
+ |
+--------------------------------
+|              |               |
+Post        Feed          Social Graph
+Service     Service       Service
+ |
+Kafka
+ |
+------------------------------------------------
+|          |          |          |             |
+Search  Analytics  Notifications  ML      Recommendations
+
+
+Then apply platform-specific modifications.
+
+
+---
+
+# Quick Comparison Table
+
+| Feature | Twitter | Facebook | Instagram | LinkedIn |
+|---|---|---|---|---|
+| Social Graph | Directed Follow | Mutual Friends | Directed Follow | Professional Connections |
+| Main Content | Tweets | Posts/Photos | Photos/Videos/Reels | Professional Posts |
+| Search Importance | Very High | Medium | Low | Medium |
+| Trending Topics | Very High | Medium | Medium | Low |
+| Privacy Complexity | Low | Very High | Medium | Medium |
+| Media Focus | Medium | High | Very High | Low |
+| ML Recommendations | High | Very High | Very High | High |
+| Celebrity Problem | Major | Moderate | Major | Low |
+| Feed Strategy | Hybrid | Hybrid | Hybrid | Hybrid |
+
+---
+
+# Final L6 Interview Perspective
+
+The interviewer is not looking for "Twitter knowledge" or "Facebook knowledge".
+
+The real evaluation is whether you understand:
+
+- Fan-out on Write vs Fan-out on Read
+- Caching strategies
+- Event-driven architectures using Kafka
+- Storage trade-offs
+- Search and indexing
+- Activity tracking
+- ML-based ranking
+- Real-time vs batch processing
+- Scalability and failure handling
+
+
+The platform-specific differences are usually only the last 10–20% of the discussion.
+
+Master the common social feed architecture first, then add these variations.	
+
+
+	### 3.3 Fraud Monitoring System
+
+	### 3.4 Financial Aggregation Platform (Plaid / QuickBooks)
+	
+	
+# Job Scheduler System Design
+
+# Chapter 1 - Requirements, APIs & High-Level Architecture
+
+---
+
+# Problem Statement
+
+Design a distributed Job Scheduler similar to
+
+- Quartz Scheduler
+- Kubernetes CronJob
+- AWS EventBridge Scheduler
+- Apache Airflow (simplified)
+- Google Cloud Scheduler
+
+The system should execute jobs at scheduled times reliably, even in the presence of failures.
+
+Examples
+
+- Send email every day at 9 AM
+- Run payroll every Friday
+- Generate reports every hour
+- Retry failed payments after 5 minutes
+- Delete expired sessions every night
+
+---
+
+# Functional Requirements
+
+The system should support
+
+## Job Management
+
+- Create Job
+- Update Job
+- Delete Job
+- Pause Job
+- Resume Job
+
+---
+
+## Scheduling
+
+Support
+
+- One-time jobs
+- Recurring jobs
+- Cron expressions
+- Fixed interval jobs
+
+Examples
+
+```
+Every 5 minutes
+
+Every day at 9 AM
+
+Every Monday
+
+First day of every month
+```
+
+---
+
+## Execution
+
+- Execute jobs
+- Retry failed jobs
+- Record execution history
+- Prevent duplicate execution
+
+---
+
+## Monitoring
+
+Users should be able to see
+
+- Job Status
+- Last Run
+- Next Run
+- Retry Count
+- Execution Logs
+
+---
+
+# Non Functional Requirements
+
+## Reliability
+
+Jobs should never be lost.
+
+---
+
+## High Availability
+
+Scheduler should continue working if one server crashes.
+
+---
+
+## Scalability
+
+Support
+
+- Millions of jobs
+- Thousands of executions/sec
+
+---
+
+## Fault Tolerance
+
+Recover from
+
+- Scheduler crashes
+- Worker crashes
+- Database failures
+
+---
+
+## Low Latency
+
+Jobs should execute as close as possible to their scheduled time.
+
+Example
+
+```
+Scheduled
+
+9:00:00
+
+Actual
+
+9:00:01
+```
+
+---
+
+# Capacity Estimation
+
+Assume
+
+```
+10 Million Scheduled Jobs
+```
+
+Average frequency
+
+```
+Once Per Day
+```
+
+Executions/day
+
+```
+10 Million
+```
+
+Average
+
+```
+10,000,000
+
+/
+
+86,400
+
+≈116 jobs/sec
+```
+
+Peak traffic
+
+```
+5×
+
+≈600 jobs/sec
+```
+
+Design for
+
+```
+5,000 Jobs/sec
+```
+
+to allow future growth.
+
+---
+
+# APIs
+
+---
+
+## Create Job
+
+```
+POST /jobs
+```
+
+Request
+
+```json
+{
+   "jobName":"Daily Report",
+   "cron":"0 9 * * *",
+   "payload":{
+      "email":"admin@test.com"
+   }
+}
+```
+
+Response
+
+```json
+{
+   "jobId":"12345",
+   "status":"CREATED"
+}
+```
+
+---
+
+## Update Job
+
+```
+PUT /jobs/{jobId}
+```
+
+Allows
+
+- Change cron
+- Change payload
+- Change retry policy
+
+---
+
+## Pause Job
+
+```
+POST /jobs/{jobId}/pause
+```
+
+---
+
+## Resume Job
+
+```
+POST /jobs/{jobId}/resume
+```
+
+---
+
+## Delete Job
+
+```
+DELETE /jobs/{jobId}
+```
+
+---
+
+## Get Job
+
+```
+GET /jobs/{jobId}
+```
+
+Returns
+
+```json
+{
+   "status":"ACTIVE",
+   "lastRun":"9:00 AM",
+   "nextRun":"Tomorrow 9:00 AM"
+}
+```
+
+---
+
+# High Level Architecture
+
+```
+                     Clients
+
+                        │
+
+                 REST API
+
+                        │
+
+                        ▼
+
+                  Job Service
+
+                        │
+
+                        ▼
+
+                  Job Database
+
+                        ▲
+
+                        │
+
+               Scheduler Service
+
+                        │
+
+                Find Due Jobs
+
+                        │
+
+                        ▼
+
+                  Message Queue
+
+                        │
+
+        ┌───────────────┼───────────────┐
+
+        ▼               ▼               ▼
+
+    Worker 1       Worker 2       Worker 3
+
+        │               │               │
+
+        ▼               ▼               ▼
+
+             Execute Business Logic
+```
+
+---
+
+# Components
+
+---
+
+## Client
+
+Responsible for
+
+- Create Job
+- Update Job
+- Delete Job
+- Pause Job
+
+---
+
+## Job Service
+
+Handles
+
+- API requests
+- Validation
+- Authentication
+- Store jobs
+- Update jobs
+
+Notice
+
+It **does not execute jobs**.
+
+---
+
+## Job Database
+
+Stores
+
+- Job Definition
+- Cron Expression
+- Status
+- Retry Policy
+- Next Run Time
+
+This is the Source of Truth.
+
+---
+
+## Scheduler Service
+
+The Scheduler is the heart of the system.
+
+Every few seconds it asks
+
+```
+Which jobs are due now?
+```
+
+It does NOT execute jobs.
+
+It only decides
+
+```
+What should run?
+```
+
+---
+
+## Message Queue
+
+Examples
+
+- Kafka
+- RabbitMQ
+- SQS
+
+Purpose
+
+Decouple scheduling from execution.
+
+Instead of
+
+```
+Scheduler
+
+↓
+
+Worker
+```
+
+we have
+
+```
+Scheduler
+
+↓
+
+Queue
+
+↓
+
+Workers
+```
+
+Benefits
+
+- Retries
+- Buffering
+- Load balancing
+
+---
+
+## Workers
+
+Workers execute the actual business logic.
+
+Examples
+
+```
+Send Email
+
+Generate Report
+
+Cleanup Logs
+
+Retry Payment
+
+Refresh Cache
+```
+
+Workers should be stateless.
+
+Multiple workers can run in parallel.
+
+---
+
+# End-to-End Flow
+
+Suppose a user creates
+
+```
+Daily Report
+
+9:00 AM
+```
+
+### Step 1
+
+Client calls
+
+```
+POST /jobs
+```
+
+---
+
+### Step 2
+
+Job Service validates the request.
+
+---
+
+### Step 3
+
+Store
+
+```
+Cron
+
+Payload
+
+Next Run
+
+Status
+```
+
+in the database.
+
+Nothing executes yet.
+
+---
+
+### Step 4
+
+At
+
+```
+9:00 AM
+```
+
+Scheduler runs
+
+```sql
+SELECT *
+FROM Jobs
+WHERE nextRunTime <= NOW()
+AND status='ACTIVE';
+```
+
+Returns
+
+```
+Job123
+```
+
+---
+
+### Step 5
+
+Scheduler publishes
+
+```
+Execute Job123
+```
+
+to the Queue.
+
+---
+
+### Step 6
+
+Worker receives
+
+```
+Job123
+```
+
+and executes
+
+```
+Generate Daily Report
+```
+
+---
+
+### Step 7
+
+Worker reports success.
+
+Database updates
+
+```
+Last Run = Today
+
+Next Run = Tomorrow 9 AM
+```
+
+Done.
+
+---
+
+# Why Separate Scheduler and Workers?
+
+Many candidates initially design
+
+```
+Scheduler
+
+↓
+
+Execute Job
+```
+
+This doesn't scale.
+
+Suppose
+
+```
+1000 jobs
+
+9:00 AM
+```
+
+Scheduler becomes busy executing.
+
+Meanwhile,
+
+new jobs become due.
+
+Scheduling is delayed.
+
+Instead
+
+```
+Scheduler
+
+↓
+
+Queue
+
+↓
+
+Workers
+```
+
+Scheduler only decides
+
+"What should run?"
+
+Workers perform
+
+"How to execute."
+
+This separation allows each layer to scale independently.
+
+---
+
+# Design Principles
+
+The architecture follows four principles.
+
+### Separation of Concerns
+
+Scheduler decides.
+
+Workers execute.
+
+---
+
+### Durability
+
+Database stores every job definition.
+
+---
+
+### Asynchronous Execution
+
+Queue decouples scheduling from execution.
+
+---
+
+### Horizontal Scalability
+
+Scheduler, Queue, and Workers can all scale independently.
+
+---
+
+# What Comes Next
+
+Now that we understand the overall architecture,
+
+the next chapter focuses on the most important component in the system:
+
+# Chapter 2
+
+**Database Design**
+
+We'll design
+
+- Jobs table
+- JobExecution table
+- Retry metadata
+- Cron storage
+- Indexes
+- NextRunTime optimization
+- Database partitioning
+
+Before moving to the Scheduler algorithm itself.
+
+# Job Scheduler System Design
+
+# Chapter 1 - Requirements, APIs & High-Level Architecture
+
+---
+
+# Problem Statement
+
+Design a distributed Job Scheduler similar to
+
+- Quartz Scheduler
+- Kubernetes CronJob
+- AWS EventBridge Scheduler
+- Apache Airflow (simplified)
+- Google Cloud Scheduler
+
+The system should execute jobs at scheduled times reliably, even in the presence of failures.
+
+Examples
+
+- Send email every day at 9 AM
+- Run payroll every Friday
+- Generate reports every hour
+- Retry failed payments after 5 minutes
+- Delete expired sessions every night
+
+---
+
+# Functional Requirements
+
+The system should support
+
+## Job Management
+
+- Create Job
+- Update Job
+- Delete Job
+- Pause Job
+- Resume Job
+
+---
+
+## Scheduling
+
+Support
+
+- One-time jobs
+- Recurring jobs
+- Cron expressions
+- Fixed interval jobs
+
+Examples
+
+```
+Every 5 minutes
+
+Every day at 9 AM
+
+Every Monday
+
+First day of every month
+```
+
+---
+
+## Execution
+
+- Execute jobs
+- Retry failed jobs
+- Record execution history
+- Prevent duplicate execution
+
+---
+
+## Monitoring
+
+Users should be able to see
+
+- Job Status
+- Last Run
+- Next Run
+- Retry Count
+- Execution Logs
+
+---
+
+# Non Functional Requirements
+
+## Reliability
+
+Jobs should never be lost.
+
+---
+
+## High Availability
+
+Scheduler should continue working if one server crashes.
+
+---
+
+## Scalability
+
+Support
+
+- Millions of jobs
+- Thousands of executions/sec
+
+---
+
+## Fault Tolerance
+
+Recover from
+
+- Scheduler crashes
+- Worker crashes
+- Database failures
+
+---
+
+## Low Latency
+
+Jobs should execute as close as possible to their scheduled time.
+
+Example
+
+```
+Scheduled
+
+9:00:00
+
+Actual
+
+9:00:01
+```
+
+---
+
+# Capacity Estimation
+
+Assume
+
+```
+10 Million Scheduled Jobs
+```
+
+Average frequency
+
+```
+Once Per Day
+```
+
+Executions/day
+
+```
+10 Million
+```
+
+Average
+
+```
+10,000,000
+
+/
+
+86,400
+
+≈116 jobs/sec
+```
+
+Peak traffic
+
+```
+5×
+
+≈600 jobs/sec
+```
+
+Design for
+
+```
+5,000 Jobs/sec
+```
+
+to allow future growth.
+
+---
+
+# APIs
+
+---
+
+## Create Job
+
+```
+POST /jobs
+```
+
+Request
+
+```json
+{
+   "jobName":"Daily Report",
+   "cron":"0 9 * * *",
+   "payload":{
+      "email":"admin@test.com"
+   }
+}
+```
+
+Response
+
+```json
+{
+   "jobId":"12345",
+   "status":"CREATED"
+}
+```
+
+---
+
+## Update Job
+
+```
+PUT /jobs/{jobId}
+```
+
+Allows
+
+- Change cron
+- Change payload
+- Change retry policy
+
+---
+
+## Pause Job
+
+```
+POST /jobs/{jobId}/pause
+```
+
+---
+
+## Resume Job
+
+```
+POST /jobs/{jobId}/resume
+```
+
+---
+
+## Delete Job
+
+```
+DELETE /jobs/{jobId}
+```
+
+---
+
+## Get Job
+
+```
+GET /jobs/{jobId}
+```
+
+Returns
+
+```json
+{
+   "status":"ACTIVE",
+   "lastRun":"9:00 AM",
+   "nextRun":"Tomorrow 9:00 AM"
+}
+```
+
+---
+
+# High Level Architecture
+
+```
+                     Clients
+
+                        │
+
+                 REST API
+
+                        │
+
+                        ▼
+
+                  Job Service
+
+                        │
+
+                        ▼
+
+                  Job Database
+
+                        ▲
+
+                        │
+
+               Scheduler Service
+
+                        │
+
+                Find Due Jobs
+
+                        │
+
+                        ▼
+
+                  Message Queue
+
+                        │
+
+        ┌───────────────┼───────────────┐
+
+        ▼               ▼               ▼
+
+    Worker 1       Worker 2       Worker 3
+
+        │               │               │
+
+        ▼               ▼               ▼
+
+             Execute Business Logic
+```
+
+---
+
+# Components
+
+---
+
+## Client
+
+Responsible for
+
+- Create Job
+- Update Job
+- Delete Job
+- Pause Job
+
+---
+
+## Job Service
+
+Handles
+
+- API requests
+- Validation
+- Authentication
+- Store jobs
+- Update jobs
+
+Notice
+
+It **does not execute jobs**.
+
+---
+
+## Job Database
+
+Stores
+
+- Job Definition
+- Cron Expression
+- Status
+- Retry Policy
+- Next Run Time
+
+This is the Source of Truth.
+
+---
+
+## Scheduler Service
+
+The Scheduler is the heart of the system.
+
+Every few seconds it asks
+
+```
+Which jobs are due now?
+```
+
+It does NOT execute jobs.
+
+It only decides
+
+```
+What should run?
+```
+
+---
+
+## Message Queue
+
+Examples
+
+- Kafka
+- RabbitMQ
+- SQS
+
+Purpose
+
+Decouple scheduling from execution.
+
+Instead of
+
+```
+Scheduler
+
+↓
+
+Worker
+```
+
+we have
+
+```
+Scheduler
+
+↓
+
+Queue
+
+↓
+
+Workers
+```
+
+Benefits
+
+- Retries
+- Buffering
+- Load balancing
+
+---
+
+## Workers
+
+Workers execute the actual business logic.
+
+Examples
+
+```
+Send Email
+
+Generate Report
+
+Cleanup Logs
+
+Retry Payment
+
+Refresh Cache
+```
+
+Workers should be stateless.
+
+Multiple workers can run in parallel.
+
+---
+
+# End-to-End Flow
+
+Suppose a user creates
+
+```
+Daily Report
+
+9:00 AM
+```
+
+### Step 1
+
+Client calls
+
+```
+POST /jobs
+```
+
+---
+
+### Step 2
+
+Job Service validates the request.
+
+---
+
+### Step 3
+
+Store
+
+```
+Cron
+
+Payload
+
+Next Run
+
+Status
+```
+
+in the database.
+
+Nothing executes yet.
+
+---
+
+### Step 4
+
+At
+
+```
+9:00 AM
+```
+
+Scheduler runs
+
+```sql
+SELECT *
+FROM Jobs
+WHERE nextRunTime <= NOW()
+AND status='ACTIVE';
+```
+
+Returns
+
+```
+Job123
+```
+
+---
+
+### Step 5
+
+Scheduler publishes
+
+```
+Execute Job123
+```
+
+to the Queue.
+
+---
+
+### Step 6
+
+Worker receives
+
+```
+Job123
+```
+
+and executes
+
+```
+Generate Daily Report
+```
+
+---
+
+### Step 7
+
+Worker reports success.
+
+Database updates
+
+```
+Last Run = Today
+
+Next Run = Tomorrow 9 AM
+```
+
+Done.
+
+---
+
+# Why Separate Scheduler and Workers?
+
+Many candidates initially design
+
+```
+Scheduler
+
+↓
+
+Execute Job
+```
+
+This doesn't scale.
+
+Suppose
+
+```
+1000 jobs
+
+9:00 AM
+```
+
+Scheduler becomes busy executing.
+
+Meanwhile,
+
+new jobs become due.
+
+Scheduling is delayed.
+
+Instead
+
+```
+Scheduler
+
+↓
+
+Queue
+
+↓
+
+Workers
+```
+
+Scheduler only decides
+
+"What should run?"
+
+Workers perform
+
+"How to execute."
+
+This separation allows each layer to scale independently.
+
+---
+
+# Design Principles
+
+The architecture follows four principles.
+
+### Separation of Concerns
+
+Scheduler decides.
+
+Workers execute.
+
+---
+
+### Durability
+
+Database stores every job definition.
+
+---
+
+### Asynchronous Execution
+
+Queue decouples scheduling from execution.
+
+---
+
+### Horizontal Scalability
+
+Scheduler, Queue, and Workers can all scale independently.
+
+---
+
+# What Comes Next
+
+Now that we understand the overall architecture,
+
+the next chapter focuses on the most important component in the system:
+
+# Chapter 2
+
+**Database Design**
+
+We'll design
+
+- Jobs table
+- JobExecution table
+- Retry metadata
+- Cron storage
+- Indexes
+- NextRunTime optimization
+- Database partitioning
+
+Before moving to the Scheduler algorithm itself.
+
+# Job Scheduler System Design
+
+# Chapter 3 - Scheduler Service Deep Dive
+
+---
+
+# Goal
+
+The Scheduler Service is the brain of the system.
+
+It answers one question continuously:
+
+```
+Which jobs should execute now?
+```
+
+Notice something important.
+
+The Scheduler **does not execute jobs**.
+
+It only decides
+
+```
+What should run?
+```
+
+Workers execute the jobs.
+
+---
+
+# High-Level Flow
+
+```
+             Scheduler
+
+                  │
+
+                  ▼
+
+      Find Due Jobs (DB)
+
+                  │
+
+                  ▼
+
+          Publish to Queue
+
+                  │
+
+                  ▼
+
+              Workers
+
+                  │
+
+                  ▼
+
+           Update Next Run
+```
+
+---
+
+# Responsibilities
+
+The Scheduler is responsible for
+
+- Finding due jobs
+- Preventing duplicate scheduling
+- Publishing execution requests
+- Computing nextRunTime
+- Updating the database
+
+It is **NOT** responsible for
+
+- Sending emails
+- Running reports
+- Executing business logic
+
+That belongs to Workers.
+
+---
+
+# Simple Scheduler Algorithm
+
+Every second (or configurable interval)
+
+```
+while(true){
+
+    Find Due Jobs
+
+    Publish Jobs
+
+    Update Next Run
+
+    Sleep
+}
+```
+
+That's the entire scheduler at a high level.
+
+Let's understand each step.
+
+---
+
+# Step 1 - Find Due Jobs
+
+Scheduler executes
+
+```sql
+SELECT *
+FROM Jobs
+WHERE status='ACTIVE'
+AND nextRunTime<=NOW()
+ORDER BY nextRunTime
+LIMIT 1000;
+```
+
+Suppose current time
+
+```
+9:00:01
+```
+
+Jobs
+
+| Job | nextRun |
+|------|----------|
+|A|8:59|
+|B|9:00|
+|C|9:05|
+
+Scheduler picks
+
+```
+A
+
+B
+```
+
+---
+
+# Why ORDER BY nextRunTime?
+
+Suppose
+
+```
+8:59
+
+9:00
+
+9:01
+
+9:02
+```
+
+We should execute
+
+oldest jobs first.
+
+---
+
+# Why LIMIT?
+
+Imagine
+
+```
+500,000 jobs
+
+due
+```
+
+We don't want one Scheduler iteration to process everything.
+
+Instead
+
+```
+LIMIT 1000
+```
+
+Process in batches.
+
+Then repeat.
+
+---
+
+# Step 2 - Publish to Queue
+
+Instead of executing directly
+
+Scheduler publishes
+
+```
+Execute Job101
+```
+
+Queue
+
+↓
+
+Workers
+
+Example
+
+```
+Scheduler
+
+↓
+
+Kafka
+
+↓
+
+Worker1
+
+Worker2
+
+Worker3
+```
+
+Scheduler becomes lightweight.
+
+---
+
+# Why Queue?
+
+Without Queue
+
+```
+Scheduler
+
+↓
+
+Execute Job
+```
+
+Scheduler becomes blocked.
+
+New jobs become late.
+
+Queue decouples scheduling from execution.
+
+---
+
+# Step 3 - Compute nextRunTime
+
+Suppose
+
+Cron
+
+```
+0 9 * * *
+```
+
+Current execution
+
+```
+July 10
+
+9 AM
+```
+
+Next execution
+
+```
+July 11
+
+9 AM
+```
+
+Scheduler updates
+
+```sql
+UPDATE Jobs
+SET nextRunTime='Tomorrow 9 AM'
+```
+
+The job is ready for its next cycle.
+
+---
+
+# Polling
+
+The simplest scheduler repeatedly polls the database.
+
+```
+Every Second
+
+↓
+
+Find Due Jobs
+
+↓
+
+Sleep
+```
+
+Advantages
+
+- Easy
+- Reliable
+- Simple implementation
+
+---
+
+# Problem With Polling
+
+Suppose
+
+```
+Poll
+
+9:00:00
+```
+
+Next poll
+
+```
+9:00:01
+```
+
+Job scheduled at
+
+```
+9:00:00.300
+```
+
+Will execute
+
+```
+9:00:01
+```
+
+Delay
+
+```
+700 ms
+```
+
+Polling interval affects latency.
+
+---
+
+# Reduce Polling Interval?
+
+Suppose
+
+Poll every
+
+```
+100 ms
+```
+
+Now
+
+Database receives
+
+```
+10×
+
+more queries
+```
+
+Latency improves.
+
+Database load increases.
+
+Trade-off.
+
+---
+
+# Delay Queue (Alternative)
+
+Instead of polling,
+
+maintain a priority queue ordered by
+
+```
+nextRunTime
+```
+
+```
+Top
+
+↓
+
+9:00
+
+↓
+
+9:01
+
+↓
+
+9:05
+```
+
+Scheduler sleeps until
+
+```
+Top.nextRunTime
+```
+
+Then wakes up.
+
+Benefits
+
+- Lower DB load
+- Better latency
+
+Challenges
+
+- Recovery after restart
+- Keeping memory synchronized with DB
+- Handling multiple scheduler instances
+
+Many production systems still use DB polling because it is simpler and more reliable.
+
+---
+
+# Multiple Scheduler Instances
+
+Suppose
+
+```
+Scheduler1
+
+Scheduler2
+```
+
+Both execute
+
+```sql
+SELECT *
+FROM Jobs
+WHERE nextRunTime<=NOW();
+```
+
+Both find
+
+```
+Job101
+```
+
+Now
+
+Worker receives
+
+```
+Execute Job101
+
+Execute Job101
+```
+
+Duplicate execution.
+
+Bad.
+
+---
+
+# Solution 1 - Row Locking
+
+Use
+
+```sql
+SELECT ...
+FOR UPDATE SKIP LOCKED;
+```
+
+Scheduler1 locks
+
+```
+Job101
+```
+
+Scheduler2 skips it.
+
+No duplicate scheduling.
+
+This works well with relational databases like PostgreSQL.
+
+---
+
+# Solution 2 - Distributed Lock
+
+Before scheduling,
+
+try to acquire a lock.
+
+Example
+
+```
+Redis
+
+SET job101 lock NX EX 30
+```
+
+Only one scheduler succeeds.
+
+Others skip.
+
+Useful when multiple schedulers share work.
+
+---
+
+# Solution 3 - Leader Election
+
+Instead of allowing every scheduler to scan,
+
+elect one leader.
+
+```
+Leader
+
+↓
+
+Find Jobs
+
+↓
+
+Queue
+```
+
+Other schedulers stay idle.
+
+If leader crashes,
+
+another scheduler becomes leader.
+
+Leader election can be implemented using
+
+- ZooKeeper
+- etcd
+- Kubernetes Lease API
+
+---
+
+# Which Approach Is Better?
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| Row Locking | Simple, DB managed | Higher DB dependency |
+| Distributed Lock | Flexible | Extra infrastructure |
+| Leader Election | Very efficient | Leader failover complexity |
+
+In interviews,
+
+mentioning **row locking** or **leader election** is usually sufficient.
+
+---
+
+# Scheduler Crash
+
+Suppose
+
+Scheduler crashes
+
+before publishing
+
+```
+Job101
+```
+
+No problem.
+
+The job still has
+
+```
+nextRunTime <= NOW()
+```
+
+Next scheduler picks it up.
+
+No job lost.
+
+---
+
+# Crash After Publishing
+
+Suppose
+
+```
+Publish
+
+↓
+
+Crash
+
+↓
+
+Before updating nextRunTime
+```
+
+Another scheduler may publish again.
+
+Duplicate execution becomes possible.
+
+How do we solve this?
+
+---
+
+# Idempotent Workers
+
+Workers should safely ignore duplicate execution.
+
+OR
+
+Update job state atomically before publishing.
+
+OR
+
+Use a Transactional Outbox pattern.
+
+We'll discuss these in the Fault Tolerance chapter.
+
+---
+
+# Scaling
+
+Suppose
+
+```
+100 Million Jobs
+```
+
+One scheduler isn't enough.
+
+Partition jobs.
+
+Example
+
+```
+Shard1
+
+↓
+
+Scheduler1
+
+Shard2
+
+↓
+
+Scheduler2
+
+Shard3
+
+↓
+
+Scheduler3
+```
+
+Each scheduler owns one partition.
+
+No overlap.
+
+Excellent scalability.
+
+---
+
+# Complete Scheduler Flow
+
+```
+while(true)
+
+↓
+
+Find Due Jobs
+
+↓
+
+Acquire Lock
+
+↓
+
+Publish To Queue
+
+↓
+
+Compute Next Run
+
+↓
+
+Update Database
+
+↓
+
+Sleep
+```
+
+Repeat forever.
+
+---
+
+# Why Scheduler Doesn't Execute Jobs
+
+Imagine
+
+```
+Generate Report
+
+30 minutes
+```
+
+If Scheduler executes it,
+
+no new jobs are discovered for 30 minutes.
+
+Bad.
+
+Instead
+
+```
+Scheduler
+
+↓
+
+Queue
+
+↓
+
+Workers
+```
+
+Scheduler remains free.
+
+---
+
+# Design Principles
+
+The Scheduler should
+
+- Be lightweight
+- Be stateless
+- Never execute business logic
+- Publish quickly
+- Recover easily
+- Scale horizontally
+
+---
+
+# Interview Questions
+
+## Why poll the database?
+
+Simple, reliable, and easy to recover after failures.
+
+---
+
+## Why not execute jobs directly?
+
+Execution blocks scheduling.
+
+Separate scheduling from execution.
+
+---
+
+## Why LIMIT queries?
+
+Avoid overwhelming workers and process jobs in manageable batches.
+
+---
+
+## How do multiple schedulers avoid duplicates?
+
+Options include row-level locking (`FOR UPDATE SKIP LOCKED`), distributed locks, or leader election.
+
+---
+
+## What happens if the scheduler crashes?
+
+No jobs are lost because the database remains the source of truth.
+
+Another scheduler finds jobs whose `nextRunTime` has already passed.
+
+---
+
+## Why compute nextRunTime after execution?
+
+Avoid parsing cron expressions on every polling cycle.
+
+Cron is parsed only once per execution.
+
+---
+
+# Interview Summary
+
+> The Scheduler Service continuously scans the database for active jobs whose `nextRunTime` has arrived. It does not execute the jobs itself; instead, it publishes execution requests to a message queue, allowing stateless workers to perform the actual work. After scheduling a recurring job, it computes and stores the next execution time, enabling future runs without repeatedly parsing cron expressions. In a distributed deployment, duplicate scheduling is prevented using techniques such as row-level locking, distributed locks, or leader election. Because the database remains the source of truth, scheduler failures do not result in lost jobs, and additional scheduler instances can be added to scale horizontally.
+
+# Job Scheduler System Design
+
+# Chapter 4 - Worker Service & Execution Engine
+
+---
+
+# Goal
+
+The Scheduler decides
+
+```
+What should execute?
+```
+
+The Worker answers
+
+```
+How do we execute it?
+```
+
+Workers are responsible for
+
+- Executing jobs
+- Retrying failures
+- Recording execution history
+- Reporting success/failure
+- Updating job state
+
+Workers should be completely stateless.
+
+---
+
+# High-Level Architecture
+
+```
+              Scheduler
+
+                   │
+
+                   ▼
+
+             Message Queue
+
+      ┌────────────┼────────────┐
+
+      ▼            ▼            ▼
+
+  Worker1      Worker2      Worker3
+
+      │            │            │
+
+      ▼            ▼            ▼
+
+ Execute Job   Execute Job   Execute Job
+
+      │
+
+      ▼
+
+ Update Database
+```
+
+Notice
+
+Workers never poll the database.
+
+They simply consume execution requests from the queue.
+
+---
+
+# Job Execution Flow
+
+Suppose
+
+```
+Daily Report
+
+9:00 AM
+```
+
+Scheduler publishes
+
+```
+Execute Job101
+```
+
+Queue
+
+↓
+
+Worker2 receives
+
+```
+Job101
+```
+
+Worker performs
+
+```
+Load Job
+
+↓
+
+Execute Business Logic
+
+↓
+
+Record Result
+
+↓
+
+Acknowledge Queue
+```
+
+Done.
+
+---
+
+# Step 1 - Receive Job
+
+Queue delivers
+
+```json
+{
+    "jobId":101
+}
+```
+
+Worker now loads
+
+Job101
+
+from the database.
+
+Why?
+
+Because the database is the source of truth.
+
+The queue contains only
+
+```
+Execute Job101
+```
+
+---
+
+# Step 2 - Execute Business Logic
+
+Examples
+
+```
+Send Email
+
+Generate Invoice
+
+Cleanup Logs
+
+Refresh Cache
+
+Retry Payment
+```
+
+Worker calls
+
+```
+Job.execute(payload)
+```
+
+The Scheduler never knows what the job actually does.
+
+---
+
+# Step 3 - Update Execution History
+
+Insert
+
+JobExecution
+
+| Job | Status |
+|------|---------|
+|101|SUCCESS|
+
+or
+
+|101|FAILED|
+
+Store
+
+- Start Time
+- End Time
+- Duration
+- Worker ID
+- Error Message
+
+---
+
+# Step 4 - Acknowledge Queue
+
+Only after
+
+successful processing
+
+Worker acknowledges
+
+```
+ACK
+```
+
+Queue removes
+
+```
+Job101
+```
+
+---
+
+# Why ACK Last?
+
+Suppose
+
+```
+ACK
+
+↓
+
+Worker Crashes
+```
+
+before execution.
+
+The job disappears forever.
+
+Instead
+
+```
+Execute
+
+↓
+
+Store Result
+
+↓
+
+ACK
+```
+
+Now crashes are safe.
+
+---
+
+# Worker Crash
+
+Suppose
+
+Worker receives
+
+```
+Job101
+```
+
+and crashes.
+
+Queue never receives
+
+```
+ACK
+```
+
+Queue automatically redelivers
+
+```
+Job101
+```
+
+to another Worker.
+
+Example
+
+```
+Worker1
+
+↓
+
+Crash
+
+↓
+
+Worker2
+
+↓
+
+Execute
+```
+
+No job lost.
+
+---
+
+# Retry Logic
+
+Suppose
+
+SMTP server
+
+is temporarily unavailable.
+
+Worker fails.
+
+Should we immediately mark the job failed?
+
+No.
+
+Retry.
+
+---
+
+# Retry Policy
+
+Example
+
+```
+Attempts = 3
+
+Delay = 30 sec
+```
+
+Flow
+
+```
+Attempt1
+
+↓
+
+Fail
+
+↓
+
+30 sec
+
+↓
+
+Attempt2
+
+↓
+
+Fail
+
+↓
+
+30 sec
+
+↓
+
+Attempt3
+
+↓
+
+Success
+```
+
+---
+
+# Exponential Backoff
+
+Instead of retrying every
+
+```
+30 sec
+```
+
+Use
+
+```
+30 sec
+
+↓
+
+60 sec
+
+↓
+
+120 sec
+
+↓
+
+240 sec
+```
+
+Benefits
+
+- Less pressure
+- Better recovery
+- Avoids retry storms
+
+Very common interview topic.
+
+---
+
+# Permanent Failures
+
+Suppose
+
+Email Address
+
+doesn't exist.
+
+Retrying
+
+100 times
+
+won't help.
+
+Example
+
+```
+invalid@email
+```
+
+Retries waste resources.
+
+Worker should detect
+
+Permanent Failure
+
+↓
+
+Move to DLQ.
+
+---
+
+# Dead Letter Queue
+
+Dead Letter Queue stores
+
+jobs that exceeded retry limit.
+
+Example
+
+```
+Job101
+
+↓
+
+Attempt1
+
+Fail
+
+↓
+
+Attempt2
+
+Fail
+
+↓
+
+Attempt3
+
+Fail
+
+↓
+
+Dead Letter Queue
+```
+
+Operations can investigate later.
+
+---
+
+# JobExecution Table
+
+Example
+
+| Attempt | Status |
+|----------|---------|
+|1|FAILED|
+|2|FAILED|
+|3|SUCCESS|
+
+History preserved.
+
+---
+
+# Idempotency
+
+Very important interview topic.
+
+Suppose
+
+Worker crashes
+
+after sending email
+
+but before ACK.
+
+Queue redelivers
+
+```
+Job101
+```
+
+Email sent twice.
+
+Bad.
+
+Workers should be
+
+Idempotent.
+
+---
+
+# Example
+
+Instead of
+
+```
+Send Email
+```
+
+blindly,
+
+check
+
+```
+Already Sent?
+```
+
+If yes
+
+Skip.
+
+---
+
+# Example
+
+Payment Job
+
+Bad
+
+```
+Charge Card
+
+↓
+
+Charge Again
+```
+
+Good
+
+```
+PaymentId
+
+Already Processed?
+
+↓
+
+Skip
+```
+
+Same result.
+
+---
+
+# At-Least-Once Execution
+
+Most queues provide
+
+```
+At Least Once
+```
+
+Jobs may execute twice.
+
+Workers must handle duplicates safely.
+
+---
+
+# Exactly Once?
+
+Can we guarantee
+
+```
+Exactly Once
+```
+
+Not usually.
+
+Instead
+
+We build
+
+Idempotent Workers.
+
+That's the industry standard.
+
+---
+
+# Long Running Jobs
+
+Suppose
+
+Video Processing
+
+takes
+
+```
+45 Minutes
+```
+
+Worker shouldn't lose track.
+
+Worker periodically updates
+
+```
+Heartbeat
+```
+
+Database
+
+```
+Running
+
+45%
+
+Completed
+
+LastHeartbeat
+```
+
+Useful for monitoring.
+
+---
+
+# Worker Scaling
+
+Suppose
+
+```
+1000 jobs/sec
+```
+
+One worker handles
+
+```
+100 jobs/sec
+```
+
+Need
+
+```
+10 Workers
+```
+
+Simply add more.
+
+Queue distributes work automatically.
+
+```
+Queue
+
+↓
+
+Worker1
+
+Worker2
+
+Worker3
+
+...
+
+Worker10
+```
+
+Horizontal scaling.
+
+---
+
+# Failure Scenarios
+
+## Worker crashes
+
+Queue redelivers.
+
+---
+
+## Queue crashes
+
+Persistent queues recover messages.
+
+---
+
+## Database unavailable
+
+Worker retries later.
+
+---
+
+## External API unavailable
+
+Retry with exponential backoff.
+
+---
+
+## Permanent failure
+
+Move to Dead Letter Queue.
+
+---
+
+# Worker Responsibilities
+
+Workers should
+
+- Execute jobs
+- Retry failures
+- Record execution history
+- Report status
+- ACK queue
+- Handle duplicate execution
+
+Workers should NOT
+
+- Schedule jobs
+- Parse cron
+- Find due jobs
+
+Those belong to the Scheduler.
+
+---
+
+# Complete Execution Flow
+
+```
+Scheduler
+
+↓
+
+Queue
+
+↓
+
+Worker
+
+↓
+
+Load Job
+
+↓
+
+Execute
+
+↓
+
+Record History
+
+↓
+
+Update Next Run
+
+↓
+
+ACK Queue
+```
+
+---
+
+# Design Principles
+
+Workers should be
+
+- Stateless
+- Idempotent
+- Horizontally scalable
+- Failure tolerant
+
+Keep business logic separate from scheduling.
+
+---
+
+# Interview Questions
+
+## Why use workers?
+
+To separate scheduling from execution and allow independent scaling.
+
+---
+
+## Why ACK after execution?
+
+Prevents job loss if a worker crashes.
+
+---
+
+## Why retries?
+
+Many failures are temporary, such as network issues or unavailable services.
+
+---
+
+## Why exponential backoff?
+
+Reduces load on failing dependencies and avoids retry storms.
+
+---
+
+## Why Dead Letter Queue?
+
+Prevents permanently failing jobs from blocking the system while preserving them for investigation.
+
+---
+
+## Why idempotency?
+
+Queues typically provide at-least-once delivery, so duplicate execution is always possible.
+
+Workers must safely handle retries.
+
+---
+
+## Can we guarantee exactly-once execution?
+
+Usually no.
+
+The practical solution is
+
+- At-least-once delivery
+- Idempotent workers
+
+This provides effectively-once behavior for most business operations.
+
+---
+
+# Interview Summary
+
+> Workers are stateless execution engines that consume execution requests from a message queue. After receiving a job, a worker loads the latest job definition from the database, executes the business logic, records the execution result, and acknowledges the queue only after successful processing. If a worker crashes before acknowledging the message, the queue redelivers the job to another worker, providing at-least-once execution. To safely handle duplicate deliveries, workers are designed to be idempotent. Temporary failures are retried using exponential backoff, while permanently failing jobs are moved to a Dead Letter Queue for later investigation. This design keeps scheduling and execution independent, enabling reliable and horizontally scalable job processing.
+
+# Job Scheduler System Design
+
+# Chapter 5 - Scaling & High Availability
+
+---
+
+# Goal
+
+A scheduler running on one machine works for small systems.
+
+But what happens when we have
+
+- 100 Million Jobs
+- 50,000 Executions/sec
+- Multiple Datacenters
+- Server Failures
+
+We need a distributed scheduler.
+
+---
+
+# High-Level Architecture
+
+```
+                Clients
+
+                   │
+
+                   ▼
+
+              Job Service
+
+                   │
+
+                   ▼
+
+             Job Database
+
+                   ▲
+
+                   │
+
+        ┌──────────┼──────────┐
+
+        ▼          ▼          ▼
+
+   Scheduler1 Scheduler2 Scheduler3
+
+                   │
+
+             Message Queue
+
+        ┌──────────┼──────────┐
+
+        ▼          ▼          ▼
+
+      Worker1   Worker2   Worker3
+```
+
+Notice
+
+There are
+
+- Multiple Schedulers
+- Multiple Workers
+
+Everything is horizontally scalable.
+
+---
+
+# Why Multiple Schedulers?
+
+Suppose one Scheduler crashes.
+
+```
+Scheduler
+
+↓
+
+CRASH
+```
+
+No jobs are scheduled.
+
+Bad.
+
+Instead
+
+```
+Scheduler1
+
+Scheduler2
+
+Scheduler3
+```
+
+If one crashes,
+
+others continue.
+
+---
+
+# The Duplicate Scheduling Problem
+
+Suppose
+
+Scheduler1
+
+and
+
+Scheduler2
+
+execute
+
+```sql
+SELECT *
+FROM Jobs
+WHERE nextRunTime <= NOW();
+```
+
+Both receive
+
+```
+Job101
+```
+
+Both publish
+
+```
+Execute Job101
+```
+
+Workers execute twice.
+
+Bad.
+
+---
+
+# Solution 1 - Row-Level Locking
+
+PostgreSQL supports
+
+```sql
+SELECT *
+FROM Jobs
+WHERE status='ACTIVE'
+AND nextRunTime <= NOW()
+FOR UPDATE SKIP LOCKED
+LIMIT 1000;
+```
+
+What happens?
+
+Scheduler1 locks
+
+```
+Job101
+```
+
+Scheduler2 skips it.
+
+Only one Scheduler publishes it.
+
+---
+
+# Why SKIP LOCKED?
+
+Without
+
+```
+SKIP LOCKED
+```
+
+Scheduler2 waits.
+
+Waiting reduces throughput.
+
+Instead
+
+Skip locked rows.
+
+Continue working.
+
+---
+
+# Solution 2 - Leader Election
+
+Instead of
+
+three schedulers polling,
+
+elect
+
+one Leader.
+
+```
+Leader Scheduler
+
+↓
+
+Poll Database
+
+↓
+
+Publish Queue
+```
+
+Other schedulers
+
+```
+Standby
+```
+
+If leader crashes,
+
+another Scheduler becomes Leader.
+
+---
+
+# Leader Election Technologies
+
+Common choices
+
+- ZooKeeper
+- etcd
+- Kubernetes Lease
+- Consul
+
+These systems coordinate
+
+```
+Who is Leader?
+```
+
+---
+
+# Advantages
+
+Very little duplicate work.
+
+Only one Scheduler polls.
+
+---
+
+# Disadvantages
+
+Leader becomes bottleneck.
+
+Needs failover.
+
+---
+
+# Solution 3 - Sharding
+
+Instead of
+
+one Scheduler
+
+polling
+
+100 Million jobs,
+
+divide ownership.
+
+Example
+
+```
+Jobs
+
+1-25M
+
+↓
+
+Scheduler1
+
+------------------
+
+25M-50M
+
+↓
+
+Scheduler2
+
+------------------
+
+50M-75M
+
+↓
+
+Scheduler3
+
+------------------
+
+75M-100M
+
+↓
+
+Scheduler4
+```
+
+Each Scheduler owns
+
+its partition.
+
+No overlap.
+
+---
+
+# Sharding Strategies
+
+## By JobId
+
+```
+JobId % NumberOfShards
+```
+
+Simple.
+
+Even distribution.
+
+---
+
+## By Tenant
+
+Large SaaS systems
+
+```
+CompanyA
+
+↓
+
+Shard1
+
+CompanyB
+
+↓
+
+Shard2
+```
+
+Useful for multi-tenant isolation.
+
+---
+
+# Why Not Shard By nextRunTime?
+
+Looks tempting.
+
+Example
+
+```
+Today
+
+↓
+
+Shard1
+
+Tomorrow
+
+↓
+
+Shard2
+```
+
+Problem
+
+Every execution changes
+
+```
+nextRunTime
+```
+
+The row moves
+
+between shards.
+
+Very expensive.
+
+Avoid.
+
+---
+
+# Scaling Workers
+
+Workers are stateless.
+
+Need more throughput?
+
+Just add more.
+
+```
+Queue
+
+↓
+
+Worker1
+
+Worker2
+
+Worker3
+
+...
+
+Worker100
+```
+
+Queue automatically balances work.
+
+---
+
+# Scaling Queue
+
+One queue may become a bottleneck.
+
+Partition it.
+
+Example
+
+```
+Jobs Topic
+
+Partition0
+
+Partition1
+
+Partition2
+```
+
+Multiple workers consume
+
+different partitions.
+
+---
+
+# Scaling Database
+
+Eventually
+
+one database isn't enough.
+
+Approaches
+
+### Read Replicas
+
+Used for
+
+Monitoring
+
+Reporting
+
+History
+
+---
+
+### Write Sharding
+
+Split jobs
+
+across databases.
+
+```
+Shard1
+
+Shard2
+
+Shard3
+```
+
+Each Scheduler owns one shard.
+
+---
+
+# Scheduler Ownership
+
+A common production design.
+
+```
+Shard1
+
+↓
+
+Scheduler1
+
+----------------
+
+Shard2
+
+↓
+
+Scheduler2
+
+----------------
+
+Shard3
+
+↓
+
+Scheduler3
+```
+
+Each Scheduler
+
+only polls
+
+its own shard.
+
+No locking required.
+
+Very scalable.
+
+---
+
+# Scheduler Crash
+
+Suppose
+
+Scheduler2 crashes.
+
+Who schedules
+
+Shard2?
+
+Answer
+
+Coordinator
+
+reassigns
+
+Shard2
+
+↓
+
+Scheduler1
+
+Now Scheduler1 owns
+
+two shards.
+
+---
+
+# Rebalancing
+
+Suppose
+
+new Scheduler joins.
+
+```
+Before
+
+Scheduler1
+
+Scheduler2
+
+Scheduler3
+
+After
+
+Scheduler1
+
+Scheduler2
+
+Scheduler3
+
+Scheduler4
+```
+
+Coordinator
+
+redistributes
+
+shards.
+
+Load becomes balanced.
+
+---
+
+# Queue Backpressure
+
+Suppose
+
+Workers
+
+can't keep up.
+
+Queue grows.
+
+```
+Scheduler
+
+↓
+
+100,000 Jobs
+
+↓
+
+Queue
+
+↓
+
+Workers
+
+↓
+
+10,000 Jobs/sec
+```
+
+Backlog increases.
+
+---
+
+# Solution
+
+Scheduler checks
+
+queue depth.
+
+If queue exceeds threshold,
+
+slow down publishing.
+
+This prevents overwhelming workers.
+
+---
+
+# Multi-Datacenter
+
+Large companies deploy
+
+```
+US-East
+
+US-West
+
+Europe
+
+Asia
+```
+
+Schedulers typically operate
+
+within their own region.
+
+Cross-region scheduling is used
+
+only for disaster recovery.
+
+---
+
+# Failure Scenarios
+
+## Scheduler crashes
+
+Another Scheduler takes ownership.
+
+---
+
+## Worker crashes
+
+Queue redelivers.
+
+---
+
+## Queue crashes
+
+Persistent queue recovers messages.
+
+---
+
+## Database crashes
+
+Replica promoted.
+
+---
+
+## Entire Region fails
+
+Traffic shifts
+
+to another region.
+
+---
+
+# Scaling Summary
+
+| Component | Scaling Strategy |
+|-----------|------------------|
+| Scheduler | Multiple instances + locking or shard ownership |
+| Workers | Horizontal scaling |
+| Queue | Partitioning |
+| Database | Sharding + Replicas |
+| Job Service | Stateless horizontal scaling |
+
+---
+
+# Design Principles
+
+Every component
+
+scales independently.
+
+Schedulers
+
+↓
+
+Schedule
+
+Workers
+
+↓
+
+Execute
+
+Queue
+
+↓
+
+Buffer
+
+Database
+
+↓
+
+Persist
+
+---
+
+# Interview Questions
+
+## Why multiple Schedulers?
+
+High availability.
+
+No single point of failure.
+
+---
+
+## How do multiple Schedulers avoid duplicates?
+
+Options include
+
+- Row-level locking
+- Distributed locks
+- Leader election
+- Shard ownership
+
+---
+
+## Which approach do you recommend?
+
+For most production systems:
+
+- Small scale: `FOR UPDATE SKIP LOCKED`
+- Very large scale: **Shard ownership**
+
+Shard ownership avoids lock contention and scales much better.
+
+---
+
+## Why scale Workers separately?
+
+Scheduling and execution have different workloads.
+
+Scheduling is lightweight.
+
+Execution may take minutes.
+
+---
+
+## Why queue partitioning?
+
+Allows multiple workers to consume in parallel.
+
+---
+
+## What happens if one Scheduler dies?
+
+Another Scheduler takes ownership of its shard.
+
+No jobs are lost because the database is the source of truth.
+
+---
+
+## How do you prevent queue overload?
+
+Monitor queue depth and apply backpressure by reducing the scheduling rate or temporarily limiting the number of jobs published.
+
+---
+
+# Recommended Production Architecture
+
+```
+                   Clients
+
+                      │
+
+                 Job Service
+
+                      │
+
+                 Job Database
+
+                      │
+
+      ┌───────────────┼───────────────┐
+
+      ▼               ▼               ▼
+
+ Scheduler1      Scheduler2      Scheduler3
+
+   (Shard1)       (Shard2)       (Shard3)
+
+                      │
+
+                 Kafka / Queue
+
+      ┌───────────────┼───────────────┐
+
+      ▼               ▼               ▼
+
+   Worker1        Worker2        Worker3
+
+                      │
+
+             External Systems
+
+     Email • Payments • Reports • APIs
+```
+
+---
+
+# Interview Summary
+
+> To support millions of scheduled jobs, the scheduler must scale horizontally while preventing duplicate scheduling. Multiple Scheduler instances are deployed for high availability, but they must coordinate ownership using techniques such as row-level locking (`FOR UPDATE SKIP LOCKED`), leader election, or—at very large scale—shard ownership, where each Scheduler is responsible for a subset of jobs. Workers remain stateless and scale independently by consuming execution requests from a partitioned message queue. The database is sharded as the system grows, and schedulers are reassigned automatically if one fails. This architecture provides high throughput, fault tolerance, and avoids duplicate execution while allowing each layer to scale independently.
+
+# Job Scheduler System Design
+
+# Chapter 6 - Fault Tolerance & Failure Handling
+
+---
+
+# Goal
+
+Failures are inevitable.
+
+- Servers crash
+- Workers die
+- Databases become unavailable
+- Queues go down
+- Networks fail
+
+A production Job Scheduler should
+
+- Never lose jobs
+- Minimize duplicate execution
+- Recover automatically
+- Continue processing
+
+This chapter discusses the most common failure scenarios.
+
+---
+
+# Design Principles
+
+Before discussing failures, remember four rules.
+
+## Rule 1
+
+Database is the Source of Truth.
+
+---
+
+## Rule 2
+
+Workers are Stateless.
+
+---
+
+## Rule 3
+
+Queue provides At-Least-Once delivery.
+
+---
+
+## Rule 4
+
+Workers must be Idempotent.
+
+These four rules solve most failure scenarios.
+
+---
+
+# Failure 1
+
+## Scheduler Crashes Before Publishing
+
+Flow
+
+```
+Scheduler
+
+↓
+
+Find Job101
+
+↓
+
+CRASH
+```
+
+Notice
+
+The database still contains
+
+```
+nextRunTime <= NOW()
+```
+
+Nothing has changed.
+
+Another Scheduler starts.
+
+Runs
+
+```sql
+SELECT *
+FROM Jobs
+WHERE nextRunTime <= NOW();
+```
+
+Finds
+
+```
+Job101
+```
+
+Publishes it.
+
+No job is lost.
+
+---
+
+# Failure 2
+
+## Scheduler Crashes After Publishing
+
+Flow
+
+```
+Find Job
+
+↓
+
+Publish Queue
+
+↓
+
+CRASH
+
+↓
+
+Before Updating nextRunTime
+```
+
+Now another Scheduler sees
+
+```
+nextRunTime <= NOW()
+```
+
+Publishes again.
+
+Duplicate execution.
+
+---
+
+# Solutions
+
+Option 1
+
+Workers are idempotent.
+
+---
+
+Option 2
+
+Use a Transactional Outbox.
+
+---
+
+Option 3
+
+Update scheduling state atomically before publishing.
+
+---
+
+# Transactional Outbox
+
+Instead of
+
+```
+Publish Queue
+
+↓
+
+Update DB
+```
+
+Store
+
+```
+Job
+
++
+
+Outbox Event
+```
+
+inside one database transaction.
+
+Outbox
+
+| Event | Published |
+|--------|-----------|
+|ExecuteJob101|No|
+
+Background Publisher
+
+↓
+
+Queue
+
+↓
+
+Published = Yes
+
+No execution requests are lost.
+
+---
+
+# Failure 3
+
+## Worker Crashes Before Execution
+
+Queue
+
+↓
+
+Worker receives
+
+↓
+
+CRASH
+
+No ACK.
+
+Queue waits.
+
+Visibility timeout expires.
+
+Queue redelivers.
+
+No job lost.
+
+---
+
+# Failure 4
+
+## Worker Crashes During Execution
+
+Suppose
+
+```
+Charge Credit Card
+
+↓
+
+Worker crashes
+```
+
+Queue redelivers.
+
+Another Worker executes again.
+
+Potential duplicate charge.
+
+---
+
+# Solution
+
+Workers must be Idempotent.
+
+Instead of
+
+```
+Charge Card
+```
+
+blindly,
+
+check
+
+```
+Payment already processed?
+```
+
+If yes
+
+Skip.
+
+---
+
+# Failure 5
+
+## Worker Crashes After Execution But Before ACK
+
+Flow
+
+```
+Execute
+
+↓
+
+Store Success
+
+↓
+
+CRASH
+
+↓
+
+Before ACK
+```
+
+Queue thinks
+
+job wasn't processed.
+
+Redelivers.
+
+Duplicate execution.
+
+Again,
+
+Idempotency solves this.
+
+---
+
+# Failure 6
+
+## Queue Failure
+
+Modern queues
+
+Kafka
+
+RabbitMQ
+
+SQS
+
+persist messages.
+
+If one broker crashes,
+
+replicas recover.
+
+Consumers continue.
+
+---
+
+# Failure 7
+
+## Database Failure
+
+Database is the source of truth.
+
+Production setup
+
+```
+Primary
+
+↓
+
+Replica1
+
+Replica2
+```
+
+Primary crashes.
+
+Replica promoted.
+
+Schedulers reconnect.
+
+Jobs continue.
+
+---
+
+# Failure 8
+
+## Scheduler Clock Drift
+
+Suppose
+
+Scheduler1
+
+```
+9:00:00
+```
+
+Scheduler2
+
+```
+8:59:55
+```
+
+Different clocks.
+
+One Scheduler executes
+
+too early.
+
+Another
+
+too late.
+
+---
+
+# Solution
+
+Synchronize clocks using
+
+```
+NTP
+```
+
+or rely on
+
+database time
+
+instead of local machine time.
+
+Example
+
+```sql
+SELECT NOW();
+```
+
+instead of
+
+```java
+LocalDateTime.now();
+```
+
+---
+
+# Failure 9
+
+## Long Running Job
+
+Suppose
+
+Video Processing
+
+takes
+
+```
+2 Hours
+```
+
+How do we know
+
+Worker is alive?
+
+---
+
+# Heartbeats
+
+Worker periodically updates
+
+```
+LastHeartbeat
+
+↓
+
+Every 30 seconds
+```
+
+Database
+
+| Job | Status | Heartbeat |
+|------|---------|-----------|
+|Video|RUNNING|10:15|
+
+If heartbeat stops
+
+Coordinator assumes
+
+Worker failed.
+
+---
+
+# Failure 10
+
+## External Service Failure
+
+Example
+
+SMTP
+
+Payment API
+
+Third-party REST API
+
+temporarily unavailable.
+
+Retry.
+
+Use
+
+Exponential Backoff
+
+```
+30 sec
+
+↓
+
+60 sec
+
+↓
+
+120 sec
+
+↓
+
+240 sec
+```
+
+Avoid retry storms.
+
+---
+
+# Failure 11
+
+## Permanent Failure
+
+Example
+
+```
+Invalid Email
+
+Wrong API Key
+
+Malformed Payload
+```
+
+Retrying won't help.
+
+Move to
+
+Dead Letter Queue.
+
+Operations investigates later.
+
+---
+
+# Failure 12
+
+## Duplicate Scheduling
+
+Suppose
+
+Scheduler1
+
+Scheduler2
+
+both find
+
+Job101.
+
+---
+
+# Solution
+
+Use
+
+```
+FOR UPDATE SKIP LOCKED
+```
+
+or
+
+Leader Election
+
+or
+
+Shard Ownership.
+
+Only one Scheduler owns the job.
+
+---
+
+# Failure 13
+
+## Queue Backlog
+
+Suppose
+
+Workers
+
+process
+
+```
+500 Jobs/sec
+```
+
+Scheduler publishes
+
+```
+5000 Jobs/sec
+```
+
+Queue grows indefinitely.
+
+---
+
+# Solution
+
+Backpressure.
+
+Scheduler checks
+
+Queue Depth.
+
+If queue exceeds threshold,
+
+reduce publishing rate.
+
+---
+
+# Failure 14
+
+## Poison Job
+
+Suppose
+
+Job always crashes
+
+```
+Attempt1
+
+↓
+
+Fail
+
+↓
+
+Retry
+
+↓
+
+Fail
+
+↓
+
+Retry
+
+↓
+
+Fail
+```
+
+Without limits,
+
+the system retries forever.
+
+Bad.
+
+---
+
+# Solution
+
+Retry Policy
+
+```
+Max Attempts = 5
+```
+
+After that
+
+↓
+
+Dead Letter Queue.
+
+---
+
+# Failure 15
+
+## Scheduler Restart
+
+Scheduler crashes.
+
+Restarts.
+
+Question
+
+How does it know
+
+where to continue?
+
+Simple.
+
+Database.
+
+Scheduler always queries
+
+```
+nextRunTime <= NOW()
+```
+
+No in-memory recovery required.
+
+---
+
+# At-Least-Once Execution
+
+Most production schedulers guarantee
+
+```
+At Least Once
+```
+
+because
+
+Worker crashes
+
+can always happen.
+
+Exactly-once execution
+
+across distributed systems
+
+is extremely difficult.
+
+---
+
+# Exactly Once?
+
+Possible only if
+
+- Queue
+- Database
+- External Systems
+
+all participate in one distributed transaction.
+
+This is impractical.
+
+Industry approach
+
+```
+At Least Once
+
++
+
+Idempotent Workers
+```
+
+---
+
+# Monitoring
+
+Track
+
+- Queue Depth
+- Scheduler Lag
+- Failed Jobs
+- Retry Count
+- DLQ Size
+- Worker Heartbeats
+
+These metrics help detect failures early.
+
+---
+
+# Recovery Summary
+
+| Failure | Recovery |
+|----------|----------|
+| Scheduler crashes before publish | Another Scheduler republishes |
+| Scheduler crashes after publish | Idempotent workers / Outbox |
+| Worker crashes before ACK | Queue redelivers |
+| Worker crashes after execution | Idempotent execution |
+| Queue failure | Replicated queue |
+| Database failure | Replica promotion |
+| Clock drift | NTP / DB time |
+| Long-running job | Heartbeats |
+| External API failure | Exponential backoff |
+| Permanent failure | Dead Letter Queue |
+
+---
+
+# Design Principles
+
+Reliable schedulers follow these rules
+
+- Database is the source of truth.
+- Queue provides durable delivery.
+- Workers are stateless.
+- Workers are idempotent.
+- Retry only transient failures.
+- Use DLQ for permanent failures.
+- Never rely on in-memory state.
+
+---
+
+# Interview Questions
+
+## What happens if the Scheduler crashes?
+
+Another Scheduler scans the database and finds jobs whose `nextRunTime` has already passed.
+
+---
+
+## What happens if a Worker crashes?
+
+The queue redelivers the job after the visibility timeout expires.
+
+---
+
+## Why are Workers idempotent?
+
+Because queues typically provide at-least-once delivery, duplicate execution is possible.
+
+---
+
+## How do you prevent duplicate scheduling?
+
+Use row-level locking, distributed locks, leader election, or shard ownership.
+
+---
+
+## Why use a Dead Letter Queue?
+
+To isolate permanently failing jobs without blocking normal processing.
+
+---
+
+## Why use heartbeats?
+
+To detect failed workers processing long-running jobs.
+
+---
+
+## Can you guarantee exactly-once execution?
+
+In practice, no.
+
+The common production approach is:
+
+- At-least-once delivery
+- Idempotent workers
+
+This provides effectively-once business behavior.
+
+---
+
+# Interview Summary
+
+> A reliable Job Scheduler assumes failures will occur and is designed to recover automatically. The database remains the source of truth for job definitions, while the queue provides durable at-least-once delivery. If a Scheduler crashes, another Scheduler can rediscover due jobs by querying `nextRunTime`. If a Worker crashes before acknowledging a job, the queue redelivers it to another Worker. Because duplicate execution is possible, Workers must be idempotent. Temporary failures are handled through retries with exponential backoff, while permanently failing jobs are moved to a Dead Letter Queue. Long-running jobs use heartbeats to detect failed Workers, and production deployments rely on replicated databases, durable queues, and monitoring to achieve high availability.
+
+
+# Job Scheduler System Design
+
+# Chapter 7 - Complete Interview Walkthrough (10–15 Minutes)
+
+---
+
+# Interview Strategy
+
+One common mistake candidates make is explaining every component separately.
+
+Instead,
+
+tell the story of **one scheduled job**.
+
+Suppose the user creates
+
+```
+Run Daily Report
+
+Every day at 9:00 AM
+```
+
+Now explain how this job flows through the system.
+
+Everything naturally appears.
+
+---
+
+# Minute 1
+
+## Clarify Requirements
+
+I'd first clarify the requirements.
+
+### Functional
+
+- Create Job
+- Delete Job
+- Pause Job
+- Resume Job
+- One-time Jobs
+- Recurring Jobs
+- Cron Expressions
+- Retry Failed Jobs
+- Execution History
+
+### Non Functional
+
+- High Availability
+- Scalability
+- Reliability
+- Low Latency
+- No Lost Jobs
+- Prevent Duplicate Execution
+
+---
+
+# Minute 2
+
+## APIs
+
+Main APIs
+
+```
+POST /jobs
+
+PUT /jobs/{id}
+
+DELETE /jobs/{id}
+
+POST /jobs/{id}/pause
+
+POST /jobs/{id}/resume
+
+GET /jobs/{id}
+```
+
+These APIs only manage jobs.
+
+They do not execute jobs.
+
+---
+
+# Minute 3
+
+## High-Level Architecture
+
+```
+Client
+
+↓
+
+Job Service
+
+↓
+
+Job Database
+
+↓
+
+Scheduler
+
+↓
+
+Queue
+
+↓
+
+Workers
+```
+
+Quick explanation
+
+### Job Service
+
+Stores job definitions.
+
+### Database
+
+Source of truth.
+
+### Scheduler
+
+Finds jobs that should execute.
+
+### Queue
+
+Buffers execution requests.
+
+### Workers
+
+Execute business logic.
+
+---
+
+# Minute 4-6
+
+## Walk Through One Job
+
+Suppose the user creates
+
+```
+Daily Report
+
+Every day at 9 AM
+```
+
+### Step 1
+
+Client calls
+
+```
+POST /jobs
+```
+
+Job Service validates
+
+and stores
+
+```
+Cron
+
+Payload
+
+Status
+
+NextRunTime
+```
+
+in the Jobs table.
+
+Nothing executes yet.
+
+---
+
+### Step 2
+
+At
+
+```
+9:00 AM
+```
+
+Scheduler polls
+
+```sql
+SELECT *
+FROM Jobs
+WHERE status='ACTIVE'
+AND nextRunTime<=NOW()
+ORDER BY nextRunTime
+LIMIT 1000;
+```
+
+Returns
+
+```
+Job101
+```
+
+---
+
+### Step 3
+
+Scheduler publishes
+
+```
+Execute Job101
+```
+
+to Kafka (or RabbitMQ/SQS).
+
+It does not execute the job itself.
+
+---
+
+### Step 4
+
+Worker receives
+
+```
+Job101
+```
+
+Loads
+
+latest job definition
+
+from the database.
+
+Executes
+
+```
+Generate Report
+```
+
+---
+
+### Step 5
+
+Worker inserts
+
+JobExecution
+
+```
+SUCCESS
+```
+
+or
+
+```
+FAILED
+```
+
+history.
+
+---
+
+### Step 6
+
+Scheduler computes
+
+next execution
+
+```
+Tomorrow
+
+9 AM
+```
+
+Updates
+
+```
+nextRunTime
+```
+
+Job is ready for the next cycle.
+
+---
+
+# Minute 7
+
+## Database Design
+
+Main tables
+
+```
+Jobs
+
+↓
+
+JobExecutions
+
+↓
+
+DeadLetterQueue
+```
+
+Important optimization
+
+Store
+
+```
+nextRunTime
+```
+
+instead of parsing cron every second.
+
+Create an index on
+
+```
+(status, nextRunTime)
+```
+
+to efficiently find due jobs.
+
+---
+
+# Minute 8
+
+## Scaling
+
+Workers
+
+↓
+
+Stateless
+
+Add more workers.
+
+Scheduler
+
+↓
+
+Multiple instances
+
+Avoid duplicate scheduling using
+
+- Row-level locking (`FOR UPDATE SKIP LOCKED`)
+- Leader election
+- Shard ownership
+
+Database
+
+↓
+
+Shard by
+
+```
+JobId
+
+or
+
+TenantId
+```
+
+Queue
+
+↓
+
+Partition for parallel processing.
+
+---
+
+# Minute 9
+
+## Failure Handling
+
+Scheduler crashes
+
+↓
+
+Another Scheduler scans
+
+```
+nextRunTime <= NOW
+```
+
+Worker crashes
+
+↓
+
+Queue redelivers
+
+No ACK
+
+↓
+
+Retry
+
+Permanent failures
+
+↓
+
+Dead Letter Queue
+
+Workers
+
+↓
+
+Idempotent
+
+---
+
+# Minute 10
+
+## Tradeoffs
+
+Why Queue?
+
+Decouples scheduling from execution.
+
+Why nextRunTime?
+
+Avoid parsing cron every second.
+
+Why Workers?
+
+Execution may take minutes.
+
+Scheduling must remain lightweight.
+
+Why JobExecution table?
+
+Maintain execution history.
+
+Why Database?
+
+Source of truth.
+
+---
+
+# Whiteboard Diagram
+
+```
+                 Client
+
+                    │
+
+                    ▼
+
+              Job Service
+
+                    │
+
+                    ▼
+
+              Job Database
+
+                    ▲
+
+                    │
+
+      ┌─────────────┼─────────────┐
+
+      ▼             ▼             ▼
+
+ Scheduler1    Scheduler2    Scheduler3
+
+                    │
+
+             Kafka / RabbitMQ
+
+                    │
+
+      ┌─────────────┼─────────────┐
+
+      ▼             ▼             ▼
+
+    Worker1      Worker2      Worker3
+
+                    │
+
+             External Systems
+
+     Email • Payments • Reports • APIs
+```
+
+---
+
+# Design Principles
+
+The architecture follows a few simple principles.
+
+### Separation of Concerns
+
+Scheduler decides
+
+Workers execute
+
+---
+
+### Durability
+
+Database stores
+
+job definitions
+
+execution history
+
+retry metadata
+
+---
+
+### Asynchronous Processing
+
+Queue decouples
+
+Scheduler
+
+and
+
+Workers.
+
+---
+
+### Horizontal Scaling
+
+Schedulers
+
+Workers
+
+Queue
+
+Database
+
+all scale independently.
+
+---
+
+# Common Follow-up Questions
+
+## Why not let Scheduler execute jobs?
+
+Long-running jobs would block scheduling.
+
+Keep Scheduler lightweight.
+
+---
+
+## Why store nextRunTime?
+
+Avoid parsing millions of cron expressions every second.
+
+---
+
+## Why use a Queue?
+
+Provides buffering, retries, and independent scaling.
+
+---
+
+## Why Workers are stateless?
+
+Easy horizontal scaling and recovery.
+
+---
+
+## Why JobExecution table?
+
+Execution history, monitoring, debugging, and auditing.
+
+---
+
+## How do multiple Schedulers avoid duplicate execution?
+
+Small scale
+
+```
+FOR UPDATE SKIP LOCKED
+```
+
+Large scale
+
+```
+Shard Ownership
+```
+
+Leader election is another valid approach.
+
+---
+
+## How do you recover from crashes?
+
+Database is the source of truth.
+
+Queue provides durable delivery.
+
+Workers are idempotent.
+
+Schedulers can rediscover overdue jobs.
+
+---
+
+# Final Interview Summary
+
+> I'd design the system with four major components: a Job Service for managing jobs, a Scheduler Service that continuously finds due jobs, a durable queue that decouples scheduling from execution, and stateless Workers that execute the jobs. When a user creates a job, the Job Service stores the job definition, cron expression, payload, and a precomputed `nextRunTime` in the database. The Scheduler periodically queries for active jobs whose `nextRunTime` has arrived, publishes execution requests to the queue, and updates the next scheduled execution time. Workers consume these requests, execute the business logic, record execution history, and acknowledge the queue only after successful processing. Multiple Scheduler instances coordinate using row-level locking, leader election, or shard ownership to prevent duplicate scheduling, while Workers remain idempotent because the queue provides at-least-once delivery. The database serves as the durable source of truth, allowing the system to recover from failures without losing jobs while scaling horizontally to millions of scheduled tasks.	
