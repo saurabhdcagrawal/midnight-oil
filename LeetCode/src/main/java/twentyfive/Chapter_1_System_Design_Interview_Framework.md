@@ -2621,6 +2621,958 @@ Better options
 
 ---
 
+# Optimistic Locking and Database Concurrency Control
+
+---
+
+# Common Misconception
+
+Many engineers believe that optimistic locking means
+
+> "No locking happens at all."
+
+This is **not true**.
+
+Optimistic locking means
+
+- The **application does not explicitly lock the row while reading and processing it.**
+- The **database still uses its normal concurrency control mechanisms** (such as row locks and MVCC) for a very short period while executing the `UPDATE`.
+
+The database guarantees that the `UPDATE` statement executes atomically.
+
+---
+
+# How Optimistic Locking Works
+
+Suppose the table contains
+
+```
+Product
+
+-------------------------
+
+id = 1
+
+stock = 10
+
+version = 5
+```
+
+Two users read the same row.
+
+```
+Thread A
+
+Stock = 10
+
+Version = 5
+```
+
+```
+Thread B
+
+Stock = 10
+
+Version = 5
+```
+
+Both perform business logic independently.
+
+No locks are held during this time.
+
+---
+
+# Business Logic Happens Outside the Lock
+
+Suppose the application performs
+
+```
+Read Product
+
+↓
+
+Calculate Discount
+
+↓
+
+Call Pricing Service
+
+↓
+
+Call Tax Service
+
+↓
+
+Validate Rules
+
+↓
+
+Prepare Update
+```
+
+This processing might take
+
+```
+500 ms
+```
+
+During these 500 ms
+
+```
+NO DATABASE ROW IS LOCKED
+```
+
+Other transactions are free to read and update the row.
+
+---
+
+# The Final Update
+
+When saving,
+
+the application executes
+
+```sql
+UPDATE product
+SET
+    stock = 9,
+    version = 6
+WHERE
+    id = 1
+AND
+    version = 5;
+```
+
+This single SQL statement is atomic.
+
+The database internally
+
+- checks the WHERE clause
+- updates the row
+- increments the version
+
+as one indivisible operation.
+
+---
+
+# What Happens If Two Updates Arrive Together?
+
+Suppose both threads execute
+
+```sql
+UPDATE product
+SET
+    stock = ?,
+    version = 6
+WHERE
+    id = 1
+AND
+    version = 5;
+```
+
+at almost the same time.
+
+Database timeline
+
+```
+Thread A
+
+Acquire Internal Row Lock
+
+↓
+
+Version == 5 ?
+
+↓
+
+YES
+
+↓
+
+Update Row
+
+↓
+
+Version = 6
+
+↓
+
+Commit
+
+↓
+
+Release Lock
+```
+
+Only after Thread A finishes
+
+does Thread B continue.
+
+Thread B now checks
+
+```
+Version == 5 ?
+
+↓
+
+NO
+
+Current Version = 6
+```
+
+Rows Updated
+
+```
+0
+```
+
+Conflict detected.
+
+No data is overwritten.
+
+---
+
+# Why Doesn't Both UPDATE Statements Succeed?
+
+Because the database executes each UPDATE atomically.
+
+Conceptually,
+
+the database performs
+
+```
+Check WHERE Clause
+
++
+
+Modify Row
+
++
+
+Commit
+```
+
+as one protected operation.
+
+Another transaction cannot modify the same row in the middle of this process.
+
+The application's optimistic locking relies on the database's concurrency control to guarantee this behavior.
+
+---
+
+# Timeline
+
+```
+Thread A
+
+Read Version = 5
+
+↓
+
+Business Logic (500 ms)
+
+↓
+
+UPDATE
+
+↓
+
+Internal DB Lock (2-5 ms)
+
+↓
+
+Commit
+
+----------------------------
+
+Thread B
+
+Read Version = 5
+
+↓
+
+Business Logic (500 ms)
+
+↓
+
+UPDATE
+
+↓
+
+Wait Briefly
+
+↓
+
+Version Mismatch
+
+↓
+
+0 Rows Updated
+```
+
+Notice
+
+The row is only protected during the UPDATE,
+
+not during the business logic.
+
+---
+
+# Compare With Pessimistic Locking
+
+## Pessimistic Locking
+
+```
+BEGIN
+
+↓
+
+SELECT ... FOR UPDATE
+
+↓
+
+🔒 Row Locked
+
+↓
+
+Business Logic (500 ms)
+
+↓
+
+UPDATE
+
+↓
+
+COMMIT
+
+↓
+
+Unlock
+```
+
+The row remains locked during the entire transaction.
+
+---
+
+## Optimistic Locking
+
+```
+SELECT
+
+↓
+
+Business Logic (500 ms)
+
+↓
+
+UPDATE ... WHERE version = ?
+
+↓
+
+Database Locks Row
+
+(typically only a few milliseconds)
+
+↓
+
+Commit
+```
+
+The lock exists only during the UPDATE.
+
+This allows much higher concurrency.
+
+---
+
+# Why Is Optimistic Locking Faster?
+
+Suppose
+
+100 users
+
+read the same row.
+
+With pessimistic locking
+
+```
+User 1
+
+↓
+
+Lock
+
+↓
+
+500 ms
+
+↓
+
+Unlock
+
+↓
+
+User 2
+
+↓
+
+500 ms
+
+↓
+
+Unlock
+
+...
+```
+
+Everyone waits.
+
+---
+
+With optimistic locking
+
+```
+100 Users
+
+↓
+
+Read Simultaneously
+
+↓
+
+Process Simultaneously
+
+↓
+
+Attempt UPDATE
+
+↓
+
+Only conflicting updates retry
+```
+
+No long-lived locks.
+
+Better throughput.
+
+---
+
+# Important Interview Point
+
+Optimistic locking does **not** eliminate database locking.
+
+It eliminates **long-lived application locks**.
+
+The database still uses its normal concurrency mechanisms during the UPDATE statement to ensure atomicity and consistency.
+
+Without the database's atomic UPDATE behavior,
+
+optimistic locking would not work.
+
+---
+
+# Key Takeaways
+
+- Optimistic locking does **not** lock rows while the application performs business logic.
+- The application performs processing without holding database locks.
+- The final `UPDATE ... WHERE version = ?` executes atomically.
+- During the UPDATE, the database briefly uses its normal concurrency control (such as row locks and/or MVCC) to protect the row.
+- Only one transaction can successfully update a given version.
+- If another transaction has already modified the row, the UPDATE affects **0 rows**, indicating a version conflict.
+- Optimistic locking depends on the database's atomic execution of UPDATE statements to detect concurrent modifications correctly.
+- The major advantage is that locks are held only for a few milliseconds instead of throughout the entire business operation, allowing much higher concurrency.
+
+
+# Database Concurrency - Reads vs Writes (MVCC & Row Locking)
+
+---
+
+# A Common Interview Question
+
+Many developers assume
+
+> "If one transaction is updating a row, nobody else can even read it."
+
+This is **not true** for modern relational databases such as
+
+- PostgreSQL
+- MySQL InnoDB
+- Oracle
+
+These databases use **MVCC (Multi-Version Concurrency Control)**.
+
+MVCC allows most reads to happen concurrently without blocking writes.
+
+---
+
+# Scenario 1 – SELECT + SELECT
+
+Current row
+
+```
+Product
+
+Stock = 10
+
+Version = 5
+```
+
+Two users execute
+
+```sql
+SELECT *
+FROM product
+WHERE id = 1;
+```
+
+at the same time.
+
+Timeline
+
+```
+Thread A
+
+SELECT
+
+↓
+
+Reads Version 5
+
+----------------------------
+
+Thread B
+
+SELECT
+
+↓
+
+Reads Version 5
+```
+
+Result
+
+✅ Both execute simultaneously.
+
+No waiting.
+
+No locking.
+
+---
+
+# Scenario 2 – SELECT + UPDATE
+
+Current row
+
+```
+Stock = 10
+
+Version = 5
+```
+
+Thread A
+
+```sql
+SELECT *
+FROM product
+WHERE id = 1;
+```
+
+Thread B
+
+```sql
+UPDATE product
+SET stock = 9
+WHERE id = 1;
+```
+
+Can they run together?
+
+Yes.
+
+With MVCC,
+
+the SELECT reads a consistent snapshot while the UPDATE creates a newer version of the row.
+
+The reader is not blocked.
+
+The writer is not blocked.
+
+---
+
+# How MVCC Works
+
+Think of the database as keeping multiple versions of the same row.
+
+Initially
+
+```
+Version 5
+
+Stock = 10
+```
+
+Thread B updates it.
+
+Database internally creates
+
+```
+Version 6
+
+Stock = 9
+```
+
+Thread A, which started earlier,
+
+continues reading
+
+```
+Version 5
+```
+
+New transactions read
+
+```
+Version 6
+```
+
+Readers and writers do not block each other.
+
+---
+
+# Scenario 3 – UPDATE + UPDATE
+
+Current row
+
+```
+Stock = 10
+
+Version = 5
+```
+
+Thread A
+
+```sql
+UPDATE ...
+```
+
+Thread B
+
+```sql
+UPDATE ...
+```
+
+Both want to modify
+
+the same row.
+
+This cannot happen simultaneously.
+
+Database behavior
+
+```
+Thread A
+
+Acquire Row Lock
+
+↓
+
+Modify Row
+
+↓
+
+Commit
+
+↓
+
+Release Lock
+
+------------------------
+
+Thread B
+
+Wait
+
+↓
+
+Acquire Lock
+
+↓
+
+Update
+```
+
+Conflicting writes are serialized.
+
+---
+
+# Scenario 4 – UPDATE Different Rows
+
+Thread A
+
+```sql
+UPDATE product
+SET stock = 5
+WHERE id = 1;
+```
+
+Thread B
+
+```sql
+UPDATE product
+SET stock = 8
+WHERE id = 2;
+```
+
+Different rows.
+
+No conflict.
+
+Both execute simultaneously.
+
+---
+
+# Scenario 5 – SELECT FOR UPDATE
+
+Normal SELECT
+
+```sql
+SELECT *
+FROM product
+WHERE id = 1;
+```
+
+Does NOT lock the row.
+
+Other users can
+
+- Read
+- Update
+
+normally.
+
+---
+
+Now consider
+
+```sql
+SELECT *
+FROM product
+WHERE id = 1
+FOR UPDATE;
+```
+
+This is different.
+
+Timeline
+
+```
+Transaction A
+
+SELECT FOR UPDATE
+
+↓
+
+Row Locked
+
+↓
+
+Business Logic
+
+↓
+
+UPDATE
+
+↓
+
+COMMIT
+
+↓
+
+Unlock
+```
+
+Now another transaction trying to update the same row
+
+must wait.
+
+This is **Pessimistic Locking**.
+
+---
+
+# Why Allow Concurrent Reads?
+
+Imagine Amazon.
+
+```
+1 Million Customers
+
+↓
+
+Viewing Product
+```
+
+Should everyone wait
+
+because one customer edits the product?
+
+No.
+
+That would destroy performance.
+
+Instead
+
+```
+Readers
+
+↓
+
+Concurrent
+
+--------------------
+
+Writers
+
+↓
+
+Serialized
+```
+
+---
+
+# Think of a Library
+
+Normal SELECT
+
+```
+100 People
+
+↓
+
+Read Same Book
+```
+
+Everyone can read.
+
+No problem.
+
+---
+
+UPDATE
+
+```
+Editor A
+
+↓
+
+Modify Book
+
+↓
+
+Save
+
+↓
+
+Editor B
+```
+
+Only one editor modifies the book at a time.
+
+Readers continue reading the last published edition.
+
+This is similar to MVCC.
+
+---
+
+# Relationship with Optimistic Locking
+
+Optimistic locking depends on this behavior.
+
+Timeline
+
+```
+Thread A
+
+Read Version 5
+
+↓
+
+Business Logic (500 ms)
+
+↓
+
+UPDATE WHERE version = 5
+
+↓
+
+Success
+
+----------------------------
+
+Thread B
+
+Read Version 5
+
+↓
+
+Business Logic (500 ms)
+
+↓
+
+UPDATE WHERE version = 5
+
+↓
+
+0 Rows Updated
+
+↓
+
+Retry
+```
+
+Notice
+
+The reads happen concurrently.
+
+Only the UPDATE is serialized by the database.
+
+---
+
+# Summary Table
+
+| Operation | Concurrent? | Reason |
+|------------|------------|--------|
+| SELECT + SELECT | ✅ Yes | Readers do not block readers |
+| SELECT + UPDATE | ✅ Usually Yes | MVCC provides consistent snapshots |
+| UPDATE + UPDATE (same row) | ❌ No | Conflicting writes are serialized |
+| UPDATE + UPDATE (different rows) | ✅ Yes | Different rows, no conflict |
+| SELECT FOR UPDATE + UPDATE | ❌ No | Row lock forces waiting |
+
+---
+
+# Important Interview Point
+
+It is not entirely correct to say
+
+> "Only updates are serialized."
+
+A better statement is
+
+> **Conflicting writes to the same row are serialized by the database. Reads are usually served concurrently using MVCC, allowing them to see a consistent snapshot without blocking writers. Updates to different rows can also proceed concurrently because they do not conflict.**
+
+This is the expected explanation in a Senior Backend interview.
+
+---
+
+# Key Takeaways
+
+- Modern relational databases use **MVCC (Multi-Version Concurrency Control)** to improve concurrency.
+- Multiple SELECT queries on the same row execute concurrently.
+- SELECT queries usually do not block UPDATE operations, and UPDATE operations usually do not block SELECT queries.
+- Multiple UPDATE statements on the **same row** cannot modify the row simultaneously; the database serializes conflicting writes.
+- UPDATE statements on **different rows** can execute concurrently.
+- `SELECT ... FOR UPDATE` acquires a row lock and is commonly used for pessimistic locking.
+- Optimistic locking relies on the database's atomic UPDATE execution and MVCC to detect version conflicts while allowing concurrent reads.
+
+
 # Next Chapter
 
 **Caching**
