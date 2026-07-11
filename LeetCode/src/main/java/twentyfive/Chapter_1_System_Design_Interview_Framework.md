@@ -31826,3 +31826,9926 @@ The Chat Service does **not** manage socket connections.
 # Interview Summary
 
 > Every client establishes its own persistent WebSocket connection to a WebSocket Server. A WebSocket Server manages thousands of active connections in memory and acts as a connection manager. Redis maintains a lightweight mapping of `userId -> WebSocketServer`, allowing the Chat Service to quickly determine where a recipient is connected. When Alice sends a message, it reaches the Chat Service through her WebSocket Server. The Chat Service looks up Bob's WebSocket Server in Redis, forwards the message to that server, and the server uses its in-memory WebSocket session to push the message to Bob. This architecture cleanly separates connection management from chat business logic and scales horizontally by adding more WebSocket servers.		  
+
+
+# Fan-out on Write vs Fan-out on Read (Group Chat)
+
+---
+
+# The Problem
+
+Suppose Alice sends a message to a group.
+
+```
+Family Group
+
+Members
+
+- Alice
+- Bob
+- Charlie
+- David
+```
+
+Alice sends
+
+> Happy New Year
+
+Question:
+
+How should we deliver this message to the group members?
+
+There are two common approaches:
+
+1. Fan-out on Write
+2. Fan-out on Read
+
+---
+
+# Common Database Tables
+
+These tables exist in **both** designs.
+
+---
+
+## Groups
+
+Stores basic group information.
+
+| GroupId | GroupName | CreatedBy |
+|---------|-----------|-----------|
+|100|Family|Alice|
+|200|Office|Bob|
+
+---
+
+## GroupMembers
+
+Stores which users belong to which groups.
+
+| GroupId | UserId |
+|----------|--------|
+|100|Alice|
+|100|Bob|
+|100|Charlie|
+|100|David|
+
+When Alice sends a message,
+
+the system first determines the members.
+
+```sql
+SELECT UserId
+FROM GroupMembers
+WHERE GroupId = 100;
+```
+
+Returns
+
+```
+Alice
+Bob
+Charlie
+David
+```
+
+The difference between Fan-out on Write and Fan-out on Read begins **after this query**.
+
+---
+
+# Fan-out on Write
+
+The system proactively creates delivery records for every recipient.
+
+---
+
+## Step 1
+
+Insert one row into Messages.
+
+### Messages
+
+| MessageId | GroupId | Sender | Message |
+|-----------|----------|--------|----------|
+|101|100|Alice|Happy New Year|
+
+---
+
+## Step 2
+
+Read GroupMembers
+
+```
+Alice
+Bob
+Charlie
+David
+```
+
+---
+
+## Step 3
+
+Create recipient records.
+
+### MessageRecipient
+
+| MessageId | Recipient | Status |
+|-----------|-----------|--------|
+|101|Bob|DELIVERED|
+|101|Charlie|UNDELIVERED|
+|101|David|DELIVERED|
+
+Notice:
+
+Alice is the sender, so we typically don't create a recipient record for her.
+
+---
+
+Suppose Charlie later receives the message.
+
+### MessageRecipient
+
+| MessageId | Recipient | Status |
+|-----------|-----------|--------|
+|101|Bob|DELIVERED|
+|101|Charlie|DELIVERED|
+|101|David|DELIVERED|
+
+---
+
+Charlie opens the chat.
+
+### MessageRecipient
+
+| MessageId | Recipient | Status |
+|-----------|-----------|--------|
+|101|Bob|DELIVERED|
+|101|Charlie|READ|
+|101|David|DELIVERED|
+
+Every recipient maintains an independent status.
+
+---
+
+# Fan-out on Write Flow
+
+```
+Message
+
+↓
+
+Read GroupMembers
+
+↓
+
+Bob
+
+Charlie
+
+David
+
+↓
+
+Create Recipient Row
+
+Create Recipient Row
+
+Create Recipient Row
+```
+
+Every message creates
+
+```
+(Number of Group Members - 1)
+```
+
+new database rows.
+
+---
+
+# Fan-out on Read
+
+Instead of creating recipient rows,
+
+store the message only once.
+
+---
+
+## Step 1
+
+Insert into Messages.
+
+### Messages
+
+| MessageId | GroupId | Sender | Message |
+|-----------|----------|--------|----------|
+|101|100|Alice|Happy New Year|
+|102|100|Bob|Meeting at 5 PM|
+|103|100|Charlie|See you tomorrow|
+
+Done.
+
+No MessageRecipient table.
+
+---
+
+## UserGroupState
+
+Instead of storing every pending message,
+
+store only each user's progress.
+
+| User | Group | LastReadMessageId |
+|------|--------|------------------|
+|Alice|100|103|
+|Bob|100|102|
+|Charlie|100|101|
+|David|100|103|
+
+Interpretation
+
+Alice has read
+
+```
+101
+102
+103
+```
+
+Bob has read
+
+```
+101
+102
+```
+
+Charlie has read
+
+```
+101
+```
+
+David has read everything.
+
+---
+
+## Charlie Opens The Group
+
+Chat Service executes
+
+```sql
+SELECT *
+FROM Messages
+WHERE GroupId = 100
+AND MessageId > 101
+ORDER BY MessageId;
+```
+
+Returns
+
+| MessageId | Sender | Message |
+|-----------|--------|----------|
+|102|Bob|Meeting at 5 PM|
+|103|Charlie|See you tomorrow|
+
+Immediately after delivery,
+
+update
+
+### UserGroupState
+
+| User | Group | LastReadMessageId |
+|------|--------|------------------|
+|Charlie|100|103|
+
+Done.
+
+No recipient rows were ever created.
+
+---
+
+# Fan-out on Read Flow
+
+```
+Message
+
+↓
+
+Store Once
+
+↓
+
+User Opens Group
+
+↓
+
+Fetch Messages
+
+WHERE MessageId > LastReadMessageId
+
+↓
+
+Update LastReadMessageId
+```
+
+---
+
+# Storage Comparison
+
+Suppose
+
+```
+1000 members
+
+100 messages
+```
+
+---
+
+## Fan-out on Write
+
+Messages table
+
+```
+100 rows
+```
+
+Recipient table
+
+```
+100 × 999
+
+=
+
+99,900 rows
+```
+
+Total
+
+```
+≈100,000 rows
+```
+
+---
+
+## Fan-out on Read
+
+Messages table
+
+```
+100 rows
+```
+
+UserGroupState
+
+```
+1000 rows
+```
+
+Total
+
+```
+1100 rows
+```
+
+Huge reduction in storage.
+
+---
+
+# Why Fan-out on Read Scales Better
+
+Instead of storing
+
+```
+Bob needs Message101
+
+Bob needs Message102
+
+Bob needs Message103
+```
+
+we simply store
+
+```
+Bob has already read Message100.
+```
+
+Everything newer is automatically unread.
+
+This changes storage complexity from
+
+```
+O(Messages × Users)
+```
+
+to approximately
+
+```
+O(Messages + Users)
+```
+
+which is significantly smaller for very large groups.
+
+---
+
+# Visual Comparison
+
+## Fan-out on Write
+
+```
+Groups
+
+↓
+
+GroupMembers
+
+↓
+
+Messages
+
+↓
+
+MessageRecipient
+
+↓
+
+Bob
+
+Charlie
+
+David
+```
+
+Each new message generates recipient records.
+
+---
+
+## Fan-out on Read
+
+```
+Groups
+
+↓
+
+GroupMembers
+
+↓
+
+Messages
+
++
+
+UserGroupState
+```
+
+Messages are stored once.
+
+Only each user's progress is tracked.
+
+---
+
+# Which Systems Use Which?
+
+## Fan-out on Write
+
+Best for
+
+- WhatsApp family groups
+- Slack channels
+- Microsoft Teams
+- Small and medium groups
+
+Advantages
+
+- Fast reads
+- Instant delivery
+- Easy to track per-recipient status
+
+Disadvantages
+
+- High storage cost
+- Expensive writes
+
+---
+
+## Fan-out on Read
+
+Best for
+
+- Large communities
+- Broadcast channels
+- Twitter/X timelines
+- Large social platforms
+
+Advantages
+
+- Cheap writes
+- Much lower storage
+- Better scalability
+
+Disadvantages
+
+- More expensive reads
+- Client fetches messages when opening the group
+
+---
+
+# Comparison Table
+
+| Feature | Fan-out on Write | Fan-out on Read |
+|---------|------------------|-----------------|
+| Message stored | Once | Once |
+| Recipient records | Yes | No |
+| User progress | Optional | Required (`UserGroupState`) |
+| Write Cost | High | Low |
+| Read Cost | Low | Higher |
+| Storage | O(Messages × Users) | O(Messages + Users) |
+| Best For | Small/Medium Groups | Very Large Groups |
+
+---
+
+# Interview Summary
+
+> Both approaches maintain the same `Groups` and `GroupMembers` tables. The difference is what happens after the group members are identified. In **Fan-out on Write**, the system stores the message once and immediately creates a `MessageRecipient` record for every recipient to track delivery and read status. This provides fast reads but results in high write amplification and storage costs. In **Fan-out on Read**, the system stores the message only once and does not create recipient records. Instead, it maintains a lightweight `UserGroupState` table (for example, `LastReadMessageId` or `LastSeenTimestamp`) for each user. When a user opens the group, unread messages are fetched by querying for messages newer than the user's last read position. This dramatically reduces storage requirements and is the preferred approach for very large groups or broadcast channels.
+
+# WhatsApp System Design - Interview Flow (10-15 Minutes)
+
+---
+
+# How to Think
+
+Don't explain every component individually.
+
+Instead, explain the journey of **one message** from sender to receiver.
+
+Imagine Alice sends
+
+> "Hi Bob"
+
+The interviewer should naturally discover every component as you walk through the flow.
+
+---
+
+# Step 1 - High-Level Architecture (1 minute)
+
+Start with a simple diagram.
+
+```
+                Clients
+                   │
+           WebSocket Connection
+                   │
+            Load Balancer
+                   │
+        WebSocket Servers
+                   │
+             Chat Services
+        ┌──────────┼──────────┐
+        ▼          ▼          ▼
+     Message DB   Redis     Kafka
+```
+
+Then say:
+
+> Clients establish persistent WebSocket connections through a load balancer. WebSocket servers manage long-lived client connections, while stateless Chat Services contain the messaging business logic. Messages are persisted in the Message Database, Redis stores temporary connection and presence information, and Kafka publishes events for asynchronous processing.
+
+Stop.
+
+Do NOT explain every box.
+
+---
+
+# Step 2 - Alice Sends a Message (2 minutes)
+
+Now tell the story.
+
+```
+Alice
+
+↓
+
+WebSocket Server
+
+↓
+
+Chat Service
+```
+
+Chat Service
+
+1. Authenticates Alice.
+2. Generates a Snowflake Message ID.
+3. Stores the message in the Message Database.
+4. Marks status as SENT.
+5. Publishes a MessageCreated event to Kafka.
+
+Explain:
+
+> The database is the source of truth. Every message is persisted before delivery.
+
+---
+
+# Step 3 - Deliver To Bob (2 minutes)
+
+Chat Service now asks
+
+```
+Where is Bob?
+```
+
+Redis contains
+
+```
+Bob → WS2
+```
+
+Chat Service forwards the message.
+
+```
+Chat Service
+
+↓
+
+WS2
+
+↓
+
+Bob
+```
+
+Bob immediately sends back
+
+```
+DELIVERED
+```
+
+Chat Service updates
+
+```
+Message Status = DELIVERED
+```
+
+and notifies Alice.
+
+Later,
+
+Bob opens the chat.
+
+```
+READ
+```
+
+Database becomes
+
+```
+READ
+```
+
+Alice now sees
+
+```
+Blue ✓✓
+```
+
+---
+
+# Step 4 - Offline Users (1 minute)
+
+Suppose Bob isn't connected.
+
+Redis says
+
+```
+Bob Offline
+```
+
+No problem.
+
+The message is already safely stored in the database.
+
+Kafka triggers the Notification Service.
+
+Notification Service sends
+
+- APNS
+- FCM
+
+Bob opens the app.
+
+A WebSocket reconnects.
+
+Chat Service fetches
+
+```
+UNDELIVERED
+```
+
+messages from the database.
+
+---
+
+# Step 5 - Media (1 minute)
+
+Large files are never stored inside the database.
+
+Instead
+
+```
+Upload
+
+↓
+
+Object Storage
+
+↓
+
+Store URL
+
+↓
+
+Database
+```
+
+Recipients download directly from a CDN backed by object storage.
+
+---
+
+# Step 6 - Group Chat (2 minutes)
+
+Small groups
+
+```
+Store Message
+
+↓
+
+Kafka
+
+↓
+
+Fan-out Service
+
+↓
+
+Deliver To Members
+```
+
+Large groups
+
+```
+Store Once
+
+↓
+
+User Opens Group
+
+↓
+
+Fetch Messages
+
+WHERE MessageId > LastReadMessageId
+```
+
+Explain the tradeoff.
+
+Fan-out on Write
+
+- Faster reads
+- Expensive writes
+
+Fan-out on Read
+
+- Cheap writes
+- Better for huge communities
+
+---
+
+# Step 7 - Scalability (2 minutes)
+
+Explain why the system scales.
+
+WebSocket Servers
+
+- Stateful
+- Maintain active connections
+
+Chat Services
+
+- Stateless
+- Can scale horizontally
+
+Redis
+
+- Online users
+- Presence
+- Routing
+
+Kafka
+
+- Decouples notifications, analytics and search
+
+Message DB
+
+- Durable source of truth
+
+Object Storage
+
+- Large media
+
+---
+
+# If Time Permits
+
+Mention
+
+- Typing indicators → WebSocket only
+- Presence → Redis + Heartbeats
+- Ordering → Kafka partition by ConversationId
+- Snowflake IDs
+- Push notifications
+
+These are enhancements, not the core flow.
+
+---
+
+# Final 2-Minute Summary
+
+> Clients establish persistent WebSocket connections to WebSocket Servers, which act as connection managers. When Alice sends a message, the Chat Service authenticates the request, generates a Snowflake ID, persists the message in the Message Database, and publishes a MessageCreated event to Kafka. The Chat Service uses Redis to determine which WebSocket Server currently owns Bob's connection and forwards the message there for real-time delivery. If Bob is offline, the message remains safely stored in the database while a Notification Service sends a push notification through APNS or FCM. Media files are stored separately in object storage with only metadata in the database. For group messaging, small groups use fan-out on write for low latency, while very large groups use fan-out on read to reduce storage and write amplification. The architecture scales by separating stateful WebSocket Servers from stateless Chat Services, with Redis providing fast routing and Kafka enabling asynchronous event processing.
+
+---
+
+# Interview Tip
+
+Don't try to explain every box.
+
+Tell the story of **one message**.
+
+Everything else naturally appears:
+
+- WebSocket → connection
+- Chat Service → business logic
+- DB → persistence
+- Redis → routing
+- Kafka → asynchronous processing
+- Notifications → offline users
+- Object Storage → media
+- Fan-out → groups
+
+Interviewers remember a coherent flow much better than a checklist of technologies.
+
+# WhatsApp System Design
+
+# Chapter 1 - Requirements, Scale Estimation & APIs
+
+---
+
+# Problem Statement
+
+Design a messaging platform similar to WhatsApp that supports:
+
+- One-to-one messaging
+- Group messaging
+- Media sharing
+- Online/offline users
+- Read receipts
+- Push notifications
+- Low latency communication
+- Massive scalability
+
+---
+
+# Functional Requirements
+
+## Must Have
+
+- User authentication
+- One-to-one chat
+- Group chat
+- Real-time messaging
+- Offline message delivery
+- Read receipts
+- Delivery receipts
+- Message history
+- Media sharing
+- Push notifications
+
+---
+
+## Nice To Have
+
+- Typing indicators
+- Last Seen
+- Online Presence
+- Message Search
+- Reactions
+- Voice Notes
+- Video Calls
+
+---
+
+# Non Functional Requirements
+
+## Availability
+
+The system should remain available even if some servers fail.
+
+Target
+
+```
+99.99%
+```
+
+---
+
+## Scalability
+
+Should support
+
+- Hundreds of millions of users
+- Millions of concurrent WebSocket connections
+- Millions of messages per second
+
+---
+
+## Low Latency
+
+Users expect messages to appear almost instantly.
+
+Target
+
+```
+<100 ms
+```
+
+for online users.
+
+---
+
+## Durability
+
+Messages must never be lost after the sender receives acknowledgement.
+
+---
+
+## Ordering
+
+Messages inside the same conversation should appear in order.
+
+---
+
+## Reliability
+
+Offline users should receive messages after reconnecting.
+
+---
+
+# Capacity Estimation (Interview Level)
+
+Assume
+
+```
+500 Million Daily Active Users
+```
+
+Average
+
+```
+40 messages/day/user
+```
+
+Total
+
+```
+20 Billion messages/day
+```
+
+Messages per second
+
+```
+20,000,000,000
+
+/
+
+86,400
+
+≈231,000 messages/sec
+```
+
+Peak traffic may be
+
+```
+2-5×
+
+Average
+```
+
+Design for
+
+```
+~1 Million messages/sec
+```
+
+---
+
+# APIs
+
+## Send Message
+
+```
+POST /messages
+```
+
+Request
+
+```json
+{
+  "senderId":"Alice",
+  "receiverId":"Bob",
+  "text":"Hello"
+}
+```
+
+Response
+
+```json
+{
+  "messageId":"123456",
+  "status":"SENT"
+}
+```
+
+---
+
+## Get Conversation
+
+```
+GET /conversations/{conversationId}/messages
+```
+
+Optional
+
+```
+?after=messageId
+```
+
+or
+
+```
+?limit=50
+```
+
+---
+
+## Create Group
+
+```
+POST /groups
+```
+
+Request
+
+```json
+{
+   "name":"Family",
+   "members":[
+      "Alice",
+      "Bob",
+      "Charlie"
+   ]
+}
+```
+
+---
+
+## Send Group Message
+
+```
+POST /groups/{groupId}/messages
+```
+
+---
+
+## Upload Media
+
+```
+POST /media
+```
+
+Returns
+
+```
+Media URL
+```
+
+which is later stored in the Messages table.
+
+---
+
+## Mark Delivered
+
+```
+POST /messages/{messageId}/delivered
+```
+
+---
+
+## Mark Read
+
+```
+POST /messages/{messageId}/read
+```
+
+---
+
+## WebSocket Events
+
+Instead of REST APIs, some operations use the existing WebSocket connection.
+
+Examples
+
+```
+SEND_MESSAGE
+
+DELIVERED
+
+READ
+
+TYPING_START
+
+TYPING_STOP
+```
+
+---
+
+# APIs vs WebSockets
+
+REST APIs are used for
+
+- Login
+- Fetch History
+- Create Group
+- Upload Media
+
+WebSockets are used for
+
+- Real-time Messages
+- Read Receipts
+- Delivery Receipts
+- Typing Indicators
+- Presence Updates
+
+---
+
+# Design Decisions
+
+| Requirement | Design Decision |
+|-------------|-----------------|
+| Real-time messaging | WebSockets |
+| Offline delivery | Message Database |
+| Low latency routing | Redis |
+| Asynchronous processing | Kafka |
+| Large media | Object Storage |
+| Global uniqueness | Snowflake IDs |
+
+---
+
+# What Comes Next
+
+Now that we understand the requirements, APIs, and expected scale, the next step is designing the high-level architecture that satisfies these requirements.
+
+The following chapter introduces the major building blocks:
+
+- WebSocket Servers
+- Chat Service
+- Message Database
+- Redis
+- Kafka
+- Object Storage
+- Notification Service
+
+and explains how they interact to process a message from sender to receiver.
+
+# WhatsApp System Design
+
+# Chapter 2 - High-Level Architecture (HLD)
+
+---
+
+# Goal
+
+Before discussing message flow, we first need to identify the major components of the system.
+
+A common mistake in interviews is immediately jumping into Kafka, Redis, or databases.
+
+Instead, first identify the building blocks and clearly explain the responsibility of each component.
+
+---
+
+# High-Level Architecture
+
+```
+                                 Clients
+                    (Android / iOS / Web / Desktop)
+                                         │
+                                 WebSocket Connection
+                                         │
+                                  Load Balancer
+                                         │
+      ┌──────────────────────────────────┼──────────────────────────────────┐
+      ▼                                  ▼                                  ▼
+ WebSocket Server 1                WebSocket Server 2                WebSocket Server 3
+(Connection Manager)              (Connection Manager)              (Connection Manager)
+      │                                  │                                  │
+      └──────────────────────────────────┼──────────────────────────────────┘
+                                         │
+                                  Load Balancer
+                                         │
+            ┌────────────────────────────┼────────────────────────────┐
+            ▼                            ▼                            ▼
+      Chat Service 1               Chat Service 2               Chat Service 3
+      (Stateless)                  (Stateless)                 (Stateless)
+            │                            │                            │
+            └───────────────┬────────────┴────────────┬──────────────┘
+                            │                         │
+          ┌─────────────────┼──────────────┬──────────┼───────────────┐
+          ▼                 ▼              ▼          ▼               ▼
+     Message DB          Redis          Kafka     Object Storage   Group Service
+                                           │
+                                ┌──────────┼────────────┐
+                                ▼          ▼            ▼
+                        Notification   Analytics    Search
+                           Service
+```
+
+---
+
+# Why So Many Components?
+
+A messaging system performs many different responsibilities.
+
+Trying to solve everything inside one application quickly becomes difficult to scale.
+
+Instead, every component has a well-defined responsibility.
+
+---
+
+# Component Responsibilities
+
+---
+
+## 1. Clients
+
+Clients include
+
+- Android
+- iPhone
+- Desktop
+- Web
+
+Responsibilities
+
+- Display messages
+- Send messages
+- Upload media
+- Read receipts
+- Delivery receipts
+- Typing indicators
+
+Clients maintain a persistent WebSocket connection while the app is active.
+
+---
+
+## 2. Load Balancer
+
+The Load Balancer distributes incoming WebSocket connections across multiple WebSocket Servers.
+
+```
+Clients
+
+↓
+
+Load Balancer
+
+↓
+
+WS1
+WS2
+WS3
+```
+
+Benefits
+
+- High availability
+- Horizontal scaling
+- No single point of failure
+
+---
+
+## 3. WebSocket Servers
+
+The WebSocket Server is responsible only for connection management.
+
+Responsibilities
+
+- Accept WebSocket connections
+- Authenticate users
+- Maintain active WebSocket sessions
+- Heartbeats
+- Push messages to clients
+- Detect disconnects
+
+Example
+
+```java
+ConcurrentHashMap<UserId, WebSocketSession> sessions;
+```
+
+Notice
+
+WebSocket Servers do **not** contain messaging business logic.
+
+They simply manage active network connections.
+
+---
+
+# Stateful Component
+
+WebSocket Servers are **stateful**.
+
+Why?
+
+Because active WebSocket sessions exist only in memory.
+
+Example
+
+```
+Bob
+
+↓
+
+WebSocket Session
+```
+
+If a WebSocket Server crashes,
+
+clients reconnect and establish new WebSocket sessions.
+
+---
+
+## 4. Chat Service
+
+The Chat Service contains all messaging business logic.
+
+Responsibilities
+
+- Authenticate sender
+- Validate requests
+- Generate Message IDs
+- Store messages
+- Update message status
+- Read receipts
+- Delivery receipts
+- Group routing
+- Offline delivery
+- Publish Kafka events
+
+Unlike WebSocket Servers,
+
+Chat Services are completely stateless.
+
+---
+
+# Why Stateless?
+
+A Chat Service processes one request.
+
+Example
+
+```
+Receive Message
+
+↓
+
+Store Message
+
+↓
+
+Publish Kafka Event
+
+↓
+
+Return Response
+```
+
+After processing,
+
+no request-specific state remains in memory.
+
+Therefore,
+
+multiple Chat Service instances can be added or removed easily.
+
+---
+
+## 5. Message Database
+
+The Message Database is the **source of truth**.
+
+Stores
+
+- Messages
+- Conversation IDs
+- Status
+- Sender
+- Receiver
+- Timestamp
+
+Every message is persisted before delivery.
+
+This guarantees durability.
+
+---
+
+## 6. Redis
+
+Redis stores temporary information.
+
+Examples
+
+```
+Alice → WS1
+
+Bob → WS3
+```
+
+It also stores
+
+- Online users
+- Heartbeats
+- Presence
+- Optional typing state
+
+Redis does **not** store permanent chat history.
+
+---
+
+# Why Redis?
+
+Connection mappings change frequently.
+
+Example
+
+```
+Bob
+
+↓
+
+WS3
+
+↓
+
+Disconnect
+
+↓
+
+Reconnect
+
+↓
+
+WS1
+```
+
+Databases are not ideal for this type of frequently changing data.
+
+Redis provides extremely fast lookups.
+
+---
+
+## 7. Kafka
+
+Kafka is the event backbone.
+
+After successfully storing a message,
+
+the Chat Service publishes
+
+```
+MessageCreated
+```
+
+Kafka consumers include
+
+- Notification Service
+- Analytics
+- Search Indexing
+- Audit Logging
+
+This keeps the Chat Service lightweight.
+
+---
+
+## 8. Notification Service
+
+Responsible for offline users.
+
+If Redis indicates the recipient is offline,
+
+the Notification Service sends push notifications using
+
+- Firebase Cloud Messaging (FCM)
+- Apple Push Notification Service (APNS)
+
+---
+
+## 9. Object Storage
+
+Large media files are never stored inside the database.
+
+Examples
+
+- Images
+- Videos
+- Documents
+- Voice Notes
+
+Instead,
+
+media is uploaded to object storage such as Amazon S3.
+
+The Message Database stores only a reference (URL).
+
+---
+
+## 10. Group Service
+
+Responsible for
+
+- Group creation
+- Membership
+- Permissions
+- Group metadata
+
+Typical tables
+
+```
+Groups
+
+GroupMembers
+```
+
+---
+
+# Component Interaction
+
+The architecture intentionally separates concerns.
+
+| Component | Responsibility |
+|------------|----------------|
+| Client | User Interface |
+| Load Balancer | Distribute traffic |
+| WebSocket Server | Manage persistent connections |
+| Chat Service | Business logic |
+| Message DB | Source of truth |
+| Redis | Fast temporary state |
+| Kafka | Asynchronous event distribution |
+| Notification Service | Offline notifications |
+| Object Storage | Large media files |
+| Group Service | Group metadata |
+
+---
+
+# Stateful vs Stateless
+
+Understanding this distinction is extremely important.
+
+## Stateful Components
+
+```
+WebSocket Servers
+
+Redis
+
+Database
+```
+
+These components maintain state.
+
+---
+
+## Stateless Components
+
+```
+Chat Services
+
+Notification Service
+
+Analytics Service
+```
+
+These services process requests and do not retain request-specific information after completion.
+
+Stateless services scale horizontally with ease.
+
+---
+
+# Why Separate WebSocket Server From Chat Service?
+
+A common interview question.
+
+WebSocket Servers maintain millions of long-lived TCP connections.
+
+Chat Services perform CPU-intensive business logic.
+
+Separating them allows independent scaling.
+
+Example
+
+Suppose
+
+```
+10 million users online
+```
+
+We may require
+
+```
+200 WebSocket Servers
+```
+
+but only
+
+```
+30 Chat Service instances
+```
+
+because processing messages is much cheaper than maintaining millions of open network connections.
+
+---
+
+# Design Principles
+
+The architecture follows several important principles.
+
+### Separation of Concerns
+
+Every component has one responsibility.
+
+---
+
+### Stateless Business Logic
+
+Business logic scales independently.
+
+---
+
+### Event-Driven Architecture
+
+Kafka decouples downstream services.
+
+---
+
+### Durable Storage
+
+The Message Database is always the source of truth.
+
+---
+
+### In-Memory Routing
+
+Redis provides extremely fast routing to connected users.
+
+---
+
+### Horizontal Scalability
+
+Every major component can scale independently.
+
+---
+
+# What Comes Next
+
+Now that we understand the overall architecture and the role of every component,
+
+the next chapter focuses on one of the most important technologies used in modern chat systems:
+
+# Chapter 3
+
+**WebSockets Deep Dive**
+
+Topics include
+
+- Polling
+- Long Polling
+- Server-Sent Events (SSE)
+- WebSockets
+- Why WebSockets are ideal for chat
+- WebSocket lifecycle
+- One connection per device
+- WebSocket Server vs WebSocket Connection
+- Managing millions of persistent connections
+
+# WhatsApp System Design
+
+# Chapter 3 - WebSockets Deep Dive
+
+---
+
+# Why Do We Need WebSockets?
+
+Imagine Alice sends a message to Bob.
+
+Bob should see
+
+```
+Hi
+```
+
+almost instantly.
+
+Question:
+
+How does Bob's phone know a new message has arrived?
+
+There are four possible approaches:
+
+1. Polling
+2. Long Polling
+3. Server Sent Events (SSE)
+4. WebSockets
+
+Let's understand each.
+
+---
+
+# 1. Polling
+
+The client repeatedly asks the server
+
+```
+Do I have any new messages?
+```
+
+Example
+
+```
+Bob
+
+↓
+
+GET /messages
+
+↓
+
+No
+
+↓
+
+1 second later
+
+↓
+
+GET /messages
+
+↓
+
+No
+
+↓
+
+1 second later
+
+↓
+
+GET /messages
+
+↓
+
+Yes
+
+↓
+
+Hello
+```
+
+---
+
+## Advantages
+
+- Very easy to implement
+- Works everywhere
+
+---
+
+## Problems
+
+Suppose Bob receives
+
+```
+1 message/minute
+```
+
+but polls every second.
+
+```
+60 requests
+
+↓
+
+59 useless
+```
+
+Problems
+
+- Network overhead
+- CPU overhead
+- Database load
+- Increased latency
+
+Worst case latency equals
+
+```
+Polling Interval
+```
+
+---
+
+# 2. Long Polling
+
+Instead of responding immediately,
+
+the server waits until
+
+- a message arrives
+- timeout occurs
+
+Flow
+
+```
+Bob
+
+↓
+
+GET /messages
+
+↓
+
+(wait)
+
+↓
+
+Alice sends message
+
+↓
+
+Server responds
+
+↓
+
+Bob immediately opens another request
+```
+
+---
+
+## Advantages
+
+- Fewer requests than polling
+- Better latency
+
+---
+
+## Problems
+
+The server must keep thousands or millions of HTTP requests open.
+
+Still requires repeatedly creating new HTTP requests.
+
+---
+
+# 3. Server Sent Events (SSE)
+
+The client opens one HTTP connection.
+
+The server continuously pushes updates.
+
+```
+Server
+
+↓
+
+Message 1
+
+↓
+
+Message 2
+
+↓
+
+Message 3
+```
+
+---
+
+## Advantages
+
+- Efficient
+- Low latency
+- Simple
+
+---
+
+## Limitation
+
+Communication is
+
+```
+Server
+
+↓
+
+Client
+```
+
+only.
+
+If the client wants to send data,
+
+it must still use HTTP.
+
+Not suitable for chat.
+
+---
+
+# 4. WebSockets
+
+WebSockets upgrade an HTTP connection into a persistent bidirectional connection.
+
+Connection
+
+```
+HTTP
+
+↓
+
+Upgrade
+
+↓
+
+WebSocket
+```
+
+Now both client and server can send data at any time.
+
+```
+Client
+
+⇅
+
+Server
+```
+
+---
+
+# Why WebSockets?
+
+Chat applications require
+
+- Low latency
+- Continuous communication
+- Bidirectional communication
+- Very low overhead
+
+WebSockets satisfy all four.
+
+---
+
+# HTTP vs WebSocket
+
+## HTTP
+
+Every request creates a new conversation.
+
+```
+Request
+
+↓
+
+Response
+
+↓
+
+Connection Closed
+```
+
+---
+
+## WebSocket
+
+One connection stays open.
+
+```
+Connect
+
+↓
+
+Message
+
+↓
+
+Message
+
+↓
+
+Message
+
+↓
+
+Disconnect
+```
+
+---
+
+# Real World Analogy
+
+## Polling
+
+Every minute,
+
+you ask
+
+```
+Do I have mail?
+```
+
+---
+
+## Long Polling
+
+You tell the mailman
+
+```
+Don't answer until you actually have mail.
+```
+
+---
+
+## SSE
+
+Watching television.
+
+Only the broadcaster talks.
+
+---
+
+## WebSocket
+
+Talking on the phone.
+
+Both people can talk whenever they want.
+
+---
+
+# WebSocket Lifecycle
+
+```
+Connect
+
+↓
+
+Authenticate
+
+↓
+
+Store Session
+
+↓
+
+Heartbeat
+
+↓
+
+Exchange Messages
+
+↓
+
+Disconnect
+
+↓
+
+Remove Session
+```
+
+---
+
+# WebSocket Connection vs WebSocket Server
+
+This is one of the most misunderstood topics.
+
+---
+
+## WebSocket Connection
+
+One client
+
+↓
+
+One server
+
+```
+Alice Phone
+
+↓
+
+WebSocket Connection
+
+↓
+
+WebSocket Server
+```
+
+A connection belongs to exactly one client.
+
+---
+
+## WebSocket Server
+
+A WebSocket Server manages thousands of WebSocket connections.
+
+Example
+
+```
+                 WebSocket Server
+
+       Alice Connection
+
+       Bob Connection
+
+       Charlie Connection
+
+       David Connection
+```
+
+Internally
+
+```java
+ConcurrentHashMap<UserId, WebSocketSession> sessions;
+```
+
+---
+
+# One Connection Per Device
+
+Suppose Bob uses
+
+- iPhone
+- Laptop
+- Tablet
+
+Bob now has
+
+```
+iPhone
+
+↓
+
+Connection 1
+
+↓
+
+WS2
+
+
+Laptop
+
+↓
+
+Connection 2
+
+↓
+
+WS3
+
+
+Tablet
+
+↓
+
+Connection 3
+
+↓
+
+WS5
+```
+
+One connection per device.
+
+---
+
+# Multiple WebSocket Servers
+
+Millions of users cannot connect to one server.
+
+Production systems use
+
+```
+             Load Balancer
+
+        /       |        \
+
+      WS1      WS2      WS3
+```
+
+Each server manages only the users connected to it.
+
+---
+
+# Where Are Connections Stored?
+
+Connections are stored in memory.
+
+Example
+
+```java
+ConcurrentHashMap<UserId, WebSocketSession> sessions;
+```
+
+Example
+
+```
+Alice
+
+↓
+
+Session A
+
+Bob
+
+↓
+
+Session B
+
+Charlie
+
+↓
+
+Session C
+```
+
+This lookup is O(1).
+
+---
+
+# How Does The System Find Bob?
+
+Suppose
+
+Alice sends
+
+```
+Hi Bob
+```
+
+WS1 does not know where Bob is.
+
+Redis stores
+
+```
+Bob
+
+↓
+
+WS3
+```
+
+Chat Service forwards
+
+```
+WS3
+
+↓
+
+sessions.get("Bob")
+
+↓
+
+WebSocketSession
+
+↓
+
+send(message)
+```
+
+Bob receives the message.
+
+---
+
+# Why Not Store Socket IDs In Redis?
+
+Socket objects exist only inside a WebSocket Server.
+
+Redis stores only
+
+```
+User
+
+↓
+
+WebSocket Server
+```
+
+Each WebSocket Server already knows the actual session object.
+
+---
+
+# Heartbeats
+
+Suppose Bob loses internet.
+
+The server may not immediately know.
+
+Every
+
+```
+30 seconds
+```
+
+the client sends
+
+```
+PING
+```
+
+Server replies
+
+```
+PONG
+```
+
+If no heartbeat is received for
+
+```
+90 seconds
+```
+
+the user is considered offline.
+
+Redis removes
+
+```
+Bob
+
+↓
+
+ONLINE
+```
+
+---
+
+# Scaling
+
+WebSocket Servers are stateful.
+
+Each server stores active connections in memory.
+
+Scaling is done by adding more WebSocket Servers.
+
+```
+Load Balancer
+
+↓
+
+WS1
+
+WS2
+
+WS3
+
+WS4
+
+WS5
+```
+
+Clients reconnect automatically if one server fails.
+
+---
+
+# Advantages Of WebSockets
+
+- Full duplex communication
+- Very low latency
+- Low protocol overhead
+- Persistent connection
+- Perfect for real-time messaging
+- Supports millions of concurrent users
+
+---
+
+# Comparison
+
+| Feature | Polling | Long Polling | SSE | WebSocket |
+|----------|----------|--------------|-----|-----------|
+| Client → Server | Yes | Yes | HTTP | Yes |
+| Server → Client | No | Yes | Yes | Yes |
+| Bidirectional | No | No | No | Yes |
+| Persistent Connection | No | Temporary | Yes | Yes |
+| Overhead | High | Medium | Low | Very Low |
+| Best Use Case | Simple Apps | Legacy Notifications | Live Dashboards | Chat Applications |
+
+---
+
+# Interview Questions
+
+## Why not Polling?
+
+Too many unnecessary HTTP requests.
+
+---
+
+## Why not Long Polling?
+
+Still requires repeatedly opening HTTP requests and keeping many requests waiting.
+
+---
+
+## Why not SSE?
+
+Only supports server-to-client communication.
+
+Chat requires both directions.
+
+---
+
+## Why WebSockets?
+
+Persistent bidirectional communication with very low latency and minimal overhead.
+
+---
+
+# Interview Summary
+
+> A chat application requires persistent, low-latency, bidirectional communication between clients and the server. Polling and Long Polling generate unnecessary HTTP overhead, while Server-Sent Events only support one-way communication. WebSockets establish a single long-lived connection that allows both the client and server to exchange messages at any time. Each client device maintains its own WebSocket connection to a WebSocket Server, which manages thousands of active sessions in memory. Multiple WebSocket Servers are deployed behind a load balancer to support millions of concurrent users. Redis maintains a lightweight mapping from `userId` to `WebSocketServer`, enabling the Chat Service to efficiently route messages to the correct server for delivery.
+
+# WhatsApp System Design
+
+# Chapter 4 - Chat Service Deep Dive
+
+---
+
+# What Is The Chat Service?
+
+The Chat Service is the **brain** of the messaging system.
+
+Unlike the WebSocket Server, which only manages network connections, the Chat Service contains all the business logic.
+
+Think of the WebSocket Server as the **connection manager** and the Chat Service as the **application server**.
+
+---
+
+# Why Separate Chat Service From WebSocket Server?
+
+Many candidates initially design
+
+```
+Client
+
+↓
+
+WebSocket Server
+
+↓
+
+Database
+```
+
+This works.
+
+But now imagine adding
+
+- Read Receipts
+- Group Chat
+- Notifications
+- Media
+- Search
+- Analytics
+- Audit Logs
+
+The WebSocket Server becomes huge.
+
+Instead we separate responsibilities.
+
+```
+Client
+
+↓
+
+WebSocket Server
+
+↓
+
+Chat Service
+```
+
+---
+
+# Responsibilities
+
+The Chat Service is responsible for
+
+- Authenticate sender
+- Validate conversation
+- Generate Message ID
+- Persist messages
+- Update message status
+- Read receipts
+- Delivery receipts
+- Group routing
+- Offline delivery
+- Publish Kafka events
+- Determine recipient
+- Redis lookup
+
+Everything related to messaging lives here.
+
+---
+
+# Stateless Design
+
+One of the most important interview concepts.
+
+Chat Service is **Stateless**.
+
+Suppose Alice sends
+
+```
+Hi Bob
+```
+
+The Chat Service
+
+```
+Receive Request
+
+↓
+
+Validate
+
+↓
+
+Generate Message ID
+
+↓
+
+Store Database
+
+↓
+
+Publish Kafka
+
+↓
+
+Return Response
+```
+
+After returning,
+
+nothing remains in memory.
+
+Every future request can go to another Chat Service instance.
+
+---
+
+# Why Stateless?
+
+Stateless services
+
+- Scale easily
+- Recover easily
+- Load balance easily
+
+If Chat Service 2 crashes,
+
+the Load Balancer simply routes requests to
+
+```
+Chat Service 1
+
+or
+
+Chat Service 3
+```
+
+Nothing is lost because all important state is stored outside.
+
+---
+
+# Multiple Chat Services
+
+Production architecture
+
+```
+                 Load Balancer
+
+           /         |          \
+
+      Chat S1    Chat S2     Chat S3
+```
+
+Each request may reach a different instance.
+
+Example
+
+Alice
+
+↓
+
+Chat S2
+
+Bob
+
+↓
+
+Chat S1
+
+Charlie
+
+↓
+
+Chat S3
+
+This works because every Chat Service shares
+
+- Database
+- Redis
+- Kafka
+
+---
+
+# Message Lifecycle
+
+Suppose Alice sends
+
+```
+Hi Bob
+```
+
+The complete flow is
+
+```
+Alice
+
+↓
+
+WebSocket Server
+
+↓
+
+Chat Service
+
+↓
+
+Generate Snowflake ID
+
+↓
+
+Persist Message
+
+↓
+
+Publish Kafka Event
+
+↓
+
+Redis Lookup
+
+↓
+
+Forward To Bob
+```
+
+Let's examine every step.
+
+---
+
+# Step 1 - Authenticate
+
+Before processing,
+
+verify
+
+- JWT
+- Session
+- Sender
+
+Never trust client input.
+
+---
+
+# Step 2 - Validate Conversation
+
+Questions
+
+- Does Bob exist?
+- Is Alice blocked?
+- Does Alice belong to the group?
+- Is message size valid?
+
+Reject invalid requests.
+
+---
+
+# Step 3 - Generate Message ID
+
+Every message receives a globally unique ID.
+
+Typically
+
+Snowflake ID
+
+Example
+
+```
+MessageID
+
+98765432112345
+```
+
+Benefits
+
+- Globally unique
+- Roughly time ordered
+- No database sequence bottleneck
+
+---
+
+# Step 4 - Persist Message
+
+The Chat Service writes
+
+```
+Messages
+```
+
+table.
+
+Example
+
+| MessageId | Sender | Receiver | Status |
+|-----------|----------|------------|----------|
+|101|Alice|Bob|SENT|
+
+This is the source of truth.
+
+---
+
+# Why Store Before Delivery?
+
+Imagine
+
+Deliver first
+
+↓
+
+Database crashes
+
+Bob saw the message
+
+↓
+
+Message lost forever
+
+Bad.
+
+Therefore
+
+Always
+
+```
+Persist First
+
+↓
+
+Deliver Later
+```
+
+---
+
+# Step 5 - Publish Kafka Event
+
+After persistence,
+
+publish
+
+```
+MessageCreated
+```
+
+Kafka Event
+
+```
+MessageCreated
+
+MessageId
+
+Conversation
+
+Sender
+
+Receiver
+```
+
+---
+
+# Why Kafka?
+
+Many services care about a new message.
+
+Examples
+
+- Notification Service
+- Analytics
+- Search
+- Audit
+- Fraud Detection
+
+Without Kafka
+
+Chat Service directly calls
+
+every downstream service.
+
+Terrible coupling.
+
+Kafka decouples them.
+
+---
+
+# Step 6 - Locate Recipient
+
+Question
+
+Where is Bob?
+
+Redis contains
+
+```
+Bob
+
+↓
+
+WS2
+```
+
+Chat Service asks Redis
+
+```
+GET Bob
+```
+
+Returns
+
+```
+WS2
+```
+
+---
+
+# Step 7 - Forward Message
+
+Chat Service sends
+
+```
+Deliver
+
+↓
+
+WS2
+```
+
+WS2 performs
+
+```java
+sessions.get("Bob")
+```
+
+Returns
+
+```
+WebSocketSession
+```
+
+Then
+
+```java
+session.send(message);
+```
+
+Bob receives
+
+```
+Hi
+```
+
+---
+
+# Step 8 - Delivery Receipt
+
+Bob's client immediately responds
+
+```
+DELIVERED
+```
+
+Flow
+
+```
+Bob
+
+↓
+
+WS2
+
+↓
+
+Chat Service
+
+↓
+
+Database
+
+↓
+
+Status = DELIVERED
+```
+
+Then
+
+Alice is notified.
+
+```
+✓✓
+```
+
+---
+
+# Step 9 - Read Receipt
+
+Later
+
+Bob opens the conversation.
+
+Bob sends
+
+```
+READ
+```
+
+Flow
+
+```
+Bob
+
+↓
+
+Chat Service
+
+↓
+
+Database
+
+↓
+
+Status = READ
+
+↓
+
+Notify Alice
+```
+
+Alice now sees
+
+```
+Blue ✓✓
+```
+
+---
+
+# Online User Flow
+
+Redis
+
+```
+Bob
+
+↓
+
+WS2
+```
+
+Chat Service immediately forwards.
+
+---
+
+# Offline User Flow
+
+Redis
+
+```
+Bob
+
+↓
+
+OFFLINE
+```
+
+Chat Service
+
+```
+Persist
+
+↓
+
+Kafka
+
+↓
+
+Notification Service
+
+↓
+
+Push Notification
+```
+
+When Bob reconnects
+
+```
+SELECT *
+
+FROM Messages
+
+WHERE
+
+Status = UNDELIVERED
+```
+
+Messages are delivered.
+
+---
+
+# Why Doesn't Chat Service Keep Sessions?
+
+Suppose Chat Service stored
+
+```
+Bob
+
+↓
+
+Socket Object
+```
+
+Now
+
+100 Chat Services
+
+would each maintain connections.
+
+Scaling becomes difficult.
+
+Instead
+
+Connection Management
+
+↓
+
+WebSocket Servers
+
+Business Logic
+
+↓
+
+Chat Service
+
+Clean separation.
+
+---
+
+# Chat Service Responsibilities Summary
+
+| Responsibility | Why? |
+|---------------|------|
+| Authenticate | Security |
+| Validate | Data Integrity |
+| Generate Snowflake ID | Unique Ordering |
+| Persist Message | Durability |
+| Publish Kafka | Asynchronous Processing |
+| Redis Lookup | Find Recipient |
+| Route Message | Real-time Delivery |
+| Update Status | Read/Delivery Receipts |
+| Offline Handling | Reliable Delivery |
+
+---
+
+# Design Principles
+
+The Chat Service follows
+
+## Single Responsibility
+
+Only business logic.
+
+---
+
+## Stateless Design
+
+No in-memory request state.
+
+---
+
+## Event Driven
+
+Uses Kafka.
+
+---
+
+## Durable First
+
+Persist before delivery.
+
+---
+
+## Fast Routing
+
+Uses Redis.
+
+---
+
+# Interview Questions
+
+## Why multiple Chat Services?
+
+Stateless services scale horizontally and eliminate single points of failure.
+
+---
+
+## Why not merge Chat Service and WebSocket Server?
+
+WebSocket Servers manage long-lived connections.
+
+Chat Services execute business logic.
+
+Separating them allows each tier to scale independently.
+
+---
+
+## Why store before delivering?
+
+To guarantee durability.
+
+A delivered-but-not-persisted message is unacceptable.
+
+---
+
+## Why publish Kafka after storing?
+
+The database is the source of truth.
+
+Kafka distributes events to downstream services but should not replace durable storage.
+
+---
+
+# Complete Flow
+
+```
+Alice
+
+↓
+
+WebSocket Server
+
+↓
+
+Chat Service
+
+↓
+
+Authenticate
+
+↓
+
+Validate
+
+↓
+
+Generate Snowflake ID
+
+↓
+
+Persist Message
+
+↓
+
+Publish Kafka Event
+
+↓
+
+Redis Lookup
+
+↓
+
+Forward To Recipient WS Server
+
+↓
+
+Recipient
+
+↓
+
+Delivery Receipt
+
+↓
+
+Database Update
+
+↓
+
+Read Receipt
+
+↓
+
+Database Update
+```
+
+---
+
+# Interview Summary
+
+> The Chat Service is the stateless business layer of the messaging platform. It authenticates requests, validates conversations, generates globally unique message IDs using Snowflake, persists every message before delivery, publishes a `MessageCreated` event to Kafka, and uses Redis to locate the recipient's WebSocket Server for real-time delivery. Delivery and read acknowledgements follow the same path back through the Chat Service, which updates the message status in the database and notifies the sender. Because all durable state is stored in external systems such as the database, Redis, and Kafka, multiple Chat Service instances can be added or removed without affecting correctness, allowing the system to scale horizontally.
+
+# WhatsApp System Design
+
+# Chapter 5 - Redis Deep Dive
+
+---
+
+# Why Do We Need Redis?
+
+One of the most common interview questions is:
+
+> Why can't we simply use the database?
+
+Suppose Alice sends a message.
+
+The Chat Service needs to answer one question immediately:
+
+```
+Where is Bob currently connected?
+```
+
+This lookup happens for **every single message**.
+
+Doing a database query for every message would become a bottleneck.
+
+Instead, we keep this frequently changing information in Redis.
+
+---
+
+# What Does Redis Store?
+
+Redis stores **temporary, fast-changing state**, not permanent chat history.
+
+Examples include
+
+- User → WebSocket Server mapping
+- Online/Offline presence
+- Last heartbeat
+- Typing indicators (optional)
+- Session metadata
+
+Redis **does not** store
+
+- Chat history
+- Group messages
+- Media
+- Read receipts (permanent)
+- User profile
+
+Those belong in the database.
+
+---
+
+# Why Not Database?
+
+Imagine
+
+```
+100 Million online users
+```
+
+Every user
+
+- connects
+- disconnects
+- reconnects
+- switches WiFi
+- switches LTE
+- changes WebSocket server
+
+That's millions of updates every minute.
+
+Databases are optimized for
+
+- durability
+- consistency
+- complex queries
+
+Not for extremely frequent state changes.
+
+Redis is memory-based and designed exactly for this.
+
+---
+
+# User → WebSocket Mapping
+
+This is Redis's most important responsibility.
+
+Example
+
+```
+Alice
+
+↓
+
+WS1
+
+Bob
+
+↓
+
+WS3
+
+Charlie
+
+↓
+
+WS2
+```
+
+Conceptually
+
+```
+Alice -> WS1
+
+Bob -> WS3
+
+Charlie -> WS2
+```
+
+---
+
+# Why Do We Need This Mapping?
+
+Suppose Alice sends
+
+```
+Hi Bob
+```
+
+Flow
+
+```
+Chat Service
+
+↓
+
+Redis
+
+↓
+
+Bob
+
+↓
+
+WS3
+```
+
+Now Chat Service knows exactly which WebSocket Server should receive the message.
+
+Without Redis,
+
+the Chat Service would have to ask every WebSocket Server
+
+```
+Do you have Bob?
+```
+
+Terrible.
+
+---
+
+# Redis Lookup
+
+Conceptually
+
+```
+GET user:Bob
+```
+
+Returns
+
+```
+WS3
+```
+
+Chat Service forwards
+
+```
+Deliver
+
+↓
+
+WS3
+```
+
+WS3 performs
+
+```java
+sessions.get("Bob")
+```
+
+Bob receives the message.
+
+---
+
+# Presence
+
+Redis also stores online users.
+
+Example
+
+```
+user:Alice
+
+status = ONLINE
+```
+
+or conceptually
+
+```
+Alice
+
+↓
+
+ONLINE
+```
+
+---
+
+# Online Flow
+
+Bob opens WhatsApp.
+
+```
+Bob
+
+↓
+
+Authenticate
+
+↓
+
+Connect WebSocket
+
+↓
+
+Redis
+
+↓
+
+ONLINE
+```
+
+Now everyone immediately sees
+
+```
+Online
+```
+
+---
+
+# Offline Flow
+
+Bob closes the app.
+
+WebSocket disconnects.
+
+Redis updates
+
+```
+Bob
+
+↓
+
+OFFLINE
+```
+
+or simply removes the mapping.
+
+---
+
+# Unexpected Disconnects
+
+Suppose
+
+- Battery dies
+- Internet disappears
+- Phone crashes
+
+The server doesn't immediately know.
+
+---
+
+# Heartbeats
+
+Every
+
+```
+30 seconds
+```
+
+the client sends
+
+```
+PING
+```
+
+Server replies
+
+```
+PONG
+```
+
+If no heartbeat arrives for
+
+```
+90 seconds
+```
+
+the server assumes
+
+```
+OFFLINE
+```
+
+Redis removes
+
+```
+Bob
+
+↓
+
+ONLINE
+```
+
+---
+
+# Why Heartbeats?
+
+TCP connections don't always close gracefully.
+
+Heartbeats allow us to detect
+
+- Network failures
+- Device crashes
+- Lost connections
+
+---
+
+# Last Seen
+
+Online status changes constantly.
+
+Last Seen should be permanent.
+
+Therefore
+
+Redis
+
+```
+ONLINE
+```
+
+Database
+
+```
+Last Seen = 10:42 AM
+```
+
+When Bob disconnects
+
+```
+Update DB
+
+↓
+
+Last Seen
+```
+
+Then remove
+
+```
+ONLINE
+```
+
+from Redis.
+
+---
+
+# Typing Indicator
+
+Suppose Alice starts typing.
+
+Redis may optionally store
+
+```
+Conversation123
+
+↓
+
+Alice Typing
+```
+
+with
+
+```
+TTL = 3 seconds
+```
+
+If Alice stops typing,
+
+or no events arrive,
+
+Redis automatically expires the key.
+
+No cleanup required.
+
+---
+
+# Why TTL?
+
+Typing indicators are temporary.
+
+If Alice loses internet,
+
+the typing indicator disappears automatically.
+
+No stale state.
+
+---
+
+# Redis Data Structures
+
+Although Redis supports many structures,
+
+a messaging system mostly uses
+
+## String
+
+```
+user:Bob
+
+↓
+
+WS3
+```
+
+---
+
+## Hash
+
+```
+user:Bob
+
+status
+
+ONLINE
+
+lastHeartbeat
+
+10:30
+```
+
+---
+
+## Set
+
+Useful for
+
+```
+Online Users
+```
+
+Example
+
+```
+SADD onlineUsers Alice
+
+SADD onlineUsers Bob
+```
+
+---
+
+## Sorted Set (Optional)
+
+Useful for
+
+- ranking
+- recent activity
+- leaderboards
+
+Not commonly required for core messaging.
+
+---
+
+# Redis Cluster
+
+A single Redis server cannot handle millions of users.
+
+Production systems use
+
+```
+Redis Cluster
+
+      /     |      \
+
+Node1 Node2 Node3
+```
+
+Keys are automatically distributed.
+
+Example
+
+```
+Alice
+
+↓
+
+Node1
+
+Bob
+
+↓
+
+Node3
+```
+
+Scaling is horizontal.
+
+---
+
+# Failure Scenario
+
+Suppose Redis crashes.
+
+Do we lose chat history?
+
+No.
+
+Redis never stores permanent messages.
+
+Worst case
+
+- users reconnect
+- mappings are rebuilt
+- presence is restored
+
+Chat history remains safe in the Message Database.
+
+---
+
+# Redis vs Database
+
+| Redis | Database |
+|---------|----------|
+| Memory | Disk |
+| Very Fast | Slower |
+| Temporary State | Permanent State |
+| Presence | Messages |
+| Routing | Chat History |
+| Heartbeats | Read Receipts |
+| Typing | Media Metadata |
+
+---
+
+# Redis vs WebSocket Server Memory
+
+This is another common interview question.
+
+WebSocket Server
+
+```
+Bob
+
+↓
+
+WebSocketSession
+```
+
+Redis
+
+```
+Bob
+
+↓
+
+WS3
+```
+
+Notice the difference.
+
+Redis knows
+
+```
+Which server?
+```
+
+The WebSocket Server knows
+
+```
+Which socket?
+```
+
+Redis never stores actual socket objects.
+
+---
+
+# Complete Routing Flow
+
+```
+Alice
+
+↓
+
+Chat Service
+
+↓
+
+Redis
+
+↓
+
+Bob → WS3
+
+↓
+
+WS3
+
+↓
+
+sessions.get("Bob")
+
+↓
+
+WebSocketSession
+
+↓
+
+Bob
+```
+
+---
+
+# Why Redis Instead of Calling Every WS Server?
+
+Without Redis
+
+```
+Chat Service
+
+↓
+
+WS1?
+
+↓
+
+WS2?
+
+↓
+
+WS3?
+
+↓
+
+WS4?
+```
+
+Every message would require broadcasting a lookup.
+
+Complexity
+
+```
+O(Number of WS Servers)
+```
+
+With Redis
+
+```
+Chat Service
+
+↓
+
+Redis
+
+↓
+
+WS3
+```
+
+Complexity
+
+```
+O(1)
+```
+
+Huge improvement.
+
+---
+
+# Design Principles
+
+Redis stores
+
+- Frequently changing data
+- Temporary state
+- Fast lookups
+
+Databases store
+
+- Durable business data
+
+This separation allows each technology to do what it does best.
+
+---
+
+# Interview Questions
+
+## Why Redis?
+
+Because connection mappings and presence change extremely frequently and require low-latency lookups.
+
+---
+
+## Why not store chat history in Redis?
+
+Redis is in-memory and optimized for temporary state.
+
+Messages require durable storage.
+
+---
+
+## Why not store WebSocket sessions in Redis?
+
+WebSocket sessions are in-memory objects owned by a specific WebSocket Server.
+
+Redis stores only which server owns the connection.
+
+---
+
+## What happens if Redis crashes?
+
+Presence information and routing mappings are temporarily lost.
+
+Users reconnect, and mappings are rebuilt.
+
+No chat history is lost because messages are stored in the Message Database.
+
+---
+
+# Interview Summary
+
+> Redis acts as the distributed in-memory state store for the messaging system. It maintains lightweight, fast-changing information such as `userId → WebSocketServer` mappings, online presence, heartbeats, and optionally typing indicators. Whenever the Chat Service needs to deliver a message, it performs an O(1) Redis lookup to determine which WebSocket Server currently owns the recipient's connection. Redis complements the Message Database rather than replacing it—the database stores durable chat history, while Redis stores only transient routing and presence information. This separation enables low-latency message delivery while keeping permanent business data safely persisted.
+
+# WhatsApp System Design
+
+# Chapter 6 - Kafka Deep Dive
+
+---
+
+# Why Do We Need Kafka?
+
+One of the biggest mistakes candidates make is trying to make the Chat Service do everything.
+
+Suppose Alice sends
+
+```
+Hi Bob
+```
+
+The Chat Service now needs to
+
+- Deliver to Bob
+- Send Push Notification
+- Update Analytics
+- Index Search
+- Audit Logging
+- Fraud Detection
+- Recommendation Engine
+
+If Chat Service directly calls every service,
+
+```
+                Chat Service
+
+      /      |      |      |      \
+
+ Notification Analytics Search Audit Fraud
+```
+
+Problems
+
+- Tight coupling
+- Slow response
+- Difficult to add new services
+- One service failure impacts messaging
+
+Instead,
+
+the Chat Service should do only two critical things
+
+1. Persist the message
+2. Publish an event
+
+Everything else becomes asynchronous.
+
+---
+
+# Event-Driven Architecture
+
+Instead of directly calling services,
+
+Chat Service publishes
+
+```
+MessageCreated
+```
+
+event.
+
+```
+Chat Service
+
+↓
+
+Kafka
+
+↓
+
+Consumers
+```
+
+Now each consumer works independently.
+
+---
+
+# High Level Architecture
+
+```
+Alice
+
+↓
+
+WebSocket Server
+
+↓
+
+Chat Service
+
+↓
+
+Message Database
+
+↓
+
+Kafka
+
+      │
+      │
+ ┌────┼──────────────┬─────────────┐
+ ▼    ▼              ▼             ▼
+Notification    Analytics     Search     Audit
+ Service
+```
+
+The Chat Service is now completely decoupled.
+
+---
+
+# What Does Kafka Store?
+
+Kafka stores
+
+```
+Events
+```
+
+Example
+
+```json
+{
+   "event":"MessageCreated",
+   "messageId":101,
+   "sender":"Alice",
+   "receiver":"Bob",
+   "conversationId":200,
+   "timestamp":"10:30"
+}
+```
+
+Notice
+
+Kafka stores
+
+**events**
+
+not
+
+database rows.
+
+---
+
+# Why Publish After Database?
+
+Question
+
+Should we publish first?
+
+```
+Chat Service
+
+↓
+
+Kafka
+
+↓
+
+Database
+```
+
+No.
+
+Imagine
+
+```
+Kafka Success
+
+↓
+
+Database Failure
+```
+
+Consumers think
+
+the message exists,
+
+but it was never saved.
+
+Wrong.
+
+Correct order
+
+```
+Persist
+
+↓
+
+Publish Event
+```
+
+The Message Database is the source of truth.
+
+Kafka distributes changes.
+
+---
+
+# Producers
+
+The Chat Service is the producer.
+
+```
+Chat Service
+
+↓
+
+Kafka Topic
+```
+
+One request
+
+↓
+
+One event.
+
+---
+
+# Consumers
+
+Many services consume independently.
+
+```
+                 Kafka
+
+        /      |      |      \
+
+Notification Analytics Search Audit
+```
+
+Each service has its own responsibility.
+
+---
+
+# Notification Service
+
+Consumes
+
+```
+MessageCreated
+```
+
+Checks Redis.
+
+If receiver offline
+
+↓
+
+Send Push Notification
+
+---
+
+# Analytics Service
+
+Consumes
+
+```
+MessageCreated
+```
+
+Updates
+
+- Messages/day
+- Active users
+- Traffic graphs
+
+---
+
+# Search Service
+
+Consumes
+
+```
+MessageCreated
+```
+
+Indexes messages.
+
+Users can later search
+
+```
+Vacation
+
+Passport
+
+Tickets
+```
+
+---
+
+# Audit Service
+
+Stores immutable audit logs.
+
+Useful for
+
+- Compliance
+- Security
+- Investigations
+
+---
+
+# Why Kafka Instead Of REST Calls?
+
+Suppose Analytics is slow.
+
+REST
+
+```
+Chat Service
+
+↓
+
+Analytics
+
+↓
+
+Timeout
+```
+
+Alice waits longer.
+
+With Kafka
+
+```
+Chat Service
+
+↓
+
+Kafka
+
+↓
+
+Return Response
+```
+
+Analytics processes later.
+
+Messaging remains fast.
+
+---
+
+# Kafka Topics
+
+Common topics
+
+```
+message-created
+
+message-read
+
+message-delivered
+
+group-created
+
+media-uploaded
+```
+
+Different consumers subscribe to different topics.
+
+---
+
+# Consumer Groups
+
+Suppose Analytics receives
+
+```
+1 Million Events/sec
+```
+
+One consumer isn't enough.
+
+Kafka allows
+
+```
+Analytics Group
+
+Analytics1
+
+Analytics2
+
+Analytics3
+```
+
+Messages are shared across consumers.
+
+Horizontal scaling.
+
+---
+
+# Partitions
+
+Topics are divided into partitions.
+
+```
+Message Topic
+
+──────────────
+
+Partition 0
+
+Partition 1
+
+Partition 2
+```
+
+Multiple consumers process partitions simultaneously.
+
+---
+
+# Why Partition By ConversationId?
+
+Suppose
+
+Conversation
+
+Alice ↔ Bob
+
+Message1
+
+Message2
+
+Message3
+
+If all messages go to the same partition,
+
+Kafka guarantees
+
+```
+1
+
+↓
+
+2
+
+↓
+
+3
+```
+
+Ordering is preserved.
+
+If messages were spread across partitions,
+
+ordering could break.
+
+Therefore
+
+```
+Partition Key
+
+=
+
+ConversationId
+```
+
+---
+
+# Kafka Delivery Semantics
+
+Kafka supports
+
+### At Most Once
+
+Message may be lost.
+
+Never duplicated.
+
+---
+
+### At Least Once
+
+Message never lost.
+
+Duplicates possible.
+
+Default behavior.
+
+---
+
+### Exactly Once
+
+Neither lost nor duplicated.
+
+Requires
+
+- Idempotent Producers
+- Transactions
+- Transaction-aware Consumers/Sinks
+
+Higher complexity.
+
+---
+
+# What Do We Use?
+
+For chat systems,
+
+the Message Database is already the source of truth.
+
+Kafka mainly distributes events.
+
+Therefore
+
+```
+At Least Once
+```
+
+is usually sufficient.
+
+Duplicate analytics or notifications can be handled using idempotency.
+
+---
+
+# What Happens If Consumer Crashes?
+
+Suppose
+
+Analytics
+
+```
+Processed
+
+Message 1
+
+Message 2
+
+Crash
+```
+
+Kafka remembers
+
+```
+Last Committed Offset
+```
+
+Analytics restarts
+
+↓
+
+Continues
+
+from
+
+```
+Message 3
+```
+
+No events are lost.
+
+---
+
+# Replay
+
+One huge advantage.
+
+Suppose
+
+Search Service had a bug.
+
+Fix deployed.
+
+Simply replay
+
+```
+MessageCreated
+```
+
+events.
+
+Search index is rebuilt.
+
+Without touching production.
+
+---
+
+# Why Kafka Is Not The Source Of Truth
+
+Kafka has retention.
+
+Messages eventually expire.
+
+Therefore
+
+```
+Database
+
+↓
+
+Source of Truth
+
+Kafka
+
+↓
+
+Event Distribution
+```
+
+Never the opposite.
+
+---
+
+# Advantages
+
+- Loose coupling
+- Horizontal scalability
+- Replay capability
+- Fault tolerance
+- Asynchronous processing
+- Multiple consumers
+- Ordered processing within partitions
+
+---
+
+# Kafka vs Database
+
+| Database | Kafka |
+|------------|---------|
+| Stores business data | Stores events |
+| Durable source of truth | Event stream |
+| Query history | Replay events |
+| Supports updates | Immutable log |
+| Read by APIs | Read by consumers |
+
+---
+
+# Common Interview Questions
+
+## Why Kafka?
+
+To decouple downstream services and process non-critical work asynchronously.
+
+---
+
+## Why publish after storing?
+
+Because the database is the source of truth.
+
+---
+
+## Why not REST?
+
+REST tightly couples services and increases latency.
+
+---
+
+## Why ConversationId partitioning?
+
+Kafka guarantees ordering within a partition.
+
+Putting all messages of one conversation in the same partition preserves message order.
+
+---
+
+## What if Kafka crashes?
+
+Messages remain safely stored in the database.
+
+Kafka recovers from replicated logs.
+
+Consumers resume from committed offsets.
+
+---
+
+# Interview Summary
+
+> Kafka acts as the event backbone of the messaging platform. After a message is successfully persisted in the Message Database, the Chat Service publishes a `MessageCreated` event to Kafka. Downstream services such as Notification, Analytics, Search, and Audit consume these events independently without increasing the latency of message delivery. Kafka enables loose coupling, horizontal scalability, replay capability, and ordered processing within a conversation by partitioning events using the `conversationId`. The Message Database remains the durable source of truth, while Kafka is responsible for reliable event distribution.
+
+# WhatsApp System Design
+
+# Chapter 7 - End-to-End Message Flow
+
+---
+
+# Goal
+
+This chapter follows **one message** from the moment Alice presses **Send** until Bob reads it.
+
+By the end of this chapter, you should understand how every major component works together.
+
+We will cover
+
+- Message sending
+- Database persistence
+- Kafka publishing
+- Redis routing
+- WebSocket delivery
+- Delivery receipts
+- Read receipts
+- Offline delivery
+- Push notifications
+
+---
+
+# Scenario
+
+Alice sends
+
+```
+Hi Bob
+```
+
+Assume
+
+- Alice is connected to WS1
+- Bob is connected to WS3
+
+Redis contains
+
+```
+Alice -> WS1
+
+Bob -> WS3
+```
+
+---
+
+# Complete Architecture
+
+```
+                    Alice
+
+                      │
+
+              WebSocket Connection
+
+                      │
+
+                     WS1
+
+                      │
+
+                Chat Service
+
+      ┌──────────┬───────────────┬─────────────┐
+      ▼          ▼               ▼             ▼
+
+ Message DB   Redis Lookup     Kafka      Notification
+
+                      │
+
+                      ▼
+
+                     WS3
+
+                      │
+
+                      ▼
+
+                    Bob
+```
+
+---
+
+# Step 1 - Alice Presses Send
+
+Alice types
+
+```
+Hi Bob
+```
+
+The client sends
+
+```json
+{
+   "sender":"Alice",
+   "receiver":"Bob",
+   "message":"Hi Bob"
+}
+```
+
+over the existing WebSocket connection.
+
+No HTTP request is created.
+
+---
+
+# Step 2 - WebSocket Server
+
+Alice's request reaches
+
+```
+WS1
+```
+
+Responsibilities
+
+- Validate WebSocket session
+- Verify authentication
+- Forward request
+
+WS1 performs no business logic.
+
+It forwards the request to the Chat Service.
+
+---
+
+# Step 3 - Chat Service
+
+The Chat Service receives
+
+```
+Hi Bob
+```
+
+It performs
+
+- Authentication
+- Validation
+- Conversation checks
+- Block checks
+- Group membership (if applicable)
+
+---
+
+# Step 4 - Generate Message ID
+
+The Chat Service generates
+
+```
+Snowflake ID
+
+98765432112345
+```
+
+Benefits
+
+- Globally unique
+- Roughly time ordered
+- No database bottleneck
+
+---
+
+# Step 5 - Persist Message
+
+The message is written to the database.
+
+Messages
+
+| MessageId | Sender | Receiver | Message | Status |
+|-----------|----------|-----------|----------|---------|
+|101|Alice|Bob|Hi Bob|SENT|
+
+Status
+
+```
+SENT
+```
+
+means
+
+The server has safely stored the message.
+
+Not that Bob has received it.
+
+---
+
+# Why Persist First?
+
+Suppose we deliver first.
+
+```
+Bob Receives
+
+↓
+
+Database Crash
+```
+
+Now
+
+Bob saw
+
+```
+Hi Bob
+```
+
+but the message doesn't exist.
+
+Impossible to recover.
+
+Therefore
+
+Always
+
+```
+Persist
+
+↓
+
+Deliver
+```
+
+---
+
+# Step 6 - Publish Kafka Event
+
+The Chat Service publishes
+
+```
+MessageCreated
+```
+
+Example
+
+```json
+{
+   "event":"MessageCreated",
+   "messageId":101,
+   "sender":"Alice",
+   "receiver":"Bob"
+}
+```
+
+Kafka consumers
+
+- Notification
+- Analytics
+- Search
+- Audit
+
+This happens asynchronously.
+
+Alice doesn't wait.
+
+---
+
+# Step 7 - Find Bob
+
+Question
+
+Where is Bob?
+
+Redis
+
+```
+Bob
+
+↓
+
+WS3
+```
+
+The Chat Service performs
+
+```
+GET user:Bob
+```
+
+Returns
+
+```
+WS3
+```
+
+---
+
+# Step 8 - Forward To Bob
+
+Chat Service forwards
+
+```
+Deliver
+
+↓
+
+WS3
+```
+
+WS3 executes
+
+```java
+sessions.get("Bob")
+```
+
+Returns
+
+```
+WebSocketSession
+```
+
+WS3 pushes
+
+```
+Hi Bob
+```
+
+Bob receives the message instantly.
+
+---
+
+# Step 9 - Delivery Receipt
+
+Bob's client immediately sends
+
+```json
+{
+   "messageId":101,
+   "event":"DELIVERED"
+}
+```
+
+Flow
+
+```
+Bob
+
+↓
+
+WS3
+
+↓
+
+Chat Service
+```
+
+---
+
+# Step 10 - Update Database
+
+Database
+
+Before
+
+| MessageId | Status |
+|-----------|---------|
+|101|SENT|
+
+After
+
+| MessageId | Status |
+|-----------|---------|
+|101|DELIVERED|
+
+---
+
+# Step 11 - Notify Alice
+
+Redis
+
+```
+Alice
+
+↓
+
+WS1
+```
+
+Chat Service forwards
+
+```
+DELIVERED
+
+↓
+
+WS1
+
+↓
+
+Alice
+```
+
+Alice now sees
+
+```
+✓✓
+```
+
+---
+
+# Step 12 - Read Receipt
+
+Bob opens the conversation.
+
+Client sends
+
+```json
+{
+   "messageId":101,
+   "event":"READ"
+}
+```
+
+Flow
+
+```
+Bob
+
+↓
+
+WS3
+
+↓
+
+Chat Service
+
+↓
+
+Database
+```
+
+Database
+
+| MessageId | Status |
+|-----------|---------|
+|101|READ|
+
+---
+
+# Step 13 - Notify Alice
+
+Redis
+
+```
+Alice
+
+↓
+
+WS1
+```
+
+Forward
+
+```
+READ
+
+↓
+
+Alice
+```
+
+Alice now sees
+
+```
+Blue ✓✓
+```
+
+---
+
+# Online Message Flow
+
+```
+Alice
+
+↓
+
+WS1
+
+↓
+
+Chat Service
+
+↓
+
+Generate Snowflake ID
+
+↓
+
+Persist Database
+
+↓
+
+Publish Kafka Event
+
+↓
+
+Redis Lookup
+
+↓
+
+WS3
+
+↓
+
+Bob
+
+↓
+
+Delivered
+
+↓
+
+Database Update
+
+↓
+
+Alice
+
+↓
+
+Read
+
+↓
+
+Database Update
+
+↓
+
+Alice
+```
+
+---
+
+# Offline User Flow
+
+Suppose Bob isn't online.
+
+Redis
+
+```
+Bob
+
+↓
+
+OFFLINE
+```
+
+Now
+
+the Chat Service cannot push the message.
+
+Instead
+
+```
+Persist Message
+
+↓
+
+Publish Kafka
+
+↓
+
+Notification Service
+
+↓
+
+Push Notification
+```
+
+The message remains safely stored.
+
+---
+
+# Notification Flow
+
+Notification Service consumes
+
+```
+MessageCreated
+```
+
+Checks Redis
+
+```
+Bob
+
+↓
+
+OFFLINE
+```
+
+Sends
+
+- APNS
+- FCM
+
+Example
+
+```
+Alice sent you a message
+```
+
+---
+
+# Bob Opens WhatsApp
+
+Bob taps notification.
+
+The app launches.
+
+A new WebSocket connection is established.
+
+Redis updates
+
+```
+Bob
+
+↓
+
+WS2
+```
+
+---
+
+# Fetch Undelivered Messages
+
+The Chat Service executes
+
+```sql
+SELECT *
+FROM Messages
+WHERE Receiver='Bob'
+AND Status='UNDELIVERED'
+ORDER BY MessageId;
+```
+
+Returns
+
+```
+Hi Bob
+```
+
+The message is delivered.
+
+Database becomes
+
+```
+DELIVERED
+```
+
+---
+
+# Complete Offline Flow
+
+```
+Alice
+
+↓
+
+WS1
+
+↓
+
+Chat Service
+
+↓
+
+Persist Database
+
+↓
+
+Kafka
+
+↓
+
+Notification Service
+
+↓
+
+Push Notification
+
+↓
+
+Bob Opens App
+
+↓
+
+Reconnect
+
+↓
+
+Fetch Undelivered
+
+↓
+
+Deliver
+
+↓
+
+DELIVERED
+
+↓
+
+READ
+```
+
+---
+
+# Why Is This Architecture Reliable?
+
+Even if
+
+- WS crashes
+- Notification Service crashes
+- Kafka is temporarily unavailable
+
+the message is already persisted in the Message Database.
+
+Nothing is lost.
+
+The database is always the source of truth.
+
+---
+
+# Responsibilities During Message Flow
+
+| Component | Responsibility |
+|-----------|----------------|
+| Client | Send/Receive messages |
+| WebSocket Server | Manage connection |
+| Chat Service | Business logic |
+| Message Database | Durable storage |
+| Kafka | Event distribution |
+| Redis | Recipient routing |
+| Notification Service | Offline notifications |
+
+---
+
+# Sequence Diagram
+
+```
+Alice
+ │
+ │ Send Message
+ ▼
+WS1
+ │
+ ▼
+Chat Service
+ │
+ ├──────────────► Generate Snowflake ID
+ │
+ ├──────────────► Store in Message DB
+ │
+ ├──────────────► Publish MessageCreated to Kafka
+ │
+ ├──────────────► Lookup Bob in Redis
+ │
+ ▼
+WS3
+ │
+ ▼
+Bob
+ │
+ │ DELIVERED
+ ▼
+Chat Service
+ │
+ ▼
+Message DB
+ │
+ ▼
+WS1
+ │
+ ▼
+Alice (✓✓)
+ │
+ │ READ
+ ▼
+Chat Service
+ │
+ ▼
+Message DB
+ │
+ ▼
+WS1
+ │
+ ▼
+Alice (Blue ✓✓)
+```
+
+---
+
+# Interview Questions
+
+## Why persist before delivery?
+
+To guarantee durability.
+
+---
+
+## Why Redis lookup?
+
+To quickly determine which WebSocket Server owns the recipient's connection.
+
+---
+
+## Why Kafka after persistence?
+
+The database is the source of truth.
+
+Kafka distributes events asynchronously.
+
+---
+
+## Why WebSocket instead of HTTP?
+
+Persistent bidirectional communication with low latency.
+
+---
+
+## Why update message status?
+
+To support
+
+- SENT
+- DELIVERED
+- READ
+
+and display the correct UI.
+
+---
+
+# Interview Summary
+
+> When Alice sends a message, the request travels over an existing WebSocket connection to a WebSocket Server, which forwards it to the Chat Service. The Chat Service authenticates the request, validates the conversation, generates a Snowflake ID, and persists the message in the Message Database with a `SENT` status. After persistence, it publishes a `MessageCreated` event to Kafka for downstream services and performs a Redis lookup to determine which WebSocket Server currently manages Bob's connection. If Bob is online, the message is immediately forwarded to his WebSocket Server and delivered. Bob's client sends `DELIVERED` and later `READ` acknowledgements, allowing the Chat Service to update the database and notify Alice so her UI progresses from ✓ to ✓✓ to blue ✓✓. If Bob is offline, the message remains safely stored in the database while the Notification Service sends a push notification. When Bob reconnects, the Chat Service retrieves undelivered messages from the database and delivers them over the newly established WebSocket connection.
+
+# WhatsApp System Design
+
+# Chapter 8 - Database Design Deep Dive
+
+---
+
+# Goal
+
+A messaging application is fundamentally a **data-intensive system**.
+
+Everything eventually ends up in a database.
+
+A good database design should support
+
+- Fast message writes
+- Fast conversation retrieval
+- Read receipts
+- Group chats
+- Offline delivery
+- Scalability
+
+In this chapter we'll design the database from scratch.
+
+---
+
+# High Level Database Schema
+
+```
+Users
+
+↓
+
+Conversations
+
+↓
+
+Messages
+
+↓
+
+Groups
+
+↓
+
+GroupMembers
+
+↓
+
+MessageRecipient (Fan-out on Write)
+
+OR
+
+↓
+
+UserGroupState (Fan-out on Read)
+```
+
+---
+
+# 1. Users Table
+
+Stores user information.
+
+| Column | Type | Description |
+|---------|------|-------------|
+| userId | BIGINT | Primary Key |
+| username | VARCHAR | Display Name |
+| phone | VARCHAR | Login |
+| profilePic | VARCHAR | URL |
+| lastSeen | TIMESTAMP | Last active |
+| createdAt | TIMESTAMP | Account creation |
+
+Example
+
+| userId | username |
+|----------|-----------|
+|1|Alice|
+|2|Bob|
+|3|Charlie|
+
+---
+
+# 2. Conversations Table
+
+Every chat has one Conversation ID.
+
+This simplifies routing.
+
+Instead of searching
+
+```
+Alice
+
+Bob
+```
+
+we use
+
+```
+ConversationId
+```
+
+---
+
+## One-to-One
+
+| conversationId | type |
+|----------------|------|
+|101|DIRECT|
+
+---
+
+## Group
+
+| conversationId | type |
+|----------------|------|
+|500|GROUP|
+
+---
+
+# Why Conversation Table?
+
+Without it,
+
+every query becomes
+
+```
+WHERE
+
+(sender=Alice AND receiver=Bob)
+
+OR
+
+(sender=Bob AND receiver=Alice)
+```
+
+Instead
+
+```
+WHERE conversationId=101
+```
+
+Much cleaner.
+
+---
+
+# 3. ConversationMembers
+
+Maps users to conversations.
+
+For Direct Chat
+
+| conversationId | userId |
+|----------------|---------|
+|101|Alice|
+|101|Bob|
+
+---
+
+For Group
+
+| conversationId | userId |
+|----------------|---------|
+|500|Alice|
+|500|Bob|
+|500|Charlie|
+|500|David|
+
+Notice
+
+This table works for
+
+- Direct chats
+- Groups
+
+Many companies don't keep separate
+
+```
+Groups
+
+GroupMembers
+```
+
+Instead
+
+everything is represented as a conversation.
+
+---
+
+# 4. Messages Table
+
+This is the most important table.
+
+| Column | Description |
+|---------|-------------|
+| messageId | Snowflake ID |
+| conversationId | Chat |
+| senderId | Sender |
+| messageType | TEXT / IMAGE / VIDEO |
+| content | Text OR Media URL |
+| status | SENT / DELIVERED / READ |
+| createdAt | Timestamp |
+
+---
+
+Example
+
+| MessageId | Conversation | Sender | Content |
+|------------|--------------|---------|----------|
+|101|500|Alice|Hello|
+|102|500|Bob|Hi|
+|103|500|Charlie|Welcome|
+
+---
+
+# Why Store ConversationId?
+
+Instead of
+
+```
+Alice
+
+Bob
+```
+
+Every query becomes
+
+```
+SELECT *
+
+WHERE conversationId=500
+
+ORDER BY messageId
+```
+
+Simple.
+
+---
+
+# 5. Message Status
+
+One-to-one chats
+
+| MessageId | Status |
+|------------|----------|
+|101|SENT|
+
+↓
+
+|101|DELIVERED|
+
+↓
+
+|101|READ|
+
+Simple.
+
+---
+
+# Group Chats
+
+Things become interesting.
+
+Should one message have
+
+```
+READ
+```
+
+or
+
+```
+DELIVERED
+```
+
+No.
+
+Every recipient has a different state.
+
+Therefore
+
+two approaches.
+
+---
+
+# Fan-out on Write
+
+Tables
+
+Messages
+
++
+
+MessageRecipient
+
+---
+
+Messages
+
+| MessageId | Conversation | Sender |
+|------------|-------------|---------|
+|101|500|Alice|
+
+---
+
+MessageRecipient
+
+| MessageId | User | Status |
+|------------|------|----------|
+|101|Bob|READ|
+|101|Charlie|DELIVERED|
+|101|David|UNDELIVERED|
+
+Every recipient has an independent lifecycle.
+
+---
+
+Advantages
+
+Easy
+
+Fast Reads
+
+---
+
+Disadvantages
+
+Huge storage.
+
+---
+
+# Storage Example
+
+1000 Members
+
+100 Messages
+
+Rows
+
+```
+100
+
++
+
+100 × 999
+
+=
+
+99,900
+```
+
+Huge.
+
+---
+
+# Fan-out on Read
+
+Instead
+
+Store only
+
+Messages
+
+---
+
+Messages
+
+| MessageId | Conversation | Sender |
+|------------|-------------|---------|
+|101|500|Alice|
+|102|500|Bob|
+|103|500|Charlie|
+
+---
+
+UserConversationState
+
+| User | Conversation | LastReadMessage |
+|------|---------------|----------------|
+|Alice|500|103|
+|Bob|500|102|
+|Charlie|500|101|
+
+Now Charlie opens the chat.
+
+Query
+
+```sql
+SELECT *
+FROM Messages
+WHERE ConversationId=500
+AND MessageId >101
+ORDER BY MessageId;
+```
+
+Returns
+
+```
+102
+
+103
+```
+
+Done.
+
+---
+
+Advantages
+
+Tiny storage.
+
+---
+
+Disadvantages
+
+More expensive reads.
+
+---
+
+# Why LastReadMessage Instead Of Unread List?
+
+Bad
+
+```
+Bob needs
+
+101
+
+102
+
+103
+
+104
+```
+
+Good
+
+```
+Bob has read
+
+100
+```
+
+Everything after
+
+100
+
+is unread.
+
+Storage drops dramatically.
+
+---
+
+# Media Messages
+
+Don't store
+
+```
+100 MB Video
+```
+
+Instead
+
+Messages
+
+| MessageId | Type | Content |
+|------------|------|----------|
+|101|VIDEO|https://cdn/video123.mp4|
+
+Only metadata.
+
+---
+
+# Conversation Query
+
+Opening a chat
+
+```sql
+SELECT *
+FROM Messages
+WHERE ConversationId=500
+ORDER BY MessageId DESC
+LIMIT 50;
+```
+
+This becomes the most common query.
+
+---
+
+# Indexes
+
+## Messages
+
+Primary Key
+
+```
+messageId
+```
+
+Secondary
+
+```
+(conversationId, messageId)
+```
+
+Supports
+
+```
+Latest 50 Messages
+```
+
+very efficiently.
+
+---
+
+ConversationMembers
+
+Index
+
+```
+userId
+```
+
+Useful for
+
+```
+Show My Conversations
+```
+
+---
+
+Users
+
+Index
+
+```
+phone
+```
+
+for login.
+
+---
+
+# Database Partitioning
+
+Suppose
+
+```
+20 Billion Messages
+
+Per Day
+```
+
+One database isn't enough.
+
+Partition
+
+```
+ConversationId
+```
+
+Example
+
+```
+Conversation 1
+
+↓
+
+Shard A
+
+Conversation 2
+
+↓
+
+Shard B
+
+Conversation 3
+
+↓
+
+Shard C
+```
+
+All messages of one conversation stay together.
+
+Ordering preserved.
+
+---
+
+# Why Partition By Conversation?
+
+Bad
+
+```
+Partition
+
+Sender
+```
+
+Now
+
+Alice→Bob
+
+Bob→Alice
+
+could land on different shards.
+
+Conversation queries become expensive.
+
+---
+
+Good
+
+```
+ConversationId
+```
+
+All conversation history remains together.
+
+---
+
+# Soft Delete
+
+Never physically delete immediately.
+
+Instead
+
+```
+isDeleted=true
+```
+
+Allows
+
+- Recovery
+- Compliance
+- Audit
+
+Background jobs clean old data.
+
+---
+
+# Database Summary
+
+| Table | Purpose |
+|---------|----------|
+| Users | User information |
+| Conversations | Chat metadata |
+| ConversationMembers | Users in conversation |
+| Messages | Chat history |
+| MessageRecipient | Fan-out on Write |
+| UserConversationState | Fan-out on Read |
+
+---
+
+# Interview Questions
+
+## Why Conversation Table?
+
+Simplifies querying and routing.
+
+---
+
+## Why ConversationId instead of Sender/Receiver?
+
+One query works for both direct and group chats.
+
+---
+
+## Why Snowflake IDs?
+
+Globally unique IDs without a centralized sequence and roughly time ordered.
+
+---
+
+## Why MessageRecipient?
+
+Tracks individual delivery/read status for each recipient in fan-out on write.
+
+---
+
+## Why UserConversationState?
+
+Tracks only the user's progress (`LastReadMessage`) in fan-out on read, dramatically reducing storage.
+
+---
+
+## Why Store Media URL Instead of Media?
+
+Databases are optimized for structured data.
+
+Large binaries belong in object storage.
+
+---
+
+## Why Partition By ConversationId?
+
+Keeps all messages for a conversation together, enabling efficient retrieval and preserving ordering.
+
+---
+
+# Interview Summary
+
+> The database is the durable source of truth for the messaging system. Users and Conversations model participants and chats, while the Messages table stores the complete message history using globally unique Snowflake IDs. ConversationMembers maps users to conversations and supports both direct and group chats. For small groups, fan-out on write creates MessageRecipient records to track delivery and read status for every recipient. For very large groups, fan-out on read stores each message only once and maintains a lightweight UserConversationState table with the user's LastReadMessageId. Messages are partitioned by ConversationId to keep all conversation history together, media is stored externally in object storage with only URLs in the database, and appropriate indexes support efficient retrieval of recent conversation history.
+
+# WhatsApp System Design
+
+# Chapter 9 - Scaling the System
+
+---
+
+# Goal
+
+A basic chat application works well for a few thousand users.
+
+WhatsApp supports
+
+- Billions of users
+- Hundreds of millions of daily active users
+- Millions of concurrent WebSocket connections
+- Millions of messages per second
+
+The system must scale horizontally at every layer.
+
+The design principle is
+
+```
+Scale each component independently.
+```
+
+---
+
+# High-Level Scaling
+
+```
+Clients
+
+↓
+
+Load Balancer
+
+↓
+
+Multiple WebSocket Servers
+
+↓
+
+Load Balancer
+
+↓
+
+Multiple Chat Services
+
+↓
+
+Redis Cluster
+
+Kafka Cluster
+
+Database Shards
+
+Object Storage
+```
+
+Notice
+
+There is **no single server**.
+
+Everything scales horizontally.
+
+---
+
+# Scaling WebSocket Servers
+
+WebSocket Servers are stateful.
+
+Each server keeps
+
+```java
+ConcurrentHashMap<UserId, WebSocketSession>
+```
+
+Suppose one server can maintain
+
+```
+100,000 WebSocket connections
+```
+
+If
+
+```
+10 Million users
+```
+
+are online
+
+We need
+
+```
+10,000,000
+
+/
+
+100,000
+
+=
+
+100 WebSocket Servers
+```
+
+A Load Balancer distributes new connections.
+
+```
+Clients
+
+↓
+
+LB
+
+↓
+
+WS1
+
+WS2
+
+WS3
+
+...
+
+WS100
+```
+
+---
+
+# Why Can't We Use One Huge WebSocket Server?
+
+Problems
+
+- Memory limits
+- CPU limits
+- File descriptor limits
+- Network bandwidth
+- Single point of failure
+
+Horizontal scaling is much safer.
+
+---
+
+# Scaling Chat Services
+
+Unlike WebSocket Servers,
+
+Chat Services are stateless.
+
+```
+Request
+
+↓
+
+Process
+
+↓
+
+Return
+```
+
+Nothing remains in memory.
+
+Suppose
+
+one Chat Service handles
+
+```
+20,000 requests/sec
+```
+
+If traffic grows
+
+```
+200,000 requests/sec
+```
+
+Simply add more instances.
+
+```
+LB
+
+↓
+
+Chat1
+
+Chat2
+
+Chat3
+
+...
+
+Chat10
+```
+
+Very easy.
+
+---
+
+# Why Separate Scaling?
+
+Suppose
+
+```
+20 Million users online
+
+but
+
+very few messages
+```
+
+Need
+
+```
+Many WebSocket Servers
+
+Few Chat Services
+```
+
+Another day
+
+```
+Same online users
+
+Holiday
+
+Huge message traffic
+```
+
+Need
+
+```
+Same WS Servers
+
+More Chat Services
+```
+
+Independent scaling saves money.
+
+---
+
+# Scaling Redis
+
+Redis stores
+
+```
+User
+
+↓
+
+WS Server
+```
+
+and
+
+```
+Presence
+```
+
+One Redis server cannot store everything.
+
+Use
+
+```
+Redis Cluster
+
+      /     |      \
+
+Node1 Node2 Node3
+```
+
+Keys are automatically distributed.
+
+Example
+
+```
+Alice
+
+↓
+
+Node1
+
+Bob
+
+↓
+
+Node3
+```
+
+---
+
+# Scaling Kafka
+
+One Kafka broker is insufficient.
+
+Kafka uses
+
+```
+Topic
+
+↓
+
+Partitions
+```
+
+Example
+
+```
+Message Topic
+
+Partition 0
+
+Partition 1
+
+Partition 2
+
+Partition 3
+```
+
+Producers write
+
+Consumers read
+
+Many consumers can process in parallel.
+
+---
+
+# Why ConversationId Partition?
+
+Suppose
+
+Alice sends
+
+```
+Hi
+```
+
+Then
+
+```
+How are you?
+```
+
+If both go to
+
+```
+Partition 2
+```
+
+Kafka guarantees
+
+```
+Hi
+
+↓
+
+How are you?
+```
+
+Ordering preserved.
+
+---
+
+# Scaling The Database
+
+Messages grow forever.
+
+Eventually
+
+one database cannot store all messages.
+
+Shard
+
+by
+
+```
+ConversationId
+```
+
+Example
+
+```
+Conversation A
+
+↓
+
+Shard1
+
+Conversation B
+
+↓
+
+Shard2
+
+Conversation C
+
+↓
+
+Shard3
+```
+
+Benefits
+
+- Smaller databases
+- Parallel writes
+- Parallel reads
+
+---
+
+# Why Not Shard By User?
+
+Suppose
+
+Alice
+
+↓
+
+Shard1
+
+Bob
+
+↓
+
+Shard2
+
+Conversation queries become
+
+```
+Read
+
+Shard1
+
++
+
+Shard2
+```
+
+Much slower.
+
+ConversationId keeps related messages together.
+
+---
+
+# Scaling Object Storage
+
+Media
+
+- Images
+- Videos
+- Voice Notes
+
+are stored in
+
+Object Storage
+
+Examples
+
+- Amazon S3
+- Google Cloud Storage
+- Azure Blob Storage
+
+These systems are already horizontally scalable.
+
+No custom scaling required.
+
+---
+
+# CDN
+
+Suppose
+
+one viral video
+
+gets
+
+```
+5 Million downloads
+```
+
+Without CDN
+
+```
+Everyone
+
+↓
+
+Object Storage
+```
+
+Expensive.
+
+With CDN
+
+```
+Users
+
+↓
+
+Nearest CDN Edge
+
+↓
+
+Object Storage (only on cache miss)
+```
+
+Much lower latency.
+
+---
+
+# Scaling Notification Service
+
+Notification Service is stateless.
+
+```
+Kafka
+
+↓
+
+Notification1
+
+Notification2
+
+Notification3
+```
+
+Consumer Group
+
+More traffic?
+
+Add more consumers.
+
+---
+
+# Scaling Analytics
+
+Analytics
+
+consumes
+
+```
+MessageCreated
+```
+
+Millions of events/sec.
+
+Again
+
+```
+Kafka
+
+↓
+
+Analytics1
+
+Analytics2
+
+Analytics3
+
+Analytics4
+```
+
+Horizontal scaling.
+
+---
+
+# Stateless vs Stateful
+
+This is an important interview topic.
+
+## Stateful
+
+- WebSocket Servers
+- Redis
+- Database
+
+Need careful management.
+
+---
+
+## Stateless
+
+- Chat Service
+- Notification Service
+- Analytics Service
+- Search Service
+
+Simply add more instances.
+
+---
+
+# Capacity Planning Example
+
+Suppose
+
+```
+100 Million Online Users
+```
+
+Assume
+
+```
+100,000 WebSocket Connections
+
+per WS Server
+```
+
+Need
+
+```
+1000 WS Servers
+```
+
+Suppose
+
+```
+1 Million Messages/sec
+```
+
+One Chat Service
+
+```
+25,000 Requests/sec
+```
+
+Need
+
+```
+40 Chat Service instances
+```
+
+Notice
+
+1000 WS Servers
+
+40 Chat Services
+
+Different scaling requirements.
+
+---
+
+# Failure Isolation
+
+Suppose
+
+Analytics crashes.
+
+```
+Messaging
+
+↓
+
+Still Works
+```
+
+Suppose
+
+Notification crashes.
+
+```
+Chat
+
+↓
+
+Still Works
+```
+
+Kafka isolates failures.
+
+---
+
+# Design Principles
+
+Every tier scales independently.
+
+```
+Connections
+
+↓
+
+WebSocket Layer
+
+Business Logic
+
+↓
+
+Chat Layer
+
+Storage
+
+↓
+
+Database
+
+Routing
+
+↓
+
+Redis
+
+Events
+
+↓
+
+Kafka
+```
+
+No single bottleneck.
+
+---
+
+# Interview Questions
+
+## Why multiple WebSocket Servers?
+
+Millions of persistent TCP connections cannot fit on one machine.
+
+---
+
+## Why multiple Chat Services?
+
+Stateless business logic scales horizontally.
+
+---
+
+## Why separate WS Servers from Chat Services?
+
+Connection count and message throughput grow independently.
+
+---
+
+## Why shard the database?
+
+One database eventually becomes too large.
+
+---
+
+## Why partition Kafka?
+
+Parallel processing while preserving ordering.
+
+---
+
+## Why Redis Cluster?
+
+One Redis node cannot handle all routing and presence data.
+
+---
+
+# Interview Summary
+
+> The architecture scales horizontally by treating every major component as an independent tier. WebSocket Servers scale based on the number of concurrent connections, while stateless Chat Services scale based on message throughput. Redis is deployed as a cluster to distribute presence and routing information, Kafka uses partitions and consumer groups for parallel event processing, and the Message Database is sharded by ConversationId so that all messages of a conversation remain together. Object storage and CDNs handle media at internet scale. This separation of concerns allows the platform to support hundreds of millions of users while avoiding single points of failure and enabling each layer to scale according to its own workload.
+
+# WhatsApp System Design
+
+# Chapter 10 - Fault Tolerance & Failure Handling
+
+---
+
+# Goal
+
+Distributed systems fail.
+
+Servers crash.
+
+Networks fail.
+
+Databases become unavailable.
+
+Redis restarts.
+
+Kafka brokers go down.
+
+A production system must continue operating despite these failures.
+
+This chapter discusses common failure scenarios and how to recover from them.
+
+---
+
+# High-Level Principle
+
+Always identify
+
+1. What failed?
+2. What state was already persisted?
+3. How do we recover?
+4. Could duplicate work happen?
+5. Could data be lost?
+
+A good design minimizes
+
+- Data loss
+- Downtime
+- Duplicate processing
+
+---
+
+# Failure Scenario 1
+
+## WebSocket Server Crashes
+
+Suppose
+
+```
+Bob
+
+↓
+
+WS3
+```
+
+WS3 suddenly crashes.
+
+---
+
+# What Happens?
+
+The WebSocket sessions existed only in memory.
+
+```
+Bob
+
+↓
+
+Disconnected
+```
+
+Redis still contains
+
+```
+Bob -> WS3
+```
+
+which is now stale.
+
+---
+
+# Recovery
+
+Bob's client automatically reconnects.
+
+```
+Bob
+
+↓
+
+Load Balancer
+
+↓
+
+WS5
+```
+
+Redis updates
+
+```
+Bob
+
+↓
+
+WS5
+```
+
+The stale entry is replaced.
+
+---
+
+# Are Messages Lost?
+
+No.
+
+Messages were already stored in
+
+```
+Message Database
+```
+
+After reconnecting,
+
+Chat Service queries
+
+```sql
+SELECT *
+FROM Messages
+WHERE Receiver='Bob'
+AND Status='UNDELIVERED';
+```
+
+Missed messages are delivered.
+
+---
+
+# Failure Scenario 2
+
+## Chat Service Crashes Before Writing To Database
+
+```
+Alice
+
+↓
+
+Chat Service
+
+↓
+
+CRASH
+```
+
+before persistence.
+
+---
+
+Result
+
+Message never entered the system.
+
+Client receives
+
+```
+Failure
+
+or
+
+Timeout
+```
+
+Alice retries.
+
+No inconsistency exists because nothing was stored.
+
+---
+
+# Failure Scenario 3
+
+## Chat Service Crashes After Database Write But Before Kafka Publish
+
+Flow
+
+```
+Persist
+
+↓
+
+CRASH
+
+↓
+
+Kafka Publish Never Happens
+```
+
+Problem
+
+Message exists
+
+Notification doesn't.
+
+Analytics doesn't.
+
+Search doesn't.
+
+---
+
+# Solution
+
+Use the
+
+## Transactional Outbox Pattern
+
+Instead of
+
+```
+DB
+
+↓
+
+Kafka
+```
+
+Chat Service writes
+
+```
+Messages
+
++
+
+Outbox Event
+```
+
+inside one database transaction.
+
+---
+
+Outbox
+
+| EventId | Event | Published |
+|----------|--------|-----------|
+|500|MessageCreated|No|
+
+---
+
+A background publisher reads
+
+```
+Published = No
+```
+
+publishes to Kafka,
+
+then marks
+
+```
+Published = Yes
+```
+
+No events are lost.
+
+---
+
+# Failure Scenario 4
+
+## Kafka Broker Crashes
+
+Kafka replicates partitions.
+
+```
+Broker1
+
+Broker2
+
+Broker3
+```
+
+One broker is leader.
+
+Others are followers.
+
+If leader crashes
+
+```
+Follower
+
+↓
+
+Leader
+```
+
+Clients continue.
+
+---
+
+# Failure Scenario 5
+
+## Kafka Consumer Crashes
+
+Suppose
+
+Analytics consumed
+
+```
+Event1
+
+Event2
+
+Crash
+```
+
+Offset committed
+
+after Event2.
+
+When Analytics restarts
+
+Kafka resumes
+
+```
+Event3
+```
+
+No events lost.
+
+---
+
+# Failure Scenario 6
+
+## Redis Crashes
+
+Redis stores
+
+- Presence
+- Routing
+- Typing
+- Heartbeats
+
+Redis does NOT store messages.
+
+Worst case
+
+```
+Nobody appears online
+```
+
+until reconnect.
+
+Users reconnect.
+
+Mappings rebuild automatically.
+
+Chat history remains safe.
+
+---
+
+# Failure Scenario 7
+
+## Database Crashes
+
+This is serious.
+
+The Message Database is the source of truth.
+
+Production databases use
+
+- Primary
+- Replicas
+
+```
+Primary
+
+↓
+
+Replica1
+
+Replica2
+```
+
+If Primary fails
+
+Replica is promoted.
+
+Writes continue.
+
+---
+
+# Failure Scenario 8
+
+## Notification Service Crashes
+
+Notification events accumulate in Kafka.
+
+```
+Kafka
+
+↓
+
+Notification
+
+↓
+
+Crash
+```
+
+No problem.
+
+After restart,
+
+Notification resumes from the last committed offset.
+
+Push notifications continue.
+
+---
+
+# Failure Scenario 9
+
+## Duplicate Kafka Events
+
+Kafka default delivery is
+
+```
+At Least Once
+```
+
+Duplicate events are possible.
+
+Example
+
+```
+MessageCreated
+
+↓
+
+Notification
+
+↓
+
+Crash
+
+↓
+
+Replay
+
+↓
+
+Notification Again
+```
+
+---
+
+# Solution
+
+Idempotency.
+
+Store
+
+```
+Processed Event IDs
+```
+
+Example
+
+```
+Event123
+
+Already Processed
+```
+
+Ignore duplicate.
+
+---
+
+# Failure Scenario 10
+
+## Duplicate Message Submission
+
+Alice presses
+
+```
+Send
+```
+
+Network timeout.
+
+Alice presses again.
+
+Two identical requests arrive.
+
+---
+
+# Solution
+
+Client generates
+
+```
+ClientMessageId
+```
+
+Example
+
+```
+UUID
+```
+
+Chat Service checks
+
+```
+Already Exists?
+```
+
+If yes
+
+Return previous response.
+
+No duplicate message.
+
+---
+
+# Failure Scenario 11
+
+## Lost Delivery Receipt
+
+Bob receives
+
+```
+Hi
+```
+
+but
+
+```
+DELIVERED
+```
+
+never reaches server.
+
+Database still says
+
+```
+SENT
+```
+
+---
+
+Recovery
+
+Client periodically resends
+
+```
+DELIVERED
+```
+
+until acknowledged.
+
+Because updates are idempotent,
+
+setting
+
+```
+Status = DELIVERED
+```
+
+multiple times is harmless.
+
+---
+
+# Failure Scenario 12
+
+## Lost Read Receipt
+
+Exactly the same.
+
+READ updates are idempotent.
+
+```
+READ
+
+↓
+
+READ
+
+↓
+
+READ
+```
+
+No issue.
+
+---
+
+# Failure Scenario 13
+
+## Object Storage Failure
+
+Upload fails.
+
+Message should NOT reference a missing file.
+
+Correct flow
+
+```
+Upload Media
+
+↓
+
+Success
+
+↓
+
+Create Message
+```
+
+Never
+
+```
+Create Message
+
+↓
+
+Upload Later
+```
+
+---
+
+# Failure Scenario 14
+
+## Load Balancer Failure
+
+Production deployments use
+
+multiple
+
+Load Balancers
+
+or
+
+managed cloud load balancing.
+
+Avoid single points of failure.
+
+---
+
+# Idempotency
+
+One of the most important interview topics.
+
+Operations that should be idempotent
+
+- Read Receipt
+- Delivery Receipt
+- Notification
+- Media Upload Completion
+- Message Send (using ClientMessageId)
+
+Running them twice
+
+produces the same final state.
+
+---
+
+# Exactly Once?
+
+Can we guarantee exactly-once delivery?
+
+Not across the entire distributed system.
+
+Realistically
+
+- Database guarantees persistence.
+- Kafka provides at-least-once by default.
+- Consumers use idempotency.
+- The application achieves effectively-once behavior.
+
+---
+
+# Why The Database Is The Source Of Truth
+
+Every failure scenario eventually comes back to one rule
+
+```
+Persist First
+```
+
+Everything else
+
+- Notifications
+- Analytics
+- Search
+- Push
+- Presence
+
+can be rebuilt.
+
+Messages cannot.
+
+---
+
+# Common Recovery Mechanisms
+
+| Failure | Recovery |
+|----------|----------|
+| WebSocket Server | Client reconnects |
+| Chat Service | Retry request |
+| Kafka Consumer | Resume from committed offset |
+| Kafka Broker | Replica becomes leader |
+| Redis | Rebuild from reconnects |
+| Notification | Replay Kafka events |
+| Duplicate Events | Idempotency |
+| Lost Receipts | Retry safely |
+| DB Primary Failure | Promote replica |
+
+---
+
+# Design Principles
+
+A resilient messaging system follows these rules
+
+- Persist before delivery
+- Keep business logic stateless
+- Make consumers idempotent
+- Retry transient failures
+- Replicate critical infrastructure
+- Never trust in-memory state
+- Design for replay
+
+---
+
+# Interview Questions
+
+## What if Chat Service crashes after DB write?
+
+Use the Transactional Outbox Pattern so events can still be published later.
+
+---
+
+## What if Kafka duplicates events?
+
+Consumers must be idempotent.
+
+---
+
+## What if Redis is lost?
+
+Presence is rebuilt from client reconnects.
+
+Messages remain safe.
+
+---
+
+## What if WebSocket Server crashes?
+
+Clients reconnect automatically.
+
+Redis mapping is updated.
+
+Undelivered messages are fetched from the database.
+
+---
+
+## Why Persist First?
+
+Because persistence guarantees durability.
+
+Everything else can be reconstructed.
+
+---
+
+# Interview Summary
+
+> Distributed systems are designed with the assumption that failures are inevitable. WebSocket Servers recover through automatic client reconnections, Redis routing information is rebuilt from those reconnects, Kafka brokers replicate partitions for high availability, and consumers resume processing from committed offsets after failures. To avoid losing events between database writes and Kafka publishing, a Transactional Outbox Pattern is commonly used. Since Kafka provides at-least-once delivery by default, downstream services are designed to be idempotent. The Message Database remains the durable source of truth, while other components such as Redis, Kafka, Notification Services, and Search can always rebuild their state from persisted message history.
+
+# WhatsApp System Design
+
+# Chapter 11 - Media Sharing Deep Dive
+
+---
+
+# Goal
+
+Text messages are small.
+
+Media files are not.
+
+Examples
+
+- Images
+- Videos
+- Voice Notes
+- Documents
+- PDFs
+
+These files can range from a few KB to several GB.
+
+A messaging system must support media efficiently without slowing down the messaging pipeline.
+
+---
+
+# Functional Requirements
+
+Support
+
+- Image sharing
+- Video sharing
+- Audio sharing
+- Documents
+- Voice notes
+
+Recipients should
+
+- Receive messages quickly
+- Download media efficiently
+- Resume interrupted downloads
+
+---
+
+# Why Can't We Store Media In The Database?
+
+Suppose Alice uploads
+
+```
+100 MB Video
+```
+
+If we store
+
+```
+Messages
+
+MessageID
+
+Sender
+
+Receiver
+
+Video (100 MB)
+```
+
+Problems
+
+- Huge database
+- Slow backups
+- Slow replication
+- Expensive storage
+- Poor query performance
+
+Databases are optimized for
+
+```
+Structured Data
+```
+
+not
+
+```
+Large Binary Objects
+```
+
+---
+
+# Better Architecture
+
+Store
+
+Metadata
+
+↓
+
+Database
+
+Actual File
+
+↓
+
+Object Storage
+
+---
+
+# High-Level Flow
+
+```
+Alice
+
+↓
+
+Upload Media
+
+↓
+
+Object Storage
+
+↓
+
+Returns Media URL
+
+↓
+
+Chat Service
+
+↓
+
+Store Metadata
+
+↓
+
+Message Database
+
+↓
+
+Notify Bob
+```
+
+Notice
+
+The Chat Service never stores the actual video.
+
+Only a reference.
+
+---
+
+# Messages Table
+
+Instead of
+
+```
+100 MB Binary
+```
+
+store
+
+| MessageId | Type | MediaURL |
+|------------|------|----------------|
+|101|VIDEO|https://cdn/video123.mp4|
+
+The database remains small.
+
+---
+
+# Object Storage
+
+Examples
+
+- Amazon S3
+- Google Cloud Storage
+- Azure Blob Storage
+
+Responsibilities
+
+- Store files
+- High durability
+- Automatic replication
+- Cheap storage
+- Massive scalability
+
+---
+
+# Upload Flow
+
+Suppose Alice selects
+
+```
+Vacation.mp4
+```
+
+Question
+
+Should Alice upload through Chat Service?
+
+---
+
+# Option 1
+
+```
+Alice
+
+↓
+
+Chat Service
+
+↓
+
+Object Storage
+```
+
+Problems
+
+Every byte flows through Chat Service.
+
+Suppose
+
+```
+500 MB Video
+```
+
+Millions of uploads
+
+↓
+
+Chat Service becomes bottleneck.
+
+---
+
+# Better Solution
+
+Use
+
+Pre-Signed URLs.
+
+---
+
+# What Is A Pre-Signed URL?
+
+The Chat Service requests
+
+```
+Object Storage
+
+↓
+
+Generate Upload URL
+```
+
+Example
+
+```
+https://storage/upload/abc123
+```
+
+Valid for
+
+```
+5 minutes
+```
+
+Only Alice can upload.
+
+---
+
+# Upload Flow
+
+```
+Alice
+
+↓
+
+Chat Service
+
+↓
+
+Request Upload URL
+
+↓
+
+Object Storage
+
+↓
+
+Pre-Signed URL
+
+↓
+
+Alice uploads directly
+
+↓
+
+Object Storage
+
+↓
+
+Upload Success
+
+↓
+
+Chat Service
+
+↓
+
+Store Media Metadata
+
+↓
+
+Notify Bob
+```
+
+Notice
+
+The Chat Service never transfers the file.
+
+Huge scalability improvement.
+
+---
+
+# Why Pre-Signed URLs?
+
+Benefits
+
+- Lower server load
+- Faster uploads
+- Better scalability
+- Secure
+- Temporary access
+
+---
+
+# Download Flow
+
+Bob opens chat.
+
+Messages table contains
+
+```
+Media URL
+```
+
+Question
+
+Should Chat Service download the video?
+
+No.
+
+Instead
+
+```
+Bob
+
+↓
+
+CDN
+
+↓
+
+Object Storage
+```
+
+---
+
+# Why CDN?
+
+Suppose
+
+```
+5 Million Downloads
+```
+
+Without CDN
+
+```
+Everyone
+
+↓
+
+Object Storage
+```
+
+Very expensive.
+
+High latency.
+
+---
+
+With CDN
+
+```
+Users
+
+↓
+
+Nearest CDN Edge
+
+↓
+
+Object Storage
+
+(Cache Miss Only)
+```
+
+Popular media is cached near users.
+
+Benefits
+
+- Faster downloads
+- Lower latency
+- Reduced object storage traffic
+
+---
+
+# Complete Download Flow
+
+```
+Bob
+
+↓
+
+Open Chat
+
+↓
+
+Chat Service
+
+↓
+
+Messages
+
+↓
+
+Media URL
+
+↓
+
+CDN
+
+↓
+
+Object Storage
+```
+
+---
+
+# Voice Notes
+
+Voice Notes are treated exactly like videos.
+
+Store
+
+```
+Media URL
+```
+
+Example
+
+| MessageId | Type | URL |
+|------------|------|----------------|
+|201|VOICE|https://cdn/audio123.mp3|
+
+---
+
+# Image Thumbnails
+
+Large images
+
+```
+8 MB
+```
+
+Don't download immediately.
+
+Generate
+
+Thumbnail
+
+```
+200 KB
+```
+
+Messages table
+
+| MessageId | ThumbnailURL | OriginalURL |
+|------------|---------------|--------------|
+|101|thumb.jpg|image.jpg|
+
+Chat loads
+
+```
+Thumbnail
+```
+
+User taps
+
+↓
+
+Original Image.
+
+---
+
+# Video Thumbnails
+
+Same idea.
+
+Generate
+
+```
+Preview Image
+```
+
+Display instantly.
+
+Download video only when played.
+
+---
+
+# Media Compression
+
+Client often compresses
+
+- Images
+- Videos
+
+before upload.
+
+Benefits
+
+- Smaller uploads
+- Faster transfer
+- Less storage
+
+---
+
+# Chunked Upload
+
+Suppose
+
+```
+2 GB Video
+```
+
+Uploading in one request is risky.
+
+Instead
+
+Split
+
+```
+Chunk1
+
+Chunk2
+
+Chunk3
+
+...
+```
+
+If
+
+Chunk5 fails,
+
+resume
+
+from Chunk5.
+
+Not from beginning.
+
+---
+
+# Virus Scanning
+
+Documents
+
+may contain malware.
+
+Flow
+
+```
+Upload
+
+↓
+
+Object Storage
+
+↓
+
+Virus Scan
+
+↓
+
+Available
+```
+
+Only after successful scan
+
+should recipients access the file.
+
+---
+
+# Access Control
+
+Object Storage should never expose public files.
+
+Instead
+
+Downloads use
+
+Temporary Signed URLs.
+
+Example
+
+Valid for
+
+```
+2 minutes
+```
+
+After expiration
+
+Download fails.
+
+---
+
+# Media Metadata
+
+Messages table stores
+
+| Column | Purpose |
+|----------|-----------|
+| Media URL | Download |
+| Thumbnail URL | Preview |
+| Media Type | Image/Video |
+| File Size | UI |
+| MIME Type | Rendering |
+
+---
+
+# Failure Scenario
+
+Upload fails.
+
+Should Chat Service create message?
+
+No.
+
+Correct sequence
+
+```
+Upload
+
+↓
+
+Success
+
+↓
+
+Store Metadata
+
+↓
+
+Create Message
+```
+
+Never
+
+```
+Create Message
+
+↓
+
+Upload Later
+```
+
+Otherwise
+
+Bob receives
+
+Broken Link.
+
+---
+
+# Why Object Storage?
+
+Advantages
+
+- Virtually unlimited storage
+- Cheap
+- Highly durable
+- Automatic replication
+- CDN integration
+
+---
+
+# Why Not Database?
+
+Databases
+
+- expensive
+- slower
+- replication overhead
+- backup overhead
+
+Better suited for
+
+metadata only.
+
+---
+
+# Sequence Diagram
+
+```
+Alice
+
+↓
+
+Chat Service
+
+↓
+
+Generate Upload URL
+
+↓
+
+Object Storage
+
+↓
+
+Upload
+
+↓
+
+Store Media Metadata
+
+↓
+
+Database
+
+↓
+
+Kafka
+
+↓
+
+Bob
+
+↓
+
+CDN
+
+↓
+
+Object Storage
+```
+
+---
+
+# Common Interview Questions
+
+## Why Store URL Instead Of File?
+
+Large binary files degrade database performance.
+
+---
+
+## Why Pre-Signed URL?
+
+Allows clients to upload directly to object storage without routing data through Chat Service.
+
+---
+
+## Why CDN?
+
+Reduces latency and origin traffic by caching media close to users.
+
+---
+
+## Why Thumbnail?
+
+Avoid downloading large images and videos just to display chat history.
+
+---
+
+## Why Chunk Upload?
+
+Supports resumable uploads for large files.
+
+---
+
+## Why Temporary Download URLs?
+
+Improves security by preventing permanent public access to media.
+
+---
+
+# Interview Summary
+
+> Media files are stored outside the Message Database in highly durable object storage such as Amazon S3. The Chat Service stores only metadata, including the media URL, type, and thumbnail information. Clients upload directly to object storage using pre-signed URLs, avoiding the Chat Service becoming a bandwidth bottleneck. Recipients download media through a CDN, which caches popular content close to users and reduces latency. Additional optimizations such as thumbnails, chunked uploads, compression, virus scanning, and temporary signed download URLs improve performance, reliability, and security while keeping the messaging pipeline lightweight.
+
+# WhatsApp System Design
+
+# Chapter 12 - Group Chat Deep Dive
+
+---
+
+# Goal
+
+Supporting one-to-one messaging is relatively straightforward.
+
+Group messaging introduces new challenges:
+
+- One sender
+- Hundreds or thousands of recipients
+- Different delivery status per recipient
+- Different read status per recipient
+- Offline users
+- Large communities
+- Scalability
+
+This chapter explains how production systems design group messaging.
+
+---
+
+# Functional Requirements
+
+Support
+
+- Create groups
+- Add/remove members
+- Send group messages
+- Read receipts
+- Delivery receipts
+- Offline members
+- Large communities
+
+---
+
+# High-Level Architecture
+
+```
+                    Alice
+
+                      │
+
+                WebSocket
+
+                      │
+
+                 Chat Service
+
+                      │
+
+               Store Message
+
+                      │
+
+                 Message DB
+
+                      │
+
+                   Kafka
+
+                      │
+
+              Fan-out Service
+
+         ┌────────┼────────┬────────┐
+
+         ▼        ▼        ▼        ▼
+
+       Bob     Charlie    David    Emma
+```
+
+---
+
+# Database Design
+
+Groups
+
+| GroupId | Name |
+|----------|------|
+|100|Family|
+
+---
+
+GroupMembers
+
+| GroupId | User |
+|----------|------|
+|100|Alice|
+|100|Bob|
+|100|Charlie|
+|100|David|
+
+Whenever Alice sends a message,
+
+the system first determines
+
+```
+Who belongs to this group?
+```
+
+using
+
+```sql
+SELECT UserId
+FROM GroupMembers
+WHERE GroupId=100;
+```
+
+---
+
+# Message Storage
+
+Messages table
+
+| MessageId | GroupId | Sender | Message |
+|------------|---------|---------|----------|
+|101|100|Alice|Happy New Year|
+
+Notice
+
+The message itself is stored only once.
+
+---
+
+# Problem
+
+Suppose
+
+```
+1000 Members
+```
+
+How should delivery work?
+
+There are two approaches.
+
+---
+
+# Option 1 - Fan-out On Write
+
+Immediately create delivery records.
+
+```
+Message
+
+↓
+
+Bob
+
+Charlie
+
+David
+
+Emma
+
+↓
+
+Recipient Records
+```
+
+---
+
+# MessageRecipient Table
+
+| MessageId | Recipient | Status |
+|------------|-----------|----------|
+|101|Bob|READ|
+|101|Charlie|DELIVERED|
+|101|David|UNDELIVERED|
+
+Every member has an independent status.
+
+---
+
+# Delivery Flow
+
+Alice sends
+
+↓
+
+Store message
+
+↓
+
+Read GroupMembers
+
+↓
+
+Create MessageRecipient rows
+
+↓
+
+Publish Kafka
+
+↓
+
+Fan-out Service
+
+↓
+
+Deliver to online users
+
+---
+
+# Advantages
+
+- Very fast reads
+- Easy unread calculation
+- Easy delivery tracking
+- Easy read receipts
+
+---
+
+# Disadvantages
+
+Storage grows rapidly.
+
+Example
+
+```
+1000 Members
+
+100 Messages
+```
+
+Recipient rows
+
+```
+100 × 999
+
+=
+
+99,900
+```
+
+---
+
+# Option 2 - Fan-out On Read
+
+Instead of creating recipient rows,
+
+store only
+
+Messages
+
+---
+
+Messages
+
+| MessageId | GroupId | Sender | Message |
+|------------|----------|--------|----------|
+|101|100|Alice|Hello|
+|102|100|Bob|Hi|
+|103|100|Charlie|Welcome|
+
+---
+
+UserGroupState
+
+| User | Group | LastReadMessageId |
+|------|--------|------------------|
+|Alice|100|103|
+|Bob|100|102|
+|Charlie|100|101|
+|David|100|103|
+
+---
+
+# Reading Messages
+
+Charlie opens the group.
+
+Execute
+
+```sql
+SELECT *
+FROM Messages
+WHERE GroupId=100
+AND MessageId >101
+ORDER BY MessageId;
+```
+
+Returns
+
+```
+102
+
+103
+```
+
+Update
+
+```
+LastReadMessageId
+
+↓
+
+103
+```
+
+Done.
+
+---
+
+# Why LastReadMessage?
+
+Bad
+
+```
+Bob needs
+
+102
+
+103
+
+104
+
+105
+```
+
+Good
+
+```
+Bob has read
+
+101
+```
+
+Everything newer
+
+↓
+
+Unread.
+
+Much smaller storage.
+
+---
+
+# Storage Comparison
+
+Suppose
+
+```
+1000 Members
+
+100 Messages
+```
+
+Fan-out on Write
+
+```
+Messages
+
+100
+
+Recipient Rows
+
+99,900
+
+Total
+
+100,000
+```
+
+Fan-out on Read
+
+```
+Messages
+
+100
+
+UserGroupState
+
+1000
+
+Total
+
+1100
+```
+
+Huge reduction.
+
+---
+
+# Which Should We Use?
+
+Small groups
+
+```
+Family
+
+Friends
+
+Office Teams
+```
+
+Fan-out on Write
+
+Better user experience.
+
+---
+
+Large communities
+
+```
+100,000 Members
+
+500,000 Members
+
+1 Million Members
+```
+
+Fan-out on Read
+
+Storage remains manageable.
+
+---
+
+# Fan-out Service
+
+Question
+
+Should Chat Service deliver
+
+```
+1000 Messages
+```
+
+itself?
+
+No.
+
+Instead
+
+```
+Store
+
+↓
+
+Kafka
+
+↓
+
+Fan-out Service
+```
+
+The Fan-out Service
+
+- Reads group members
+- Checks Redis
+- Delivers to online users
+- Leaves offline users in the database
+
+This keeps Chat Service lightweight.
+
+---
+
+# Online Member
+
+Redis
+
+```
+Bob
+
+↓
+
+WS2
+```
+
+Fan-out Service
+
+↓
+
+WS2
+
+↓
+
+Bob
+
+Immediate delivery.
+
+---
+
+# Offline Member
+
+Redis
+
+```
+Charlie
+
+↓
+
+OFFLINE
+```
+
+No WebSocket delivery.
+
+Nothing else required.
+
+The message is already stored.
+
+When Charlie reconnects
+
+↓
+
+Fetch unread messages.
+
+---
+
+# Read Receipts
+
+Suppose
+
+Bob reads
+
+Message101.
+
+Fan-out on Write
+
+Update
+
+```
+MessageRecipient
+
+↓
+
+READ
+```
+
+Fan-out on Read
+
+Update
+
+```
+UserGroupState
+
+↓
+
+LastReadMessageId
+```
+
+Both achieve the same goal.
+
+---
+
+# Ordering
+
+Messages are ordered using
+
+Snowflake IDs.
+
+Kafka partitions by
+
+```
+ConversationId (GroupId)
+```
+
+All group messages remain in order.
+
+---
+
+# Scaling
+
+Small groups
+
+↓
+
+Fan-out on Write
+
+Large groups
+
+↓
+
+Fan-out on Read
+
+Fan-out Service
+
+↓
+
+Kafka Consumer Group
+
+↓
+
+Multiple Fan-out Workers
+
+```
+Kafka
+
+↓
+
+Fanout1
+
+Fanout2
+
+Fanout3
+```
+
+Horizontal scaling.
+
+---
+
+# Database Summary
+
+## Fan-out on Write
+
+```
+Groups
+
+↓
+
+GroupMembers
+
+↓
+
+Messages
+
+↓
+
+MessageRecipient
+```
+
+---
+
+## Fan-out on Read
+
+```
+Groups
+
+↓
+
+GroupMembers
+
+↓
+
+Messages
+
++
+
+UserGroupState
+```
+
+---
+
+# Design Principles
+
+Store the message only once.
+
+Never duplicate message text.
+
+Only duplicate metadata when required.
+
+Separate
+
+```
+Storage
+
+↓
+
+Delivery
+```
+
+Storage happens immediately.
+
+Delivery can happen later.
+
+---
+
+# Interview Questions
+
+## Why store the message once?
+
+Avoid duplicating large message content.
+
+Only metadata is duplicated when necessary.
+
+---
+
+## Why Fan-out Service?
+
+Chat Service remains lightweight and stateless.
+
+Fan-out scales independently.
+
+---
+
+## Why Fan-out on Write?
+
+Fast reads and easy status tracking.
+
+Ideal for small and medium groups.
+
+---
+
+## Why Fan-out on Read?
+
+Avoids massive write amplification and storage costs.
+
+Ideal for very large communities.
+
+---
+
+## Why GroupMembers table?
+
+Maps users to groups.
+
+Used to determine recipients whenever a group message is sent.
+
+---
+
+## Why UserGroupState?
+
+Tracks each user's progress through the conversation rather than storing one row per recipient per message.
+
+---
+
+# Interview Summary
+
+> Group messaging introduces the challenge of delivering one message to many recipients while tracking different delivery and read states. The message itself is stored only once in the Messages table, while group membership is maintained in the GroupMembers table. For small and medium groups, a Fan-out Service consumes Kafka events and creates per-recipient delivery records (fan-out on write), providing fast reads and simple status tracking. For very large communities, the system stores each message only once and maintains a lightweight UserGroupState table containing each user's LastReadMessageId (fan-out on read). Online users receive messages immediately through WebSocket routing, while offline users retrieve unread messages from the database after reconnecting. This hybrid approach balances latency, storage efficiency, and scalability.
+
+# WhatsApp System Design
+
+# Chapter 13 - Complete Interview Walkthrough (15 Minutes)
+
+---
+
+# Interview Strategy
+
+A common mistake candidates make is explaining every component one by one.
+
+Don't do this.
+
+Instead,
+
+tell the story of **one message**.
+
+Imagine Alice sends
+
+```
+Hi Bob
+```
+
+Everything else naturally appears.
+
+---
+
+# Minute 1
+
+## Clarify Requirements
+
+I'd first clarify the requirements with the interviewer.
+
+Functional Requirements
+
+- One-to-one messaging
+- Group messaging
+- Offline delivery
+- Read receipts
+- Delivery receipts
+- Media sharing
+
+Non-functional Requirements
+
+- Low latency
+- High availability
+- Scalability
+- Durability
+- Message ordering
+
+I'd assume hundreds of millions of users and millions of concurrent connections.
+
+---
+
+# Minute 2
+
+## APIs
+
+The major APIs are
+
+```
+POST /messages
+
+GET /conversations/{id}
+
+POST /groups
+
+POST /media
+```
+
+Real-time communication happens over WebSockets rather than REST.
+
+---
+
+# Minute 3
+
+## High Level Architecture
+
+```
+Clients
+
+↓
+
+Load Balancer
+
+↓
+
+WebSocket Servers
+
+↓
+
+Chat Services
+
+↓
+
+Message DB
+Redis
+Kafka
+Object Storage
+Notification Service
+```
+
+Explain each component briefly.
+
+### WebSocket Server
+
+Maintains persistent client connections.
+
+### Chat Service
+
+Contains messaging business logic.
+
+### Database
+
+Stores all messages.
+
+### Redis
+
+Stores connection routing and online presence.
+
+### Kafka
+
+Publishes events to downstream services.
+
+### Object Storage
+
+Stores media.
+
+---
+
+# Minute 4-7
+
+## Walk Through One Message
+
+Alice sends
+
+```
+Hi Bob
+```
+
+### Step 1
+
+Alice already has an existing WebSocket connection.
+
+```
+Alice
+
+↓
+
+WS1
+```
+
+---
+
+### Step 2
+
+WS1 forwards the request to Chat Service.
+
+WS Server contains
+
+no business logic.
+
+---
+
+### Step 3
+
+Chat Service
+
+- authenticates
+- validates
+- generates Snowflake ID
+
+---
+
+### Step 4
+
+Persist message
+
+```
+Messages
+```
+
+Status
+
+```
+SENT
+```
+
+I always persist before delivery because the database is my source of truth.
+
+---
+
+### Step 5
+
+Publish
+
+```
+MessageCreated
+```
+
+to Kafka.
+
+Notification
+
+Analytics
+
+Search
+
+Audit
+
+all consume asynchronously.
+
+---
+
+### Step 6
+
+Find Bob.
+
+Redis
+
+```
+Bob
+
+↓
+
+WS3
+```
+
+---
+
+### Step 7
+
+Forward
+
+```
+WS3
+
+↓
+
+Bob
+```
+
+Bob receives
+
+```
+Hi Bob
+```
+
+---
+
+### Step 8
+
+Bob sends
+
+```
+DELIVERED
+```
+
+Database becomes
+
+```
+DELIVERED
+```
+
+Alice sees
+
+```
+✓✓
+```
+
+---
+
+### Step 9
+
+Bob opens chat.
+
+```
+READ
+```
+
+Database
+
+```
+READ
+```
+
+Alice sees
+
+```
+Blue ✓✓
+```
+
+---
+
+# Minute 8
+
+## Offline Users
+
+If Bob is offline,
+
+Redis says
+
+```
+OFFLINE
+```
+
+The Chat Service still stores the message.
+
+Kafka triggers Notification Service.
+
+Push notification is sent using
+
+- APNS
+- FCM
+
+When Bob reconnects,
+
+the Chat Service queries
+
+```
+UNDELIVERED
+```
+
+messages.
+
+---
+
+# Minute 9
+
+## Media
+
+Large media never goes into the database.
+
+Flow
+
+```
+Client
+
+↓
+
+Pre-Signed URL
+
+↓
+
+Object Storage
+
+↓
+
+Store URL
+
+↓
+
+Message DB
+```
+
+Recipients download via CDN.
+
+---
+
+# Minute 10
+
+## Group Chat
+
+Small Groups
+
+Fan-out on Write.
+
+```
+Message
+
+↓
+
+Recipients
+```
+
+Large Communities
+
+Fan-out on Read.
+
+```
+Store Once
+
+↓
+
+LastReadMessageId
+```
+
+Storage remains manageable.
+
+---
+
+# Minute 11
+
+## Scaling
+
+WebSocket Servers
+
+Stateful.
+
+Scale based on
+
+```
+Connections
+```
+
+Chat Services
+
+Stateless.
+
+Scale based on
+
+```
+Requests/sec
+```
+
+Redis
+
+Cluster.
+
+Kafka
+
+Partitions.
+
+Database
+
+Shard by
+
+```
+ConversationId
+```
+
+---
+
+# Minute 12
+
+## Ordering
+
+Messages use
+
+Snowflake IDs.
+
+Kafka partitions by
+
+```
+ConversationId
+```
+
+Ordering is preserved within a conversation.
+
+---
+
+# Minute 13
+
+## Failure Handling
+
+WebSocket crash
+
+↓
+
+Reconnect
+
+Redis rebuilds.
+
+Chat Service crash
+
+↓
+
+Retry.
+
+Kafka consumer crash
+
+↓
+
+Resume from committed offset.
+
+Redis crash
+
+↓
+
+Presence rebuilt.
+
+Database
+
+↓
+
+Source of Truth.
+
+---
+
+# Minute 14
+
+## Tradeoffs
+
+Explain
+
+Why Redis?
+
+Fast routing.
+
+Why Kafka?
+
+Decouple downstream services.
+
+Why Object Storage?
+
+Large files.
+
+Why Stateless Chat Service?
+
+Horizontal scalability.
+
+Why separate WS Server?
+
+Independent scaling.
+
+---
+
+# Minute 15
+
+## Final Summary
+
+"My design separates connection management from business logic.
+
+Persistent WebSocket connections provide low-latency communication.
+
+Chat Services remain stateless and persist every message before delivery.
+
+Redis performs O(1) routing of users to WebSocket Servers.
+
+Kafka decouples notifications, analytics, search, and audit processing.
+
+Media is stored separately in object storage.
+
+Small groups use fan-out on write while very large communities use fan-out on read.
+
+The database remains the durable source of truth, while Redis and Kafka optimize routing and asynchronous processing.
+
+Each layer scales independently, allowing the system to support hundreds of millions of users."
+
+---
+
+# Whiteboard Diagram
+
+```
+                          Clients
+
+                             │
+
+                      WebSocket
+
+                             │
+
+                      Load Balancer
+
+                             │
+
+            ┌────────────────┼────────────────┐
+
+            ▼                ▼                ▼
+
+          WS1              WS2              WS3
+
+            │                │                │
+
+            └────────────────┼────────────────┘
+
+                             │
+
+                      Load Balancer
+
+                             │
+
+        ┌────────────────────┼────────────────────┐
+
+        ▼                    ▼                    ▼
+
+     Chat S1             Chat S2             Chat S3
+
+        │                    │                    │
+
+        └──────────────┬─────┴──────────────┬─────┘
+
+                       │                    │
+
+      ┌────────────────┼────────────┬──────┼──────────────┐
+
+      ▼                ▼            ▼      ▼              ▼
+
+ Message DB        Redis         Kafka   Object Store   Group DB
+
+                                     │
+
+                      ┌──────────────┼──────────────┐
+
+                      ▼              ▼              ▼
+
+                Notification     Analytics      Search
+
+```
+
+---
+
+# Tips That Impress Interviewers
+
+✅ Start with requirements.
+
+✅ Explain one message end-to-end.
+
+✅ Explain *why* each component exists.
+
+✅ Mention tradeoffs instead of claiming one perfect solution.
+
+✅ Keep the Message Database as the source of truth.
+
+✅ Separate stateful WebSocket Servers from stateless Chat Services.
+
+✅ Use Redis only for transient routing/presence.
+
+✅ Use Kafka only for asynchronous processing.
+
+---
+
+# Common Mistakes
+
+❌ Storing media in the database.
+
+❌ Making Chat Service stateful.
+
+❌ Using polling instead of WebSockets.
+
+❌ Querying the database to locate online users.
+
+❌ Letting Chat Service call Analytics/Search synchronously.
+
+❌ Forgetting offline users.
+
+❌ Ignoring ordering within a conversation.
+
+❌ Mixing permanent state (DB) with temporary state (Redis).
+
+---
+
+# Final Interview Advice
+
+Don't try to memorize the architecture.
+
+Memorize **the journey of one message**.
+
+Every major component naturally appears during that journey:
+
+- WebSocket → Connection
+- Chat Service → Business Logic
+- Database → Durability
+- Redis → Routing
+- Kafka → Async Processing
+- Object Storage → Media
+- Notification Service → Offline Delivery
+- Fan-out → Group Messaging
+- Snowflake IDs → Ordering
+- Read/Delivery Receipts → Message Lifecycle
+
+If you can confidently explain the life of a single message from sender to receiver, you've effectively explained the entire WhatsApp architecture.
