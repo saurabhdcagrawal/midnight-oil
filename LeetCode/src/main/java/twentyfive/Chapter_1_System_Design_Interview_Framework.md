@@ -24115,6 +24115,10 @@ Transactional DB
 
 Billing API
 
+"Yes, dashboards can read directly from the analytics database. If the database is designed for analytical queries—such as ClickHouse, Pinot, or Druid—it may even eliminate the need for Redis. However, if we're using a traditional relational database or expect very high dashboard query volume, I'd introduce Redis to offload reads, reduce database load, and provide sub-millisecond response times. The choice depends on the expected read traffic and the capabilities of the serving database."
+
+The key takeaway is: Redis is not mandatory. It's a performance optimization that becomes valuable when dashboard read traffic is high or when your primary database isn't optimized for serving those interactive queries.
+
 # Apache Flink for Real-Time Analytics - System Design Interview Notes
 
 ---
