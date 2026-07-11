@@ -23973,3 +23973,354 @@ Redis can be rebuilt because Kafka and the Analytics Database contain the source
 - Redis stores live aggregates for dashboards, while the Analytics Database stores the complete event history.
 - Partitioning by Campaign ID preserves ordering and simplifies stateful processing.
 - A production system should monitor consumer lag, checkpoint health, processing latency, and backpressure.
+We can rebuild the in-memory state by replaying events from Kafka starting from the appropriate offset. However, replaying a large volume of events after every restart is expensive and increases recovery time. Stream processors like Flink periodically checkpoint both the processing state and the Kafka offsets, allowing them to restore state quickly and resume processing from the checkpoint rather than replaying the entire event history."
+
+# Apache Flink - System Design Interview Summary
+
+## Why not just use Kafka Consumers?
+
+Simple Kafka consumers work well for straightforward tasks such as
+
+- Incrementing counters
+- Writing events to a database
+- Sending notifications
+
+However, as analytics requirements grow, the consumer must implement increasingly complex logic like:
+
+- Sliding/Tumbling windows
+- Stateful aggregations
+- Stream joins
+- Timers
+- Fault recovery
+- Checkpointing
+
+Instead of building and maintaining all of this ourselves, we use Apache Flink.
+
+---
+
+## What is Flink?
+
+Apache Flink is a distributed **stream processing engine**.
+
+Kafka is responsible for **transporting events**, while Flink is responsible for **processing those events in real time**.
+
+```
+Kafka
+    ↓
+Flink
+    ↓
+Redis / Database / Dashboard
+```
+
+---
+
+## Why use Flink?
+
+Flink provides built-in support for:
+
+- Stateful stream processing
+- Time-based windows (Sliding, Tumbling, Session)
+- Stream joins (e.g., Clicks + Impressions for CTR)
+- Event-time processing and Watermarks
+- Checkpointing and fault recovery
+- Exactly-once processing (when supported by the sink)
+
+This allows us to build complex real-time analytics without implementing these mechanisms ourselves.
+
+---
+
+## When would I introduce Flink?
+
+I would **not** introduce Flink initially.
+
+If the requirements are simply:
+
+- Count clicks
+- Store events
+- Update Redis
+
+then Kafka consumers are sufficient.
+
+As the system evolves to require:
+
+- "Clicks in the last 5 minutes"
+- Rolling windows
+- Top campaigns
+- CTR calculations
+- Fraud detection
+- Real-time dashboards
+
+I would replace simple Kafka consumers with Flink.
+
+This keeps the initial design simple while allowing the system to evolve as business requirements become more complex.
+
+---
+
+## Interview Answer (30 seconds)
+
+"I'd start with Kafka consumers because they're sufficient for simple event processing. As analytics requirements evolve to include rolling time windows, stateful aggregations, stream joins, fraud detection, and real-time dashboards, I'd introduce Apache Flink. Flink is a distributed stream processing engine that provides built-in support for state management, windowing, event-time processing, checkpointing, and fault recovery, allowing us to implement complex real-time analytics without writing all of that logic ourselves."
+
+"Can dashboards query Flink directly?"
+
+A strong answer is:
+
+"Technically yes, because Flink maintains processing state, but I wouldn't design it that way. Flink is optimized for stream processing, not serving high volumes of interactive queries. I'd have Flink continuously compute aggregates and publish them to a serving layer such as Redis. The dashboard would query Redis for low-latency reads while Flink focuses on processing the event stream."
+
+Our live dashboard is backed by Redis, which is a cache. If Flink crashes, it restores its checkpointed state and replays events from Kafka starting at the checkpoint offset. During replay, Redis may receive duplicate updates because it doesn't participate in Flink's checkpoint protocol. This is acceptable because Redis is eventually consistent and can always be rebuilt from the source of truth. For systems requiring strong consistency, such as billing, raw events are persisted in an analytics database (or another exactly-once sink), and billing is computed from that durable, correct event history rather than from Redis.
+
+                    Users
+                      │
+                      ▼
+              Redirect Service
+                      │
+                Publish Event
+                      │
+                      ▼
+                    Kafka
+                ┌─────────────┐
+                ▼             ▼
+          Analytics DB      Flink
+       (Source of Truth)      │
+                │             ▼
+                │          Redis
+                │             │
+                ▼             ▼
+          Billing Jobs    Live Dashboard
+		  
+Notice the separation:
+
+Analytics DB → correctness, history, replay, billing.
+Redis → speed, live dashboard.
+Flink → real-time computation.
+
+That's a very common production architecture and is exactly how I'd present it in a senior system design interview.
+
+If billing must be real-time,
+
+then instead of Redis,
+
+Flink writes to an exactly-once transactional sink (or another sink that supports exactly-once semantics).
+
+Kafka
+
+↓
+
+Flink
+
+↓
+
+Transactional DB
+
+↓
+
+Billing API
+
+# Apache Flink for Real-Time Analytics - System Design Interview Notes
+
+---
+
+# When Should I Introduce Flink?
+
+I would **not** introduce Flink initially.
+
+If the requirements are simple, such as:
+
+- Count clicks
+- Store events
+- Update Redis
+- Send notifications
+
+then simple Kafka consumers are sufficient.
+
+As the business requirements evolve to include:
+
+- Rolling time windows
+- Stateful aggregations
+- Stream joins
+- Fraud detection
+- Real-time dashboards
+- Session tracking
+
+I would introduce Apache Flink.
+
+---
+
+# 30-Second Interview Answer
+
+> I'd start with Kafka consumers because they're sufficient for simple event processing. As analytics requirements evolve to include rolling time windows, stateful aggregations, stream joins, fraud detection, and real-time dashboards, I'd introduce Apache Flink. Flink is a distributed stream processing engine that provides built-in support for state management, windowing, event-time processing, checkpointing, and fault recovery, allowing us to implement complex real-time analytics without writing all of that logic ourselves.
+
+---
+
+# Why Flink?
+
+Kafka is responsible for transporting events.
+
+Flink is responsible for processing events.
+
+```
+Kafka
+    ↓
+Flink
+    ↓
+Redis / Database / Dashboard
+```
+
+Flink provides built-in support for:
+
+- Stateful stream processing
+- Sliding, Tumbling and Session windows
+- Stream joins (e.g., Clicks + Impressions → CTR)
+- Event-time processing
+- Watermarks
+- Checkpointing
+- Fault recovery
+- Exactly-once processing (when supported by the sink)
+
+Instead of implementing all these features manually inside Kafka consumers, Flink provides them out of the box.
+
+---
+
+# Can Dashboards Query Flink Directly?
+
+Technically **yes**, because Flink maintains processing state.
+
+However, I would **not** design the system that way.
+
+Flink is optimized for **stream processing**, not for serving thousands of concurrent dashboard requests.
+
+Instead, Flink continuously computes aggregates and writes them to a serving layer such as Redis.
+
+The dashboard simply reads Redis.
+
+---
+
+## Interview Answer
+
+> Technically yes, because Flink maintains processing state, but I wouldn't design it that way. Flink is optimized for stream processing, not serving high volumes of interactive queries. I'd have Flink continuously compute aggregates and publish them to a serving layer such as Redis. The dashboard would query Redis for low-latency reads while Flink focuses on processing the event stream.
+
+---
+
+# Typical Production Architecture
+
+```
+                    Users
+                      │
+                      ▼
+              Redirect Service
+                      │
+                Publish Event
+                      │
+                      ▼
+                    Kafka
+                ┌─────────────┐
+                ▼             ▼
+          Analytics DB      Flink
+       (Source of Truth)      │
+                │             ▼
+                │          Redis
+                │             │
+                ▼             ▼
+          Billing Jobs    Live Dashboard
+```
+
+---
+
+# Responsibilities of Each Component
+
+### Kafka
+
+- Durable event log
+- Decouples producers from consumers
+- Allows replay after failures
+
+---
+
+### Flink
+
+- Real-time stream processing
+- Stateful aggregations
+- Windowing
+- Event-time processing
+- Watermarks
+- Checkpointing
+- Fault recovery
+
+Flink is the **compute layer**.
+
+---
+
+### Redis
+
+- Dashboard cache
+- Low-latency reads
+- Stores pre-computed aggregates
+
+Redis is the **serving layer**.
+
+---
+
+### Analytics Database
+
+- Source of truth
+- Stores every raw click event
+- Historical reporting
+- Replay
+- Auditing
+- Billing
+
+Analytics DB is the **correctness layer**.
+
+---
+
+# Why Separate Analytics DB and Redis?
+
+Analytics DB and Redis serve completely different purposes.
+
+| Analytics DB | Redis |
+|--------------|--------|
+| Source of truth | Cache |
+| Historical data | Live metrics |
+| Billing | Dashboard |
+| Replay | Fast reads |
+| Correctness | Performance |
+
+---
+
+# What Happens If Flink Crashes?
+
+Current checkpoint
+
+```
+Offset = 1000
+
+Campaign A Count = 100
+```
+
+Suppose Flink processes events
+
+```
+1001
+
+↓
+
+1002
+
+↓
+
+...
+
+↓
+
+1015
+```
+
+before crashing.
+
+After restart
+
+- Flink restores the checkpoint.
+- Processing state is restored.
+- Kafka replay starts from Offset 1000.
+- Events 1001-1015 are processed again
+
+		  
