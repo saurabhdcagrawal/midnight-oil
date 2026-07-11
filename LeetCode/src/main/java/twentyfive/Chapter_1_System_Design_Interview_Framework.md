@@ -21850,6 +21850,10 @@ Trade-offs
 
 The Redirect Service immediately returns the HTTP redirect to keep user latency low. Every click is published as an immutable event to Kafka, which acts as the central event bus. Independent consumers process these events asynchronously. Aggregated metrics are stored in Redis for low-latency dashboards, while raw click events are persisted in an Analytics Database for historical reporting, auditing, and replay. This architecture is scalable, fault tolerant, and naturally supports adding new consumers such as fraud detection, billing, and machine learning without modifying the Redirect Service.
 
+
+I'd have the Redirect Service publish the click event because it's the first component that knows a click occurred and already has all the necessary metadata. This keeps the architecture simple and avoids introducing another service whose only responsibility would be forwarding events to Kafka. If click loss is unacceptable, I'd enhance the design using the Outbox Pattern so events are durably stored before being published asynchronously to Kafka.
+
+
 ---
 
 # Key Takeaways
@@ -24328,3 +24332,648 @@ After restart
 - Events 1001-1015 are processed again
 
 		  
+# Final Architecture - Real-Time Ad Click Analytics System
+
+```text
+                          Users
+                            │
+                            ▼
+                    Ad Redirect Service
+                            │
+            Publish Click Event + HTTP 302 Redirect
+                            │
+                            ▼
+                          Kafka
+                            │
+        ┌───────────────────┴───────────────────┐
+        │                                       │
+        ▼                                       ▼
+   Apache Flink                        Click Event Store
+(Real-Time Processing)               (Source of Truth)
+        │
+        ├──────────────┐
+        │              │
+        ▼              ▼
+   Redis Cache    Transactional DB*
+ (Live Dashboard) (Optional - Real-time Billing)
+        │              │
+        ▼              ▼
+   Live Dashboard   Billing API
+
+* Only required if billing must be real-time with exactly-once guarantees.
+```
+
+---
+
+# Responsibilities
+
+## Ad Redirect Service
+
+- Receives user click
+- Publishes immutable Click Event to Kafka
+- Immediately returns HTTP 302 redirect
+- Does **not** perform analytics
+
+---
+
+## Kafka
+
+Acts as the central event bus.
+
+Responsibilities:
+
+- Durable event log
+- Decouples producers and consumers
+- Allows replay after failures
+- Multiple downstream consumers
+
+---
+
+## Apache Flink
+
+Acts as the **real-time compute engine**.
+
+Responsibilities:
+
+- Stateful processing
+- Sliding/Tumbling/Session windows
+- CTR calculations
+- Fraud detection
+- Aggregations
+- Checkpointing
+- Fault recovery
+
+Flink continuously computes metrics.
+
+It is **not** a serving layer.
+
+---
+
+## Redis
+
+Acts as the **dashboard cache**.
+
+Stores:
+
+- Click counts
+- Revenue
+- Top campaigns
+- CTR
+- Trending ads
+
+Purpose:
+
+- Very low latency reads
+- Dashboard queries
+
+Redis is **not** the source of truth.
+
+---
+
+## Click Event Store (Analytics DB)
+
+Stores every raw click event.
+
+Example:
+
+```json
+{
+  "clickId":"123",
+  "campaignId":"A1",
+  "userId":"U10",
+  "timestamp":"2026-07-11T10:01:05Z",
+  "device":"Mobile",
+  "country":"US"
+}
+```
+
+Purpose:
+
+- Historical reports
+- Replay
+- Auditing
+- Machine Learning
+- Data warehouse
+- Source of truth
+
+---
+
+## Billing (Optional)
+
+If billing must be real-time,
+
+Flink writes to a transactional database that supports exactly-once semantics.
+
+```
+Kafka
+
+↓
+
+Flink
+
+↓
+
+Transactional DB
+
+↓
+
+Billing API
+```
+
+This avoids duplicate billing.
+
+---
+
+# Failure Handling
+
+## If Flink crashes
+
+```
+Checkpoint
+
+↓
+
+Restore State
+
+↓
+
+Replay Kafka Events
+
+↓
+
+Continue Processing
+```
+
+No events are lost.
+
+---
+
+## What happens to Redis?
+
+Redis may receive duplicate updates during replay because it is **not** coordinated with Flink checkpoints.
+
+This is acceptable because:
+
+- Redis is only a cache.
+- Dashboards are eventually consistent.
+- Redis can always be rebuilt from the Click Event Store.
+
+---
+
+## Why not serve dashboards directly from Flink?
+
+Technically possible.
+
+Not recommended.
+
+Reason:
+
+Flink is optimized for **processing streams**, not serving thousands of concurrent dashboard queries.
+
+Instead:
+
+```
+Flink
+
+↓
+
+Redis
+
+↓
+
+Dashboard
+```
+
+---
+
+## Why not serve dashboards directly from the Click Event Store?
+
+Possible for:
+
+- Small systems
+- Low dashboard traffic
+- Analytics databases like ClickHouse, Pinot or Druid
+
+For high dashboard traffic,
+
+Redis significantly reduces read load and provides sub-millisecond lookups.
+
+---
+
+# Separation of Responsibilities
+
+| Component | Responsibility |
+|------------|----------------|
+| Redirect Service | Capture click and publish event |
+| Kafka | Durable event bus |
+| Flink | Real-time computation |
+| Redis | Live dashboard cache |
+| Click Event Store | Source of truth, history, replay |
+| Transactional DB (optional) | Exactly-once billing |
+
+---
+
+# Interview Summary
+
+> The Redirect Service immediately publishes click events to Kafka and returns an HTTP 302 response to keep user latency low. Kafka acts as the durable event bus. Apache Flink performs real-time stream processing such as aggregations, windowing, CTR calculations, and fraud detection. Live metrics are written to Redis for low-latency dashboards, while every raw click event is stored in the Click Event Store, which serves as the source of truth for historical reporting, replay, auditing, and billing. If Flink crashes, it restores its checkpointed state and replays events from Kafka. Redis may temporarily contain duplicate values during replay because it is a cache, but it can always be rebuilt from the source of truth. If billing requires strong consistency, Flink writes to a transactional database supporting exactly-once semantics instead of relying on Redis.
+
+
+# Real-Time Ad Click Analytics - Final Production Architecture
+
+---
+
+# Final Architecture
+
+```text
+                          Users
+                            │
+                            ▼
+                    Ad Redirect Service
+                            │
+            Publish Click Event + HTTP 302 Redirect
+                            │
+                            ▼
+                          Kafka
+                 ┌──────────┴──────────┐
+                 ▼                     ▼
+         Apache Flink          Storage Consumer
+      (Real-time Compute)     (Persist Raw Events)
+                 │                     │
+                 ▼                     ▼
+             Redis Cache       Click Event Store
+                 │
+                 ▼
+          Live Dashboard
+
+Batch Billing
+
+Click Event Store
+        │
+        ▼
+ Billing Batch Job
+        │
+        ▼
+   Billing DB / Invoice
+```
+
+---
+
+# Responsibilities
+
+## 1. Ad Redirect Service
+
+Responsibilities
+
+- Receives user click
+- Publishes Click Event to Kafka
+- Immediately returns HTTP 302 Redirect
+- Never performs analytics
+
+---
+
+## 2. Kafka
+
+Acts as the central event bus.
+
+Responsibilities
+
+- Durable event log
+- Decouples producers and consumers
+- Allows replay after failures
+- Supports multiple independent consumers
+
+---
+
+## 3. Storage Consumer
+
+Consumes click events from Kafka.
+
+Responsibilities
+
+- Persist every raw click event
+- Insert into Click Event Store
+- No analytics
+- No aggregation
+
+Pseudo Code
+
+```java
+while(true){
+
+    ClickEvent event = kafka.read();
+
+    clickRepository.save(event);
+
+}
+```
+
+This service has a single responsibility:
+
+**Persist raw events.**
+
+---
+
+## 4. Click Event Store
+
+This is the **Source of Truth**.
+
+Stores every click.
+
+Example
+
+```json
+{
+  "clickId":"123",
+  "campaignId":"CMP-10",
+  "userId":"USR-25",
+  "timestamp":"2026-07-11T10:15:00Z",
+  "country":"US",
+  "device":"Mobile"
+}
+```
+
+Used for
+
+- Historical reports
+- Auditing
+- Replay
+- Machine Learning
+- Billing
+- Data Warehouse
+
+Unlike Redis,
+
+the Click Event Store contains **raw immutable events**.
+
+---
+
+## 5. Apache Flink
+
+Acts as the **Real-Time Compute Engine**.
+
+Responsibilities
+
+- Stateful processing
+- Sliding/Tumbling/Session windows
+- CTR calculations
+- Fraud detection
+- Real-time aggregations
+- Checkpointing
+- Fault recovery
+
+Produces
+
+```
+Campaign A
+
+↓
+
+58231 Clicks
+
+CTR
+
+Revenue
+
+Top Campaigns
+```
+
+Flink computes metrics.
+
+It does **not** serve dashboards.
+
+---
+
+## 6. Redis
+
+Acts as the **Serving Layer**.
+
+Stores
+
+- Live Click Counts
+- Revenue
+- CTR
+- Trending Campaigns
+
+Dashboard reads only Redis.
+
+Advantages
+
+- Extremely fast reads
+- Low latency
+- Offloads dashboard traffic from databases
+
+Redis is **not** the source of truth.
+
+---
+
+## 7. Live Dashboard
+
+Reads only from Redis.
+
+Never queries Kafka.
+
+Never queries Flink.
+
+Never scans billions of click events.
+
+---
+
+# Billing
+
+## Batch Billing (Most Common)
+
+Billing usually does **not** need to be real-time.
+
+Instead,
+
+all click events are already stored in the Click Event Store.
+
+A scheduled batch job computes invoices.
+
+```
+Click Event Store
+
+↓
+
+Billing Batch Job
+
+↓
+
+Billing DB
+
+↓
+
+Invoice
+```
+
+Example SQL
+
+```sql
+SELECT campaignId,
+       COUNT(*) AS clicks
+FROM ClickEvents
+WHERE click_time BETWEEN '2026-07-01' AND '2026-07-31'
+GROUP BY campaignId;
+```
+
+Advantages
+
+- Simple
+- Accurate
+- Easy to audit
+- Easy to verify
+- No dependency on Flink
+
+This is how many production billing systems work.
+
+---
+
+## Real-Time Billing (Optional)
+
+If business requires invoices to update immediately,
+
+Flink can write to a transactional database supporting exactly-once semantics.
+
+```
+Kafka
+
+↓
+
+Apache Flink
+
+↓
+
+Transactional Database
+
+↓
+
+Billing API
+```
+
+Unlike Redis,
+
+this sink must support exactly-once guarantees.
+
+---
+
+# Failure Handling
+
+## If Flink crashes
+
+```
+Restore Checkpoint
+
+↓
+
+Replay Kafka Events
+
+↓
+
+Continue Processing
+```
+
+No events are lost.
+
+---
+
+## What happens to Redis?
+
+Redis may temporarily receive duplicate updates during replay because it is **not** coordinated with Flink checkpoints.
+
+This is acceptable because
+
+- Redis is only a cache.
+- Dashboards are eventually consistent.
+- Redis can always be rebuilt from the Click Event Store.
+
+---
+
+## If Storage Consumer crashes
+
+Only the Storage Consumer stops.
+
+Flink continues processing.
+
+Kafka retains events.
+
+After restart,
+
+the Storage Consumer resumes from its last committed offset.
+
+No raw events are lost.
+
+---
+
+## Why Separate Storage Consumer and Flink?
+
+Instead of
+
+```
+Kafka
+
+↓
+
+Flink
+
+├── Redis
+└── Click Event Store
+```
+
+prefer
+
+```
+Kafka
+
+├── Apache Flink
+│      │
+│      ▼
+│   Redis
+│
+└── Storage Consumer
+       │
+       ▼
+ Click Event Store
+```
+
+Reasons
+
+- Single Responsibility Principle
+- Independent scaling
+- Storage continues even if Flink is unavailable
+- Easier to maintain
+- Typical event-driven architecture
+
+---
+
+# Why Not Store Events Through Flink?
+
+If Flink is responsible for persistence,
+
+then a Flink outage may delay event storage.
+
+Keeping storage independent ensures
+
+- Raw events are always persisted
+- Replay is always possible
+- Billing is unaffected by Flink failures
+
+---
+
+# Final Responsibilities
+
+| Component | Responsibility |
+|------------|----------------|
+| Ad Redirect Service | Capture clicks and publish events |
+| Kafka | Durable event bus |
+| Storage Consumer | Persist raw events |
+| Click Event Store | Source of truth |
+| Apache Flink | Real-time analytics |
+| Redis | Live dashboard cache |
+| Billing Batch Job | Generate invoices |
+| Billing DB | Store invoices |
+
+---
+
+# Interview Summary
+
+> The Redirect Service immediately publishes click events to Kafka and returns the HTTP 302 redirect. Kafka acts as the central event bus. A dedicated Storage Consumer persists every raw click event into the Click Event Store, which serves as the source of truth for historical reporting, replay, auditing, and billing. Independently, Apache Flink consumes the same Kafka topic to perform real-time stream processing such as windowing, aggregations, CTR calculations, and fraud detection. Flink continuously updates Redis, which serves as the low-latency cache for live dashboards. Batch billing jobs compute invoices from the Click Event Store, while real-time billing—if required—would use a transactional exactly-once sink instead of Redis. This architecture cleanly separates storage, computation, and serving, making the system scalable, fault tolerant, and easy to evolve.		  
