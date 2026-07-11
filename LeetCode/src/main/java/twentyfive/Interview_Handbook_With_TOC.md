@@ -6683,6 +6683,126 @@ What matters is whether node `1` is **currently on the recursion stack (Grey)**.
 
 * **Directed Graph:** Parent tracking is insufficient because edges are one-way. Instead, detect cycles by checking whether DFS reaches a node that is **currently on the recursion stack (Grey)**, indicating a back edge.
 
+# Graph Valid tree
+
+```java
+class Solution {
+    public boolean validTree(int n, int[][] edges) {
+
+        // A valid tree:
+        // 1. Must be connected.
+        // 2. Must not contain a cycle.
+        //
+        // Approach 1:
+        //   - Detect cycle using DFS.
+        //   - Verify all nodes are connected.
+        //
+        // Approach 2 (Optimization):
+        //   - A tree with n nodes must have exactly (n - 1) edges.
+        //   - If edges > n-1, a cycle must exist.
+        //   - If edges < n-1, the graph cannot be connected.
+        //   - Therefore:
+        //          if(edges.length != n-1) return false;
+        //     Then simply perform one DFS/BFS to verify connectivity.
+        //
+        // Unlike the Bipartite problem, the input is NOT an adjacency list.
+        // Each edge is represented as an int[].Always check if you are given edges of the adjacency list
+        //
+        // Time  : O(V + E)
+        // Space : O(V + E)
+
+        // Build adjacency list.
+        List<Integer>[] adjList = new List[n];
+        for (int i = 0; i < n; i++)
+            adjList[i] = new ArrayList<>();
+
+        // Undirected graph.
+        for (int[] edge : edges) {
+            adjList[edge[0]].add(edge[1]);
+            adjList[edge[1]].add(edge[0]);
+        }
+
+        boolean[] visited = new boolean[n];
+
+        // Since a valid tree must be connected,
+        // start DFS from any node (say node 0)
+        // and verify that every node gets visited.
+
+        return isAcyclicDFS(0, adjList, visited, -1)
+                && isConnected(visited);
+
+        /*
+         * ---------------------------
+         * Approach 2 (Simpler)
+         * ---------------------------
+         *
+         * if(edges.length != n - 1)
+         *     return false;
+         *
+         * dfs(0, adjList, visited);
+         *
+         * return isConnected(visited);
+         */
+    }
+
+    // Standard cycle detection in an undirected graph.
+    // Ignore the edge leading back to the parent.
+    public boolean isAcyclicDFS(int node,
+                                List<Integer>[] adjList,
+                                boolean[] visited,
+                                int parent) {
+
+        visited[node] = true;
+
+        for (int neighbor : adjList[node]) {
+
+            if (visited[neighbor]) {
+
+                if (neighbor != parent)
+                    return false;
+
+            } else {
+
+                if (!isAcyclicDFS(neighbor,
+                                  adjList,
+                                  visited,
+                                  node))
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    // Verify that every node was visited.
+    // If any node is unvisited, the graph is disconnected.
+    public boolean isConnected(boolean[] visited) {
+
+        for (boolean v : visited) {
+            if (!v)
+                return false;
+        }
+
+        return true;
+    }
+
+    // Simple DFS used in Approach 2.
+    public void dfs(int node,
+                    List<Integer>[] adjList,
+                    boolean[] visited) {
+
+        visited[node] = true;
+
+        for (int neighbor : adjList[node]) {
+
+            if (!visited[neighbor]) {
+                dfs(neighbor, adjList, visited);
+            }
+        }
+    }
+}
+```
+
 
 
 # Why must we check every connected component for Bipartite?
@@ -7567,6 +7687,29 @@ Choose **DFS** when:
   * **BFS** stores **one level**, so its space depends on the **maximum width** of the tree.
 * For a **skewed tree**, BFS is more memory efficient.
 * For a **balanced (wide) tree**, DFS is more memory efficient.
+
+# Number of Connected Components in an Undirected Graph
+
+**LeetCode 323 – Number of Connected Components in an Undirected Graph**
+
+## Hint
+
+The idea is to start a DFS/BFS from every **unvisited** node. Every time we start a new DFS/BFS, we have discovered a **new connected component**, so increment the counter.
+
+```java
+int connected = 0;
+boolean[] visited = new boolean[n];
+
+for (int i = 0; i < n; i++) {
+    if (!visited[i]) {
+        connected++;
+        dfs(i, adjList, visited);
+    }
+}
+
+return connected;
+```
+
 
 
 # Chapter 8: LRU Cache
