@@ -21347,3 +21347,2629 @@ Store policies separately and load them dynamically.
 - Design policies to be configurable and support different users, APIs, and subscription plans.
 
 This is the level of depth typically expected in Senior Backend and Staff-level system design interviews.
+
+
+# Real-Time Ad Click Analytics System – Part 2
+# High-Level Design (HLD)
+
+---
+
+# Problem Statement
+
+Design a system that tracks every ad click and provides
+
+- Real-time click counts
+- Live dashboards
+- Historical reporting
+- Fraud detection
+- High throughput
+- Low latency
+
+---
+
+# Clarifying Questions
+
+Before starting, ask the interviewer:
+
+### 1. How fresh should analytics be?
+
+- Real-time (< 2 seconds)?
+- Near real-time (30-60 seconds)?
+- Batch (hourly/daily)?
+
+This determines whether we need Kafka consumers or Flink.
+
+---
+
+### 2. Is every click equally important?
+
+For example
+
+- Marketing dashboard
+- Billing advertisers
+- Fraud detection
+
+Billing systems usually require much stronger correctness guarantees.
+
+---
+
+### 3. What scale are we designing for?
+
+Example
+
+- 50K clicks/sec
+- 500K clicks/sec
+
+This affects Kafka partition count and storage.
+
+---
+
+### 4. Do we need historical reports?
+
+If yes,
+
+we'll store raw click events.
+
+---
+
+# Functional Requirements
+
+- Track every click
+- Live dashboard
+- Historical reports
+- Campaign analytics
+- Country/device/browser breakdown
+- Fraud detection
+
+---
+
+# Non Functional Requirements
+
+- High Availability
+- Low Latency
+- Horizontally Scalable
+- Fault Tolerant
+- Event Driven
+
+---
+
+# High-Level Architecture
+
+```
+                        Users
+                          │
+                          ▼
+                  Ad Redirect Service
+                          │
+           Return HTTP 302 Immediately
+                          │
+                          ▼
+                 Publish Click Event
+                          │
+                          ▼
+                        Kafka
+            ┌─────────────┴─────────────┐
+            │                           │
+            ▼                           ▼
+     Analytics Pipeline         Raw Event Storage
+            │                           │
+            ▼                           ▼
+      Redis (Live Stats)        Analytics Database
+            │
+            ▼
+     Dashboard / APIs
+```
+
+---
+
+# Why Return Redirect Immediately?
+
+Never delay the user.
+
+Bad Design
+
+```
+Click
+
+↓
+
+Store Analytics
+
+↓
+
+Update DB
+
+↓
+
+Generate Metrics
+
+↓
+
+Redirect
+```
+
+Redirect becomes slow.
+
+Good Design
+
+```
+Click
+
+↓
+
+HTTP 302
+
+↓
+
+Publish Event
+
+↓
+
+Background Processing
+```
+
+User experiences minimal latency.
+
+---
+
+# Components
+
+## Ad Redirect Service
+
+Responsibilities
+
+- Validate click
+- Generate Click Event
+- Publish to Kafka
+- Redirect user immediately
+
+Should remain stateless.
+
+---
+
+## Kafka
+
+Acts as the event backbone.
+
+Every click becomes an immutable event.
+
+Example
+
+```
+Click
+
+↓
+
+Kafka Topic
+
+↓
+
+Multiple Consumers
+```
+
+Advantages
+
+- Decouples producers and consumers
+- Durable
+- Scalable
+- Supports replay
+
+---
+
+## Analytics Pipeline
+
+Consumes click events.
+
+Initially
+
+Simple Kafka Consumers.
+
+Later
+
+Can evolve into Flink for advanced stream processing.
+
+Responsibilities
+
+- Aggregate clicks
+- Compute metrics
+- Detect fraud
+- Update dashboard cache
+
+---
+
+## Redis
+
+Stores
+
+```
+Campaign123
+
+↓
+
+Clicks = 58,231
+```
+
+Optimized for
+
+- Live dashboards
+- Fast reads
+
+---
+
+## Analytics Database
+
+Stores
+
+Every click event.
+
+Used for
+
+- Historical reports
+- Billing
+- Auditing
+- Reprocessing
+
+Unlike Redis,
+
+this is the source of truth for historical analytics.
+
+---
+
+# Request Flow
+
+```
+User Clicks Ad
+
+↓
+
+Redirect Service
+
+↓
+
+Publish Event
+
+↓
+
+Kafka
+
+↓
+
+Return HTTP 302
+
+↓
+
+Analytics Consumer
+
+↓
+
+Update Redis
+
+↓
+
+Store Raw Event
+
+↓
+
+Dashboard Refresh
+```
+
+Notice
+
+Redirect and analytics are completely decoupled.
+
+---
+
+# Click Event Schema
+
+Example
+
+```json
+{
+  "clickId": "UUID",
+  "campaignId": "CMP123",
+  "adId": "AD987",
+  "userId": "USR456",
+  "timestamp": "2026-07-10T20:30:15Z",
+  "country": "US",
+  "device": "Mobile",
+  "browser": "Chrome",
+  "cost": 0.75
+}
+```
+
+Important
+
+Click events are immutable.
+
+Never update them.
+
+Always append new events.
+
+---
+
+# Why Kafka?
+
+Without Kafka
+
+```
+Redirect Service
+
+↓
+
+Analytics DB
+
+↓
+
+Redis
+
+↓
+
+Fraud Detection
+```
+
+Redirect service becomes tightly coupled to every downstream system.
+
+With Kafka
+
+```
+Redirect Service
+
+↓
+
+Kafka
+
+├── Analytics
+├── Billing
+├── Fraud Detection
+├── ML Pipeline
+└── Reporting
+```
+
+Each consumer scales independently.
+
+---
+
+# Why Redis?
+
+Dashboard queries should never scan billions of click records.
+
+Instead
+
+```
+Dashboard
+
+↓
+
+Redis
+
+↓
+
+Current Metrics
+```
+
+Redis stores pre-computed aggregates for fast reads.
+
+---
+
+# Why Store Raw Events?
+
+Suppose tomorrow the business asks
+
+```
+Show
+
+Clicks
+
+Grouped by Browser
+
+For Last Month
+```
+
+If we only stored counters,
+
+this query is impossible.
+
+Raw events allow
+
+- New reports
+- Auditing
+- Replay
+- Backfilling metrics
+
+---
+
+# Scaling
+
+Each component scales independently.
+
+```
+Load Balancer
+
+↓
+
+Redirect Service (Multiple Instances)
+
+↓
+
+Kafka Cluster
+
+↓
+
+Analytics Consumers
+
+↓
+
+Redis Cluster
+
+↓
+
+Analytics Database
+```
+
+---
+
+# Failure Handling
+
+If Redis fails
+
+- Dashboard may show stale data
+- Raw events remain safely stored
+
+If Analytics Consumer crashes
+
+- Kafka retains events
+- Consumer resumes from the last committed offset
+
+If Dashboard fails
+
+- Analytics pipeline continues
+- Metrics continue updating
+
+---
+
+# Trade-offs
+
+Advantages
+
+- Fast redirect
+- Decoupled architecture
+- Horizontally scalable
+- Easy to add new consumers
+- Durable event storage
+
+Trade-offs
+
+- Eventual consistency
+- Additional infrastructure
+- Kafka operational complexity
+- Dashboard may briefly lag behind reality
+
+---
+
+# Interview Summary
+
+The Redirect Service immediately returns the HTTP redirect to keep user latency low. Every click is published as an immutable event to Kafka, which acts as the central event bus. Independent consumers process these events asynchronously. Aggregated metrics are stored in Redis for low-latency dashboards, while raw click events are persisted in an Analytics Database for historical reporting, auditing, and replay. This architecture is scalable, fault tolerant, and naturally supports adding new consumers such as fraud detection, billing, and machine learning without modifying the Redirect Service.
+
+---
+
+# Key Takeaways
+
+- Never block the redirect path for analytics.
+- Publish click events asynchronously to Kafka.
+- Treat click events as immutable.
+- Store aggregated metrics in Redis.
+- Store raw events for historical reporting and replay.
+- Keep producers and consumers decoupled.
+- Scale each component independently.
+
+# Real-Time Ad Click Analytics System – Part 3
+# Why Flink? Kafka Consumers vs Stream Processing
+
+---
+
+# The Problem
+
+So far our architecture is
+
+```
+Users
+
+↓
+
+Redirect Service
+
+↓
+
+Kafka
+
+↓
+
+Analytics Consumer
+
+↓
+
+Redis
+
+↓
+
+Dashboard
+```
+
+Looks good.
+
+Question
+
+**Why isn't this enough?**
+
+Why do companies use Flink?
+
+---
+
+# Scenario 1 – Simple Click Counter
+
+Suppose Marketing only wants
+
+```
+Campaign A
+
+↓
+
+Total Clicks
+```
+
+Kafka Consumer is enough.
+
+```
+Kafka
+
+↓
+
+Consumer
+
+↓
+
+Redis INCR
+```
+
+Every click
+
+```
+INCR campaign123
+```
+
+Done.
+
+No Flink required.
+
+---
+
+# Scenario 2 – Clicks Per Minute
+
+Marketing asks
+
+```
+Clicks
+
+Last Minute
+```
+
+Now things become harder.
+
+Consumer needs to remember
+
+```
+Current Minute
+
+↓
+
+Current Count
+```
+
+Example
+
+```
+10:01
+
+↓
+
+523 Clicks
+
+------------
+
+10:02
+
+↓
+
+684 Clicks
+```
+
+Still manageable.
+
+---
+
+# Scenario 3 – Last 5 Minutes
+
+Now Marketing changes requirement.
+
+```
+Show
+
+Clicks
+
+Last 5 Minutes
+```
+
+NOT
+
+```
+Current Minute
+```
+
+But
+
+```
+Rolling
+
+5 Minute Window
+```
+
+Every second
+
+the answer changes.
+
+Now the consumer must
+
+- remember old events
+- remove expired events
+- compute rolling counts
+
+Logic becomes complicated.
+
+---
+
+# Scenario 4 – Top 10 Campaigns
+
+Now they ask
+
+```
+Top Campaigns
+
+Last 10 Minutes
+```
+
+Consumer now needs
+
+- maintain counts
+- continuously sort
+- expire old clicks
+
+Much harder.
+
+---
+
+# Scenario 5 – CTR
+
+CTR
+
+```
+Clicks
+
+/
+
+Impressions
+```
+
+Problem
+
+Clicks
+
+and
+
+Impressions
+
+arrive as
+
+different Kafka streams.
+
+```
+Impression Topic
+
+↓
+
+Kafka
+
+------------
+
+Click Topic
+
+↓
+
+Kafka
+```
+
+Need to join them.
+
+Consumers become complicated.
+
+---
+
+# Scenario 6 – Fraud Detection
+
+Business asks
+
+```
+If
+
+IP
+
+makes
+
+100 clicks
+
+within
+
+10 seconds
+
+↓
+
+Raise Alert
+```
+
+Consumer now needs
+
+- remember timestamps
+- sliding windows
+- expiration
+- timers
+
+Again,
+
+complex.
+
+---
+
+# Kafka Consumer Starts Growing
+
+```
+Kafka
+
+↓
+
+Consumer
+
+↓
+
+Count Clicks
+
+↓
+
+Remember Time
+
+↓
+
+Sliding Window
+
+↓
+
+Top Campaigns
+
+↓
+
+CTR
+
+↓
+
+Fraud Detection
+
+↓
+
+Revenue
+
+↓
+
+Session Tracking
+```
+
+One consumer
+
+becomes huge.
+
+Hard to maintain.
+
+---
+
+# This Is Why Flink Exists
+
+Flink specializes in
+
+```
+Continuous
+
+Event Processing
+```
+
+Instead of writing all the logic yourself,
+
+Flink provides
+
+- Windows
+- State
+- Timers
+- Joins
+- Aggregations
+- Checkpointing
+
+out of the box.
+
+---
+
+# New Architecture
+
+```
+Users
+
+↓
+
+Redirect Service
+
+↓
+
+Kafka
+
+↓
+
+Flink
+
+↓
+
+Redis
+
+↓
+
+Dashboard
+```
+
+Instead of
+
+```
+Kafka Consumer
+
+↓
+
+Business Logic
+```
+
+we now have
+
+```
+Kafka
+
+↓
+
+Flink
+
+↓
+
+Business Logic
+```
+
+---
+
+# What Does Flink Actually Do?
+
+Imagine
+
+```
+Click
+
+↓
+
+Campaign 123
+```
+
+Flink immediately updates
+
+```
+Campaign123
+
+Clicks++
+
+```
+
+Suppose another click arrives
+
+```
+Campaign123
+
+↓
+
+Clicks++
+```
+
+State is always current.
+
+---
+
+# Stateful Processing
+
+Unlike a normal Kafka consumer,
+
+Flink remembers things.
+
+Example
+
+```
+Campaign123
+
+↓
+
+58231 Clicks
+```
+
+Flink keeps this in memory.
+
+No need to query the database.
+
+---
+
+# Windowing
+
+Suppose we want
+
+```
+Clicks
+
+Last 5 Minutes
+```
+
+Flink automatically
+
+- adds new clicks
+- removes old clicks
+- recomputes totals
+
+No custom cleanup logic required.
+
+---
+
+# Stream Joins
+
+CTR requires
+
+```
+Impressions
+
++
+
+Clicks
+```
+
+Flink joins these streams continuously.
+
+Consumer code becomes much simpler.
+
+---
+
+# Timers
+
+Fraud Detection
+
+```
+100 Clicks
+
+↓
+
+10 Seconds
+
+↓
+
+Alert
+```
+
+Flink has built-in timers.
+
+Consumers don't need to implement scheduling.
+
+---
+
+# Checkpointing
+
+Suppose Flink crashes.
+
+Without Flink
+
+Consumer may lose in-memory state.
+
+With Flink
+
+```
+Checkpoint
+
+↓
+
+Recover
+
+↓
+
+Continue
+```
+
+Processing resumes from the last checkpoint.
+
+---
+
+# Exactly Once
+
+Kafka usually provides
+
+```
+At Least Once
+```
+
+delivery.
+
+Meaning
+
+duplicates are possible.
+
+Flink supports
+
+```
+Exactly Once
+
+Processing
+```
+
+through checkpointing and coordinated state management.
+
+Very useful for
+
+- Billing
+- Revenue
+- Financial Analytics
+
+---
+
+# Comparison
+
+| Feature | Kafka Consumer | Apache Flink |
+|----------|----------------|--------------|
+| Simple Counter | ✅ | ✅ |
+| Rolling Windows | Manual | Built-in |
+| Sliding Windows | Manual | Built-in |
+| Session Windows | Manual | Built-in |
+| Stream Joins | Manual | Built-in |
+| Stateful Processing | Manual | Built-in |
+| Timers | Manual | Built-in |
+| Checkpointing | Manual | Built-in |
+| Exactly Once | Difficult | Built-in Support |
+
+---
+
+# When Is Kafka Consumer Enough?
+
+Use simple consumers when
+
+- Increment counters
+- Store events
+- Send notifications
+- Simple ETL
+
+Examples
+
+```
+Kafka
+
+↓
+
+Consumer
+
+↓
+
+Database
+```
+
+No Flink required.
+
+---
+
+# When Should You Introduce Flink?
+
+Use Flink when you need
+
+- Rolling windows
+- Sliding windows
+- Session windows
+- Stream joins
+- Stateful aggregations
+- Real-time dashboards
+- Fraud detection
+- Event-time processing
+- Exactly-once processing
+
+---
+
+# Interview Example
+
+Interviewer
+
+"Do we need Flink?"
+
+Good Answer
+
+> "Not initially. If the requirement is simply to count clicks and store events, Kafka consumers are sufficient. As requirements evolve to include rolling time windows, CTR calculations, fraud detection, sessionization, or real-time dashboards, I'd introduce Apache Flink because it provides built-in stream processing primitives such as state management, event-time windows, timers, joins, checkpointing, and exactly-once processing."
+
+This demonstrates incremental system design rather than introducing unnecessary complexity.
+
+---
+
+# Key Takeaways
+
+- Kafka transports events; it does not perform stream processing.
+- Simple Kafka consumers are sufficient for straightforward event processing.
+- As analytics become more complex, custom consumer logic becomes difficult to maintain.
+- Flink provides built-in support for stateful stream processing, windowing, joins, timers, and checkpointing.
+- Introduce Flink only when business requirements justify the additional operational complexity.
+
+# Real-Time Ad Click Analytics System – Part 4
+# Event Time, Processing Time, Watermarks & Windows
+
+---
+
+# Why This Chapter Matters
+
+Suppose a user clicks an advertisement at
+
+```
+10:00:00
+```
+
+Due to network delay,
+
+Kafka receives the event at
+
+```
+10:00:03
+```
+
+Flink processes it at
+
+```
+10:00:05
+```
+
+Question:
+
+Which timestamp should analytics use?
+
+This is one of the most important concepts in stream processing.
+
+---
+
+# Three Different Times
+
+Every event can have three timestamps.
+
+```
+Event Time
+
+↓
+
+When the click actually happened
+
+----------------------------
+
+Ingestion Time
+
+↓
+
+When Kafka received it
+
+----------------------------
+
+Processing Time
+
+↓
+
+When Flink processed it
+```
+
+Example
+
+```
+User Clicks
+
+10:00:00
+
+↓
+
+Kafka
+
+10:00:03
+
+↓
+
+Flink
+
+10:00:05
+```
+
+---
+
+# Which Time Should Analytics Use?
+
+Suppose Marketing asks
+
+```
+Clicks
+
+Between
+
+10:00
+
+and
+
+10:01
+```
+
+Should this click count?
+
+Yes.
+
+It happened at
+
+```
+10:00:00
+```
+
+Even though Flink processed it later.
+
+Therefore
+
+analytics should use
+
+```
+Event Time
+```
+
+not
+
+Processing Time.
+
+---
+
+# Why Processing Time Is Wrong
+
+Suppose
+
+Network delay
+
+```
+20 seconds
+```
+
+Click
+
+```
+10:00:50
+```
+
+Processed
+
+```
+10:01:10
+```
+
+If we use processing time,
+
+this click is counted in
+
+```
+10:01
+```
+
+Wrong.
+
+The user actually clicked during
+
+```
+10:00
+```
+
+---
+
+# Event Time
+
+Every click event contains
+
+```json
+{
+    "clickId":"123",
+    "campaignId":"A1",
+    "eventTime":"10:00:50"
+}
+```
+
+Notice
+
+the timestamp travels with the event.
+
+Flink performs analytics using
+
+```
+eventTime
+```
+
+---
+
+# Problem
+
+Events Do Not Always Arrive In Order
+
+Suppose
+
+```
+Click A
+
+10:00:01
+
+↓
+
+Arrives Immediately
+```
+
+```
+Click B
+
+10:00:02
+
+↓
+
+Network Delay
+
+↓
+
+Arrives 20 Seconds Later
+```
+
+Arrival order becomes
+
+```
+Click A
+
+↓
+
+Click C
+
+↓
+
+Click D
+
+↓
+
+Click B
+```
+
+Out of order.
+
+---
+
+# Without Special Handling
+
+Suppose Flink closes
+
+```
+10:00 Window
+```
+
+before Click B arrives.
+
+Click B gets ignored.
+
+Analytics become incorrect.
+
+---
+
+# Watermarks
+
+Watermarks solve this problem.
+
+Think of a watermark as
+
+```
+"I'm willing to wait
+
+a little longer
+
+for late events."
+```
+
+Example
+
+```
+Allowed Delay
+
+30 Seconds
+```
+
+Now
+
+```
+10:00 Window
+
+↓
+
+Wait Until
+
+10:00:30
+
+↓
+
+Close Window
+```
+
+Late events arriving within
+
+30 seconds
+
+are still counted.
+
+---
+
+# Example
+
+Clicks
+
+```
+10:00:01
+
+10:00:05
+
+10:00:10
+
+10:00:15
+```
+
+One click arrives late
+
+```
+Event Time
+
+10:00:12
+
+Arrival Time
+
+10:00:25
+```
+
+Watermark
+
+```
+30 Seconds
+```
+
+The event is still accepted.
+
+Correct analytics.
+
+---
+
+# What Happens If It Arrives Too Late?
+
+Suppose
+
+Watermark
+
+```
+30 Seconds
+```
+
+Late click
+
+```
+2 Minutes Late
+```
+
+Window already closed.
+
+Choices
+
+- Ignore
+- Send to late-event stream
+- Reprocess later
+
+Depends on business requirements.
+
+---
+
+# Windowing
+
+Instead of computing
+
+all clicks forever,
+
+Flink groups events into windows.
+
+Several types exist.
+
+---
+
+# 1. Tumbling Window
+
+Fixed-size,
+
+non-overlapping windows.
+
+Example
+
+```
+10:00-10:01
+
+↓
+
+523 Clicks
+
+----------------
+
+10:01-10:02
+
+↓
+
+610 Clicks
+```
+
+Good for
+
+- Reports
+- Billing
+- Minute statistics
+
+---
+
+# Visualization
+
+```
+|-----1 Min-----|
+
+|-----1 Min-----|
+
+|-----1 Min-----|
+```
+
+No overlap.
+
+---
+
+# 2. Sliding Window
+
+Suppose Marketing asks
+
+```
+Clicks
+
+Last
+
+5 Minutes
+```
+
+Updated
+
+Every Minute.
+
+Windows become
+
+```
+10:00-10:05
+
+10:01-10:06
+
+10:02-10:07
+```
+
+Notice
+
+they overlap.
+
+---
+
+# Visualization
+
+```
+|---------5 Min---------|
+
+      |---------5 Min---------|
+
+            |---------5 Min---------|
+```
+
+---
+
+# Good For
+
+- Live dashboards
+- Trending campaigns
+- Real-time analytics
+
+---
+
+# 3. Session Window
+
+Instead of
+
+fixed time,
+
+group activity
+
+by user behavior.
+
+Example
+
+User clicks
+
+```
+10:00
+
+10:01
+
+10:03
+```
+
+Then
+
+no activity
+
+for
+
+```
+30 Minutes
+```
+
+New click
+
+```
+10:35
+```
+
+Starts
+
+a new session.
+
+---
+
+# Visualization
+
+```
+Clicks
+
+● ● ●
+
+-----------30 min------------
+
+● ●
+```
+
+Useful for
+
+- User sessions
+- Shopping carts
+- Website analytics
+
+---
+
+# Which Window Should I Use?
+
+| Requirement | Window |
+|------------|---------|
+| Hourly Report | Tumbling |
+| Last 5 Minutes | Sliding |
+| User Session | Session |
+
+---
+
+# Example Dashboard
+
+Marketing wants
+
+```
+Campaign A
+
+↓
+
+Clicks
+
+Last 5 Minutes
+```
+
+Every second,
+
+the number changes.
+
+Sliding Window
+
+is perfect.
+
+---
+
+# Example Billing
+
+Advertiser pays
+
+```
+Every Hour
+```
+
+Use
+
+Tumbling Window.
+
+No overlap.
+
+Simple billing.
+
+---
+
+# Example Fraud
+
+Detect
+
+```
+100 Clicks
+
+Within
+
+10 Seconds
+```
+
+Sliding Window
+
+works well.
+
+---
+
+# Complete Flow
+
+```
+User Click
+
+↓
+
+Redirect Service
+
+↓
+
+Kafka
+
+↓
+
+Flink
+
+↓
+
+Event Time
+
+↓
+
+Watermark
+
+↓
+
+Sliding Window
+
+↓
+
+Aggregate
+
+↓
+
+Redis
+
+↓
+
+Dashboard
+```
+
+---
+
+# Interview Questions
+
+## Why Event Time?
+
+Because network delays should not change analytics.
+
+---
+
+## Why Watermarks?
+
+To tolerate late-arriving events while still producing timely results.
+
+---
+
+## Why Tumbling Window?
+
+Fixed reporting intervals.
+
+No overlap.
+
+---
+
+## Why Sliding Window?
+
+Continuous rolling analytics.
+
+---
+
+## Why Session Window?
+
+Groups user activity instead of fixed time intervals.
+
+---
+
+## What if events arrive too late?
+
+Options
+
+- Ignore
+- Send to late-event processing
+- Recompute historical reports
+
+Depends on business requirements.
+
+---
+
+# Key Takeaways
+
+- Event Time represents when the event actually occurred.
+- Processing Time represents when the stream processor handled the event.
+- Analytics almost always use Event Time.
+- Watermarks allow Flink to wait for late-arriving events before closing a window.
+- Tumbling Windows are fixed and non-overlapping.
+- Sliding Windows overlap and are ideal for rolling metrics.
+- Session Windows group events based on user inactivity rather than fixed time intervals.
+- Choosing the correct window type depends on the business requirement rather than the technology.
+
+# Real-Time Ad Click Analytics System – Part 5
+# Exactly Once, Checkpointing, Scaling & Fault Tolerance
+
+---
+
+# Why This Chapter Matters
+
+Suppose a user clicks an advertisement.
+
+```
+Click
+
+↓
+
+Kafka
+
+↓
+
+Flink
+
+↓
+
+Redis
+
+↓
+
+Dashboard
+```
+
+Now imagine
+
+Flink crashes.
+
+Questions
+
+- Is the click lost?
+- Is it counted twice?
+- Can processing resume?
+
+These are the problems this chapter solves.
+
+---
+
+# Delivery Guarantees
+
+There are three common delivery guarantees.
+
+```
+At Most Once
+
+↓
+
+At Least Once
+
+↓
+
+Exactly Once
+```
+
+---
+
+# 1. At Most Once
+
+Event is processed
+
+```
+0
+
+or
+
+1 Time
+```
+
+If failure occurs
+
+↓
+
+Event may be lost.
+
+Example
+
+```
+Kafka
+
+↓
+
+Consumer
+
+↓
+
+Crash
+
+↓
+
+Lost Event
+```
+
+Suitable for
+
+- Logs
+- Metrics
+
+Not suitable for billing.
+
+---
+
+# 2. At Least Once
+
+Kafka guarantees
+
+```
+Event
+
+↓
+
+One Or More Times
+```
+
+If consumer crashes
+
+Kafka redelivers.
+
+Example
+
+```
+Click
+
+↓
+
+Processed
+
+↓
+
+Crash
+
+↓
+
+Processed Again
+```
+
+Problem
+
+Duplicate processing.
+
+---
+
+# Example
+
+Campaign
+
+```
+100 Clicks
+```
+
+One click processed twice.
+
+Dashboard
+
+```
+101
+
+↓
+
+102
+```
+
+Actual
+
+```
+101
+```
+
+Incorrect.
+
+---
+
+# 3. Exactly Once
+
+Ideal behavior.
+
+Every event affects the system
+
+```
+Exactly One Time
+```
+
+No loss.
+
+No duplicates.
+
+This is important for
+
+- Billing
+- Revenue
+- Financial reports
+
+---
+
+# How Flink Achieves Exactly Once
+
+Flink uses
+
+```
+Checkpointing
+```
+
+Think of it as
+
+saving the current progress.
+
+---
+
+# Example
+
+Suppose Flink has processed
+
+```
+1 Million Events
+```
+
+Checkpoint
+
+```
+Offset = 1,000,000
+
+State Saved
+```
+
+If Flink crashes
+
+```
+Restart
+
+↓
+
+Restore Checkpoint
+
+↓
+
+Continue
+```
+
+No need to start over.
+
+---
+
+# What Is Checkpointing?
+
+Checkpoint stores
+
+- Current Kafka offsets
+- Current Flink state
+- Window state
+- Counters
+- Timers
+
+Everything required to continue processing.
+
+---
+
+# Example
+
+Campaign
+
+```
+Campaign123
+
+↓
+
+Clicks
+
+58231
+```
+
+Checkpoint
+
+```
+Campaign123
+
+↓
+
+58231
+```
+
+Crash.
+
+Restart.
+
+Restore
+
+```
+58231
+```
+
+Continue
+
+```
+58232
+
+58233
+```
+
+---
+
+# Kafka Offset Management
+
+Kafka stores
+
+```
+Offset
+
+0
+
+1
+
+2
+
+3
+
+4
+```
+
+Suppose Flink processed
+
+```
+Offset
+
+1000
+```
+
+Checkpoint records
+
+```
+Offset = 1000
+```
+
+Crash.
+
+Restart.
+
+Kafka resumes from
+
+```
+1001
+```
+
+No duplicate processing.
+
+---
+
+# Scaling Kafka
+
+Suppose
+
+```
+500,000 Clicks/sec
+```
+
+One Kafka partition
+
+isn't enough.
+
+Create
+
+```
+Kafka Topic
+
+↓
+
+Partition 1
+
+Partition 2
+
+Partition 3
+
+Partition 4
+```
+
+---
+
+# Partitioning Strategy
+
+Partition by
+
+```
+Campaign ID
+```
+
+Example
+
+```
+Campaign A
+
+↓
+
+Partition 3
+```
+
+Every click for Campaign A
+
+goes to the same partition.
+
+Advantages
+
+- Ordering preserved
+- Stateful processing simplified
+
+---
+
+# Scaling Flink
+
+Each Kafka partition
+
+can be processed by
+
+one Flink task.
+
+```
+Kafka
+
+Partition1
+
+↓
+
+Flink Task1
+
+----------------
+
+Partition2
+
+↓
+
+Flink Task2
+
+----------------
+
+Partition3
+
+↓
+
+Flink Task3
+```
+
+Scale horizontally.
+
+---
+
+# Why Partition by Campaign?
+
+Suppose
+
+Campaign A
+
+receives
+
+```
+1 Million Clicks
+```
+
+All clicks for that campaign
+
+go to the same Flink task.
+
+State remains consistent.
+
+---
+
+# Redis Updates
+
+Suppose Flink computes
+
+```
+Campaign123
+
+↓
+
+58231 Clicks
+```
+
+Redis stores
+
+```
+campaign123
+
+↓
+
+58231
+```
+
+Dashboard reads Redis.
+
+Never computes analytics itself.
+
+---
+
+# Historical Database
+
+Redis stores
+
+Current aggregates.
+
+Analytics Database stores
+
+Every click.
+
+Example
+
+```
+Click
+
+↓
+
+Analytics DB
+```
+
+Useful for
+
+- Historical reports
+- Auditing
+- Replay
+- Backfilling metrics
+
+---
+
+# What If Redis Crashes?
+
+Redis is only a cache.
+
+Dashboard
+
+may temporarily lose live metrics.
+
+Raw events remain safe in Kafka and the Analytics Database.
+
+Rebuild Redis by replaying events.
+
+---
+
+# What If Kafka Crashes?
+
+Kafka replicates partitions.
+
+Example
+
+```
+Partition 1
+
+↓
+
+Leader
+
+↓
+
+Follower
+
+↓
+
+Follower
+```
+
+If leader fails
+
+Follower becomes
+
+new leader.
+
+Processing continues.
+
+---
+
+# What If Flink Crashes?
+
+```
+Crash
+
+↓
+
+Restart
+
+↓
+
+Restore Checkpoint
+
+↓
+
+Continue
+```
+
+No manual intervention.
+
+---
+
+# Hot Campaign Problem
+
+Suppose
+
+```
+World Cup Final
+
+↓
+
+Campaign A
+
+↓
+
+10 Million Clicks
+```
+
+One partition becomes hot.
+
+Possible solutions
+
+- Increase partitions
+- Use campaign + region as partition key
+- Hierarchical aggregation
+- Additional aggregation stage
+
+---
+
+# Monitoring
+
+Monitor
+
+Kafka
+
+- Consumer Lag
+- Throughput
+- Partition Health
+
+Flink
+
+- Checkpoint Duration
+- Checkpoint Failures
+- Processing Latency
+- Backpressure
+
+Redis
+
+- Memory
+- Latency
+- Hit Rate
+
+Dashboard
+
+- Refresh Latency
+
+---
+
+# Trade-offs
+
+Advantages
+
+- Near real-time analytics
+- Fault tolerant
+- Horizontally scalable
+- Exactly-once processing
+- Durable event storage
+
+Trade-offs
+
+- Operational complexity
+- Multiple distributed systems
+- Checkpoint storage overhead
+- Eventual consistency
+
+---
+
+# Final Architecture
+
+```
+                 Users
+                   │
+                   ▼
+          Ad Redirect Service
+                   │
+          HTTP 302 Immediately
+                   │
+                   ▼
+                 Kafka
+      ┌────────────┴────────────┐
+      │                         │
+      ▼                         ▼
+   Apache Flink          Analytics DB
+      │
+      ▼
+    Redis
+      │
+      ▼
+ Live Dashboard
+```
+
+---
+
+# Interview Questions
+
+## Why Kafka?
+
+Reliable event streaming and decoupling between producers and consumers.
+
+---
+
+## Why Flink?
+
+Real-time stateful stream processing, windowing, joins, timers, and exactly-once support.
+
+---
+
+## Why Redis?
+
+Serve pre-computed metrics with very low latency.
+
+---
+
+## Why Analytics Database?
+
+Historical reporting, replay, auditing, and billing.
+
+---
+
+## What happens if Flink crashes?
+
+Restore from the latest checkpoint and resume processing from the corresponding Kafka offsets.
+
+---
+
+## Why partition by Campaign ID?
+
+Preserves ordering and ensures all events for a campaign are processed by the same Flink task.
+
+---
+
+## What if Redis crashes?
+
+Redis can be rebuilt because Kafka and the Analytics Database contain the source data.
+
+---
+
+# Key Takeaways
+
+- Kafka provides durable event storage and scalable event distribution.
+- Flink performs stateful stream processing on top of Kafka.
+- Checkpoints capture both processing state and Kafka offsets.
+- Exactly-once processing prevents duplicate analytics and is essential for financial use cases.
+- Redis stores live aggregates for dashboards, while the Analytics Database stores the complete event history.
+- Partitioning by Campaign ID preserves ordering and simplifies stateful processing.
+- A production system should monitor consumer lag, checkpoint health, processing latency, and backpressure.
