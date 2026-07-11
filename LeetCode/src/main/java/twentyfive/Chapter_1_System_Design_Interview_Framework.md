@@ -25103,24 +25103,48 @@ The search index must be distributed.
 
 # 5. High-Level Design
 
-                    User
-                      |
-                Search API
-                      |
-               Query Service
-                      |
-        +-------------+-------------+
-        |                           |
-   Autocomplete              Search Service
-                                      |
-                               Inverted Index
-                                      |
-                               Ranking Service
-                                      |
-                             Permission Filter
-                                      |
-                                 Return Results
-
+```text
+                           +----------------+
+                           |      User      |
+                           +-------+--------+
+                                   |
+                                   v
+                           +----------------+
+                           |   Search API   |
+                           +-------+--------+
+                                   |
+                                   v
+                           +----------------+
+                           | Query Service  |
+                           +---+--------+---+
+                               |        |
+                Autocomplete   |        | Search Query
+                               |        |
+                               v        v
+                    +----------------+  +----------------+
+                    | Autocomplete   |  | Search Service |
+                    +----------------+  +--------+-------+
+                                                |
+                                                v
+                                       +------------------+
+                                       | Inverted Index   |
+                                       +--------+---------+
+                                                |
+                                                v
+                                       +------------------+
+                                       | Ranking Service  |
+                                       +--------+---------+
+                                                |
+                                                v
+                                       +------------------+
+                                       | Permission Check |
+                                       +--------+---------+
+                                                |
+                                                v
+                                       +---------------------------+
+                                       | Search Results to return  |
+                                       +---------------------------+
+```
 Let's understand each component.
 
 ---
