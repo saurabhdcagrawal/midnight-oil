@@ -1755,6 +1755,872 @@ Always justify the choice.
 
 ---
 
+# Optimistic Locking - Complete Guide
+
+---
+
+# What Problem Does Optimistic Locking Solve?
+
+Optimistic locking prevents the **Lost Update Problem**, where two concurrent transactions overwrite each other's changes.
+
+Suppose we have an account.
+
+```
+Account
+
+Balance = $100
+```
+
+Two users make requests simultaneously.
+
+```
+Thread A
+
+Withdraw $30
+```
+
+```
+Thread B
+
+Withdraw $40
+```
+
+Without proper concurrency control, one update may overwrite the other.
+
+---
+
+# Lost Update Problem
+
+Both threads execute
+
+```java
+balance = SELECT balance;
+```
+
+Thread A reads
+
+```
+100
+```
+
+Thread B also reads
+
+```
+100
+```
+
+Both perform their calculations.
+
+Thread A
+
+```
+100 - 30 = 70
+```
+
+Thread B
+
+```
+100 - 40 = 60
+```
+
+Now both update the database.
+
+Thread A
+
+```
+UPDATE balance = 70
+```
+
+Thread B
+
+```
+UPDATE balance = 60
+```
+
+Final balance
+
+```
+$60
+```
+
+Correct balance should be
+
+```
+$30
+```
+
+Thread A's update was overwritten.
+
+This is called the **Lost Update Problem**.
+
+---
+
+# Two Ways to Handle Concurrency
+
+There are two major approaches.
+
+```
+Concurrency Control
+
+↓
+
+Optimistic Locking
+
+OR
+
+Pessimistic Locking
+```
+
+---
+
+# Pessimistic Locking
+
+Assumption
+
+> Someone else WILL modify this row.
+
+Immediately lock the row.
+
+Example
+
+```sql
+SELECT *
+FROM account
+WHERE id = 1
+FOR UPDATE;
+```
+
+Other transactions must wait.
+
+Advantages
+
+- No conflicting updates
+- Guaranteed serialization
+
+Disadvantages
+
+- Lower throughput
+- Waiting/blocking
+- Possible deadlocks
+
+---
+
+# Optimistic Locking
+
+Assumption
+
+> Conflicts are rare.
+
+Do NOT lock the row.
+
+Instead,
+
+allow everyone to read and modify independently.
+
+When saving,
+
+check whether another transaction already modified the row.
+
+If yes,
+
+reject the update.
+
+---
+
+# How Does It Work?
+
+Add a version column.
+
+```
+Account
+
+-------------------------
+
+id
+
+balance
+
+version
+```
+
+Initial data
+
+```
+Balance = 100
+
+Version = 1
+```
+
+---
+
+# Example
+
+Thread A reads
+
+```
+Balance = 100
+
+Version = 1
+```
+
+Thread B also reads
+
+```
+Balance = 100
+
+Version = 1
+```
+
+Both think
+
+```
+Version = 1
+```
+
+---
+
+# Thread A Updates
+
+Instead of
+
+```sql
+UPDATE account
+SET balance = 70;
+```
+
+execute
+
+```sql
+UPDATE account
+SET
+    balance = 70,
+    version = 2
+WHERE
+    id = 1
+AND
+    version = 1;
+```
+
+Notice
+
+```
+WHERE version = 1
+```
+
+Database checks
+
+```
+Version still 1?
+
+↓
+
+YES
+```
+
+Update succeeds.
+
+Database now contains
+
+```
+Balance = 70
+
+Version = 2
+```
+
+---
+
+# Thread B Updates
+
+Thread B still believes
+
+```
+Version = 1
+```
+
+It executes
+
+```sql
+UPDATE account
+SET
+    balance = 60,
+    version = 2
+WHERE
+    id = 1
+AND
+    version = 1;
+```
+
+Database checks
+
+```
+Current Version = 2
+
+Version = 1 ?
+
+↓
+
+NO
+```
+
+Rows updated
+
+```
+0
+```
+
+The application immediately knows
+
+> Someone modified this row.
+
+Conflict detected.
+
+---
+
+# Retry Flow
+
+Thread B now retries.
+
+```
+Read Again
+
+↓
+
+Balance = 70
+
+Version = 2
+
+↓
+
+Withdraw 40
+
+↓
+
+Balance = 30
+
+↓
+
+UPDATE
+WHERE version = 2
+
+↓
+
+Success
+```
+
+Final balance
+
+```
+$30
+```
+
+Correct.
+
+---
+
+# Visual Timeline
+
+```
+Thread A                     Thread B
+
+Read V1                      Read V1
+
+↓
+
+Compute                      Compute
+
+↓
+
+Update Success
+
+Version = 2
+
+                              ↓
+
+                     Update Fails
+
+                     Version Mismatch
+
+                              ↓
+
+                           Retry
+
+                              ↓
+
+                        Update Success
+```
+
+---
+
+# Why Version Column?
+
+The version column acts like a fingerprint.
+
+Every successful update changes it.
+
+Example
+
+```
+Version
+
+1
+
+↓
+
+2
+
+↓
+
+3
+
+↓
+
+4
+```
+
+If your version is outdated,
+
+your update is rejected.
+
+---
+
+# Example 2 – Product Inventory
+
+Current Product
+
+```
+Stock = 10
+
+Version = 5
+```
+
+Customer A buys
+
+```
+2
+```
+
+Customer B buys
+
+```
+3
+```
+
+Both read
+
+```
+Stock = 10
+
+Version = 5
+```
+
+---
+
+Customer A
+
+```sql
+UPDATE product
+
+SET
+stock = 8,
+version = 6
+
+WHERE
+id = 1
+AND version = 5;
+```
+
+Success.
+
+---
+
+Customer B
+
+```sql
+UPDATE product
+
+SET
+stock = 7,
+version = 6
+
+WHERE
+id = 1
+AND version = 5;
+```
+
+Fails.
+
+Rows Updated
+
+```
+0
+```
+
+Application retries.
+
+Reads
+
+```
+Stock = 8
+
+Version = 6
+```
+
+Then updates again.
+
+---
+
+# Example 3 – Editing User Profile
+
+Suppose
+
+```
+User Profile
+
+Name = John
+
+Version = 12
+```
+
+Laptop
+
+```
+Reads Version = 12
+```
+
+Phone
+
+```
+Reads Version = 12
+```
+
+Laptop changes
+
+```
+John
+
+↓
+
+John Smith
+```
+
+Version becomes
+
+```
+13
+```
+
+Phone later tries
+
+```
+John
+
+↓
+
+Johnny
+```
+
+Database rejects it.
+
+Otherwise
+
+Laptop's update would be lost.
+
+---
+
+# Example 4 – Google Docs
+
+Google Docs uses a more sophisticated approach,
+
+but the idea is similar.
+
+Two users edit simultaneously.
+
+Instead of locking the document,
+
+Google detects conflicts
+
+and merges or resolves them.
+
+Optimistic locking follows the same philosophy.
+
+---
+
+# Java Example (Spring Boot / Hibernate)
+
+Entity
+
+```java
+@Entity
+public class Product {
+
+    @Id
+    private Long id;
+
+    private Integer stock;
+
+    @Version
+    private Long version;
+}
+```
+
+Now
+
+```java
+repository.save(product);
+```
+
+Hibernate automatically generates SQL similar to
+
+```sql
+UPDATE product
+
+SET
+stock=?,
+version=?
+
+WHERE
+id=?
+AND version=?;
+```
+
+You don't write the version check manually.
+
+---
+
+# Advantages
+
+No locks.
+
+High concurrency.
+
+No waiting.
+
+High throughput.
+
+Excellent for
+
+- User Profiles
+- Product Details
+- Blog Posts
+- Employee Records
+- Configuration Data
+
+---
+
+# Disadvantages
+
+Conflicting updates fail.
+
+Application must retry.
+
+If conflicts are frequent,
+
+many retries occur.
+
+This wastes work.
+
+---
+
+# When Should You Use Optimistic Locking?
+
+Use when
+
+- Reads >> Writes
+- Conflicts are rare
+- High throughput matters
+- Locking would reduce performance
+
+Examples
+
+- Editing profile
+- Updating product description
+- Editing blog
+- Updating configuration
+
+---
+
+# When Should You Avoid It?
+
+Suppose
+
+```
+Flash Sale
+
+↓
+
+100,000 Buyers
+
+↓
+
+Same Product
+```
+
+Everyone updates
+
+```
+Stock
+```
+
+Most updates fail.
+
+Thousands of retries.
+
+Poor performance.
+
+Better choices
+
+- Atomic SQL Update
+- Pessimistic Locking
+- Redis-based reservation
+- Queue-based inventory reservation
+
+---
+
+# Optimistic vs Pessimistic Locking
+
+| Optimistic Locking | Pessimistic Locking |
+|--------------------|---------------------|
+| Assumes conflicts are rare | Assumes conflicts are common |
+| No lock while processing | Locks row immediately |
+| Detects conflicts | Prevents conflicts |
+| Retry on conflict | Wait for lock |
+| High throughput | Lower throughput |
+| No blocking | Blocking possible |
+| No deadlocks caused by row locks | Deadlocks possible |
+
+---
+
+# Common Interview Questions
+
+## Why do we need a version column?
+
+To detect whether another transaction modified the row after we read it.
+
+---
+
+## Why does UPDATE affect zero rows?
+
+Because the version no longer matches.
+
+Another transaction updated the row first.
+
+---
+
+## Does optimistic locking prevent conflicts?
+
+No.
+
+It detects conflicts.
+
+The application decides how to resolve them.
+
+---
+
+## What happens after conflict detection?
+
+Possible strategies
+
+- Retry automatically
+- Return HTTP 409 Conflict
+- Ask the user to refresh
+- Merge changes
+
+Depends on business requirements.
+
+---
+
+## Is optimistic locking faster?
+
+Usually yes.
+
+Because
+
+- No locks
+- No waiting
+- Better concurrency
+
+---
+
+## Does it work across multiple application servers?
+
+Yes.
+
+Suppose
+
+```
+Server A
+
+Server B
+
+Server C
+```
+
+All servers update the same database.
+
+The version check happens inside the database.
+
+Therefore
+
+it works correctly regardless of which server processes the request.
+
+---
+
+# Real-World Examples
+
+## Amazon
+
+Editing product details.
+
+Conflicts are uncommon.
+
+Optimistic locking is a good fit.
+
+---
+
+## Banking
+
+Money transfer.
+
+Conflicts cannot be tolerated.
+
+Usually use
+
+- Pessimistic locking
+- Serializable transactions
+- Carefully designed transactional logic
+
+---
+
+## Airline Seat Booking
+
+One seat.
+
+Thousands of buyers.
+
+Optimistic locking leads to excessive retries.
+
+Better options
+
+- Pessimistic locking
+- Reservation service
+- Queue-based allocation
+
+---
+
+# Key Takeaways
+
+- Optimistic locking assumes conflicts are rare.
+- Rows are not locked while being read or processed.
+- A version column detects concurrent updates.
+- The UPDATE statement succeeds only if the version still matches.
+- If another transaction updated the row first, the UPDATE affects zero rows.
+- The application can retry, reject the request, or ask the user to refresh.
+- Optimistic locking provides high throughput because transactions do not block each other.
+- It is best suited for systems where reads greatly outnumber writes and update conflicts are infrequent.
+- It detects conflicts rather than preventing them.
+
+---
+
 # Next Chapter
 
 **Caching**
@@ -16473,6 +17339,15 @@ Analytics Database
 - HTTP 302 is generally preferred over HTTP 301 for URL shorteners because it supports analytics and flexible redirects.
 - Every layer should scale independently.
 
+If URL creation scales to hundreds of millions of new URLs per day, the database sequence could become a bottleneck. At that point, I'd replace the centralized ID generator with a distributed scheme such as Snowflake IDs, allowing each application instance to generate globally unique IDs independently
+
+I'd use a distributed ID generator such as Snowflake. Each application instance generates a 64-bit ID locally using a timestamp, a unique machine ID, and a per-millisecond sequence number. This avoids a centralized bottleneck, guarantees uniqueness as long as machine IDs are unique and clocks are managed correctly, and produces IDs that are roughly ordered by creation time.
+
+"What happens if a server's clock moves backward?"
+
+A strong answer is:
+
+"That's one of the key challenges with Snowflake. The generator keeps track of the last timestamp it used. If the current system time is earlier than the last timestamp, it detects clock rollback. Depending on the implementation, it can either pause until the clock catches up, reject ID generation temporarily, or use a logical timestamp to ensure time never appears to move backwards. This prevents duplicate IDs."
 
 # Distributed Rate Limiter – Part 1
 # Before High-Level Design
