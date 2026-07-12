@@ -1753,6 +1753,457 @@ All services remain stateless and can be scaled independently behind a load bala
 
 > "I'd design a low-latency fraud detection platform where transactions are processed synchronously through a Fraud Decision Service. The service retrieves precomputed features from Redis, evaluates business rules and ML models, and returns an approve, decline, or review decision within the required latency. After responding, the transaction is published to Kafka for asynchronous processing such as persistence, analytics, notifications, feature engineering, and model training. The platform ensures correctness through idempotency, ordered processing, replay, and reconciliation while scaling horizontally at every layer."
 
+
+# Asynchronous Processing Pipeline
+
+Once the Fraud Decision Service returns the fraud decision to the payment network, it publishes the transaction event to Kafka.
+
+```text
+                         Fraud Decision Service
+
+                                   │
+
+                        Publish Transaction Event
+
+                                   │
+
+                                   ▼
+
+==========================================================================================
+                               Kafka
+                     Topic : fraud.transactions
+==========================================================================================
+
+                                   │
+
+      ┌────────────────────────────┼─────────────────────────────┐
+
+      ▼                            ▼                             ▼
+
++------------------+      +------------------+      +----------------------+
+| Storage          |      | Analytics        |      | Notification         |
+| Consumer         |      | Consumer         |      | Consumer             |
++------------------+      +------------------+      +----------------------+
+
+      │                            │                             │
+
+      ▼                            ▼                             ▼
+
++----------------------+    +-----------------------------+   SMS / Email
+| OLTP Database        |    | Offline Feature Store       |   Push Notifications
+|                      |    | (S3 / Data Lake /           |   Fraud Operations
+|                      |    |  Snowflake / BigQuery)      |
++----------------------+    +-----------------------------+
+
+      │                            │
+      │                            │
+      ▼                            ▼
+
++-------------------------------------------------------+
+| transactions                                           |
++-------------------------------------------------------+
+| transactionId (PK)                                    |
+| customerId                                             |
+| cardId                                                 |
+| merchant                                               |
+| amount                                                 |
+| currency                                               |
+| fraudScore                                             |
+| decision (APPROVE / DECLINE / REVIEW)                  |
+| transactionTime                                        |
+| createdAt                                              |
++-------------------------------------------------------+
+
+      +
+
++-------------------------------------------------------+
+| events                                                 |
++-------------------------------------------------------+
+| eventId (PK)                                           |
+| transactionId                                          |
+| eventType                                              |
+| payload (JSON)                                         |
+| source                                                 |
+| receivedAt                                             |
++-------------------------------------------------------+
+
+      +
+
++-------------------------------------------------------+
+| outbox                                                 |
++-------------------------------------------------------+
+| outboxId (PK)                                          |
+| eventId                                                |
+| payload (JSON)                                         |
+| status (NEW / SENT)                                    |
+| createdAt                                              |
++-------------------------------------------------------+
+
+                                   │
+
+                                   ▼
+
+                          Outbox Publisher
+
+                                   │
+
+                           Poll NEW Records
+
+                                   │
+
+                                   ▼
+
+==========================================================================================
+                            Kafka
+                     Topic : fraud.processed
+==========================================================================================
+
+                                   │
+
+         ┌─────────────┬──────────────┬──────────────┬──────────────────────┐
+
+         ▼             ▼              ▼              ▼
+
+    Reporting      Search Service   Real-Time      ML Pipeline
+                                   Feature Service
+
+                                         │
+                                         ▼
+
+                             +----------------------+
+                             | Redis               |
+                             | Online Feature Store|
+                             +----------------------+
+
+                             Updates Features Like
+
+                             • Transaction Velocity
+                             • Last Transaction Time
+                             • Last Merchant
+                             • Device History
+                             • Last Country
+
+                                         ▲
+                                         │
+                              (Periodic Refresh)
+
+                                         │
+
+                             +----------------------+
+                             | Batch Feature        |
+                             | Refresh Job          |
+                             +----------------------+
+
+                                         ▲
+
+                                         │
+
+                             +----------------------+
+                             | Feature Engineering  |
+                             +----------------------+
+
+                                         ▲
+
+                                         │
+
+                             +-----------------------------+
+                             | Offline Feature Store       |
+                             | (S3 / Data Lake /           |
+                             |  Snowflake / BigQuery)      |
+                             +-----------------------------+
+
+                                         │
+
+                                         ▼
+
+                               Model Training
+
+                                         │
+
+                                         ▼
+
+                              Model Validation
+
+                                         │
+
+                                         ▼
+
+                            Deploy New ML Model
+
+                                         │
+
+                                         ▼
+
+                          Fraud Decision Service
+```
+
+---
+
+# Component Responsibilities
+
+## 1. Storage Consumer
+
+Stores transaction data in the OLTP database.
+
+### transactions
+
+Stores the current transaction state.
+
+| Field | Description |
+|--------|-------------|
+| transactionId | Primary Key |
+| customerId | Customer |
+| cardId | Card |
+| merchant | Merchant |
+| amount | Transaction Amount |
+| currency | Currency |
+| fraudScore | ML Score |
+| decision | APPROVE / DECLINE / REVIEW |
+| transactionTime | Event Time |
+| createdAt | Created Timestamp |
+
+---
+
+### events
+
+Stores the immutable audit trail.
+
+| Field | Description |
+|--------|-------------|
+| eventId | Primary Key |
+| transactionId | Business Transaction |
+| eventType | Transaction Event |
+| payload | Original JSON |
+| source | Payment Network |
+| receivedAt | Event Time |
+
+---
+
+### outbox
+
+Supports the Outbox Pattern.
+
+| Field | Description |
+|--------|-------------|
+| outboxId | Primary Key |
+| eventId | Related Event |
+| payload | JSON Payload |
+| status | NEW / SENT |
+| createdAt | Created Time |
+
+The Outbox Publisher polls this table and publishes events reliably to downstream Kafka topics.
+
+---
+
+## 2. Analytics Consumer
+
+Writes historical transaction data into the Offline Feature Store.
+
+Used for
+
+- Historical reporting
+- Dashboards
+- Fraud analytics
+- Regulatory reporting
+- Feature engineering
+- Model training
+
+---
+
+## 3. Notification Consumer
+
+Generates
+
+- SMS
+- Email
+- Push notifications
+- Fraud operations alerts
+- Case management notifications
+
+---
+
+## 4. Real-Time Feature Service
+
+Consumes processed Kafka events and immediately updates Redis.
+
+Examples
+
+- Transaction velocity
+- Last transaction timestamp
+- Last merchant
+- Device history
+- Country history
+
+This ensures the next fraud decision uses the latest customer behavior.
+
+---
+
+## 5. Batch Feature Refresh Job
+
+Runs periodically (for example, every few hours or nightly).
+
+Reads historical data from the Offline Feature Store and refreshes long-term customer features in Redis.
+
+Examples
+
+- Average spend (30 days)
+- Merchant frequency
+- Monthly spending
+- Customer lifetime value
+
+---
+
+## 6. Feature Engineering
+
+Reads historical transactions from the Offline Feature Store.
+
+Computes
+
+- Aggregated customer features
+- Fraud features
+- Training datasets
+
+Produces two outputs:
+
+1. Updated features for Redis.
+2. Training data for the ML pipeline.
+
+---
+
+## 7. ML Pipeline
+
+Uses historical data and engineered features to train new fraud detection models.
+
+Flow
+
+```
+Offline Feature Store
+
+↓
+
+Feature Engineering
+
+↓
+
+Model Training
+
+↓
+
+Model Validation
+
+↓
+
+Deploy New ML Model
+
+↓
+
+Fraud Decision Service
+```
+
+The deployed model replaces the previous version used for real-time inference.
+
+---
+
+# Interview Summary
+
+> After the Fraud Decision Service returns the fraud decision, the transaction is published to Kafka. Independent consumers handle storage, analytics, notifications, and feature updates. Historical transactions are written to the Offline Feature Store, where Feature Engineering computes long-term customer features and training datasets. These features are periodically refreshed into Redis, while the ML Pipeline trains and validates improved fraud models that are deployed to the Fraud Decision Service. Meanwhile, a Real-Time Feature Service continuously updates Redis with the latest behavioral features, ensuring every authorization decision uses both fresh real-time context and long-term historical insights.
+
+
+# Why Do We Need Both an OLTP Database and an Offline Feature Store?
+
+Although both store transaction data, they serve **different purposes**.
+
+The Storage Consumer persists transactions into the **OLTP database** for operational workloads, while the Analytics Consumer stores the same Kafka events in the **Offline Feature Store** for analytical and machine learning workloads.
+
+```
+                Kafka (fraud.transactions)
+
+                     │
+        ┌────────────┴────────────┐
+
+        ▼                         ▼
+
+ Storage Consumer         Analytics Consumer
+
+        │                         │
+
+        ▼                         ▼
+
+  OLTP Database        Offline Feature Store
+                    (S3 / Data Lake / Snowflake)
+```
+
+---
+
+## OLTP Database
+
+The OLTP database is the operational database used by the application.
+
+Purpose
+
+- Store the current transaction state
+- Store fraud decisions
+- Support customer lookups
+- Support operational APIs
+- Support investigations and case management
+
+Typical queries
+
+```sql
+SELECT *
+FROM transactions
+WHERE transactionId = 'TX123';
+```
+
+OLTP databases are optimized for
+
+- Fast inserts
+- Fast updates
+- Low-latency point lookups
+- High transaction throughput
+
+---
+
+## Offline Feature Store
+
+The Offline Feature Store stores the same transaction events, but is optimized for analytics and machine learning.
+
+Purpose
+
+- Historical transaction storage
+- Feature engineering
+- Model training
+- Fraud analytics
+- Historical reporting
+
+Typical queries
+
+- Average customer spend over the last 90 days
+- Merchant fraud trends
+- Customer behavior analysis
+- Generate ML training datasets
+
+These queries may scan millions or billions of transactions, making them unsuitable for an OLTP database.
+
+---
+
+## Why Store the Same Data Twice?
+
+Both systems receive the same Kafka events but optimize for different workloads.
+
+- **OLTP Database** → Operational workloads (fast reads and writes)
+- **Offline Feature Store** → Analytical workloads (large scans and aggregations)
+
+Separating these workloads prevents expensive analytical queries from impacting real-time fraud detection.
+
+---
+
+## Interview Summary
+
+> The Storage Consumer writes transaction events to the OLTP database, which serves as the operational system of record for the application. In parallel, the Analytics Consumer writes the same Kafka events to the Offline Feature Store, where they are used for feature engineering, model training, analytics, and historical reporting. Although both contain transaction data, they are optimized for completely different workloads.
+
+
+
 # High Throughput Event Processing Platform
 
 # Part 1 – Introduction, Requirements & Capacity Estimation
