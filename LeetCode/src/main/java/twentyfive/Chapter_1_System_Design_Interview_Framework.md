@@ -66325,6 +66325,8 @@ Rate limiting
 
 > Since the ingestion service is stateless, it can scale horizontally behind a load balancer simply by adding more instances.
 
+"Yes. I would expect the Event Producer to generate a globally unique eventId and include it with every request. The Event Ingestion Service uses that eventId as the idempotency key to detect retries and prevent duplicate events from entering Kafka. The ingestion service may additionally generate a correlationId for distributed tracing, but it should not generate the business eventId because only the producer can consistently identify the same business event across retries."
+
 ---
 
 # Next Chapter
@@ -73222,6 +73224,8 @@ These are concise, high-signal statements suitable for senior interviews.
 
 > "I'd design the platform as an event-driven architecture with four logical layers: Event Ingestion, Streaming, Processing, and Serving. Event Producers submit events through an Event Ingestion API, which performs authentication, validation, idempotency checks, normalization, and publishes events to Kafka. Kafka serves as the durable event backbone, enabling decoupling, replay, and independent scaling. Processing is implemented as a pipeline of stateless consumers responsible for validation, deduplication, business logic, and persistence. The write path persists business data and an Outbox record within the same transaction, while a separate Outbox Publisher reliably publishes downstream events. CQRS separates the write model from optimized read models stored in Redis. Reliability is achieved through retries, DLQs, replay, circuit breakers, and idempotent consumers. The platform scales horizontally at every layer and is monitored using metrics, logs, tracing, and automated alerting."
 
+"The processing pipeline is logically divided into stages such as validation, deduplication, business processing, and persistence, with each stage owning a single responsibility. Depending on throughput and operational complexity, these stages can either be implemented as separate Kafka consumers connected by intermediate topics or combined into fewer services. The key design principle is that the stages remain logically independent, allowing us to scale bottlenecks independently, replay from intermediate stages when needed, isolate failures, and evolve each responsibility without tightly coupling the entire processing pipeline."
+
 ---
 
 # Architecture Summary
@@ -73309,3 +73313,1178 @@ This design includes
 # Final Interview Closing
 
 > "The key design principle is to keep event ingestion lightweight, decouple processing through Kafka, make every consumer idempotent, and build the platform around replayability, fault tolerance, and horizontal scalability. Rather than optimizing for perfect delivery guarantees, I optimize for operational correctness through idempotent processing, durable messaging, retries, and observability. This architecture scales from thousands to millions of events while remaining resilient, maintainable, and easy to evolve."
+
+
+# Master Event-Driven System Architecture
+
+> This document describes the complete high-level architecture of a scalable event-driven platform capable of processing millions of events per day. The design emphasizes reliability, scalability, idempotency, replayability, and fault tolerance.
+
+---
+
+# High-Level Architecture
+
+```text
+                                          EVENT PRODUCERS
+
+                    Client Apps | Internal Systems | Microservices | Trading Systems
+                                              |
+                                              |
+                                        HTTP / gRPC
+                                              |
+                                              ▼
+                                   +--------------------+
+                                   |   Load Balancer    |
+                                   +--------------------+
+                                              |
+                                              ▼
+                                   +--------------------+
+                                   |    API Gateway     |
+                                   |--------------------|
+                                   | • Authentication   |
+                                   | • Authorization    |
+                                   | • Rate Limiting 	|
+								   | • Routing		
+                                   | • Logging          |
+                                   | • Metrics          |
+                                   +--------------------+
+                                              |
+                                              ▼
+                          +-----------------------------------------+
+                          |     Event Ingestion Service             |
+                          |-----------------------------------------|
+                          | • Schema Validation                     |
+                          | • Normalize Payload                     |
+                          | • Generate CorrelationId                |
+                          | • API Idempotency Check                 |
+                          +-----------------------------------------+
+                                   |                 |
+                     Check eventId |                 |
+                                   ▼                 |
+                        +-------------------+        |
+                        | Redis             |        |
+                        |-------------------|        |
+                        | eventId (TTL)     |        |
+                        | API Idempotency   |        |
+                        +-------------------+        |
+                                   |                 |
+                                   +-----------------+
+                                              |
+                                              ▼
+                                    Publish Event
+                                              |
+                                              ▼
+======================================================================================
+                                   KAFKA CLUSTER
+======================================================================================
+
+Topic : events.raw
+Partition Key : customerId / accountId / orderId / tradeId
+
+                                              |
+                                              ▼
+
+                         +-------------------------------------------+
+                         | Processing Consumer Group                 |
+                         |-------------------------------------------|
+                         | • Validation                              |
+                         | • Deduplication                           |
+                         | • Business Logic                          |
+                         | • Persistence                             |
+                         +-------------------------------------------+
+                                              |
+                                              ▼
+
+======================================================================================
+                           SINGLE DATABASE TRANSACTION
+======================================================================================
+
+BEGIN TRANSACTION
+
+    ┌────────────────────────────────────────────────────────────────────────────┐
+    │ BUSINESS TABLES                                                           │
+    │---------------------------------------------------------------------------│
+    │ Orders / Trades / Payments / Accounts                                    │
+    │                                                                           │
+    │ Stores Current Business State                                             │
+    └────────────────────────────────────────────────────────────────────────────┘
+
+                         +
+
+    ┌────────────────────────────────────────────────────────────────────────────┐
+    │ processed_events                                                          │
+    │---------------------------------------------------------------------------│
+    │ eventId (PK)                                                              │
+    │ consumerName                                                              │
+    │ processedAt                                                               │
+    │                                                                           │
+    │ Consumer Idempotency                                                      │
+    └────────────────────────────────────────────────────────────────────────────┘
+
+                         +
+
+    ┌────────────────────────────────────────────────────────────────────────────┐
+    │ outbox                                                                    │
+    │---------------------------------------------------------------------------│
+    │ outboxId                                                                  │
+    │ eventId                                                                   │
+    │ payload                                                                   │
+    │ status = NEW                                                              │
+    │                                                                           │
+    │ Reliable Event Publishing                                                 │
+    └────────────────────────────────────────────────────────────────────────────┘
+
+COMMIT
+
+======================================================================================
+
+                                              |
+                                              ▼
+
+                               Commit Kafka Offset
+                        (Only AFTER DB Transaction Commits)
+
+                                              |
+                                              ▼
+
+======================================================================================
+                                 OUTBOX PUBLISHER
+======================================================================================
+
+                   Poll Outbox Table (or CDC using Debezium)
+
+                                              |
+                                              ▼
+
+                                      Publish Event
+
+                                              |
+                                              ▼
+
+                                    Kafka (events.processed)
+
+                                              |
+              ┌──────────────┬──────────────┬──────────────┬──────────────┐
+              ▼              ▼              ▼              ▼
+         Analytics     Notifications      Search      Reporting
+
+                                              |
+                                              ▼
+
+                                  Projection Service
+
+                                              |
+                                              ▼
+
+                                 +----------------------+
+                                 | Redis Read Cache     |
+                                 +----------------------+
+
+                                              |
+                                              ▼
+
+                                   Read APIs / Dashboards
+```
+
+---
+
+# End-to-End Flow
+
+## Step 1 – Event Producer
+
+A producer generates a business event.
+
+Examples
+
+- Mobile application
+- Trading platform
+- Payment gateway
+- Internal microservice
+- External partner
+
+Example
+
+```json
+{
+  "eventId":"evt-1001",
+  "eventType":"ORDER_CREATED",
+  "payload":{
+      "orderId":"12345",
+      "customerId":"100",
+      "amount":250
+  }
+}
+```
+
+---
+
+## Step 2 – API Gateway
+
+The API Gateway performs cross-cutting concerns.
+
+Responsibilities
+
+- Authentication
+- Authorization
+- Rate limiting
+- Logging
+- Metrics
+- Routing
+
+No business logic belongs here.
+
+---
+
+## Step 3 – Event Ingestion Service
+
+The Event Ingestion Service is intentionally lightweight.
+
+Responsibilities
+
+- Schema validation
+- Payload normalization
+- Generate Correlation ID
+- API idempotency
+- Publish to Kafka
+
+Business processing is intentionally deferred.
+
+---
+
+## Step 4 – API Idempotency (Redis)
+
+Purpose
+
+Prevent duplicate API requests caused by retries.
+
+Example
+
+```
+POST /events
+
+↓
+
+Timeout
+
+↓
+
+Retry
+
+↓
+
+Same eventId
+```
+
+The ingestion service checks Redis.
+
+```
+SETNX(eventId)
+```
+
+If the event already exists
+
+↓
+
+Return the previous response.
+
+Do not publish to Kafka again.
+
+Redis stores
+
+| Key | Value |
+|------|-------|
+| eventId | ACCEPTED |
+
+TTL
+
+Typically
+
+24–48 hours.
+
+---
+
+## Step 5 – Kafka
+
+Kafka acts as the durable event backbone.
+
+Responsibilities
+
+- Durable storage
+- Replay
+- Decoupling
+- Parallel processing
+- Backpressure handling
+
+Topic
+
+```
+events.raw
+```
+
+Partition Key
+
+```
+customerId
+
+accountId
+
+orderId
+
+tradeId
+```
+
+Ordering is preserved within each partition.
+
+---
+
+## Step 6 – Processing Consumer
+
+The Processing Consumer Group performs all business processing.
+
+Responsibilities
+
+- Validation
+- Deduplication
+- Business logic
+- Persistence
+
+For most systems (including ~50 million events/day), combining these responsibilities into a single consumer service is a practical design choice. The stages remain logically separate and can be split into independent services if throughput or organizational ownership requires it.
+
+---
+
+## Step 7 – Database Transaction
+
+Everything happens within one ACID transaction.
+
+```
+BEGIN
+
+↓
+
+Update Business Tables
+
+↓
+
+Insert processed_events
+
+↓
+
+Insert outbox
+
+↓
+
+COMMIT
+```
+
+Only after the transaction commits successfully do we commit the Kafka offset.
+
+---
+
+# Business Tables
+
+Examples
+
+- Orders
+- Trades
+- Payments
+- Accounts
+
+Purpose
+
+Store the current business state.
+
+Example
+
+| orderId | customerId | amount | status |
+|----------|------------|---------|--------|
+
+---
+
+# processed_events
+
+Purpose
+
+Consumer idempotency.
+
+Prevents duplicate Kafka processing.
+
+Example
+
+| eventId | consumerName | processedAt |
+|----------|--------------|-------------|
+
+Before processing
+
+```
+SELECT eventId
+```
+
+If found
+
+↓
+
+Skip processing.
+
+---
+
+# outbox
+
+Purpose
+
+Reliable Kafka publishing.
+
+Example
+
+| outboxId | eventId | payload | status |
+|-----------|----------|----------|--------|
+
+The Outbox Publisher continuously scans this table and publishes new events to Kafka.
+
+---
+
+## Step 8 – Commit Kafka Offset
+
+Only after
+
+- Database transaction succeeds
+- Business tables updated
+- processed_events inserted
+- outbox inserted
+
+do we commit the Kafka offset.
+
+This guarantees that Kafka will redeliver the event if processing fails before the transaction completes.
+
+---
+
+## Step 9 – Outbox Publisher
+
+A dedicated service publishes events from the Outbox table.
+
+Flow
+
+```
+Read NEW rows
+
+↓
+
+Publish to Kafka
+
+↓
+
+Mark row SENT
+```
+
+This solves the Dual Write Problem.
+
+---
+
+## Step 10 – Downstream Consumers
+
+Independent consumer groups subscribe to
+
+```
+events.processed
+```
+
+Examples
+
+- Reporting
+- Analytics
+- Notifications
+- Search
+- Machine Learning
+
+Each consumer maintains its own Kafka offset.
+
+---
+
+## Step 11 – Projection Service
+
+Projection Services consume processed events and build optimized read models.
+
+Examples
+
+- Customer dashboard
+- Search indexes
+- Aggregated summaries
+
+---
+
+## Step 12 – Redis Read Cache
+
+Frequently accessed data is cached.
+
+Examples
+
+- Dashboard
+- Recent transactions
+- Customer summary
+
+Purpose
+
+- Low-latency reads
+- Reduced database load
+
+---
+
+# Storage Responsibilities
+
+| Storage | Purpose | Retention |
+|----------|----------|-----------|
+| Redis (Ingress) | API idempotency | 24–48 hours |
+| Kafka | Durable event log & replay | Configurable (e.g., 7–30 days) |
+| Business Tables | Current business state | Permanent |
+| processed_events | Consumer idempotency | Based on replay window |
+| outbox | Reliable event publishing | Until published (then archived/deleted) |
+| Redis Read Cache | Fast reads | Short-lived cache |
+
+---
+
+# Why Two Idempotency Mechanisms?
+
+## API Idempotency
+
+Prevents duplicate API requests.
+
+```
+Producer Retry
+
+↓
+
+Redis
+
+↓
+
+Skip Duplicate
+```
+
+---
+
+## Consumer Idempotency
+
+Prevents duplicate Kafka processing.
+
+```
+Kafka Retry
+
+↓
+
+processed_events
+
+↓
+
+Skip Duplicate
+```
+
+They solve different problems and both are required.
+
+---
+
+# Key Design Principles
+
+- Keep the ingestion path lightweight.
+- Kafka is the system's durable event backbone.
+- Business state is stored in the OLTP database.
+- Consumers are idempotent.
+- Use the Outbox Pattern to eliminate dual writes.
+- Commit Kafka offsets only after the database transaction succeeds.
+- Scale each layer independently.
+- Replay historical events when business logic changes.
+- Use Redis only for optimization, never as the system of record.
+
+---
+
+# Staff-Level Summary
+
+> The architecture separates event ingestion from business processing using Kafka as the durable event backbone. The ingestion service performs lightweight validation and API idempotency before publishing to Kafka. A stateless processing consumer performs validation, deduplication, business logic, and persistence within a single ACID transaction that updates business tables, records consumer idempotency, and inserts an outbox event. An Outbox Publisher reliably publishes downstream events to Kafka, allowing independent consumer groups such as reporting, analytics, notifications, and search to process events asynchronously. This design provides high throughput, replayability, fault isolation, horizontal scalability, and operational reliability while avoiding the dual-write problem.
+
+# Idempotency & Database Design (Final Version)
+
+This document explains the final idempotency strategy and database design for our event-driven architecture.
+
+---
+
+# Overview
+
+There are **two different types of idempotency** in the system.
+
+They solve **different problems**.
+
+```
+API Request
+
+↓
+
+API Idempotency
+
+↓
+
+Kafka
+
+↓
+
+Consumer
+
+↓
+
+Consumer Idempotency
+```
+
+Both are required because duplicates can occur at different stages.
+
+---
+
+# 1. API Idempotency (Ingress Layer)
+
+## Purpose
+
+Prevent duplicate **API requests** from entering Kafka.
+
+Example
+
+```
+Producer
+
+↓
+
+POST /events
+
+↓
+
+Network Timeout
+
+↓
+
+Producer Retries
+
+↓
+
+POST /events (same event)
+```
+
+Without API idempotency
+
+```
+Kafka
+
+↓
+
+Event A
+
+Event A
+```
+
+Duplicate events enter Kafka.
+
+---
+
+## Solution
+
+The producer sends a unique
+
+```
+eventId
+```
+
+Example
+
+```json
+{
+  "eventId":"evt-100",
+  "eventType":"ORDER_CREATED"
+}
+```
+
+The Event Ingestion Service checks whether this event has already been accepted.
+
+---
+
+## Storage
+
+Preferred implementation
+
+```
+Redis
+```
+
+Key
+
+```
+eventId
+```
+
+Value
+
+```
+ACCEPTED
+```
+
+TTL
+
+```
+24–48 Hours
+```
+
+Example
+
+```
+event:evt-100
+
+↓
+
+ACCEPTED
+```
+
+If Redis already contains the key,
+
+the Event Ingestion Service immediately returns the previous response.
+
+The event is **not published to Kafka again.**
+
+---
+
+## Alternative
+
+Instead of Redis,
+
+a database table can be used.
+
+### idempotency_keys
+
+| eventId | status | createdAt | expiresAt |
+|----------|---------|-----------|-----------|
+
+This is useful if durable API idempotency is required.
+
+---
+
+# 2. Consumer Idempotency
+
+## Purpose
+
+Prevent duplicate Kafka event processing.
+
+Example
+
+```
+Kafka
+
+↓
+
+Consumer
+
+↓
+
+Update Database
+
+↓
+
+Consumer Crashes
+
+↓
+
+Offset NOT Committed
+
+↓
+
+Kafka Redelivers Event
+```
+
+Without consumer idempotency,
+
+business logic executes twice.
+
+---
+
+# Our Final Design
+
+Instead of maintaining a separate
+
+```
+processed_events
+```
+
+table,
+
+we use the
+
+```
+events
+```
+
+table.
+
+The **events table serves two purposes**:
+
+1. Permanent audit trail
+2. Consumer idempotency
+
+---
+
+# Database Tables
+
+## 1. events
+
+Purpose
+
+- Permanent event history
+- Consumer idempotency
+- Audit
+- Replay
+- Compliance
+
+Schema
+
+| Column | Description |
+|----------|-------------|
+| eventId (PK/UNIQUE) | Unique Event ID |
+| eventType | Event Type |
+| payload | Original JSON Payload |
+| source | Producer |
+| receivedAt | Timestamp |
+
+Example
+
+| eventId | eventType |
+|----------|------------|
+| evt100 | ORDER_CREATED |
+| evt101 | PAYMENT_COMPLETED |
+
+Notice
+
+```
+eventId
+
+is UNIQUE
+```
+
+If the same Kafka event is processed twice,
+
+```
+INSERT INTO events
+```
+
+fails,
+
+which immediately tells us
+
+the event has already been processed.
+
+No duplicate business processing occurs.
+
+---
+
+## 2. Business Tables
+
+Examples
+
+```
+Orders
+
+Trades
+
+Payments
+
+Accounts
+```
+
+Purpose
+
+Store the **current business state**.
+
+Example
+
+Orders
+
+| orderId | customerId | amount | status |
+|----------|------------|---------|--------|
+| O100 | C10 | 250 | CREATED |
+
+Notice
+
+Business tables **do not store events**.
+
+They store the latest business state produced by processing those events.
+
+---
+
+## 3. outbox
+
+Purpose
+
+Reliable Kafka publishing.
+
+Schema
+
+| outboxId | eventId | payload | status |
+|-----------|----------|----------|--------|
+
+The Outbox Publisher continuously reads
+
+```
+status = NEW
+```
+
+publishes the event,
+
+then marks it
+
+```
+SENT
+```
+
+This eliminates the Dual Write Problem.
+
+---
+
+# Final Database Transaction
+
+The Processing Consumer performs
+
+one ACID transaction.
+
+```sql
+BEGIN;
+
+INSERT INTO events (...);
+
+UPDATE Orders / Trades / Payments (...);
+
+INSERT INTO outbox (...);
+
+COMMIT;
+```
+
+Everything succeeds together,
+
+or everything rolls back.
+
+---
+
+# Why Insert Into events First?
+
+Suppose Kafka redelivers
+
+```
+evt-100
+```
+
+The transaction starts.
+
+```
+INSERT INTO events
+```
+
+If
+
+```
+eventId
+
+already exists
+```
+
+the UNIQUE constraint fails.
+
+The transaction rolls back.
+
+Business logic is skipped.
+
+This makes the consumer idempotent.
+
+---
+
+# Complete Storage Responsibilities
+
+| Storage | Purpose | Retention |
+|----------|----------|-----------|
+| Redis | API idempotency | 24–48 hours |
+| Kafka | Temporary event log, replay | Configurable (7–30+ days) |
+| events | Permanent event history + Consumer idempotency | Permanent |
+| Business Tables | Current business state | Permanent |
+| outbox | Reliable event publishing | Until published |
+
+---
+
+# Complete Flow
+
+```
+Producer
+
+↓
+
+POST /events
+
+↓
+
+Event Ingestion Service
+
+↓
+
+Redis
+(API Idempotency)
+
+↓
+
+Kafka
+(events.raw)
+
+↓
+
+Processing Consumer
+
+↓
+
+BEGIN TRANSACTION
+
+1. INSERT INTO events
+   (Audit + Consumer Idempotency)
+
+2. UPDATE Business Tables
+
+3. INSERT INTO outbox
+
+COMMIT
+
+↓
+
+Commit Kafka Offset
+
+↓
+
+Outbox Publisher
+
+↓
+
+Kafka
+(events.processed)
+
+↓
+
+Reporting
+
+Analytics
+
+Search
+
+Notifications
+```
+
+---
+
+# Why Two Idempotency Layers?
+
+## API Idempotency
+
+Protects against
+
+```
+Duplicate HTTP Requests
+```
+
+Uses
+
+```
+Redis
+```
+
+---
+
+## Consumer Idempotency
+
+Protects against
+
+```
+Duplicate Kafka Deliveries
+```
+
+Uses
+
+```
+events
+
+table
+
+(UNIQUE eventId)
+```
+
+They solve different problems and are both required.
+
+---
+
+# Why Keep an events Table?
+
+Unlike Kafka,
+
+which has limited retention,
+
+the
+
+```
+events
+```
+
+table provides
+
+- Permanent audit history
+- Regulatory compliance
+- Historical investigations
+- Replay support
+- Consumer idempotency
+
+For financial and trading systems, this is a common and recommended design.
+
+---
+
+# Final Architecture Summary
+
+```
+Ingress Layer
+
+↓
+
+Redis
+(API Idempotency)
+
+↓
+
+Kafka
+
+↓
+
+Processing Consumer
+
+↓
+
+Database Transaction
+
+    1. events
+       (Audit + Consumer Idempotency)
+
+    2. Business Tables
+       (Current Business State)
+
+    3. outbox
+       (Reliable Event Publishing)
+
+↓
+
+Commit Kafka Offset
+
+↓
+
+Outbox Publisher
+
+↓
+
+Kafka (events.processed)
+
+↓
+
+Downstream Consumers
+```
+
+---
+
+# Staff-Level Interview Summary
+
+> The architecture implements idempotency at two independent layers. The Event Ingestion Service prevents duplicate API requests using Redis-backed idempotency keys with a short TTL before publishing events to Kafka. At the processing layer, the immutable **events** table serves as both the permanent audit log and the consumer idempotency mechanism through a unique `eventId` constraint. Each Kafka event is processed within a single ACID transaction that inserts the event into the audit table, updates the business tables, and records an outbox entry. This design guarantees reliable processing, supports replay and compliance, eliminates duplicate business effects, and avoids the dual-write problem through the Outbox Pattern.
