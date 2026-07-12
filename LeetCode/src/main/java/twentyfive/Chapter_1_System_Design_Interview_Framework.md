@@ -64415,60 +64415,97 @@ Approve / Decline / Review
 # 4. High-Level Architecture
 
 ```
-                  Payment Network
+                         Payment Network
 
-                         │
+                                │
 
-                         ▼
+                                ▼
 
-                   API Gateway
+                          API Gateway
 
-                         │
+                                │
 
-                         ▼
+                                ▼
 
-                 Ingestion Service
+                    Fraud Decision Service
 
-                         │
+     ┌──────────────────────────┼──────────────────────────┐
 
-                         ▼
+     ▼                          ▼                          ▼
 
-                      Kafka
+Online Feature Store      Rules Engine              ML Inference
+     (Redis)               (Business Rules)          (Fraud Model)
 
-                         │
+     └──────────────────────────┼──────────────────────────┘
 
-          ┌──────────────┴──────────────┐
+                                ▼
 
-          ▼                             ▼
+                 Approve / Decline / Review
 
- Online Feature Store              Async Pipeline
+                                │
 
-      (Redis)                          (Kafka)
+              Return Response to Payment Network
 
-          │                             │
+                                │
 
-          ▼                             ▼
+                                ▼
 
-   Decision Engine          Storage / Analytics / ML
+                     Publish Event to Kafka
 
- (Rules + ML Model)
+                                │
 
-          │
+                                ▼
 
-          ▼
+=============================================================
+                  Asynchronous Processing Pipeline
+=============================================================
 
- Approve / Decline / Review
+                                │
+
+        ┌──────────────┬──────────────┬──────────────┐
+
+        ▼              ▼              ▼
+
+ Persistence      Analytics      Notifications
+
+        │              │              │
+
+        └──────────────┴──────────────┘
+
+                       ▼
+
+            Feature Engineering Pipeline
+
+                       ▼
+
+            Offline Feature Store
+
+         (S3 / Data Lake / Snowflake)
+
+                       ▼
+
+               Model Training Pipeline
+
+                       ▼
+
+            Updated ML Models & Features
+
+                       ▼
+
+          Deploy Model + Refresh Redis
 ```
-
-**Interview Line**
-
-> "We separate the real-time decision path from asynchronous processing so heavy downstream work doesn't impact authorization latency."
 
 ---
 
-# 5. Ingestion Layer
+**Interview Line**
 
-Transactions arrive synchronously through APIs.
+> "The authorization path is completely synchronous to minimize latency. Kafka is used only after the fraud decision for asynchronous workloads such as persistence, analytics, notifications, feature engineering, and model training."
+
+---
+
+# 5. Request Flow
+
+Transactions arrive synchronously from the payment network.
 
 ## API Gateway Responsibilities
 
@@ -64480,21 +64517,27 @@ Transactions arrive synchronously through APIs.
 
 ---
 
-## Ingestion Service Responsibilities
+## Fraud Decision Service Responsibilities
 
-- Normalize transaction
-- Add internal metadata
-- Publish event to Kafka
+- Normalize incoming transaction
+- Generate internal metadata
+- Retrieve features from Redis
+- Execute business rules
+- Execute ML inference
+- Combine rule and ML results
+- Return Approve / Decline / Review
+
+No heavy processing occurs on this path.
 
 ---
 
 ### Why Normalize?
 
-Different payment networks send different payloads.
+Different payment processors and card networks send different payload formats.
 
-Normalization converts them into a common internal format.
+Normalization converts them into a canonical internal model.
 
-Example:
+Example
 
 External
 
@@ -64512,60 +64555,157 @@ Internal
   "transactionAmount":125,
   "merchant":"Starbucks",
   "currency":"USD",
-  "eventId":"evt123"
+  "transactionId":"txn123"
 }
 ```
 
 Normalization includes
 
-- Standardizing field names
-- Data type conversion
+- Standardized field names
 - Currency normalization
-- Timestamp normalization
 - Merchant normalization
+- Timestamp normalization
+- Data type conversion
 - Internal metadata
 
 ---
 
 **Interview Line**
 
-> "Kafka decouples ingestion from downstream processing, enables replay, and allows the system to scale independently."
+> "The Fraud Decision Service keeps the request path lightweight by performing only the work required to make a fraud decision."
 
 ---
 
 # 6. Real-Time Decision Path (Critical)
 
-The authorization flow must complete within approximately **200 ms**.
+The payment authorization flow should complete within approximately **100–200 ms**.
 
 ```
 Receive Transaction
 
 ↓
 
-Fetch Features
+Normalize Request
 
 ↓
 
-Evaluate Rules
+Fetch Features (Redis)
 
 ↓
 
-Evaluate ML Model
+Execute Rules Engine
 
 ↓
 
-Return Decision
+Execute ML Model
+
+↓
+
+Combine Results
+
+↓
+
+Approve / Decline / Review
+
+↓
+
+Return Response
+
+↓
+
+Publish Transaction to Kafka
 ```
 
 ---
 
-## Why Optimize This Path?
+## Why Keep Kafka After the Decision?
 
-Every millisecond impacts customer experience.
+The payment network is waiting for a response.
 
-Heavy computation is avoided during authorization.
+Adding Kafka before the decision introduces
+
+- Publish latency
+- Queueing latency
+- Consumer scheduling latency
+
+Although Kafka itself is fast, queueing delays under heavy load increase overall response time.
+
+Instead,
+
+the synchronous path only performs operations required to generate the fraud decision.
+
+Everything else executes asynchronously after the response has been returned.
 
 ---
+
+**Interview Line**
+
+> "Kafka is intentionally placed after the authorization response because persistence, analytics, and model training are not latency-critical."
+
+---
+
+# 9. Asynchronous Processing
+
+Once the fraud decision has been returned,
+
+the transaction is published to Kafka.
+
+```
+Kafka
+
+↓
+
+Consumer Groups
+
+↓
+
+Persistence
+
+Analytics
+
+Notifications
+
+Feature Engineering
+
+Model Training
+```
+
+Responsibilities
+
+- Persist transaction history
+- Store fraud decision
+- Audit logging
+- Fraud analytics
+- Alert generation
+- Feature computation
+- Offline feature store updates
+- Model retraining
+- Replay support
+
+These workloads are independent and can scale horizontally without affecting authorization latency.
+
+---
+
+## Why Kafka Here?
+
+Kafka provides
+
+- Durable event storage
+- Replay
+- Loose coupling
+- Independent scaling
+- Backpressure handling
+- Fault tolerance
+
+Since these operations are asynchronous,
+
+temporary slowdowns never impact customer-facing latency.
+
+---
+
+**Interview Line**
+
+> "Kafka enables reliable asynchronous processing while ensuring the real-time authorization path remains fast and predictable."
 
 # 7. Feature Store
 
