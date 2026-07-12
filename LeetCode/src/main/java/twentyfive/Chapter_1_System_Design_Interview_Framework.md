@@ -73600,11 +73600,27 @@ Typically
 
 24–48 hours.
 
+### API Idempotency Response
+
+When the Event Ingestion Service accepts a new event, it stores the `eventId` along with the response in Redis (or an `idempotency_keys` table) and returns:
+
+```json
+{
+  "eventId": "evt-100",
+  "status": "ACCEPTED",
+  "acceptedAt": "2026-07-12T18:30:15.123Z"
+}
+```
+
+If the producer retries with the same `eventId`, the ingestion service detects the duplicate, **does not publish the event to Kafka again**, and returns the **same cached response**. This makes retries transparent while preventing duplicate event ingestion.
+
+
 ---
 
 ## Step 5 – Kafka
 
 Kafka acts as the durable event backbone.
+decouples ingestion from processing layer.. prevents tight coupling..
 
 Responsibilities
 
