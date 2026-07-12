@@ -54703,3 +54703,9602 @@ Advantages
 # Interview Summary
 
 > The system uses two business tables: **Jobs** and **TaskExecution**. The Jobs table stores recurring job definitions including the cron expression, payload, retry policy, and status. Every actual execution—including retries—is represented by a row in the TaskExecution table. The Scheduler continuously polls TaskExecution for pending executions whose scheduled time has arrived, marks them IN_PROGRESS, and publishes them to Kafka. Workers execute the job, update execution status, compute exponential backoff when necessary, create retry executions as new TaskExecution rows, and create the next recurring execution after successful completion. If retries are exhausted, the Worker publishes the execution to a Dead Letter Queue. This keeps the Scheduler lightweight while supporting retries, pause/resume, execution history, and horizontal scalability through a single execution pipeline.
+
+For simplicity and reliability, I'd start with a configurable polling scheduler. A 1-second polling interval is a common choice for enterprise schedulers and provides good precision with minimal database overhead when combined with proper indexing and horizontal scaling. If the system grows significantly or requires sub-second precision, we could evolve to an event-driven or timer-wheel-based scheduler."
+
+Worker inserts
+
+ExecutionId	ScheduledTime
+6001	2026-07-12 12:00:00
+
+Again,
+
+the DB stores an absolute timestamp.
+
+
+# Financial Data Aggregation Platform
+
+# Part 1 - Introduction, Requirements & Capacity Estimation
+
+---
+
+# Problem Statement
+
+Design a platform similar to **Mint, Monarch Money, Rocket Money, or Empower** that allows users to securely connect their bank accounts through financial aggregators (such as Plaid or Yodlee), continuously ingest transaction data, process it in near real-time, categorize spending, and provide financial insights, reports, and analytics.
+
+The system should support millions of users while ensuring correctness, scalability, security, and high availability.
+
+---
+
+# Interview Opening (30 Seconds)
+
+A good opening immediately provides structure to the interviewer.
+
+> "I'll design a platform that connects users to financial institutions through aggregators like Plaid. Transactions are ingested using webhooks and polling, processed through an event-driven pipeline, stored in transactional databases, and exposed through low-latency reporting APIs. Since we're dealing with financial data, correctness, security, and auditability are primary design goals."
+
+This immediately tells the interviewer:
+
+- You understand the domain.
+- You know external aggregators are involved.
+- You understand event-driven systems.
+- You care about correctness.
+
+---
+
+# High-Level Functional Requirements
+
+The platform should support the following capabilities.
+
+## 1. Account Management
+
+Users should be able to
+
+- Connect a bank account
+- Connect multiple institutions
+- Disconnect accounts
+- Reconnect expired accounts
+- Refresh account balances
+
+---
+
+## 2. Transaction Synchronization
+
+The system should
+
+- Import historical transactions
+- Continuously receive new transactions
+- Detect updates
+- Detect deleted transactions
+- Maintain consistency with the bank
+
+---
+
+## 3. Transaction Processing
+
+Incoming transactions should be
+
+- Validated
+- Deduplicated
+- Ordered
+- Enriched
+- Categorized
+
+before becoming available to users.
+
+---
+
+## 4. Search
+
+Users should search transactions using
+
+- Merchant
+- Date
+- Amount
+- Category
+- Description
+
+---
+
+## 5. Reports
+
+Generate
+
+- Monthly spending
+- Cash flow
+- Income vs Expenses
+- Category breakdown
+- Spending trends
+- Net worth
+
+---
+
+## 6. Notifications
+
+Support notifications such as
+
+- Large purchases
+- Low balance
+- Subscription detection
+- Unusual spending
+
+---
+
+## 7. AI Insights (Optional)
+
+Generate insights like
+
+- Spending anomalies
+- Budget recommendations
+- Personalized financial advice
+
+---
+
+# Non-Functional Requirements
+
+These are more important than functional requirements in system design interviews.
+
+---
+
+## Correctness
+
+Financial data must be accurate.
+
+Duplicate or missing transactions are unacceptable.
+
+The system must support reconciliation with the source of truth.
+
+---
+
+## Availability
+
+Users should be able to view transactions even if downstream systems are temporarily unavailable.
+
+Target
+
+```
+99.9%+
+```
+
+---
+
+## Scalability
+
+The platform should support
+
+- Millions of users
+- Thousands of institutions
+- Billions of transactions
+
+without redesign.
+
+---
+
+## Low Latency
+
+New transactions should become visible quickly.
+
+Target
+
+```
+30 seconds to 2 minutes
+```
+
+depending on aggregator capabilities.
+
+---
+
+## Reliability
+
+Failures should never result in permanent data loss.
+
+Every transaction should either
+
+- be processed
+- retried
+- sent to a Dead Letter Queue
+
+---
+
+## Security
+
+Financial information is highly sensitive.
+
+Requirements include
+
+- Encryption at rest
+- TLS in transit
+- OAuth
+- Tokenization
+- Secret management
+- Audit logging
+
+---
+
+## Observability
+
+Every transaction should be traceable through the system.
+
+Support
+
+- Metrics
+- Logs
+- Tracing
+- Alerts
+- Correlation IDs
+
+---
+
+# Assumptions
+
+To simplify the design, we make several assumptions.
+
+---
+
+## We do NOT integrate directly with banks.
+
+Instead we use aggregators like
+
+- Plaid
+- Yodlee
+- MX
+
+These aggregators
+
+- manage authentication
+- normalize APIs
+- support thousands of institutions
+- provide webhooks
+- reduce engineering complexity
+
+---
+
+## Banks remain the Source of Truth.
+
+Our database is a cached representation of bank data.
+
+If inconsistencies occur,
+
+reconciliation jobs synchronize our system with the bank.
+
+---
+
+## Aggregators handle credentials.
+
+The platform never stores
+
+- usernames
+- passwords
+- MFA credentials
+
+Instead we securely store
+
+- access tokens
+- refresh tokens
+
+issued by the aggregator.
+
+---
+
+# Design Goals
+
+The system should satisfy five primary goals.
+
+---
+
+## Goal 1
+
+Decouple ingestion from processing.
+
+Reason
+
+External APIs are slow and unreliable.
+
+Processing should continue independently.
+
+---
+
+## Goal 2
+
+Ensure idempotency.
+
+Duplicate events should never create duplicate transactions.
+
+---
+
+## Goal 3
+
+Scale every layer independently.
+
+The following should scale independently
+
+- Ingestion
+- Processing
+- Storage
+- Reporting
+
+---
+
+## Goal 4
+
+Support replay.
+
+If downstream processing fails,
+
+we should replay historical events without asking banks again.
+
+---
+
+## Goal 5
+
+Maintain eventual consistency.
+
+Temporary inconsistencies are acceptable.
+
+Permanent inconsistencies are not.
+
+Nightly reconciliation jobs guarantee correctness.
+
+---
+
+# Capacity Estimation
+
+Interviewers generally expect rough estimates rather than perfect calculations.
+
+Assume
+
+```
+5 Million Users
+```
+
+Average
+
+```
+3 Accounts / User
+```
+
+Total Accounts
+
+```
+15 Million Accounts
+```
+
+Average Transactions
+
+```
+5 Transactions / Day / Account
+```
+
+Daily Transactions
+
+```
+75 Million Transactions / Day
+```
+
+Transactions Per Second
+
+```
+75,000,000
+
+/
+
+86,400
+
+≈
+
+870 TPS
+```
+
+Assume peak traffic is
+
+```
+5x Average
+```
+
+Peak
+
+```
+~4,500 TPS
+```
+
+The system should comfortably support
+
+```
+5,000–10,000 TPS
+```
+
+---
+
+# Storage Estimation
+
+Average transaction size
+
+```
+500 Bytes
+```
+
+Daily Storage
+
+```
+75 Million
+
+×
+
+500 Bytes
+
+≈
+
+37 GB/day
+```
+
+Annual Storage
+
+```
+≈13 TB/year
+```
+
+excluding indexes and replication.
+
+---
+
+# Read vs Write Traffic
+
+Read traffic is significantly larger.
+
+Approximate ratio
+
+```
+Reads
+
+:
+
+Writes
+
+=
+
+10
+
+:
+
+1
+```
+
+Reason
+
+Users repeatedly
+
+- open dashboards
+- refresh transactions
+- generate reports
+
+while writes occur only when banks send updates.
+
+---
+
+# High-Level Architecture
+
+The system is organized into three logical layers.
+
+```
+                 Ingestion Layer
+
+                         │
+
+                         ▼
+
+                Processing Layer
+
+                         │
+
+                         ▼
+
+             Storage & Serving Layer
+```
+
+---
+
+## Ingestion Layer
+
+Responsible for
+
+- Receiving webhooks
+- Polling aggregators
+- Validating requests
+- Publishing events
+
+---
+
+## Processing Layer
+
+Responsible for
+
+- Validation
+- Deduplication
+- Ordering
+- Enrichment
+- Categorization
+
+---
+
+## Storage & Serving Layer
+
+Responsible for
+
+- OLTP database
+- Analytics
+- Reporting APIs
+- Search
+- Dashboards
+
+---
+
+# Key Design Principles
+
+Throughout the design we follow several important principles.
+
+### Single Responsibility
+
+Every service has one responsibility.
+
+---
+
+### Event-Driven Architecture
+
+Services communicate using Kafka.
+
+This enables
+
+- decoupling
+- replay
+- scalability
+
+---
+
+### Idempotency
+
+Consumers should safely process duplicate events.
+
+---
+
+### Horizontal Scaling
+
+Every major component should be stateless.
+
+Scaling simply means adding more instances.
+
+---
+
+### Fault Isolation
+
+Failure of one component should not stop the entire pipeline.
+
+---
+
+# Interview Talking Points
+
+These are high-signal statements that interviewers appreciate.
+
+> We use financial aggregators because integrating directly with thousands of banks is operationally expensive and difficult to maintain.
+
+> Since financial systems prioritize correctness over latency, reconciliation is a first-class component of the architecture.
+
+> Kafka decouples ingestion from processing and allows replay without re-fetching data from banks.
+
+> We design consumers to be idempotent because retries and duplicate events are inevitable.
+
+> Banks remain the source of truth, while our platform maintains an eventually consistent representation through continuous synchronization and reconciliation.
+
+---
+
+# Next Chapter
+
+Part 2 - API Design
+
+We will design
+
+- Connect Account APIs
+- Disconnect APIs
+- Transaction APIs
+- Reporting APIs
+- Webhook APIs
+- Authentication
+- API contracts
+- Request/Response examples
+- Error handling
+
+# Financial Data Aggregation Platform
+
+# Part 2 – API Design
+
+---
+
+# Overview
+
+The API layer is the entry point into the platform.
+
+Responsibilities include
+
+- Authentication
+- Authorization
+- Request validation
+- Rate limiting
+- Routing requests to backend services
+
+Clients include
+
+- Mobile applications
+- Web applications
+- Third-party integrations
+
+The APIs are designed to be RESTful and stateless.
+
+---
+
+# API Gateway
+
+The API Gateway sits between clients and backend services.
+
+```
+               Client
+
+                  │
+
+                  ▼
+
+             API Gateway
+
+      Authentication
+      Authorization
+      Rate Limiting
+      Routing
+      Request Validation
+      Logging
+
+                  │
+
+      ┌───────────┴─────────────┐
+
+      ▼                         ▼
+
+Account Service          Reporting Service
+```
+
+---
+
+## Responsibilities
+
+The API Gateway handles
+
+- JWT validation
+- OAuth authentication
+- Rate limiting
+- SSL termination
+- Logging
+- Metrics
+- Request routing
+- CORS
+- Request validation
+
+It should **NOT**
+
+- Execute business logic
+- Access databases
+- Call external aggregators
+
+Those responsibilities belong to backend services.
+
+---
+
+# Authentication
+
+Users authenticate using
+
+```
+OAuth2 + JWT
+```
+
+Flow
+
+```
+User Login
+
+↓
+
+Identity Provider
+
+↓
+
+JWT Token
+
+↓
+
+API Gateway validates JWT
+
+↓
+
+Forward request
+```
+
+---
+
+# API 1 – Connect Bank Account
+
+This is one of the most important APIs.
+
+The frontend first requests a Link Token.
+
+---
+
+## Request
+
+```
+POST /v1/accounts/link-token
+```
+
+Request
+
+```json
+{
+   "userId":"12345"
+}
+```
+
+---
+
+## Response
+
+```json
+{
+   "linkToken":"plaid-link-token-xyz"
+}
+```
+
+---
+
+The frontend opens the Plaid Link SDK using this token.
+
+The user authenticates directly with Plaid.
+
+Our backend **never receives bank credentials**.
+
+---
+
+# API 2 – Exchange Public Token
+
+After successful authentication,
+
+Plaid returns
+
+```
+public_token
+```
+
+The frontend sends it to our backend.
+
+---
+
+## Request
+
+```
+POST /v1/accounts/connect
+```
+
+```json
+{
+   "publicToken":"public-sandbox-xyz",
+   "institutionId":"ins_123"
+}
+```
+
+---
+
+## Backend Flow
+
+```
+Frontend
+
+↓
+
+Account Service
+
+↓
+
+Plaid
+
+↓
+
+Exchange public token
+
+↓
+
+Receive access token
+
+↓
+
+Store encrypted access token
+```
+
+---
+
+## Response
+
+```json
+{
+   "accountId":"acc_1001",
+   "status":"CONNECTED"
+}
+```
+
+---
+
+# API 3 – Disconnect Account
+
+```
+DELETE /v1/accounts/{accountId}
+```
+
+---
+
+Flow
+
+```
+Delete mapping
+
+↓
+
+Invalidate token
+
+↓
+
+Stop polling
+
+↓
+
+Delete webhook registration
+```
+
+---
+
+Response
+
+```json
+{
+   "status":"SUCCESS"
+}
+```
+
+---
+
+# API 4 – Refresh Account
+
+Sometimes the user wants an immediate refresh.
+
+```
+POST /v1/accounts/{accountId}/refresh
+```
+
+---
+
+Backend
+
+```
+Account Service
+
+↓
+
+Plaid Sync API
+
+↓
+
+Fetch latest transactions
+
+↓
+
+Kafka
+```
+
+Response
+
+```json
+{
+    "status":"SYNC_STARTED"
+}
+```
+
+Notice
+
+Refresh is asynchronous.
+
+We don't wait for all transactions.
+
+---
+
+# API 5 – Get Accounts
+
+```
+GET /v1/accounts
+```
+
+Response
+
+```json
+[
+   {
+      "accountId":"A1",
+      "institution":"Chase",
+      "type":"Checking",
+      "balance":1200.54
+   },
+   {
+      "accountId":"A2",
+      "institution":"Bank of America",
+      "type":"Savings",
+      "balance":5800
+   }
+]
+```
+
+---
+
+# API 6 – Get Transactions
+
+```
+GET /v1/transactions
+```
+
+Supports
+
+- pagination
+- filtering
+- sorting
+
+Example
+
+```
+GET /transactions?
+accountId=A1
+&page=1
+&pageSize=50
+```
+
+---
+
+Optional Filters
+
+```
+merchant
+
+category
+
+amount
+
+startDate
+
+endDate
+
+sort
+```
+
+Example
+
+```
+GET /transactions?
+
+category=Food
+
+&startDate=2026-01-01
+
+&endDate=2026-01-31
+```
+
+---
+
+Response
+
+```json
+{
+   "transactions":[
+      {
+         "transactionId":"T1001",
+         "merchant":"Starbucks",
+         "category":"Food",
+         "amount":8.75,
+         "date":"2026-01-10"
+      }
+   ]
+}
+```
+
+---
+
+# Pagination
+
+Never return all transactions.
+
+Use
+
+```
+Cursor Pagination
+```
+
+instead of Offset Pagination.
+
+Example
+
+```
+GET /transactions
+
+?cursor=abc123
+
+&pageSize=100
+```
+
+Advantages
+
+- Better performance
+- No skipped records
+- Better for large datasets
+
+---
+
+# API 7 – Search Transactions
+
+```
+GET /v1/search
+```
+
+Filters
+
+```
+Merchant
+
+Category
+
+Description
+
+Amount
+
+Date Range
+```
+
+Example
+
+```
+GET /search?
+
+merchant=Starbucks
+```
+
+---
+
+# API 8 – Reports
+
+```
+GET /v1/reports/monthly
+```
+
+Returns
+
+```json
+{
+   "income":9000,
+   "expenses":6200,
+   "cashFlow":2800
+}
+```
+
+---
+
+Other Reports
+
+```
+GET /reports/cashflow
+
+GET /reports/categories
+
+GET /reports/trends
+
+GET /reports/networth
+```
+
+---
+
+# API 9 – Dashboard
+
+```
+GET /v1/dashboard
+```
+
+Returns
+
+- Recent Transactions
+- Monthly Spending
+- Income
+- Savings
+- Cash Flow
+- Top Categories
+
+Dashboard reads from
+
+```
+Redis
+
++
+
+Analytics Database
+```
+
+instead of recalculating every request.
+
+---
+
+# API 10 – Webhook Endpoint
+
+Aggregators call our webhook.
+
+```
+POST /v1/webhooks/plaid
+```
+
+Example
+
+```json
+{
+   "webhook_type":"TRANSACTIONS",
+   "webhook_code":"SYNC_UPDATES_AVAILABLE"
+}
+```
+
+The Ingestion Service
+
+- validates signature
+- validates schema
+- publishes event to Kafka
+
+Response
+
+```
+HTTP 200
+```
+
+immediately.
+
+Heavy processing happens asynchronously.
+
+---
+
+# API Design Principles
+
+## Idempotency
+
+Some APIs may be retried.
+
+Example
+
+```
+POST /accounts/connect
+```
+
+should not create duplicate accounts.
+
+Use
+
+```
+Idempotency-Key
+```
+
+header.
+
+Example
+
+```
+Idempotency-Key
+
+9d82cdd4
+```
+
+---
+
+## Versioning
+
+Use URI versioning.
+
+```
+/v1/accounts
+
+/v1/transactions
+```
+
+Future versions
+
+```
+/v2/accounts
+```
+
+---
+
+## Error Handling
+
+Example
+
+```json
+{
+   "errorCode":"ACCOUNT_NOT_FOUND",
+   "message":"Invalid account."
+}
+```
+
+Never expose stack traces.
+
+---
+
+## HTTP Status Codes
+
+| Code | Meaning |
+|-------|----------|
+|200|Success|
+|201|Created|
+|202|Accepted (Async Request)|
+|400|Bad Request|
+|401|Unauthorized|
+|403|Forbidden|
+|404|Not Found|
+|409|Duplicate Request|
+|429|Rate Limited|
+|500|Internal Server Error|
+
+---
+
+# Rate Limiting
+
+Protect backend services.
+
+Example
+
+```
+100 requests/minute/user
+```
+
+API Gateway returns
+
+```
+429
+
+Too Many Requests
+```
+
+when exceeded.
+
+---
+
+# Security
+
+Every request should include
+
+```
+Authorization
+
+Bearer JWT
+```
+
+Sensitive information
+
+- access tokens
+- account numbers
+- PII
+
+must never be returned by APIs.
+
+---
+
+# Interview Talking Points
+
+> The API Gateway handles cross-cutting concerns such as authentication, routing, and rate limiting, while backend services remain focused on business logic.
+
+> Connecting a bank account is a two-step process: first obtaining a Plaid Link Token, then exchanging the returned Public Token for an Access Token. This ensures bank credentials are never exposed to our backend.
+
+> Long-running operations like account synchronization are asynchronous. The API immediately acknowledges the request and processing continues through Kafka.
+
+> Transaction APIs use cursor-based pagination for better scalability compared to offset pagination.
+
+> Dashboard APIs serve precomputed summaries from Redis and analytics stores to provide low-latency responses without recalculating aggregates on every request.
+
+---
+
+# Next Chapter
+
+**Part 3 – High-Level Architecture**
+
+We will design
+
+- Overall architecture
+- Component responsibilities
+- Control Plane vs Data Plane
+- Ingestion layer
+- Processing layer
+- Storage layer
+- Why Kafka
+- Complete architecture diagram
+- End-to-end request flow
+
+# Financial Data Aggregation Platform
+
+# Part 3 – High-Level Architecture
+
+---
+
+# Overview
+
+The goal of this chapter is to design the overall architecture of a Financial Data Aggregation Platform.
+
+Our objectives are
+
+- Connect user bank accounts
+- Continuously synchronize transactions
+- Process transactions reliably
+- Generate reports
+- Scale horizontally
+- Ensure correctness and security
+
+Instead of building a monolithic application, we decompose the system into independent services that communicate asynchronously through Kafka.
+
+---
+
+# High-Level Architecture
+
+```
+                           Mobile / Web App
+
+                                   │
+
+                                   ▼
+
+                             API Gateway
+
+                                   │
+
+             ┌─────────────────────┴─────────────────────┐
+
+             ▼                                           ▼
+
+    Account & Aggregation Service                Reporting Service
+
+             │                                           │
+
+             ▼                                           ▼
+
+      Plaid / Yodlee APIs                         Redis / Analytics
+
+             │
+
+             ▼
+
+     Webhooks / Polling
+
+             │
+
+             ▼
+
+      Ingestion Service
+
+             │
+
+             ▼
+
+         Kafka Topics
+
+             │
+
+             ▼
+
+     Processing Pipeline
+
+             │
+
+             ▼
+
+        PostgreSQL
+
+             │
+
+             ▼
+
+    transactions.processed
+
+             │
+
+      ┌──────┼────────┬─────────┐
+
+      ▼      ▼        ▼         ▼
+
+ Reporting Notifications ML Analytics
+```
+
+---
+
+# Three Logical Layers
+
+To simplify the architecture, we divide the platform into three layers.
+
+```
+Ingestion Layer
+
+↓
+
+Processing Layer
+
+↓
+
+Storage & Serving Layer
+```
+
+Each layer has a clear responsibility.
+
+---
+
+# Layer 1 – Ingestion Layer
+
+Purpose
+
+Bring data from external financial institutions into our platform.
+
+Components
+
+- Account & Aggregation Service
+- Plaid
+- Yodlee
+- Webhook Receiver
+- Polling Scheduler
+- Ingestion Service
+
+Responsibilities
+
+- Authenticate users
+- Store access tokens
+- Receive webhooks
+- Poll aggregators
+- Handle retries
+- Handle rate limits
+- Publish Kafka events
+
+The ingestion layer should perform minimal processing.
+
+Its responsibility is to reliably move data into Kafka.
+
+---
+
+# Layer 2 – Processing Layer
+
+Purpose
+
+Transform raw financial transactions into meaningful business data.
+
+Responsibilities
+
+- Validation
+- Deduplication
+- Ordering
+- Enrichment
+- Merchant normalization
+- Currency conversion
+- Categorization
+- Persistence
+
+Processing services communicate using Kafka.
+
+This allows
+
+- replay
+- scaling
+- fault isolation
+
+---
+
+# Layer 3 – Storage & Serving Layer
+
+Purpose
+
+Serve low-latency APIs.
+
+Contains
+
+- PostgreSQL
+- Redis
+- Analytics Warehouse
+- Reporting Service
+
+This layer never talks directly to Plaid.
+
+It only serves processed data.
+
+---
+
+# Why Use Financial Aggregators?
+
+One of the first architectural decisions is whether to connect directly to banks.
+
+We do **not**.
+
+Instead we use aggregators such as
+
+- Plaid
+- Yodlee
+- MX
+
+Architecture
+
+```
+Application
+
+↓
+
+Plaid
+
+↓
+
+Thousands of Banks
+```
+
+instead of
+
+```
+Application
+
+↓
+
+Bank A
+
+Bank B
+
+Bank C
+
+...
+
+Bank 10,000
+```
+
+---
+
+# Advantages of Aggregators
+
+They provide
+
+- Unified APIs
+- OAuth support
+- Secure authentication
+- Webhooks
+- Cursor-based synchronization
+- Normalized transaction formats
+- Institution metadata
+
+This significantly reduces engineering complexity.
+
+---
+
+# Control Plane vs Data Plane
+
+This distinction is often mentioned by Senior Engineers.
+
+---
+
+## Control Plane
+
+Responsible for managing integrations.
+
+Includes
+
+- User ↔ Account mapping
+- Access tokens
+- Refresh tokens
+- Poll schedules
+- Cursor positions
+- Webhook registrations
+- Sync state
+
+Implemented by
+
+```
+Account & Aggregation Service
+```
+
+---
+
+Example
+
+```
+User
+
+↓
+
+Connect Bank
+
+↓
+
+Store Token
+
+↓
+
+Register Webhook
+
+↓
+
+Start Sync
+```
+
+No financial transactions flow through the control plane.
+
+---
+
+## Data Plane
+
+Responsible for processing transaction data.
+
+Includes
+
+```
+Webhook
+
+↓
+
+Kafka
+
+↓
+
+Validation
+
+↓
+
+Deduplication
+
+↓
+
+Categorization
+
+↓
+
+Database
+```
+
+The data plane is optimized for
+
+- throughput
+- scalability
+- reliability
+
+---
+
+# Component Responsibilities
+
+---
+
+# API Gateway
+
+Responsibilities
+
+- Authentication
+- JWT Validation
+- Routing
+- Rate Limiting
+- Logging
+
+Never
+
+- accesses DB
+- calls Plaid
+- executes business logic
+
+---
+
+# Account & Aggregation Service
+
+One of the most important services.
+
+Responsibilities
+
+- Create Link Token
+- Exchange Public Token
+- Store Access Token
+- Manage reconnect flow
+- Register webhooks
+- Manage polling
+- Track cursors
+- Handle pagination
+- Handle rate limits
+- Handle token expiration
+
+Think of this as
+
+```
+Control Plane
+```
+
+---
+
+# Ingestion Service
+
+Purpose
+
+Receive external data.
+
+Responsibilities
+
+- Receive webhook
+- Verify signature
+- Validate payload
+- Normalize schema
+- Publish Kafka event
+
+Should perform almost no business logic.
+
+---
+
+# Kafka
+
+Kafka becomes the backbone of the architecture.
+
+```
+Webhook
+
+↓
+
+Kafka
+
+↓
+
+Processing Services
+```
+
+Kafka provides
+
+- Decoupling
+- Replay
+- Ordering
+- Horizontal scaling
+
+---
+
+# Processing Services
+
+These services transform data.
+
+Pipeline
+
+```
+Validation
+
+↓
+
+Deduplication
+
+↓
+
+Ordering
+
+↓
+
+Enrichment
+
+↓
+
+Categorization
+
+↓
+
+Persistence
+```
+
+Each service
+
+- owns one responsibility
+- scales independently
+
+---
+
+# PostgreSQL
+
+Stores
+
+- Users
+- Accounts
+- Transactions
+- Categories
+- Merchants
+
+Supports
+
+- transactional consistency
+- user APIs
+
+---
+
+# Redis
+
+Stores
+
+- Dashboard summaries
+- Recent transactions
+- Frequently accessed reports
+
+Purpose
+
+Reduce database load.
+
+---
+
+# Analytics Warehouse
+
+Examples
+
+- Snowflake
+- BigQuery
+- Redshift
+
+Used for
+
+- historical reports
+- BI
+- large aggregations
+- ML features
+
+Not used by user-facing APIs.
+
+---
+
+# Reporting Service
+
+Reads
+
+- PostgreSQL
+- Redis
+- Analytics DB
+
+Serves
+
+```
+GET /transactions
+
+GET /dashboard
+
+GET /reports
+```
+
+---
+
+# Why Kafka?
+
+Instead of
+
+```
+Webhook
+
+↓
+
+Database
+
+↓
+
+Reporting
+```
+
+we use
+
+```
+Webhook
+
+↓
+
+Kafka
+
+↓
+
+Processing
+
+↓
+
+Database
+```
+
+Advantages
+
+---
+
+## Decoupling
+
+Webhook receiver returns immediately.
+
+Processing continues asynchronously.
+
+---
+
+## Replay
+
+Suppose Categorization Service fails.
+
+Kafka retains events.
+
+Consumer restarts.
+
+Reprocesses events.
+
+No need to fetch transactions again.
+
+---
+
+## Independent Scaling
+
+Suppose categorization becomes CPU intensive.
+
+Increase
+
+```
+Categorization Consumers
+```
+
+No other service changes.
+
+---
+
+## Multiple Consumers
+
+One event can feed multiple systems.
+
+```
+transactions.processed
+
+↓
+
+Reporting
+
+Analytics
+
+Notifications
+
+ML
+```
+
+without changing the producer.
+
+---
+
+# Event-Driven Architecture
+
+Instead of direct service calls,
+
+services communicate through events.
+
+```
+Transaction Arrived
+
+↓
+
+TransactionValidated
+
+↓
+
+TransactionCategorized
+
+↓
+
+TransactionPersisted
+```
+
+Each service reacts independently.
+
+This reduces coupling.
+
+---
+
+# Design Principles
+
+Every architectural decision follows a few principles.
+
+---
+
+## Single Responsibility
+
+Each service owns one responsibility.
+
+Examples
+
+- Validation
+- Categorization
+- Reporting
+
+---
+
+## Stateless Services
+
+Application services should remain stateless.
+
+Any instance can process any request.
+
+Scaling simply means adding more instances.
+
+---
+
+## Idempotency
+
+Duplicate events are expected.
+
+Consumers should safely process duplicates.
+
+---
+
+## Fault Isolation
+
+Failure of one service should not stop the entire pipeline.
+
+Kafka buffers work until downstream services recover.
+
+---
+
+## Eventual Consistency
+
+Reports may lag behind by a few seconds.
+
+Financial correctness is maintained through
+
+- retries
+- replay
+- reconciliation
+
+---
+
+# Complete End-to-End Flow
+
+```
+User
+
+↓
+
+Connect Bank
+
+↓
+
+Plaid
+
+↓
+
+Webhook
+
+↓
+
+Ingestion Service
+
+↓
+
+Kafka
+
+↓
+
+Validation
+
+↓
+
+Deduplication
+
+↓
+
+Ordering
+
+↓
+
+Enrichment
+
+↓
+
+Categorization
+
+↓
+
+PostgreSQL
+
+↓
+
+transactions.processed
+
+↓
+
+Reporting
+
+Analytics
+
+Notifications
+
+ML
+```
+
+---
+
+# Interview Talking Points
+
+> I separate the system into Ingestion, Processing, and Storage layers so that each layer can evolve and scale independently.
+
+> We integrate with aggregators like Plaid instead of banks directly because they provide a unified API, secure authentication, and normalized financial data.
+
+> Kafka acts as the event backbone of the system, decoupling ingestion from processing while enabling replay, horizontal scaling, and fault isolation.
+
+> I separate the control plane from the data plane. The Account Service manages integrations, tokens, cursors, and webhooks, while the processing pipeline focuses solely on transaction data.
+
+> Every processing stage has a single responsibility, making the pipeline easier to scale, test, and maintain.
+
+---
+
+# Next Chapter
+
+## Part 4 – Account & Aggregation Service
+
+Topics
+
+- OAuth Flow
+- Plaid Link
+- Public Token Exchange
+- Access Token Management
+- Webhook Registration
+- Polling Strategy
+- Cursor Management
+- Incremental Sync
+- Pagination
+- Rate Limiting
+- Retry Strategy
+- Token Refresh
+- Failure Handling
+- Reconnection Flow
+
+This is where we begin interacting with external financial systems.
+
+# Financial Data Aggregation Platform
+
+# Part 4 – Account & Aggregation Service (Control Plane)
+
+---
+
+# Overview
+
+The Account & Aggregation Service is the **Control Plane** of the Financial Data Aggregation Platform.
+
+It is responsible for managing the relationship between users and financial institutions.
+
+Unlike the Processing Pipeline, this service **does not process financial transactions**.
+
+Instead, it manages
+
+- User ↔ Account mappings
+- Plaid integration
+- OAuth flow
+- Access Tokens
+- Webhook registration
+- Polling schedules
+- Cursor management
+- Reconnection flows
+- Sync orchestration
+
+Think of it as the service responsible for **bringing data into the platform**, while Kafka and downstream services are responsible for **processing** that data.
+
+---
+
+# Responsibilities
+
+The Account Service owns
+
+✓ Connect Bank Account
+
+✓ Disconnect Bank Account
+
+✓ Refresh Account
+
+✓ Token Management
+
+✓ Cursor Management
+
+✓ Poll Scheduling
+
+✓ Webhook Registration
+
+✓ Sync State
+
+✓ Pagination
+
+✓ Retry Policies
+
+✓ Rate Limiting
+
+✓ Reconnection
+
+---
+
+# High-Level Architecture
+
+```
+                Mobile App
+
+                     │
+
+                     ▼
+
+             API Gateway
+
+                     │
+
+                     ▼
+
+      Account & Aggregation Service
+
+                     │
+
+         ┌───────────┴───────────┐
+
+         ▼                       ▼
+
+     Plaid APIs            Metadata DB
+
+         │
+
+         ▼
+
+      Financial Institutions
+```
+
+---
+
+# Why Financial Aggregators?
+
+Instead of integrating with every bank,
+
+```
+Application
+
+↓
+
+Bank A
+
+Bank B
+
+Bank C
+
+...
+
+Bank 10,000
+```
+
+we integrate with
+
+```
+Application
+
+↓
+
+Plaid
+
+↓
+
+Thousands of Banks
+```
+
+Advantages
+
+- Unified API
+- OAuth support
+- Secure authentication
+- Transaction normalization
+- Webhooks
+- Incremental synchronization
+- Institution metadata
+- Reduced engineering effort
+
+---
+
+# Connect Account Flow
+
+The complete flow consists of multiple steps.
+
+```
+User
+
+↓
+
+Request Link Token
+
+↓
+
+Plaid Link UI
+
+↓
+
+Authenticate
+
+↓
+
+Receive Public Token
+
+↓
+
+Exchange Public Token
+
+↓
+
+Receive Access Token
+
+↓
+
+Store Token
+
+↓
+
+Register Webhook
+
+↓
+
+Start Initial Sync
+```
+
+---
+
+# Step 1 – Create Link Token
+
+Frontend calls
+
+```
+POST /accounts/link-token
+```
+
+Backend
+
+↓
+
+Plaid
+
+↓
+
+Create Link Token
+
+↓
+
+Return to frontend
+
+The Link Token is short-lived.
+
+It is only used to launch Plaid Link.
+
+---
+
+# Step 2 – User Authentication
+
+Plaid displays its hosted authentication UI.
+
+User enters
+
+- Username
+- Password
+- MFA
+
+Our application never sees these credentials.
+
+This is an important interview point.
+
+> We never store or transmit banking credentials. Authentication is completely managed by the aggregator.
+
+---
+
+# Step 3 – Public Token
+
+After authentication,
+
+Plaid returns
+
+```
+public_token
+```
+
+This token
+
+- is temporary
+- expires quickly
+- cannot fetch transactions
+
+---
+
+# Step 4 – Exchange Public Token
+
+Backend calls
+
+```
+Plaid
+
+↓
+
+/item/public_token/exchange
+```
+
+Plaid returns
+
+```
+access_token
+```
+
+This token allows
+
+- Fetch transactions
+- Refresh balances
+- Receive webhooks
+
+---
+
+# Step 5 – Store Access Token
+
+The access token is encrypted before storage.
+
+Never store it in plain text.
+
+Example
+
+```
+Accounts
+
+----------------------------
+
+accountId
+
+userId
+
+institutionId
+
+encryptedAccessToken
+
+cursor
+
+status
+```
+
+Encryption
+
+- KMS
+- Vault
+- Secrets Manager
+
+---
+
+# Step 6 – Register Webhook
+
+Backend registers
+
+```
+Webhook URL
+```
+
+Example
+
+```
+https://api.company.com/webhooks/plaid
+```
+
+Now Plaid can notify us whenever
+
+- New transaction
+- Updated transaction
+- Deleted transaction
+
+---
+
+# Initial Synchronization
+
+Immediately after connecting,
+
+the platform performs a historical synchronization.
+
+Typically
+
+```
+Last
+
+6–12 Months
+```
+
+Flow
+
+```
+Plaid
+
+↓
+
+Transactions API
+
+↓
+
+Pagination
+
+↓
+
+Kafka
+```
+
+---
+
+# Why Initial Sync?
+
+Users expect to immediately see historical data.
+
+Without this,
+
+only future transactions would appear.
+
+---
+
+# Pagination
+
+Suppose
+
+```
+20,000
+```
+
+transactions exist.
+
+Do not request all at once.
+
+Instead
+
+```
+Page 1
+
+↓
+
+Page 2
+
+↓
+
+Page 3
+
+↓
+
+...
+```
+
+Advantages
+
+- Lower memory usage
+- Better retry behavior
+- Lower timeout probability
+
+---
+
+# Incremental Synchronization
+
+After initial sync,
+
+only fetch changes.
+
+Plaid provides
+
+```
+Cursor
+```
+
+Example
+
+```
+Cursor
+
+↓
+
+abc123
+```
+
+Next request
+
+```
+Give me changes
+
+after abc123
+```
+
+Response
+
+```
+Added
+
+Updated
+
+Removed
+```
+
+Cursor becomes
+
+```
+abc456
+```
+
+Store
+
+```
+abc456
+```
+
+in database.
+
+---
+
+# Why Cursor?
+
+Without cursors
+
+every sync becomes
+
+```
+Fetch Everything
+```
+
+With cursors
+
+```
+Fetch Only Changes
+```
+
+This significantly reduces API usage.
+
+---
+
+# Database Example
+
+Accounts
+
+| accountId | cursor |
+|------------|---------|
+|1001|abc456|
+
+Every successful sync updates
+
+```
+cursor
+```
+
+---
+
+# Webhook Flow
+
+Whenever new transactions arrive
+
+```
+Bank
+
+↓
+
+Plaid
+
+↓
+
+Webhook
+
+↓
+
+Ingestion Service
+
+↓
+
+Kafka
+```
+
+The webhook payload is intentionally small.
+
+Example
+
+```json
+{
+   "webhook_type":"TRANSACTIONS",
+   "webhook_code":"SYNC_UPDATES_AVAILABLE"
+}
+```
+
+Notice
+
+The webhook does **not** contain transactions.
+
+It simply tells us
+
+> New data is available.
+
+The Ingestion Service then calls Plaid.
+
+---
+
+# Polling Strategy
+
+Webhooks are preferred.
+
+However,
+
+they are not sufficient.
+
+Reasons
+
+- Missed webhook
+- Network failure
+- Provider outage
+
+Therefore
+
+we also poll periodically.
+
+Example
+
+```
+Every
+
+30 Minutes
+```
+
+Flow
+
+```
+Scheduler
+
+↓
+
+Account Service
+
+↓
+
+Plaid
+
+↓
+
+Incremental Sync
+
+↓
+
+Kafka
+```
+
+This ensures eventual consistency.
+
+---
+
+# Hybrid Strategy
+
+```
+Webhook
+
+↓
+
+Near Real-Time
+
++
+
+Polling
+
+↓
+
+Reliability
+```
+
+Interview line
+
+> Webhooks provide low latency, while polling guarantees eventual consistency.
+
+---
+
+# Rate Limiting
+
+External APIs impose limits.
+
+Example
+
+```
+100 requests/minute
+```
+
+The Account Service should implement
+
+- Exponential Backoff
+- Retry
+- Adaptive Throttling
+
+Never continuously retry failed requests.
+
+---
+
+# Retry Strategy
+
+Suppose
+
+```
+HTTP 429
+
+Too Many Requests
+```
+
+Retry
+
+```
+1 sec
+
+↓
+
+2 sec
+
+↓
+
+4 sec
+
+↓
+
+8 sec
+```
+
+This prevents overwhelming Plaid.
+
+---
+
+# Token Expiration
+
+Access tokens may expire.
+
+Flow
+
+```
+Plaid
+
+↓
+
+401 Unauthorized
+
+↓
+
+Mark Account
+
+↓
+
+RECONNECT_REQUIRED
+```
+
+Notify user
+
+```
+Reconnect Bank
+```
+
+User repeats
+
+Plaid Link
+
+without losing transaction history.
+
+---
+
+# Account States
+
+An account can be
+
+```
+CONNECTED
+
+↓
+
+SYNCING
+
+↓
+
+ACTIVE
+
+↓
+
+ERROR
+
+↓
+
+RECONNECT_REQUIRED
+
+↓
+
+DISCONNECTED
+```
+
+This state machine helps operations teams diagnose issues.
+
+---
+
+# Failure Handling
+
+Suppose
+
+Plaid is unavailable.
+
+The Account Service should
+
+- Retry
+- Backoff
+- Log
+- Emit metrics
+
+Do not block user APIs.
+
+---
+
+# Database Schema
+
+Accounts
+
+| Column | Description |
+|---------|-------------|
+| accountId | PK |
+| userId | Owner |
+| institutionId | Bank |
+| encryptedAccessToken | Secure token |
+| cursor | Incremental sync cursor |
+| status | Current account state |
+| createdAt | Timestamp |
+
+---
+
+# Why is this the Control Plane?
+
+Notice
+
+The Account Service never
+
+- validates transactions
+- categorizes transactions
+- writes reports
+- performs analytics
+
+Its only responsibility is
+
+```
+Managing external integrations.
+```
+
+Transaction processing belongs to the Data Plane.
+
+---
+
+# Interview Talking Points
+
+> The Account & Aggregation Service acts as the Control Plane for ingestion. It manages user-to-bank mappings, securely stores access tokens, tracks synchronization cursors, registers webhooks, schedules polling, and orchestrates communication with external aggregators.
+
+> We rely on financial aggregators because they provide a unified interface across thousands of banks, handle authentication securely, normalize transaction formats, and significantly reduce engineering complexity.
+
+> We use a hybrid synchronization strategy. Webhooks provide low-latency updates, while scheduled polling ensures reliability in case notifications are delayed or lost.
+
+> Incremental synchronization is cursor-based, allowing us to fetch only changes since the previous successful sync instead of downloading all transactions repeatedly.
+
+> Since external APIs are the least reliable component of the system, the Account Service implements retries, exponential backoff, adaptive throttling, and reconnection workflows to maintain consistency.
+
+---
+
+# Next Chapter
+
+# Part 5 – Kafka Architecture
+
+Topics
+
+- Why Kafka
+- Topic Design
+- Partitions
+- Consumer Groups
+- Producer Configuration
+- Ordering
+- Idempotence
+- Schema Registry
+- DLQ
+- Replay
+- Scaling
+- Failure Recovery
+
+# Financial Data Aggregation Platform
+
+# Part 5 – Kafka Architecture & Event-Driven Pipeline
+
+---
+
+# Overview
+
+Kafka is the backbone of the Financial Data Aggregation Platform.
+
+Instead of directly coupling the ingestion layer with downstream processing services, Kafka acts as an event bus that decouples producers from consumers.
+
+Without Kafka
+
+```
+Webhook
+
+↓
+
+Validation
+
+↓
+
+Categorization
+
+↓
+
+Database
+
+↓
+
+Reporting
+```
+
+Every service depends on every other service.
+
+A failure anywhere blocks the entire pipeline.
+
+With Kafka
+
+```
+Webhook
+
+↓
+
+Kafka
+
+↓
+
+Validation
+
+↓
+
+Deduplication
+
+↓
+
+Enrichment
+
+↓
+
+Categorization
+
+↓
+
+Persistence
+```
+
+Every stage works independently.
+
+---
+
+# Why Kafka?
+
+Kafka solves several problems.
+
+## 1. Decoupling
+
+Instead of
+
+```
+Webhook
+
+↓
+
+Validation Service
+```
+
+the webhook publishes an event.
+
+```
+Webhook
+
+↓
+
+Kafka
+```
+
+Consumers process whenever they are ready.
+
+---
+
+## 2. Replay
+
+Suppose Categorization Service crashes.
+
+Without Kafka
+
+```
+Transactions Lost
+```
+
+With Kafka
+
+```
+Kafka retains events
+
+↓
+
+Consumer restarts
+
+↓
+
+Replay
+```
+
+No need to call Plaid again.
+
+---
+
+## 3. Independent Scaling
+
+Validation may require
+
+```
+2 Consumers
+```
+
+Categorization may require
+
+```
+20 Consumers
+```
+
+Persistence may require
+
+```
+5 Consumers
+```
+
+Each scales independently.
+
+---
+
+## 4. Fault Isolation
+
+Suppose ML Categorization becomes slow.
+
+```
+Validation
+
+↓
+
+Kafka
+
+↓
+
+Categorization (Slow)
+
+↓
+
+Persistence
+```
+
+Only Categorization accumulates lag.
+
+Validation continues.
+
+Webhook continues.
+
+No cascading failures.
+
+---
+
+## 5. Multiple Consumers
+
+One event can feed many downstream systems.
+
+```
+transactions.processed
+
+↓
+
+Reporting
+
+Analytics
+
+Notifications
+
+Fraud Detection
+
+ML
+
+Audit
+```
+
+Producer publishes once.
+
+Many systems consume independently.
+
+---
+
+# High-Level Kafka Architecture
+
+```
+               Webhook
+
+                  │
+
+                  ▼
+
+          Ingestion Service
+
+                  │
+
+                  ▼
+
+          transactions.raw
+
+                  │
+
+                  ▼
+
+        Validation Consumer
+
+                  │
+
+                  ▼
+
+      transactions.validated
+
+                  │
+
+                  ▼
+
+      Enrichment Consumer
+
+                  │
+
+                  ▼
+
+      Categorization Consumer
+
+                  │
+
+                  ▼
+
+     transactions.processed
+
+        ┌────────┼────────┬─────────┐
+
+        ▼        ▼        ▼         ▼
+
+ Reporting Notifications ML Analytics
+```
+
+Notice
+
+Every stage communicates only through Kafka.
+
+---
+
+# Topic Design
+
+We intentionally separate topics.
+
+---
+
+## transactions.raw
+
+Published by
+
+```
+Ingestion Service
+```
+
+Contains
+
+Raw transactions received from Plaid.
+
+No processing has occurred yet.
+
+---
+
+## transactions.validated
+
+Produced after
+
+- Schema validation
+- Required field validation
+
+Consumers know the event is structurally valid.
+
+---
+
+## transactions.processed
+
+Produced after
+
+- Deduplication
+- Enrichment
+- Categorization
+- Persistence
+
+Used by
+
+- Reporting
+- Analytics
+- Notifications
+- Machine Learning
+
+---
+
+# Why Multiple Topics?
+
+Instead of one giant topic
+
+```
+transactions
+```
+
+we separate processing stages.
+
+Advantages
+
+- Independent scaling
+- Replay specific stage
+- Easier debugging
+- Better observability
+
+---
+
+# Event Structure
+
+Example
+
+```json
+{
+   "eventId":"evt-12345",
+   "accountId":"A100",
+   "transactionId":"T900",
+   "timestamp":"2026-07-12T09:00:00Z",
+   "amount":125.80,
+   "merchant":"STARBUCKS #1234"
+}
+```
+
+Important fields
+
+```
+eventId
+
+transactionId
+
+accountId
+
+timestamp
+```
+
+---
+
+# Message Key
+
+The Kafka message key is extremely important.
+
+We use
+
+```
+accountId
+```
+
+Example
+
+```
+Producer
+
+Key = Account123
+
+↓
+
+Kafka Partition
+```
+
+---
+
+# Why accountId?
+
+Because all transactions for one account should remain ordered.
+
+Example
+
+```
+Account123
+
+Txn1
+
+Txn2
+
+Txn3
+```
+
+Kafka guarantees order within a partition.
+
+If we partition randomly,
+
+```
+Txn1
+
+↓
+
+Partition1
+
+Txn2
+
+↓
+
+Partition4
+
+Txn3
+
+↓
+
+Partition2
+```
+
+Ordering is lost.
+
+---
+
+# Partitioning Strategy
+
+```
+hash(accountId)
+
+↓
+
+Partition Number
+```
+
+Example
+
+```
+Account100
+
+↓
+
+Partition3
+
+-------------------
+
+Account200
+
+↓
+
+Partition7
+```
+
+All transactions of the same account always reach the same partition.
+
+---
+
+# Producer Configuration
+
+Producer settings
+
+```
+acks = all
+
+enable.idempotence = true
+
+retries = Integer.MAX_VALUE
+```
+
+---
+
+## Why acks=all?
+
+Leader waits until followers replicate the message.
+
+Improves durability.
+
+---
+
+## Why enable.idempotence?
+
+Suppose producer retries.
+
+Without idempotence
+
+```
+Txn1
+
+Txn1
+
+Txn1
+```
+
+Multiple copies.
+
+With idempotence
+
+Only one copy is written.
+
+Important
+
+Producer idempotence **only prevents duplicate writes between Producer and Kafka**.
+
+It does **not** prevent duplicate webhooks from Plaid.
+
+We still perform deduplication in our processing pipeline.
+
+---
+
+# Consumer Groups
+
+Validation Service
+
+```
+Consumer Group
+
+validation-group
+```
+
+Suppose
+
+```
+8 Partitions
+```
+
+Consumers
+
+```
+Validation1
+
+Validation2
+
+Validation3
+
+Validation4
+```
+
+Kafka distributes partitions automatically.
+
+---
+
+# Scaling Consumers
+
+Suppose
+
+```
+8 Partitions
+```
+
+and
+
+```
+4 Consumers
+```
+
+Each gets
+
+```
+2 Partitions
+```
+
+Increase to
+
+```
+8 Consumers
+```
+
+Each receives
+
+```
+1 Partition
+```
+
+Easy horizontal scaling.
+
+---
+
+# Ordering Guarantees
+
+Kafka preserves order
+
+within a partition.
+
+Since
+
+```
+accountId
+
+↓
+
+Partition
+```
+
+All transactions for one account remain ordered.
+
+Example
+
+```
+Txn1
+
+Txn2
+
+Txn3
+```
+
+Consumers receive
+
+```
+Txn1
+
+↓
+
+Txn2
+
+↓
+
+Txn3
+```
+
+---
+
+# Out-of-Order Events
+
+External systems may still send
+
+```
+Txn3
+
+Txn1
+
+Txn2
+```
+
+because of retries.
+
+Kafka preserves producer order,
+
+not real-world event time.
+
+Therefore
+
+the Ordering Service may maintain a small buffer.
+
+Example
+
+```
+Buffer
+
+↓
+
+Sort by Event Timestamp
+
+↓
+
+Forward
+```
+
+Interview line
+
+> Kafka preserves partition order, but upstream systems may still generate out-of-order events. We use a small reorder buffer when necessary.
+
+---
+
+# Consumer Offset
+
+Kafka tracks
+
+```
+Offset
+```
+
+Example
+
+```
+Partition3
+
+Offset
+
+100
+
+101
+
+102
+```
+
+Suppose consumer crashes after
+
+```
+101
+```
+
+Restart
+
+↓
+
+Resume from
+
+```
+102
+```
+
+No lost events.
+
+---
+
+# Dead Letter Queue
+
+Suppose validation repeatedly fails.
+
+Instead of infinite retries
+
+```
+Retry
+
+↓
+
+Retry
+
+↓
+
+Retry
+
+↓
+
+DLQ
+```
+
+Topic
+
+```
+transactions.dlq
+```
+
+Operations team investigates later.
+
+---
+
+# Replay
+
+Suppose
+
+```
+Categorization Service
+
+↓
+
+Bug
+```
+
+Fix deployed.
+
+Replay
+
+```
+transactions.validated
+
+↓
+
+Categorization
+
+↓
+
+Persistence
+```
+
+No need to fetch from Plaid again.
+
+Replay is one of Kafka's biggest advantages.
+
+---
+
+# Schema Registry
+
+Kafka events evolve.
+
+Version 1
+
+```json
+{
+   "merchant":"Starbucks"
+}
+```
+
+Version 2
+
+```json
+{
+   "merchant":"Starbucks",
+   "merchantCategory":"Coffee"
+}
+```
+
+Schema Registry ensures
+
+- compatibility
+- version management
+- consumer safety
+
+---
+
+# Monitoring Kafka
+
+Important metrics
+
+- Consumer Lag
+- Throughput
+- Message Size
+- Failed Messages
+- DLQ Count
+- Partition Utilization
+- Producer Latency
+
+---
+
+# Failure Scenarios
+
+## Broker Failure
+
+Kafka replicas elect a new leader.
+
+No data loss.
+
+---
+
+## Consumer Failure
+
+Consumer restarts.
+
+Resumes from committed offset.
+
+---
+
+## Producer Failure
+
+Retries automatically.
+
+Producer idempotence prevents duplicate writes.
+
+---
+
+## Processing Failure
+
+Retry
+
+↓
+
+DLQ
+
+↓
+
+Replay
+
+---
+
+# Design Trade-offs
+
+Why Kafka instead of synchronous APIs?
+
+Kafka
+
+Advantages
+
+- Decoupling
+- Replay
+- Scaling
+- Fault tolerance
+- Independent consumers
+
+Trade-offs
+
+- Eventual consistency
+- More operational complexity
+- Consumer lag
+- Harder debugging
+
+---
+
+# Interview Talking Points
+
+> Kafka is the event backbone of the system. It decouples ingestion from processing and enables replay without calling external aggregators again.
+
+> We partition topics by accountId to preserve ordering for transactions belonging to the same account while allowing horizontal scaling.
+
+> Producer idempotence prevents duplicate writes caused by producer retries, while application-level idempotency handles duplicate events coming from external systems like webhooks.
+
+> Every processing stage communicates through Kafka, allowing services to evolve and scale independently.
+
+> Downstream systems such as Reporting, Analytics, Notifications, and ML consume processed events independently without impacting the ingestion pipeline.
+
+---
+
+# Next Chapter
+
+# Part 6 – Processing Pipeline (Most Important)
+
+Topics
+
+- Validation
+- Deduplication
+- Ordering
+- Enrichment
+- Merchant Normalization
+- Currency Conversion
+- Categorization
+- Persistence
+- Idempotency
+- Database Upserts
+- Publishing Processed Events
+
+This is typically the deepest technical discussion in senior backend interviews.
+
+# Financial Data Aggregation Platform
+
+# Part 6 – Transaction Processing Pipeline (Core of the System)
+
+> This is the heart of the system. Every transaction entering the platform flows through this event-driven pipeline before it is persisted and exposed to users. Each stage has a single responsibility and communicates through Kafka, enabling independent scaling, fault isolation, and replay.
+
+---
+
+# Overview
+
+The Processing Pipeline converts raw financial transaction data into standardized, enriched, categorized, and queryable information.
+
+The pipeline follows these stages:
+
+```
+                    Kafka
+
+                      │
+
+                      ▼
+
+              Validation Service
+
+                      │
+
+                      ▼
+
+            Deduplication Service
+
+                      │
+
+                      ▼
+
+               Ordering Service
+
+                      │
+
+                      ▼
+
+              Enrichment Service
+
+                      │
+
+                      ▼
+
+            Categorization Service
+
+                      │
+
+                      ▼
+
+             Persistence Service
+
+                      │
+
+                      ▼
+
+        transactions.processed Topic
+
+          ┌────────┼────────┬──────────┐
+
+          ▼        ▼        ▼          ▼
+
+    Reporting   Analytics  ML   Notifications
+```
+
+Each stage is stateless and can scale independently.
+
+---
+
+# Why Split into Multiple Services?
+
+Instead of building one large processing service
+
+```
+Validate
+
+↓
+
+Deduplicate
+
+↓
+
+Categorize
+
+↓
+
+Store
+```
+
+we separate responsibilities.
+
+Advantages
+
+- Independent deployment
+- Independent scaling
+- Easier debugging
+- Replay individual stages
+- Better ownership between teams
+
+---
+
+# Processing Flow
+
+Suppose Plaid sends
+
+```json
+{
+   "transactionId":"tx123",
+   "accountId":"acc100",
+   "merchant":"STARBUCKS #234",
+   "amount":8.45,
+   "currency":"USD",
+   "timestamp":"2026-07-12T09:00:00Z"
+}
+```
+
+The transaction moves through every stage before becoming visible to users.
+
+---
+
+# Stage 1 – Validation Service
+
+Purpose
+
+Ensure incoming events are structurally correct before processing.
+
+---
+
+## Responsibilities
+
+Validate
+
+- Required fields
+- Data types
+- Currency format
+- Timestamp format
+- Account existence
+- Schema version
+
+Example
+
+```
+transactionId
+
+✓
+
+accountId
+
+✓
+
+timestamp
+
+✓
+
+amount
+
+✓
+```
+
+---
+
+## Invalid Events
+
+Suppose
+
+```json
+{
+   "amount":"ABC"
+}
+```
+
+This event is invalid.
+
+Do not process it.
+
+Instead
+
+```
+Validation Failure
+
+↓
+
+transactions.dlq
+```
+
+Operations can inspect it later.
+
+---
+
+## Why Validate Early?
+
+If invalid events enter downstream systems,
+
+they create inconsistent data.
+
+Validation should be the first gate.
+
+---
+
+# Stage 2 – Deduplication Service
+
+One of the most important stages.
+
+---
+
+# Why Duplicates Happen
+
+External systems may retry.
+
+Example
+
+```
+Webhook
+
+↓
+
+Timeout
+
+↓
+
+Retry
+
+↓
+
+Same Transaction Again
+```
+
+Or
+
+Polling
+
+↓
+
+Same transaction fetched again
+
+Duplicates are expected.
+
+---
+
+# Deduplication Key
+
+We use
+
+```
+accountId
+
++
+
+transactionId
+```
+
+Example
+
+```
+Account100
+
+Transaction500
+```
+
+This uniquely identifies a transaction.
+
+---
+
+# Database Constraint
+
+Transactions Table
+
+```sql
+UNIQUE(accountId, transactionId)
+```
+
+This guarantees correctness.
+
+---
+
+# Upsert
+
+Instead of
+
+```
+INSERT
+```
+
+use
+
+```
+UPSERT
+```
+
+Example
+
+```sql
+INSERT ...
+
+ON CONFLICT(accountId, transactionId)
+
+DO UPDATE
+```
+
+This makes consumers idempotent.
+
+---
+
+# Why Database Constraint?
+
+Cache may fail.
+
+Application may restart.
+
+Only the database guarantees correctness.
+
+Interview Line
+
+> Cache improves performance. Database guarantees correctness.
+
+---
+
+# Stage 3 – Ordering Service
+
+Kafka preserves order
+
+within a partition.
+
+However,
+
+external systems may still send
+
+```
+Txn3
+
+Txn1
+
+Txn2
+```
+
+due to retries.
+
+---
+
+# Why Ordering Matters
+
+Suppose
+
+```
+Balance Update
+
+↓
+
+Refund
+
+↓
+
+Charge
+```
+
+Incorrect ordering may produce incorrect balances.
+
+---
+
+# Solution
+
+Maintain a small reorder buffer.
+
+```
+Incoming Events
+
+↓
+
+Buffer
+
+↓
+
+Sort by Event Timestamp
+
+↓
+
+Forward
+```
+
+Example
+
+Buffer
+
+```
+Txn3
+
+Txn1
+
+Txn2
+```
+
+↓
+
+Forward
+
+```
+Txn1
+
+Txn2
+
+Txn3
+```
+
+---
+
+# Why Small Buffer?
+
+Infinite buffering increases latency.
+
+Most systems use
+
+```
+Few Seconds
+```
+
+Only reorder within this window.
+
+---
+
+# Stage 4 – Enrichment Service
+
+Raw transaction data is inconsistent.
+
+Example
+
+```
+STARBUCKS #1234
+
+Starbucks Store
+
+SBX 567
+
+STARBUCKS NYC
+```
+
+All represent
+
+```
+Starbucks
+```
+
+---
+
+# Responsibilities
+
+Enrichment standardizes data.
+
+Tasks
+
+- Merchant normalization
+- Currency conversion
+- Geo lookup
+- Country lookup
+- MCC lookup
+- Merchant metadata
+
+Result
+
+```
+Merchant
+
+↓
+
+Starbucks
+
+Category Hint
+
+↓
+
+Coffee Shop
+
+Country
+
+↓
+
+USA
+```
+
+---
+
+# Merchant Normalization
+
+Use
+
+- Rule Engine
+- Lookup Table
+- External Merchant Database
+- ML (optional)
+
+Cache results in Redis.
+
+---
+
+# Currency Conversion
+
+Suppose
+
+```
+100 EUR
+```
+
+User prefers
+
+```
+USD
+```
+
+Convert using latest exchange rates.
+
+Store
+
+```
+Original Currency
+
++
+
+Normalized Currency
+```
+
+Never overwrite original values.
+
+---
+
+# Stage 5 – Categorization Service
+
+Purpose
+
+Assign business meaning.
+
+Example
+
+```
+Starbucks
+
+↓
+
+Food & Dining
+```
+
+or
+
+```
+Amazon
+
+↓
+
+Shopping
+```
+
+---
+
+# Rule-Based Categorization
+
+Fast
+
+Deterministic
+
+Example
+
+```
+Merchant contains Starbucks
+
+↓
+
+Food
+```
+
+---
+
+# Machine Learning Categorization
+
+Some merchants are ambiguous.
+
+Example
+
+```
+ABC Retail
+```
+
+ML predicts
+
+```
+Shopping
+```
+
+Confidence
+
+```
+97%
+```
+
+---
+
+# Hybrid Strategy
+
+Rule Engine
+
+↓
+
+If no match
+
+↓
+
+ML
+
+↓
+
+Category
+
+Best of both worlds.
+
+---
+
+# Stage 6 – Persistence Service
+
+The final processing stage.
+
+Responsibilities
+
+- Persist transactions
+- Update balances
+- Update aggregates
+- Publish processed events
+
+---
+
+# Database Write
+
+Insert
+
+```
+Transactions
+```
+
+Update
+
+```
+Account Balance
+```
+
+Update
+
+```
+Monthly Summary
+```
+
+Commit.
+
+---
+
+# After Commit
+
+Publish
+
+```
+transactions.processed
+```
+
+Consumers
+
+- Reporting
+- Notifications
+- Analytics
+- ML
+
+receive this event.
+
+---
+
+# Why Publish After Persistence?
+
+Never publish before database commit.
+
+Otherwise
+
+```
+Reporting
+
+↓
+
+Reads Transaction
+
+↓
+
+Transaction not in DB
+```
+
+Creates inconsistency.
+
+---
+
+# Idempotency
+
+Every consumer should safely process duplicate events.
+
+Example
+
+Consumer crashes
+
+↓
+
+Kafka retries
+
+↓
+
+Same event again
+
+No duplicate transaction should appear.
+
+Techniques
+
+- Unique DB Constraint
+- UPSERT
+- Processed Event Table (optional)
+
+---
+
+# Failure Handling
+
+Suppose Enrichment fails.
+
+```
+Retry
+
+↓
+
+Retry
+
+↓
+
+Retry
+
+↓
+
+DLQ
+```
+
+Do not block Kafka forever.
+
+---
+
+# Retry Strategy
+
+Transient Errors
+
+- Network timeout
+- Redis unavailable
+- External lookup failed
+
+Retry
+
+Permanent Errors
+
+- Invalid schema
+- Missing transactionId
+
+Send directly to DLQ.
+
+---
+
+# Dead Letter Queue
+
+Topic
+
+```
+transactions.dlq
+```
+
+Contains
+
+- Invalid events
+- Events exceeding retry limit
+- Corrupted payloads
+
+Operations team can inspect and replay them later.
+
+---
+
+# Event Replay
+
+Suppose
+
+Categorization logic changes.
+
+Instead of fetching data from Plaid again,
+
+Replay
+
+```
+transactions.validated
+
+↓
+
+Categorization
+
+↓
+
+Persistence
+```
+
+Kafka makes replay simple.
+
+---
+
+# End-to-End Example
+
+Plaid sends
+
+```
+STARBUCKS #123
+
+$8.45
+```
+
+↓
+
+Validation
+
+✓
+
+↓
+
+Deduplication
+
+✓
+
+↓
+
+Ordering
+
+✓
+
+↓
+
+Merchant Normalization
+
+↓
+
+Starbucks
+
+↓
+
+Categorization
+
+↓
+
+Food & Dining
+
+↓
+
+Persistence
+
+↓
+
+PostgreSQL
+
+↓
+
+transactions.processed
+
+↓
+
+Reporting Dashboard
+
+User sees
+
+```
+Starbucks
+
+Food & Dining
+
+$8.45
+```
+
+---
+
+# Scaling the Pipeline
+
+Every stage scales independently.
+
+Example
+
+```
+Validation
+
+4 Pods
+
+Deduplication
+
+6 Pods
+
+Enrichment
+
+20 Pods
+
+Categorization
+
+30 Pods
+
+Persistence
+
+10 Pods
+```
+
+No service blocks another.
+
+---
+
+# Design Principles
+
+Every stage follows
+
+### Single Responsibility
+
+Each service performs one task.
+
+---
+
+### Stateless
+
+Services store no local state.
+
+State lives in Kafka and databases.
+
+---
+
+### Idempotent
+
+Duplicate events produce the same final state.
+
+---
+
+### Horizontally Scalable
+
+Simply add more consumers.
+
+---
+
+### Replayable
+
+Historical events can be reprocessed.
+
+---
+
+### Fault Isolated
+
+Failure of one stage does not stop upstream ingestion.
+
+---
+
+# Interview Talking Points
+
+> The processing pipeline is implemented as a series of independent Kafka consumers, each responsible for a single transformation. This separation improves scalability, replayability, and maintainability.
+
+> Validation ensures only structurally correct events proceed further, while deduplication guarantees idempotency using a unique `(accountId, transactionId)` constraint and UPSERT semantics.
+
+> Kafka preserves ordering within a partition, but upstream systems may still send out-of-order events. We use a small reorder buffer to handle these cases without introducing excessive latency.
+
+> Enrichment standardizes raw transaction data by normalizing merchant names, converting currencies, and attaching metadata, making downstream categorization more accurate.
+
+> Persistence is the final stage. Only after a successful database commit do we publish a `transactions.processed` event, ensuring downstream consumers never observe data that hasn't been durably stored.
+
+---
+
+# Next Chapter
+
+# Part 7 – Database Design
+
+Topics
+
+- Complete ER Diagram
+- Users Table
+- Accounts Table
+- Transactions Table
+- Merchants Table
+- Categories Table
+- Indexes
+- Constraints
+- Partitioning
+- Sharding
+- Read vs Write Optimization
+- Redis
+- Analytics Warehouse
+
+# Financial Data Aggregation Platform
+
+# Part 7 – Database Design & Storage Architecture
+
+---
+
+# Overview
+
+The database layer is responsible for storing processed financial data while supporting
+
+- Fast transactional queries
+- Reporting
+- Search
+- Analytics
+- High availability
+- Scalability
+
+The platform uses different storage technologies because one database cannot efficiently solve every problem.
+
+We follow the principle
+
+> **Use the right database for the right workload.**
+
+---
+
+# Storage Architecture
+
+```
+                    Processing Pipeline
+
+                           │
+
+                           ▼
+
+                     PostgreSQL
+                    (Source of Truth)
+
+                           │
+
+        ┌──────────────────┼─────────────────┐
+
+        ▼                  ▼                 ▼
+
+      Redis          Kafka Events      Analytics DB
+
+        │                                    │
+
+        ▼                                    ▼
+
+ Dashboard APIs                  Snowflake / BigQuery
+
+                                          │
+
+                                          ▼
+
+                                    BI Reports
+```
+
+---
+
+# Why Multiple Databases?
+
+Every storage system is optimized differently.
+
+| Storage | Purpose |
+|----------|----------|
+| PostgreSQL | Transactional data |
+| Redis | Low latency reads |
+| Snowflake / BigQuery | Analytics |
+| Kafka | Event propagation |
+
+Trying to use PostgreSQL for analytics or Kafka for querying leads to poor performance.
+
+---
+
+# Primary Database
+
+We use
+
+```
+PostgreSQL
+```
+
+because
+
+- ACID transactions
+- Strong consistency
+- Mature indexing
+- Rich SQL support
+
+This database serves
+
+- User APIs
+- Transaction queries
+- Account information
+
+---
+
+# High-Level ER Diagram
+
+```
+Users
+
+   │
+
+   ▼
+
+Accounts
+
+   │
+
+   ▼
+
+Transactions
+
+   │
+
+   ▼
+
+Categories
+
+Merchants
+```
+
+---
+
+# Users Table
+
+Stores platform users.
+
+```sql
+Users
+```
+
+| Column | Description |
+|---------|-------------|
+| userId | Primary Key |
+| name | User name |
+| email | Login email |
+| createdAt | Registration time |
+
+Example
+
+| userId | Name |
+|--------|------|
+|1|John|
+
+---
+
+# Accounts Table
+
+One user can connect multiple financial accounts.
+
+Examples
+
+- Checking
+- Savings
+- Credit Card
+
+---
+
+Schema
+
+| Column | Description |
+|---------|-------------|
+| accountId | Primary Key |
+| userId | FK Users |
+| institutionId | Bank |
+| accountType | Checking/Savings |
+| encryptedAccessToken | Plaid Token |
+| cursor | Incremental Sync Cursor |
+| status | ACTIVE / ERROR / RECONNECT_REQUIRED |
+| balance | Current Balance |
+
+---
+
+Relationship
+
+```
+User
+
+↓
+
+Accounts
+
+Checking
+
+Savings
+
+Credit Card
+```
+
+---
+
+# Transactions Table
+
+This is the largest table.
+
+Every processed transaction is stored here.
+
+---
+
+Schema
+
+| Column | Description |
+|---------|-------------|
+| transactionId | Provider transaction id |
+| accountId | FK Accounts |
+| merchantId | FK Merchant |
+| categoryId | FK Category |
+| amount | Amount |
+| currency | Original currency |
+| normalizedAmount | Converted amount |
+| transactionTime | Bank transaction time |
+| description | Raw description |
+| createdAt | Insert time |
+
+---
+
+# Primary Key
+
+We can either
+
+Use
+
+```
+transactionId
+```
+
+or
+
+```
+internalTransactionId
+```
+
+Many companies generate their own internal ID.
+
+---
+
+# Idempotency Constraint
+
+One of the most important constraints.
+
+```sql
+UNIQUE(accountId, transactionId)
+```
+
+This guarantees duplicate webhook deliveries never create duplicate transactions.
+
+---
+
+# Merchant Table
+
+Many transactions belong to the same merchant.
+
+Instead of repeating
+
+```
+STARBUCKS
+
+STARBUCKS
+
+STARBUCKS
+```
+
+Normalize.
+
+---
+
+Schema
+
+| merchantId | normalizedName | categoryHint |
+|------------|----------------|--------------|
+|101|Starbucks|Coffee|
+
+Transactions reference
+
+```
+merchantId
+```
+
+instead of storing duplicate merchant names.
+
+---
+
+# Category Table
+
+Stores categories.
+
+| categoryId | name |
+|-------------|------|
+|1|Food|
+|2|Shopping|
+|3|Travel|
+
+Transactions simply reference
+
+```
+categoryId
+```
+
+---
+
+# Relationships
+
+```
+Users
+
+   │
+
+   ▼
+
+Accounts
+
+   │
+
+   ▼
+
+Transactions
+
+   │
+
+   ├────────► Merchant
+
+   │
+
+   └────────► Category
+```
+
+---
+
+# Why Normalize?
+
+Suppose
+
+```
+50 Million
+```
+
+transactions belong to Starbucks.
+
+Instead of storing
+
+```
+STARBUCKS
+```
+
+50 million times,
+
+store
+
+```
+merchantId
+```
+
+Database becomes
+
+- smaller
+- faster
+- easier to update
+
+---
+
+# Index Design
+
+Indexes are critical.
+
+---
+
+## Transactions
+
+Create indexes on
+
+```
+(accountId, transactionTime)
+```
+
+Supports
+
+```
+Recent Transactions
+```
+
+---
+
+```
+categoryId
+```
+
+Supports
+
+```
+Food
+
+Shopping
+```
+
+queries.
+
+---
+
+```
+merchantId
+```
+
+Supports
+
+```
+Merchant Search
+```
+
+---
+
+Composite Index
+
+```
+(accountId, transactionTime DESC)
+```
+
+Supports
+
+```
+Latest Transactions
+```
+
+without sorting.
+
+---
+
+# Example Query
+
+```
+GET /transactions
+```
+
+Query
+
+```sql
+SELECT *
+FROM Transactions
+WHERE accountId=100
+ORDER BY transactionTime DESC
+LIMIT 100;
+```
+
+Composite index makes this extremely efficient.
+
+---
+
+# Search
+
+Simple search
+
+```
+Merchant
+
+Category
+
+Date
+```
+
+uses PostgreSQL indexes.
+
+If requirements evolve into
+
+```
+Full Text Search
+
+Description Search
+
+Merchant Similarity
+```
+
+Introduce
+
+```
+OpenSearch
+
+Elasticsearch
+```
+
+---
+
+# Partitioning
+
+Suppose
+
+```
+10 Billion
+```
+
+transactions.
+
+One table becomes enormous.
+
+Partition
+
+```
+Transactions
+
+↓
+
+2026
+
+↓
+
+July
+
+↓
+
+Daily
+```
+
+or
+
+```
+Hash(accountId)
+```
+
+depending on workload.
+
+---
+
+# Why Partition?
+
+Benefits
+
+- Faster scans
+- Easier maintenance
+- Faster backups
+- Better vacuum performance
+
+---
+
+# Sharding
+
+Eventually
+
+one PostgreSQL instance won't scale.
+
+Shard by
+
+```
+userId
+```
+
+or
+
+```
+accountId
+```
+
+Example
+
+```
+Shard1
+
+Users 1-1M
+
+---------------
+
+Shard2
+
+Users 1M-2M
+
+---------------
+
+Shard3
+
+Users 2M-3M
+```
+
+Each shard owns a subset of users.
+
+---
+
+# Read Replicas
+
+Reads dominate writes.
+
+Architecture
+
+```
+Primary
+
+↓
+
+Read Replica1
+
+↓
+
+Read Replica2
+
+↓
+
+Read Replica3
+```
+
+Writes
+
+↓
+
+Primary
+
+Reads
+
+↓
+
+Replicas
+
+Improves scalability.
+
+---
+
+# Redis
+
+Redis is **not** the source of truth.
+
+Purpose
+
+- Cache
+- Dashboard
+- Recent Transactions
+- Frequently used reports
+
+Example
+
+```
+Dashboard
+
+↓
+
+Redis
+
+↓
+
+2 ms
+```
+
+instead of
+
+```
+Dashboard
+
+↓
+
+Postgres
+
+↓
+
+120 ms
+```
+
+---
+
+# What should be Cached?
+
+Good candidates
+
+- Monthly spending
+- Dashboard
+- Recent transactions
+- Category totals
+- User profile
+
+Poor candidates
+
+- Financial transactions during synchronization
+- Frequently changing balances
+
+---
+
+# Cache Invalidation
+
+Suppose
+
+new transaction arrives.
+
+```
+Persistence
+
+↓
+
+Update PostgreSQL
+
+↓
+
+Invalidate Redis
+
+↓
+
+Recompute Dashboard
+```
+
+Never update cache before database commit.
+
+---
+
+# Analytics Database
+
+Operational database is not designed for
+
+```
+Annual Reports
+
+BI
+
+ML
+
+Large Aggregations
+```
+
+Therefore
+
+processed transactions are copied into
+
+```
+Snowflake
+
+BigQuery
+
+Redshift
+```
+
+---
+
+# Data Flow
+
+```
+transactions.processed
+
+↓
+
+Analytics Pipeline
+
+↓
+
+Snowflake
+```
+
+Used for
+
+- Business Intelligence
+- Trend analysis
+- ML training
+- Historical reports
+
+---
+
+# OLTP vs Analytics
+
+| OLTP | Analytics |
+|-------|-----------|
+| PostgreSQL | Snowflake |
+| Small queries | Large scans |
+| User APIs | BI |
+| ACID | Aggregations |
+
+Never run analytical queries on production OLTP.
+
+---
+
+# Backup Strategy
+
+Database
+
+↓
+
+Daily Backup
+
+↓
+
+Point-in-Time Recovery
+
+↓
+
+Cross-region Replication
+
+Financial systems cannot afford data loss.
+
+---
+
+# Archival Strategy
+
+Suppose
+
+```
+10 Years
+```
+
+of transactions.
+
+Keep
+
+```
+Recent 2 Years
+```
+
+in PostgreSQL.
+
+Archive older data to
+
+- Data Lake
+- Object Storage
+- Analytics Warehouse
+
+Improves OLTP performance.
+
+---
+
+# Database Transactions
+
+When persisting a transaction
+
+```
+Insert Transaction
+
+↓
+
+Update Balance
+
+↓
+
+Update Monthly Summary
+
+↓
+
+Commit
+```
+
+Only after commit
+
+↓
+
+Publish
+
+```
+transactions.processed
+```
+
+This guarantees consistency.
+
+---
+
+# Scaling Strategy
+
+Initially
+
+```
+One PostgreSQL
+```
+
+↓
+
+Read Replicas
+
+↓
+
+Partition Tables
+
+↓
+
+Shard Database
+
+↓
+
+Distributed SQL (if needed)
+```
+
+Scale gradually.
+
+---
+
+# Design Trade-offs
+
+Normalized Schema
+
+Advantages
+
+- Less storage
+- Easier updates
+- Better consistency
+
+Trade-off
+
+Requires joins.
+
+---
+
+Denormalized Dashboard
+
+Advantages
+
+- Fast reads
+
+Trade-off
+
+Needs background aggregation.
+
+---
+
+# Interview Talking Points
+
+> PostgreSQL is the source of truth for transactional data because it provides ACID guarantees and strong consistency.
+
+> The Transactions table enforces idempotency using a unique `(accountId, transactionId)` constraint, preventing duplicate webhook deliveries from creating duplicate records.
+
+> We normalize entities like Merchants and Categories to reduce storage and improve consistency, while using Redis to cache precomputed dashboard data for low-latency reads.
+
+> Analytical workloads are separated from transactional workloads. Processed events are streamed into Snowflake or BigQuery, ensuring large reporting queries never impact user-facing APIs.
+
+> The database scales progressively through read replicas, table partitioning, and eventually sharding by `accountId` or `userId` as data volume grows.
+
+---
+
+# Next Chapter
+
+# Part 8 – Reporting & Analytics Layer
+
+Topics
+
+- Reporting Service
+- Dashboard APIs
+- Aggregation Pipeline
+- Redis Cache
+- Analytics Database
+- Materialized Views
+- Scheduled Aggregations
+- Monthly Reports
+- Cash Flow
+- Spending Trends
+- Search
+- Performance Optimizations
+
+# Financial Data Aggregation Platform
+
+# Part 8 – Reporting & Analytics Layer
+
+> The Reporting Layer is responsible for serving user-facing APIs with low latency while supporting analytical workloads without impacting the transactional database.
+
+---
+
+# Overview
+
+The processing pipeline has already
+
+- Validated transactions
+- Removed duplicates
+- Categorized spending
+- Stored transactions
+
+Now users want answers like
+
+- How much did I spend this month?
+- What are my top spending categories?
+- How much did I save?
+- How has my spending changed over time?
+
+The Reporting Layer is responsible for answering these questions efficiently.
+
+---
+
+# Why Do We Need a Separate Reporting Layer?
+
+Suppose a user opens the dashboard.
+
+Naively we could execute
+
+```sql
+SELECT SUM(amount)
+FROM Transactions
+WHERE category='Food'
+AND month='July';
+```
+
+every time.
+
+For
+
+```
+100 Million Transactions
+```
+
+this becomes expensive.
+
+Instead,
+
+we precompute frequently used aggregates.
+
+---
+
+# High-Level Architecture
+
+```
+             transactions.processed
+
+                     │
+
+                     ▼
+
+           Aggregation Service
+
+                     │
+
+      ┌──────────────┼──────────────┐
+
+      ▼              ▼              ▼
+
+   PostgreSQL      Redis      Analytics DB
+
+      │
+
+      ▼
+
+Reporting Service
+
+      │
+
+      ▼
+
+Dashboard APIs
+```
+
+---
+
+# Reporting Service
+
+The Reporting Service exposes user-facing APIs.
+
+Responsibilities
+
+- Dashboard
+- Reports
+- Search
+- Spending trends
+- Monthly summaries
+- Cash flow
+- Category summaries
+
+It never talks directly to Plaid.
+
+It only reads processed data.
+
+---
+
+# Reporting APIs
+
+Example APIs
+
+```
+GET /dashboard
+
+GET /transactions
+
+GET /reports/monthly
+
+GET /reports/categories
+
+GET /reports/cashflow
+
+GET /reports/trends
+
+GET /reports/networth
+```
+
+---
+
+# Dashboard API
+
+Example
+
+```
+GET /dashboard
+```
+
+Response
+
+```json
+{
+   "monthlyIncome":9000,
+   "monthlyExpenses":6200,
+   "cashFlow":2800,
+   "topCategories":[
+      {
+         "category":"Food",
+         "amount":800
+      }
+   ],
+   "recentTransactions":[]
+}
+```
+
+Dashboard should return
+
+```
+100–300 ms
+```
+
+---
+
+# Why Not Calculate Dashboard Every Request?
+
+Suppose
+
+```
+50 Million
+```
+
+transactions exist.
+
+Running
+
+```
+SUM
+
+GROUP BY
+
+COUNT
+```
+
+for every dashboard request would overload PostgreSQL.
+
+Instead,
+
+we precompute summaries.
+
+---
+
+# Aggregation Service
+
+The Aggregation Service listens to
+
+```
+transactions.processed
+```
+
+Whenever a transaction is persisted,
+
+the service updates
+
+- Monthly totals
+- Category totals
+- Merchant totals
+- Cash flow
+- Dashboard cache
+
+---
+
+# Flow
+
+```
+Transaction Processed
+
+↓
+
+Kafka
+
+↓
+
+Aggregation Service
+
+↓
+
+Redis
+
+↓
+
+Dashboard API
+```
+
+---
+
+# Example
+
+Transaction
+
+```
+Starbucks
+
+$10
+```
+
+Aggregation Service
+
+updates
+
+```
+Food
+
+↓
+
++10
+```
+
+Redis now stores
+
+```
+Food
+
+$810
+```
+
+Dashboard simply reads
+
+```
+810
+```
+
+instead of recalculating.
+
+---
+
+# Why Event-Driven Aggregation?
+
+Advantages
+
+- Dashboard is always up-to-date
+- Very fast reads
+- Low database load
+
+---
+
+# Redis Cache
+
+Redis stores
+
+- Dashboard
+- Monthly summary
+- Recent transactions
+- Category totals
+- Frequently viewed reports
+
+---
+
+Example
+
+Key
+
+```
+dashboard:user123
+```
+
+Value
+
+```json
+{
+   "income":9000,
+   "expenses":6200
+}
+```
+
+---
+
+# Cache Flow
+
+```
+Dashboard Request
+
+↓
+
+Redis
+
+↓
+
+Return
+
+2 ms
+```
+
+instead of
+
+```
+Dashboard Request
+
+↓
+
+PostgreSQL
+
+↓
+
+Complex Aggregation
+
+↓
+
+120 ms
+```
+
+---
+
+# Cache Invalidation
+
+Suppose
+
+new transaction
+
+```
+Amazon
+
+$120
+```
+
+arrives.
+
+Flow
+
+```
+Persistence
+
+↓
+
+Database Commit
+
+↓
+
+transactions.processed
+
+↓
+
+Aggregation Service
+
+↓
+
+Redis Update
+```
+
+Notice
+
+Database is updated first.
+
+Cache second.
+
+This prevents stale data.
+
+---
+
+# Monthly Summary Table
+
+Instead of calculating monthly spending repeatedly,
+
+maintain
+
+```
+MonthlySummary
+```
+
+Table
+
+| userId | month | income | expenses | savings |
+|---------|-------|---------|-----------|----------|
+
+Example
+
+|100|July|9000|6200|2800|
+
+Dashboard reads directly.
+
+---
+
+# Category Summary Table
+
+Another precomputed table.
+
+| userId | month | category | amount |
+|---------|-------|----------|---------|
+|100|July|Food|810|
+|100|July|Shopping|1200|
+
+Very efficient.
+
+---
+
+# Merchant Summary
+
+Example
+
+| userId | merchant | amount |
+|---------|-----------|---------|
+|100|Starbucks|450|
+|100|Amazon|2200|
+
+Useful for
+
+```
+Top Merchants
+```
+
+report.
+
+---
+
+# Cash Flow Report
+
+Instead of
+
+```
+SELECT
+
+SUM()
+
+GROUP BY
+```
+
+every request,
+
+Aggregation Service updates
+
+```
+Income
+
+Expenses
+
+Savings
+```
+
+incrementally.
+
+---
+
+# Spending Trends
+
+Need
+
+```
+Jan
+
+Feb
+
+Mar
+
+Apr
+
+May
+```
+
+Store
+
+monthly summaries.
+
+Dashboard simply plots them.
+
+---
+
+# Search
+
+Search by
+
+- Merchant
+- Category
+- Amount
+- Date
+
+Small datasets
+
+↓
+
+PostgreSQL indexes.
+
+Large datasets
+
+↓
+
+OpenSearch.
+
+---
+
+# Analytics Database
+
+Operational reporting
+
+≠
+
+Business Intelligence.
+
+We copy processed events into
+
+```
+Snowflake
+
+BigQuery
+
+Redshift
+```
+
+Used for
+
+- Yearly reports
+- BI dashboards
+- Product analytics
+- Data science
+
+---
+
+# ETL Pipeline
+
+```
+transactions.processed
+
+↓
+
+Kafka
+
+↓
+
+Analytics Loader
+
+↓
+
+Snowflake
+```
+
+Completely separate from user APIs.
+
+---
+
+# Materialized Views
+
+Sometimes
+
+PostgreSQL Materialized Views
+
+can precompute
+
+```
+Monthly Spending
+
+Category Totals
+```
+
+Useful for
+
+smaller deployments.
+
+Large systems
+
+typically use
+
+Aggregation Service
+
++
+
+Redis.
+
+---
+
+# Read Path
+
+Dashboard
+
+```
+Client
+
+↓
+
+API Gateway
+
+↓
+
+Reporting Service
+
+↓
+
+Redis
+
+↓
+
+Return
+```
+
+Transaction Search
+
+```
+Client
+
+↓
+
+Reporting Service
+
+↓
+
+PostgreSQL
+```
+
+Historical Reports
+
+```
+Client
+
+↓
+
+Reporting Service
+
+↓
+
+Analytics DB
+```
+
+Different workloads use different storage.
+
+---
+
+# Read vs Write Ratio
+
+Typical
+
+```
+10 : 1
+
+Reads : Writes
+```
+
+Many users refresh dashboards frequently.
+
+Very few transactions arrive every second.
+
+Optimizing reads is critical.
+
+---
+
+# Scaling Reporting
+
+Reporting Service is stateless.
+
+Scale
+
+```
+2 Pods
+
+↓
+
+10 Pods
+
+↓
+
+50 Pods
+```
+
+behind a load balancer.
+
+Redis also supports clustering.
+
+Analytics database scales independently.
+
+---
+
+# Failure Scenario
+
+Suppose Redis crashes.
+
+Fallback
+
+```
+Reporting
+
+↓
+
+PostgreSQL
+
+↓
+
+Return Response
+```
+
+Higher latency
+
+but
+
+no outage.
+
+---
+
+# Another Failure
+
+Aggregation Service is down.
+
+Transactions continue
+
+↓
+
+PostgreSQL
+
+Dashboard may temporarily lag
+
+↓
+
+Aggregation Service restarts
+
+↓
+
+Replay
+
+```
+transactions.processed
+```
+
+↓
+
+Rebuild Redis.
+
+This is another benefit of Kafka.
+
+---
+
+# Design Trade-offs
+
+Calculate on Demand
+
+Advantages
+
+- Simple
+
+Disadvantages
+
+- Slow
+- Expensive
+
+---
+
+Precompute
+
+Advantages
+
+- Fast dashboards
+- Low latency
+- Lower DB load
+
+Trade-off
+
+- More storage
+- Eventual consistency
+
+---
+
+# Interview Talking Points
+
+> User-facing dashboards should never perform expensive aggregations over millions of transactions on every request. Instead, an Aggregation Service continuously updates precomputed summaries as transactions are processed.
+
+> Redis stores frequently accessed dashboard data, while PostgreSQL remains the source of truth. If Redis becomes unavailable, the Reporting Service can temporarily fall back to PostgreSQL at the cost of higher latency.
+
+> Analytical workloads are isolated from transactional workloads by streaming processed events into Snowflake or BigQuery, ensuring that business intelligence queries never affect customer-facing APIs.
+
+> Different APIs use different storage systems. Transaction searches read from PostgreSQL, dashboards read from Redis, and historical trend analysis reads from the analytics warehouse.
+
+> Kafka enables rebuilding derived data stores. If Redis or aggregation tables are lost, we can replay `transactions.processed` events to reconstruct them without contacting Plaid again.
+
+---
+
+# Next Chapter
+
+# Part 9 – Reliability, Reconciliation & Distributed Job Scheduler
+
+Topics
+
+- Why reconciliation is required
+- Source of Truth
+- Missed Webhooks
+- Scheduled Reconciliation Jobs
+- Distributed Job Scheduler (reuse previous design)
+- Retry Strategy
+- DLQ
+- Replay
+- Failure Recovery
+- End-to-End Reconciliation Flow
+
+# Financial Data Aggregation Platform
+
+# Part 9 – Reliability, Reconciliation & Distributed Job Scheduler
+
+> Financial systems prioritize **correctness over latency**. Even if webhooks are delayed, messages are duplicated, or external APIs fail temporarily, the system must eventually converge to the correct state. This chapter explains how reliability is achieved using retries, reconciliation jobs, Kafka replay, and the distributed Job Scheduler designed earlier.
+
+---
+
+# Overview
+
+No external system is perfect.
+
+Problems that can occur
+
+- Missed webhooks
+- Duplicate webhooks
+- Network failures
+- API outages
+- Rate limiting
+- Consumer crashes
+- Database failures
+
+Therefore the platform must be designed assuming failures are normal.
+
+---
+
+# Reliability Principles
+
+The platform follows these principles.
+
+✓ Idempotency
+
+✓ Retry
+
+✓ Replay
+
+✓ Dead Letter Queue
+
+✓ Eventual Consistency
+
+✓ Reconciliation
+
+Together these guarantee financial correctness.
+
+---
+
+# Source of Truth
+
+One important design decision is
+
+Who is the source of truth?
+
+```
+Bank
+
+↓
+
+Plaid
+
+↓
+
+Our Platform
+```
+
+The bank remains the source of truth.
+
+Our platform maintains an eventually consistent copy.
+
+Whenever discrepancies occur,
+
+we synchronize again.
+
+---
+
+# Why Reconciliation?
+
+Suppose
+
+```
+User
+
+↓
+
+Bank
+
+↓
+
+New Transaction
+```
+
+Plaid attempts webhook delivery.
+
+```
+Webhook
+
+↓
+
+Network Failure
+
+↓
+
+Webhook Lost
+```
+
+Without reconciliation
+
+Our database never receives the transaction.
+
+User sees incorrect balance.
+
+---
+
+# Solution
+
+Run scheduled reconciliation jobs.
+
+```
+Nightly
+
+↓
+
+Fetch Incremental Changes
+
+↓
+
+Compare
+
+↓
+
+Repair Missing Data
+```
+
+---
+
+# Reconciliation Architecture
+
+```
+                  Job Scheduler
+
+                       │
+
+                       ▼
+
+              Reconciliation Worker
+
+                       │
+
+                       ▼
+
+              Plaid Incremental Sync
+
+                       │
+
+             Compare With PostgreSQL
+
+                       │
+
+          Missing Transactions?
+
+             │               │
+
+            Yes             No
+
+             │               │
+
+             ▼               ▼
+
+ Insert Missing Rows     Finish Job
+```
+
+---
+
+# Why Reconciliation Instead of Full Sync?
+
+Suppose
+
+```
+20 Million Accounts
+```
+
+Fetching all transactions daily would be extremely expensive.
+
+Instead
+
+use
+
+```
+Cursor-Based Incremental Sync
+```
+
+Only changes since the previous synchronization are fetched.
+
+---
+
+# Reconciliation Frequency
+
+Different schedules may exist.
+
+Example
+
+| Job | Frequency |
+|------|-----------|
+|Incremental Sync|Every 30 minutes|
+|Balance Refresh|Hourly|
+|Transaction Reconciliation|Nightly|
+|Historical Repair|Weekly|
+
+Frequency depends on business requirements.
+
+---
+
+# Distributed Job Scheduler
+
+Instead of creating another scheduling mechanism,
+
+reuse our existing Job Scheduler.
+
+Architecture
+
+```
+Jobs
+
+↓
+
+TaskExecution
+
+↓
+
+Scheduler
+
+↓
+
+Kafka
+
+↓
+
+Worker
+```
+
+The reconciliation process becomes just another scheduled job.
+
+---
+
+# Jobs Table
+
+Example
+
+| JobId | JobName | Cron |
+|--------|----------|------|
+|101|Nightly Reconciliation|0 2 * * *|
+
+Meaning
+
+```
+Every day
+
+2:00 AM
+```
+
+---
+
+# TaskExecution
+
+Current execution
+
+| ExecutionId | JobId | ScheduledTime | Status |
+|-------------|-------|---------------|--------|
+|5001|101|2:00 AM|PENDING|
+
+Scheduler polls
+
+```
+scheduledTime <= NOW()
+```
+
+Publishes execution.
+
+Worker performs reconciliation.
+
+---
+
+# Reconciliation Worker
+
+Responsibilities
+
+- Read execution request
+- Load Job definition
+- Call Plaid
+- Fetch incremental transactions
+- Compare with database
+- Insert missing records
+- Update execution status
+
+---
+
+# Comparison Algorithm
+
+Step 1
+
+Fetch from Plaid
+
+```
+Txn100
+
+Txn101
+
+Txn102
+```
+
+Step 2
+
+Fetch local transactions
+
+```
+Txn100
+
+Txn102
+```
+
+Difference
+
+```
+Txn101
+```
+
+Insert
+
+```
+Txn101
+```
+
+Database becomes consistent.
+
+---
+
+# Updated Transactions
+
+Sometimes
+
+transactions are modified.
+
+Example
+
+```
+Pending
+
+↓
+
+Posted
+```
+
+Reconciliation also updates
+
+- Amount
+- Merchant
+- Status
+- Description
+
+---
+
+# Deleted Transactions
+
+Banks occasionally remove transactions.
+
+Plaid reports
+
+```
+Removed Transactions
+```
+
+Instead of hard delete,
+
+mark
+
+```
+Deleted = TRUE
+```
+
+This preserves audit history.
+
+---
+
+# Retry Strategy
+
+Suppose
+
+Plaid returns
+
+```
+HTTP 503
+```
+
+Worker retries.
+
+Example
+
+```
+Retry1
+
+30 sec
+
+Retry2
+
+60 sec
+
+Retry3
+
+120 sec
+```
+
+Our Job Scheduler creates a new
+
+```
+TaskExecution
+```
+
+with the delayed
+
+```
+scheduledTime
+```
+
+Exactly like the scheduler design we built earlier.
+
+---
+
+# Retry Flow
+
+```
+Worker
+
+↓
+
+Plaid
+
+↓
+
+503
+
+↓
+
+FAILED
+
+↓
+
+Create Retry TaskExecution
+
+↓
+
+Scheduler
+
+↓
+
+Kafka
+
+↓
+
+Worker
+```
+
+Retries are simply future executions.
+
+---
+
+# Permanent Failure
+
+Suppose retries exceed
+
+```
+MaxRetry = 3
+```
+
+Worker
+
+↓
+
+Marks execution
+
+```
+FAILED
+```
+
+Publishes
+
+```
+reconciliation.dlq
+```
+
+Operations team investigates later.
+
+---
+
+# Why Kafka Replay?
+
+Suppose
+
+Categorization Service had a bug.
+
+No need to call Plaid.
+
+Replay
+
+```
+transactions.processed
+
+↓
+
+Categorization
+
+↓
+
+Persistence
+```
+
+Rebuild everything.
+
+Kafka becomes the recovery mechanism.
+
+---
+
+# Consumer Failure
+
+Suppose
+
+Persistence Consumer crashes.
+
+Kafka retains
+
+```
+Offset
+```
+
+Restart
+
+↓
+
+Continue
+
+No data loss.
+
+---
+
+# Database Failure
+
+Suppose PostgreSQL is temporarily unavailable.
+
+Persistence consumer
+
+↓
+
+Retry
+
+↓
+
+Retry
+
+↓
+
+Kafka retains events
+
+↓
+
+Database recovers
+
+↓
+
+Resume processing
+
+No events lost.
+
+---
+
+# Idempotency During Recovery
+
+Suppose replay inserts
+
+```
+Txn100
+```
+
+again.
+
+Unique constraint
+
+```sql
+UNIQUE(accountId, transactionId)
+```
+
+plus UPSERT
+
+ensures
+
+no duplicate rows.
+
+---
+
+# Monitoring Reliability
+
+Important metrics
+
+- Webhook Success Rate
+- Poll Success Rate
+- Retry Count
+- DLQ Size
+- Scheduler Lag
+- Kafka Consumer Lag
+- Reconciliation Duration
+- Missing Transaction Count
+
+Alert if
+
+- DLQ growing
+- Scheduler delayed
+- Kafka lag increasing
+- Reconciliation failing repeatedly
+
+---
+
+# Failure Scenarios
+
+## Scenario 1
+
+Webhook Lost
+
+Solution
+
+```
+Polling
+
++
+
+Nightly Reconciliation
+```
+
+---
+
+## Scenario 2
+
+Duplicate Webhook
+
+Solution
+
+```
+Idempotent Consumer
+
++
+
+Database Constraint
+```
+
+---
+
+## Scenario 3
+
+Plaid Outage
+
+Solution
+
+```
+Retry
+
+↓
+
+Backoff
+
+↓
+
+Reconciliation Later
+```
+
+---
+
+## Scenario 4
+
+Consumer Crash
+
+Solution
+
+```
+Kafka Offset
+
+↓
+
+Restart
+
+↓
+
+Continue
+```
+
+---
+
+## Scenario 5
+
+Database Crash
+
+Solution
+
+```
+Kafka Replay
+
+↓
+
+UPSERT
+
+↓
+
+Recover
+```
+
+---
+
+# End-to-End Reliability Flow
+
+```
+Transaction
+
+↓
+
+Plaid
+
+↓
+
+Webhook
+
+↓
+
+Kafka
+
+↓
+
+Processing
+
+↓
+
+PostgreSQL
+
+↓
+
+Dashboard
+
+↓
+
+Nightly Reconciliation
+
+↓
+
+Compare With Plaid
+
+↓
+
+Repair Missing Transactions
+
+↓
+
+Eventually Consistent
+```
+
+---
+
+# Design Trade-offs
+
+Continuous Polling
+
+Advantages
+
+- Faster consistency
+
+Disadvantages
+
+- Higher API cost
+- More rate limiting
+
+---
+
+Nightly Reconciliation
+
+Advantages
+
+- Lower API usage
+- Guarantees correctness
+
+Trade-off
+
+- Temporary inconsistency
+
+---
+
+Replay
+
+Advantages
+
+- No external API calls
+- Easy recovery
+
+Trade-off
+
+- Additional Kafka storage
+
+---
+
+# Interview Talking Points
+
+> Banks are the source of truth, while our platform maintains an eventually consistent copy. Reconciliation jobs ensure long-term correctness even if webhooks are missed.
+
+> We reuse our distributed Job Scheduler for reconciliation instead of building a separate scheduling mechanism. Every reconciliation run is simply another scheduled execution.
+
+> Retries are modeled as future TaskExecution rows with exponentially delayed scheduled times. The Scheduler remains generic because it only executes pending tasks.
+
+> Kafka provides replay capabilities, allowing downstream services to rebuild derived data stores without fetching historical data from Plaid again.
+
+> Idempotent consumers, unique database constraints, retries, DLQs, and scheduled reconciliation together provide a robust reliability strategy suitable for financial systems.
+
+---
+
+# Next Chapter
+
+# Part 10 – Scalability, Security & Observability
+
+Topics
+
+- Horizontal Scaling
+- Load Balancing
+- Stateless Services
+- Database Scaling
+- Kafka Scaling
+- Redis Clustering
+- Security Architecture
+- Encryption
+- OAuth
+- Tokenization
+- Secrets Management
+- Monitoring
+- Logging
+- Distributed Tracing
+- Alerting
+- Production Readiness
+
+# Financial Data Aggregation Platform
+
+# Part 10 – Scalability, Security & Observability
+
+> A production financial platform must not only process transactions correctly but also scale to millions of users while protecting sensitive financial data and providing complete operational visibility. This chapter discusses how the platform is made scalable, secure, and observable.
+
+---
+
+# Overview
+
+At this point our platform consists of
+
+```
+Users
+
+↓
+
+API Gateway
+
+↓
+
+Account & Aggregation Service
+
+↓
+
+Plaid
+
+↓
+
+Webhook / Polling
+
+↓
+
+Kafka
+
+↓
+
+Processing Pipeline
+
+↓
+
+PostgreSQL
+
+↓
+
+Redis
+
+↓
+
+Reporting APIs
+```
+
+Now we need to ensure it can
+
+- Scale horizontally
+- Handle failures
+- Protect sensitive data
+- Be monitored in production
+
+---
+
+# Horizontal Scaling
+
+One of the fundamental design principles is
+
+> Every service should be stateless.
+
+Since application servers do not store session data,
+
+any instance can process any request.
+
+Architecture
+
+```
+                 Load Balancer
+
+                       │
+
+      ┌────────────────┼────────────────┐
+
+      ▼                ▼                ▼
+
+   API-1            API-2            API-3
+```
+
+Adding capacity simply means adding more instances.
+
+---
+
+# API Gateway Scaling
+
+Multiple API Gateway instances run behind a Load Balancer.
+
+```
+Users
+
+↓
+
+AWS ALB / NGINX
+
+↓
+
+Gateway-1
+
+Gateway-2
+
+Gateway-3
+```
+
+Benefits
+
+- High availability
+- Horizontal scaling
+- No single point of failure
+
+---
+
+# Account Service Scaling
+
+The Account Service is stateless.
+
+Multiple instances can
+
+- Generate Link Tokens
+- Exchange Tokens
+- Trigger Syncs
+- Register Webhooks
+
+```
+Load Balancer
+
+↓
+
+Account Service
+
+↓
+
+5 Instances
+```
+
+---
+
+# Ingestion Service Scaling
+
+Suppose Plaid sends
+
+```
+100,000 Webhooks
+```
+
+We simply increase
+
+```
+Webhook Receivers
+```
+
+All publish into Kafka.
+
+```
+Webhook
+
+↓
+
+Ingestion-1
+
+↓
+
+Kafka
+
+------------------
+
+Webhook
+
+↓
+
+Ingestion-2
+
+↓
+
+Kafka
+```
+
+---
+
+# Kafka Scaling
+
+Kafka scales using
+
+```
+Partitions
+```
+
+Suppose
+
+```
+transactions.raw
+
+16 Partitions
+```
+
+Consumers
+
+```
+Validation-1
+
+Validation-2
+
+Validation-3
+
+Validation-4
+```
+
+Each consumer owns different partitions.
+
+Need more throughput?
+
+Increase
+
+```
+Partitions
+
++
+
+Consumers
+```
+
+---
+
+# Consumer Scaling
+
+Example
+
+```
+8 Partitions
+
+↓
+
+4 Consumers
+
+↓
+
+2 Partitions Each
+```
+
+Increase to
+
+```
+8 Consumers
+
+↓
+
+1 Partition Each
+```
+
+Horizontal scaling becomes trivial.
+
+---
+
+# Processing Pipeline Scaling
+
+Each service scales independently.
+
+```
+Validation
+
+↓
+
+4 Pods
+
+----------------
+
+Deduplication
+
+↓
+
+8 Pods
+
+----------------
+
+Categorization
+
+↓
+
+20 Pods
+
+----------------
+
+Persistence
+
+↓
+
+10 Pods
+```
+
+No service blocks another.
+
+---
+
+# PostgreSQL Scaling
+
+Initially
+
+```
+Primary
+```
+
+↓
+
+Read Replicas
+
+↓
+
+Partitioning
+
+↓
+
+Sharding
+
+Scale only when necessary.
+
+---
+
+# Read Replicas
+
+Most APIs are read-heavy.
+
+Architecture
+
+```
+Primary
+
+↓
+
+Replica-1
+
+Replica-2
+
+Replica-3
+```
+
+Writes
+
+↓
+
+Primary
+
+Reads
+
+↓
+
+Replicas
+
+---
+
+# Database Sharding
+
+Eventually
+
+one database becomes insufficient.
+
+Shard by
+
+```
+accountId
+```
+
+or
+
+```
+userId
+```
+
+Example
+
+```
+Shard-1
+
+Accounts A-M
+
+------------------
+
+Shard-2
+
+Accounts N-Z
+```
+
+Every shard manages a subset of users.
+
+---
+
+# Redis Scaling
+
+Redis Cluster
+
+```
+Dashboard Cache
+
+↓
+
+Redis Cluster
+
+↓
+
+Shard-1
+
+Shard-2
+
+Shard-3
+```
+
+Allows
+
+- More memory
+- Higher throughput
+- High availability
+
+---
+
+# CDN
+
+Static assets
+
+```
+Images
+
+JavaScript
+
+CSS
+```
+
+served through
+
+```
+CloudFront
+
+Cloudflare
+```
+
+Reduces API load.
+
+---
+
+# Auto Scaling
+
+CPU
+
+>
+
+70%
+
+↓
+
+Launch More Pods
+
+Traffic decreases
+
+↓
+
+Terminate Pods
+
+Kubernetes HPA or cloud auto-scaling can handle this automatically.
+
+---
+
+# Security
+
+Financial systems require multiple layers of protection.
+
+Never rely on one security mechanism.
+
+---
+
+# Authentication
+
+Users authenticate using
+
+```
+OAuth2
+
++
+
+JWT
+```
+
+Flow
+
+```
+Login
+
+↓
+
+Identity Provider
+
+↓
+
+JWT
+
+↓
+
+API Gateway
+```
+
+---
+
+# Authorization
+
+Every API validates
+
+```
+JWT
+
+↓
+
+User
+
+↓
+
+Account Ownership
+```
+
+A user can only access their own accounts.
+
+---
+
+# Plaid Tokens
+
+Never store
+
+```
+Username
+
+Password
+
+MFA
+```
+
+Instead store
+
+```
+Encrypted Access Token
+```
+
+using
+
+- AWS KMS
+- HashiCorp Vault
+- Secrets Manager
+
+---
+
+# Encryption
+
+Data In Transit
+
+```
+TLS 1.3
+```
+
+Data At Rest
+
+```
+AES-256
+```
+
+Database backups should also be encrypted.
+
+---
+
+# Field-Level Encryption
+
+Highly sensitive fields
+
+- Account Number
+- Routing Number
+- SSN (if applicable)
+
+are encrypted individually.
+
+Even database administrators cannot read them directly.
+
+---
+
+# Tokenization
+
+Sensitive identifiers
+
+↓
+
+Replace with
+
+```
+Random Token
+```
+
+Applications operate on tokens instead of raw PII whenever possible.
+
+---
+
+# Secrets Management
+
+Never store secrets in
+
+```
+application.yml
+
+application.properties
+
+GitHub
+```
+
+Instead
+
+```
+AWS Secrets Manager
+
+HashiCorp Vault
+
+Azure Key Vault
+```
+
+---
+
+# Audit Logging
+
+Every security-sensitive action is logged.
+
+Examples
+
+- User Login
+- Account Linked
+- Account Disconnected
+- Token Refreshed
+- Report Generated
+
+Audit logs should be immutable.
+
+---
+
+# Rate Limiting
+
+Prevent abuse.
+
+Example
+
+```
+100 Requests
+
+Per Minute
+
+Per User
+```
+
+Gateway returns
+
+```
+429
+
+Too Many Requests
+```
+
+---
+
+# Observability
+
+Three pillars
+
+```
+Metrics
+
+Logs
+
+Tracing
+```
+
+---
+
+# Metrics
+
+Collect
+
+- TPS
+- API Latency
+- Kafka Lag
+- Retry Count
+- DLQ Size
+- Sync Duration
+- Cache Hit Rate
+- DB Connections
+
+Prometheus
+
+↓
+
+Grafana
+
+---
+
+# Logging
+
+Use
+
+```
+Structured JSON Logs
+```
+
+Example
+
+```json
+{
+   "transactionId":"tx100",
+   "accountId":"A101",
+   "status":"Processed"
+}
+```
+
+Avoid free-text logs.
+
+---
+
+# Correlation ID
+
+Every request receives
+
+```
+Correlation ID
+```
+
+Example
+
+```
+API
+
+↓
+
+Kafka
+
+↓
+
+Validation
+
+↓
+
+Persistence
+
+↓
+
+Reporting
+```
+
+Same Correlation ID travels through the entire pipeline.
+
+Makes debugging much easier.
+
+---
+
+# Distributed Tracing
+
+Use
+
+```
+OpenTelemetry
+
+↓
+
+Jaeger
+
+Zipkin
+
+AWS X-Ray
+```
+
+Trace
+
+```
+User Request
+
+↓
+
+API Gateway
+
+↓
+
+Kafka
+
+↓
+
+Persistence
+
+↓
+
+Redis
+
+↓
+
+Response
+```
+
+Interviewers like hearing this.
+
+---
+
+# Alerts
+
+Important alerts
+
+- Kafka Lag
+- DLQ Growth
+- API Errors
+- DB Replication Lag
+- Redis Down
+- Plaid API Failures
+- Scheduler Delay
+
+Alerts should notify operations teams immediately.
+
+---
+
+# Health Checks
+
+Every service exposes
+
+```
+/health
+
+/ready
+
+/live
+```
+
+Kubernetes removes unhealthy instances automatically.
+
+---
+
+# Circuit Breaker
+
+Suppose Plaid becomes unavailable.
+
+Instead of continuously retrying
+
+```
+Plaid
+
+↓
+
+Failure
+
+↓
+
+Retry
+
+↓
+
+Failure
+
+↓
+
+Retry
+```
+
+Use
+
+```
+Circuit Breaker
+
+↓
+
+Open
+
+↓
+
+Fail Fast
+
+↓
+
+Half Open
+
+↓
+
+Recover
+```
+
+Prevents cascading failures.
+
+---
+
+# Production Readiness
+
+A production-ready platform should include
+
+✓ Auto Scaling
+
+✓ Multi-AZ Deployment
+
+✓ Multi-Region Backups
+
+✓ Disaster Recovery
+
+✓ Immutable Infrastructure
+
+✓ Infrastructure as Code
+
+✓ Continuous Deployment
+
+✓ Feature Flags
+
+---
+
+# Disaster Recovery
+
+Suppose an AWS region fails.
+
+Use
+
+```
+Primary Region
+
+↓
+
+Replication
+
+↓
+
+Secondary Region
+```
+
+Restore
+
+- PostgreSQL
+- Redis
+- Kafka
+
+Recovery objectives
+
+```
+RPO
+
+≈ Minutes
+
+RTO
+
+≈ Minutes
+```
+
+---
+
+# Design Trade-offs
+
+Strong Security
+
+Advantages
+
+- Regulatory compliance
+- User trust
+
+Trade-off
+
+- Higher latency
+- Operational complexity
+
+---
+
+Caching
+
+Advantages
+
+- Fast dashboards
+- Reduced DB load
+
+Trade-off
+
+- Cache invalidation
+- Eventual consistency
+
+---
+
+Auto Scaling
+
+Advantages
+
+- Cost optimization
+- Handles traffic spikes
+
+Trade-off
+
+- Operational complexity
+
+---
+
+# Interview Talking Points
+
+> Every service in the platform is stateless, allowing horizontal scaling simply by adding more instances behind a load balancer.
+
+> Kafka scales using partitions and consumer groups, while PostgreSQL scales progressively through read replicas, partitioning, and eventually sharding.
+
+> Security is implemented in layers: OAuth for authentication, JWT for authorization, TLS for encryption in transit, AES-256 for encryption at rest, field-level encryption for sensitive PII, and Secrets Manager for credential storage.
+
+> We implement full observability using metrics, structured logging, distributed tracing, and correlation IDs, allowing us to trace a transaction across the entire platform.
+
+> Production systems should automatically detect failures, trigger alerts, and recover through retries, circuit breakers, auto-scaling, and disaster recovery strategies.
+
+---
+
+# Next Chapter
+
+# Part 11 – Complete End-to-End Walkthrough & Interview Discussion
+
+Topics
+
+- End-to-End Transaction Lifecycle
+- Complete Sequence Diagram
+- Request Walkthrough
+- Common Follow-up Questions
+- Trade-offs
+- Alternative Designs
+- Interview Summary
+- 5-Minute Answer
+- 10-Minute Answer
+- Senior-Level Talking Points
+
+# Financial Data Aggregation Platform
+
+# Part 11 – Complete End-to-End Walkthrough, Interview Discussion & Trade-offs
+
+> This chapter ties together every component we've designed and walks through the complete lifecycle of a transaction—from the moment a user links a bank account until they view reports on the dashboard. It also covers common interview questions, trade-offs, and how to present the design confidently.
+
+---
+
+# Complete System Architecture
+
+```
+                           Mobile / Web Client
+
+                                   │
+
+                                   ▼
+
+                              API Gateway
+
+                                   │
+
+             ┌─────────────────────┴─────────────────────┐
+
+             ▼                                           ▼
+
+   Account & Aggregation Service               Reporting Service
+
+             │                                           │
+
+             ▼                                           ▼
+
+       Plaid / Yodlee APIs                     Redis / PostgreSQL
+
+             │
+
+      Webhooks / Polling
+
+             │
+
+             ▼
+
+      Ingestion Service
+
+             │
+
+             ▼
+
+        Kafka Topics
+
+             │
+
+             ▼
+
+   Validation Service
+
+             │
+
+             ▼
+
+ Deduplication Service
+
+             │
+
+             ▼
+
+   Ordering Service
+
+             │
+
+             ▼
+
+  Enrichment Service
+
+             │
+
+             ▼
+
+ Categorization Service
+
+             │
+
+             ▼
+
+ Persistence Service
+
+             │
+
+             ▼
+
+       PostgreSQL
+
+             │
+
+             ▼
+
+ transactions.processed
+
+      ┌────────┼─────────┬────────────┐
+
+      ▼        ▼         ▼            ▼
+
+Reporting  Analytics  Notifications   ML
+```
+
+---
+
+# End-to-End User Journey
+
+Let's walk through the complete lifecycle.
+
+---
+
+# Step 1 – User Connects Bank
+
+User opens
+
+```
+Connect Bank
+```
+
+Frontend requests
+
+```
+POST /accounts/link-token
+```
+
+Backend
+
+↓
+
+Plaid
+
+↓
+
+Returns
+
+```
+Link Token
+```
+
+Frontend launches
+
+```
+Plaid Link SDK
+```
+
+---
+
+# Step 2 – User Authenticates
+
+User authenticates with
+
+```
+Bank
+
+through
+
+Plaid
+```
+
+Our application never receives
+
+- Username
+- Password
+- MFA
+
+Plaid returns
+
+```
+Public Token
+```
+
+---
+
+# Step 3 – Exchange Token
+
+Backend calls
+
+```
+Plaid
+
+↓
+
+Exchange Public Token
+
+↓
+
+Access Token
+```
+
+Access Token is
+
+- encrypted
+- stored securely
+
+Account status
+
+```
+CONNECTED
+```
+
+---
+
+# Step 4 – Register Webhook
+
+Backend registers
+
+```
+https://api.company.com/webhooks/plaid
+```
+
+Now Plaid notifies us whenever new transactions arrive.
+
+---
+
+# Step 5 – Initial Synchronization
+
+Immediately after linking,
+
+fetch
+
+```
+6–12 months
+```
+
+of historical transactions.
+
+```
+Plaid
+
+↓
+
+Pagination
+
+↓
+
+Kafka
+```
+
+Historical data enters the processing pipeline.
+
+---
+
+# Step 6 – Incremental Updates
+
+Later
+
+user swipes card.
+
+```
+Bank
+
+↓
+
+Plaid
+
+↓
+
+Webhook
+```
+
+Webhook payload
+
+```
+New data available
+```
+
+Ingestion Service fetches
+
+incremental transactions using
+
+```
+Cursor
+```
+
+---
+
+# Step 7 – Publish to Kafka
+
+Ingestion Service publishes
+
+```
+transactions.raw
+```
+
+Example
+
+```json
+{
+  "transactionId":"TX100",
+  "accountId":"ACC101",
+  "merchant":"STARBUCKS #4421",
+  "amount":8.75
+}
+```
+
+---
+
+# Step 8 – Validation
+
+Validation Service checks
+
+- Schema
+- Required fields
+- Timestamp
+- Currency
+- Account existence
+
+Invalid events
+
+↓
+
+DLQ
+
+Valid events
+
+↓
+
+transactions.validated
+
+---
+
+# Step 9 – Deduplication
+
+Duplicate webhook?
+
+Polling returns same transaction?
+
+Use
+
+```
+UNIQUE(accountId, transactionId)
+```
+
+and
+
+```
+UPSERT
+```
+
+Duplicate safely ignored.
+
+---
+
+# Step 10 – Ordering
+
+Kafka preserves partition order.
+
+External systems may still send
+
+```
+Txn3
+
+Txn1
+
+Txn2
+```
+
+Ordering Service
+
+↓
+
+Small buffer
+
+↓
+
+Timestamp ordering
+
+↓
+
+Forward
+
+---
+
+# Step 11 – Enrichment
+
+Raw Merchant
+
+```
+STARBUCKS #4421
+```
+
+Normalize
+
+↓
+
+```
+Starbucks
+```
+
+Additional enrichment
+
+- Country
+- Currency
+- Merchant metadata
+
+---
+
+# Step 12 – Categorization
+
+Rules
+
+↓
+
+ML
+
+↓
+
+Assign
+
+```
+Food & Dining
+```
+
+---
+
+# Step 13 – Persistence
+
+Persistence Service
+
+writes
+
+```
+Transactions
+
+Accounts
+
+Monthly Summary
+```
+
+Commit.
+
+Only after commit
+
+publish
+
+```
+transactions.processed
+```
+
+---
+
+# Step 14 – Aggregation
+
+Aggregation Service consumes
+
+```
+transactions.processed
+```
+
+Updates
+
+- Dashboard
+- Monthly totals
+- Merchant totals
+- Category totals
+
+Stores
+
+```
+Redis
+```
+
+---
+
+# Step 15 – Dashboard
+
+User opens dashboard.
+
+```
+Dashboard
+
+↓
+
+Redis
+
+↓
+
+2-10 ms
+```
+
+instead of
+
+```
+Dashboard
+
+↓
+
+Complex SQL
+
+↓
+
+100+ ms
+```
+
+---
+
+# End-to-End Sequence Diagram
+
+```
+User
+
+↓
+
+Plaid Link
+
+↓
+
+Account Service
+
+↓
+
+Plaid
+
+↓
+
+Webhook
+
+↓
+
+Ingestion
+
+↓
+
+Kafka
+
+↓
+
+Validation
+
+↓
+
+Deduplication
+
+↓
+
+Ordering
+
+↓
+
+Enrichment
+
+↓
+
+Categorization
+
+↓
+
+Persistence
+
+↓
+
+PostgreSQL
+
+↓
+
+transactions.processed
+
+↓
+
+Aggregation
+
+↓
+
+Redis
+
+↓
+
+Dashboard
+```
+
+---
+
+# Failure Scenario 1
+
+Webhook Lost
+
+Solution
+
+```
+Polling
+
++
+
+Nightly Reconciliation
+```
+
+Eventually transaction appears.
+
+---
+
+# Failure Scenario 2
+
+Duplicate Webhook
+
+Solution
+
+```
+UPSERT
+
++
+
+Unique Constraint
+```
+
+No duplicate transaction.
+
+---
+
+# Failure Scenario 3
+
+Plaid Down
+
+Solution
+
+```
+Retry
+
+↓
+
+Backoff
+
+↓
+
+Later Poll
+
+↓
+
+Reconciliation
+```
+
+---
+
+# Failure Scenario 4
+
+Consumer Crash
+
+Kafka retains
+
+Offset
+
+↓
+
+Consumer Restarts
+
+↓
+
+Continue Processing
+
+---
+
+# Failure Scenario 5
+
+Redis Down
+
+Dashboard
+
+↓
+
+PostgreSQL
+
+Higher latency
+
+No outage.
+
+---
+
+# Failure Scenario 6
+
+Analytics Database Down
+
+Only
+
+BI Reports
+
+are affected.
+
+User APIs continue working.
+
+---
+
+# Design Decisions
+
+## Why Kafka?
+
+Because
+
+- Decoupling
+- Replay
+- Horizontal scaling
+- Fault isolation
+
+---
+
+## Why PostgreSQL?
+
+Because
+
+- ACID
+- Strong consistency
+- Financial correctness
+
+---
+
+## Why Redis?
+
+Because dashboards are read-heavy.
+
+Precompute
+
+↓
+
+Cache
+
+↓
+
+Fast reads.
+
+---
+
+## Why Plaid?
+
+Instead of integrating with thousands of banks,
+
+integrate once.
+
+Plaid provides
+
+- OAuth
+- Security
+- Unified APIs
+- Webhooks
+- Cursor Sync
+
+---
+
+## Why Event-Driven?
+
+Services become
+
+- Independent
+- Scalable
+- Replayable
+
+---
+
+## Why Job Scheduler?
+
+Reuse existing scheduler for
+
+- Reconciliation
+- Balance refresh
+- Polling jobs
+
+Avoid multiple scheduling systems.
+
+---
+
+# Trade-offs
+
+## PostgreSQL
+
+Advantages
+
+- Consistency
+
+Trade-off
+
+- Harder to scale writes
+
+---
+
+## Kafka
+
+Advantages
+
+- Replay
+- Decoupling
+
+Trade-off
+
+- Operational complexity
+
+---
+
+## Redis
+
+Advantages
+
+- Extremely fast reads
+
+Trade-off
+
+- Cache invalidation
+
+---
+
+## Eventual Consistency
+
+Advantages
+
+- Better scalability
+
+Trade-off
+
+Dashboard may lag by
+
+```
+few seconds
+```
+
+---
+
+# Common Interview Questions
+
+---
+
+## Why not call Plaid from Reporting Service?
+
+Because
+
+Reporting should never depend on external APIs.
+
+Always read local processed data.
+
+---
+
+## Why not process transactions synchronously?
+
+Because
+
+Plaid APIs
+
+↓
+
+Network
+
+↓
+
+Categorization
+
+↓
+
+Database
+
+↓
+
+Reporting
+
+would produce high latency.
+
+Kafka decouples everything.
+
+---
+
+## Why not compute reports every request?
+
+Expensive.
+
+Millions of transactions.
+
+Precompute using Aggregation Service.
+
+---
+
+## Why not use MongoDB?
+
+Financial systems require
+
+- ACID
+- Joins
+- Constraints
+
+PostgreSQL is a better fit.
+
+---
+
+## Why UPSERT?
+
+Consumers may receive duplicate events.
+
+UPSERT makes processing idempotent.
+
+---
+
+## Why Cursor Sync?
+
+Instead of downloading
+
+```
+Entire History
+```
+
+download
+
+```
+Only Changes
+```
+
+Reduces
+
+- API cost
+- Network traffic
+- Processing time
+
+---
+
+# How to Present This Design (5–7 Minutes)
+
+## Step 1
+
+Requirements
+
+```
+Functional
+
+Non-functional
+```
+
+---
+
+## Step 2
+
+High-Level Architecture
+
+```
+Ingestion
+
+↓
+
+Processing
+
+↓
+
+Storage
+
+↓
+
+Reporting
+```
+
+---
+
+## Step 3
+
+Explain
+
+Control Plane
+
+↓
+
+Data Plane
+
+---
+
+## Step 4
+
+Explain
+
+Kafka
+
+↓
+
+Processing Pipeline
+
+↓
+
+Persistence
+
+---
+
+## Step 5
+
+Explain
+
+Reporting
+
+↓
+
+Redis
+
+↓
+
+Analytics
+
+---
+
+## Step 6
+
+Explain
+
+Failures
+
+↓
+
+Retries
+
+↓
+
+DLQ
+
+↓
+
+Replay
+
+↓
+
+Reconciliation
+
+---
+
+## Step 7
+
+Explain
+
+Scaling
+
+↓
+
+Security
+
+↓
+
+Observability
+
+---
+
+# Senior-Level Talking Points
+
+These are excellent statements to use naturally during the interview.
+
+> Banks remain the source of truth, while our platform maintains an eventually consistent representation using continuous synchronization and reconciliation.
+
+---
+
+> The Account & Aggregation Service acts as the control plane by managing integrations, tokens, cursors, and synchronization state, while the Kafka-based processing pipeline forms the data plane.
+
+---
+
+> Kafka decouples ingestion from processing, allowing independent scaling, replay, and fault isolation across processing stages.
+
+---
+
+> Consumers are designed to be idempotent using database constraints and UPSERT semantics because duplicate events are inevitable when integrating with external systems.
+
+---
+
+> Reporting APIs never depend on external aggregators. They serve preprocessed and cached data to provide low-latency responses.
+
+---
+
+> We reuse the distributed Job Scheduler for polling, reconciliation, and balance refreshes instead of introducing separate scheduling infrastructure.
+
+---
+
+> We optimize reads using Redis and precomputed summaries while preserving PostgreSQL as the source of truth for transactional data.
+
+---
+
+# Final Interview Summary
+
+> "The platform integrates with financial aggregators like Plaid to connect users with banks. Account management is handled by a Control Plane that securely manages tokens, synchronization state, and webhook registrations. Transactions are ingested via webhooks and polling, published to Kafka, and processed through independent stages for validation, deduplication, ordering, enrichment, categorization, and persistence. PostgreSQL serves as the transactional source of truth, Redis provides low-latency dashboards, and processed events feed downstream analytics, notifications, and machine learning systems. Reliability is achieved through retries, DLQs, Kafka replay, and scheduled reconciliation jobs using our distributed Job Scheduler. The architecture is horizontally scalable, secure, observable, and designed to maintain financial correctness while supporting millions of users."
+
+---
+
+# Congratulations 🎉
+
+This completes the full Financial Data Aggregation System Design.
+
+You now have a complete design covering:
+
+- Requirements
+- APIs
+- High-Level Architecture
+- Account & Aggregation Service
+- Kafka
+- Processing Pipeline
+- Database Design
+- Reporting & Analytics
+- Reliability & Reconciliation
+- Scalability
+- Security
+- Observability
+- End-to-End Flow
+- Interview Discussion
+- Trade-offs
+- Senior-Level Talking Points
+
+This is the level of detail expected in Senior Backend Engineer and Staff Engineer system design interviews.
