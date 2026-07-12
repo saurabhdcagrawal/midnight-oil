@@ -48565,6 +48565,7 @@ What should run?
 ```
 
 Workers execute the jobs.
+The queue carries only the jobId (or job ID plus minimal metadata). The Worker treats the database as the source of truth and loads the latest job definition—including the job type, payload, retry policy, and cron expression—before execution. This avoids executing stale job definitions if the job was updated after it was scheduled.
 
 ---
 
@@ -48617,6 +48618,8 @@ It is **NOT** responsible for
 - Executing business logic
 
 That belongs to Workers.
+
+
 
 ---
 
@@ -52429,3 +52432,1368 @@ Schedulers can rediscover overdue jobs.
 # Final Interview Summary
 
 > I'd design the system with four major components: a Job Service for managing jobs, a Scheduler Service that continuously finds due jobs, a durable queue that decouples scheduling from execution, and stateless Workers that execute the jobs. When a user creates a job, the Job Service stores the job definition, cron expression, payload, and a precomputed `nextRunTime` in the database. The Scheduler periodically queries for active jobs whose `nextRunTime` has arrived, publishes execution requests to the queue, and updates the next scheduled execution time. Workers consume these requests, execute the business logic, record execution history, and acknowledge the queue only after successful processing. Multiple Scheduler instances coordinate using row-level locking, leader election, or shard ownership to prevent duplicate scheduling, while Workers remain idempotent because the queue provides at-least-once delivery. The database serves as the durable source of truth, allowing the system to recover from failures without losing jobs while scaling horizontally to millions of scheduled tasks.	
+
+# Job Scheduler - Advanced Topics
+
+# 1. Production Retry Architecture
+
+In the basic design, retries can be handled by updating `nextRunTime` and letting the Scheduler execute the job again.
+
+However, in a large-scale production system, it is better to separate **recurring scheduling** from **retry processing**.
+
+The Scheduler should only be responsible for scheduling normal job executions.
+
+Workers should own retry logic.
+
+---
+
+## Why separate retries?
+
+A recurring schedule and a retry are fundamentally different.
+
+Example
+
+```
+Daily Report
+
+Runs every day at 9:00 AM
+```
+
+Suppose today's execution fails.
+
+The next scheduled execution is still
+
+```
+Tomorrow 9:00 AM
+```
+
+The retry should happen
+
+```
+30 seconds later
+```
+
+Mixing these two concepts by updating `nextRunTime` makes the design harder to reason about.
+
+Instead, keep
+
+- Scheduled executions
+- Retry executions
+
+completely independent.
+
+---
+
+# Execution Flow
+
+```
+              Scheduler
+
+                   │
+
+                   ▼
+
+          task_execution Topic
+
+                   │
+
+                   ▼
+
+                 Worker
+
+                   │
+
+          SUCCESS ? ──────────────► Update Execution History
+
+            │
+
+            NO
+
+            ▼
+
+      Is Retryable?
+
+      │             │
+
+     YES            NO
+
+      │             │
+
+      ▼             ▼
+
+ Retry Topic      Dead Letter Queue
+```
+
+---
+
+# Step-by-Step Retry Flow
+
+## Step 1
+
+Scheduler finds
+
+```
+Job101
+```
+
+Publishes
+
+```json
+{
+   "jobId":101
+}
+```
+
+to
+
+```
+task_execution
+```
+
+---
+
+## Step 2
+
+Worker consumes
+
+```
+Job101
+```
+
+Loads latest job definition from the database
+
+Executes the business logic.
+
+---
+
+## Step 3
+
+Suppose execution fails.
+
+Worker records
+
+```
+Attempt = 1
+
+Status = FAILED
+```
+
+in
+
+```
+TaskExecutionHistory
+```
+
+---
+
+## Step 4
+
+Worker checks retry policy.
+
+Example
+
+```
+Maximum Retry = 3
+
+Backoff = Exponential
+```
+
+If retryable,
+
+Worker publishes
+
+```
+Job101
+```
+
+to
+
+```
+task_retry_30s
+```
+
+The Scheduler is NOT involved.
+
+---
+
+## Step 5
+
+Retry Consumer listens to
+
+```
+task_retry_30s
+```
+
+Waits
+
+```
+30 seconds
+```
+
+Consumes the message
+
+Executes the job again.
+
+---
+
+## Step 6
+
+If execution fails again,
+
+Worker updates
+
+```
+Attempt = 2
+```
+
+Publishes to
+
+```
+task_retry_5m
+```
+
+---
+
+## Step 7
+
+Retry Consumer waits
+
+```
+5 minutes
+```
+
+Executes again.
+
+---
+
+## Step 8
+
+If all retries fail,
+
+Worker updates
+
+```
+Status = FAILED
+```
+
+Publishes to
+
+```
+task_dlq
+```
+
+Operations team can inspect the failed task later.
+
+---
+
+# Why Multiple Retry Topics?
+
+Instead of one retry queue
+
+```
+Retry Queue
+
+30 sec
+
+5 min
+
+30 min
+
+2 hours
+```
+
+use multiple retry topics
+
+```
+task_retry_30s
+
+task_retry_5m
+
+task_retry_30m
+```
+
+Benefits
+
+- Different delay policies
+- Better scalability
+- Long-delay retries do not block short-delay retries
+- Independent consumers for each retry stage
+
+---
+
+# Execution History
+
+Jobs Table
+
+Stores
+
+- Job Definition
+- Cron
+- Payload
+- Next Scheduled Run
+
+TaskExecutionHistory
+
+Stores
+
+- ExecutionId
+- Attempt Number
+- Status
+- Start Time
+- End Time
+- Error Message
+
+Example
+
+| Execution | Attempt | Status |
+|------------|----------|---------|
+|5001|1|FAILED|
+|5001|2|FAILED|
+|5001|3|SUCCESS|
+
+This preserves the recurring schedule while tracking every retry attempt.
+
+---
+
+# Production Retry Architecture
+
+```
+                    Scheduler
+
+                         │
+
+                         ▼
+
+                 task_execution
+
+                         │
+
+                         ▼
+
+                     Worker Pool
+
+          SUCCESS? ───────────────► COMPLETED
+
+              │
+
+              ▼
+
+        Retryable?
+
+              │
+
+              ▼
+
+       task_retry_30s
+
+              │
+
+        Retry Consumer
+
+              │
+
+        SUCCESS? ───────────────► COMPLETED
+
+              │
+
+              ▼
+
+       task_retry_5m
+
+              │
+
+        Retry Consumer
+
+              │
+
+        SUCCESS? ───────────────► COMPLETED
+
+              │
+
+              ▼
+
+             DLQ
+```
+
+---
+
+# Why this design?
+
+Advantages
+
+- Scheduler remains simple.
+- Retries are independent of scheduling.
+- Supports different retry policies.
+- Easy to scale.
+- No need to modify recurring schedules during retries.
+
+---
+
+# Interview Answer
+
+> In a production scheduler, I separate recurring scheduling from retry processing. The Scheduler only publishes scheduled executions. If a Worker fails, it evaluates the retry policy and publishes the job to retry topics with increasing delays. Dedicated retry consumers handle subsequent attempts. If all retries are exhausted, the job is moved to a Dead Letter Queue. This keeps the Scheduler simple, prevents retries from affecting recurring schedules, and allows retry infrastructure to scale independently.
+
+---
+
+# 2. Scaling the Scheduler with a Coordinator
+
+As the number of scheduled jobs grows, a single Scheduler becomes a bottleneck.
+
+We deploy multiple Scheduler instances.
+
+The challenge becomes preventing duplicate scheduling.
+
+---
+
+# Small-Scale Solution
+
+All Scheduler instances poll the database.
+
+```
+               Jobs DB
+
+                  ▲
+
+       ┌──────────┼──────────┐
+
+       │          │          │
+
+ Scheduler1  Scheduler2  Scheduler3
+```
+
+Each executes
+
+```sql
+SELECT ...
+FOR UPDATE SKIP LOCKED
+LIMIT 1000;
+```
+
+The database ensures only one Scheduler locks and schedules a given job.
+
+Advantages
+
+- Simple
+- Easy to implement
+
+Disadvantages
+
+- Lock contention
+- Every Scheduler scans the same table
+- Doesn't scale well to very large deployments
+
+---
+
+# Large-Scale Production Solution
+
+Instead of every Scheduler competing for all jobs,
+
+introduce a lightweight Coordinator.
+
+The Coordinator does NOT schedule jobs.
+
+It only manages ownership.
+
+```
+             Coordinator
+
+                  │
+
+      ┌───────────┼───────────┐
+
+      ▼           ▼           ▼
+
+ Scheduler1  Scheduler2  Scheduler3
+
+      │           │           │
+
+    Shard1      Shard2      Shard3
+```
+
+Each Scheduler owns one or more database shards.
+
+Scheduler1 only queries
+
+```
+Shard1
+```
+
+Scheduler2 only queries
+
+```
+Shard2
+```
+
+No overlap.
+
+No duplicate scheduling.
+
+No row locking required.
+
+---
+
+# Coordinator Responsibilities
+
+The Coordinator maintains
+
+| Scheduler | Assigned Shards |
+|------------|-----------------|
+|Scheduler1|Shard1|
+|Scheduler2|Shard2|
+|Scheduler3|Shard3|
+
+Responsibilities
+
+- Assign shard ownership
+- Receive Scheduler heartbeats
+- Detect Scheduler failures
+- Reassign shards
+- Rebalance when new Schedulers join
+
+The Coordinator never assigns individual jobs.
+
+It only assigns ownership of partitions.
+
+---
+
+# Scheduler Failure
+
+Suppose
+
+```
+Scheduler2
+```
+
+crashes.
+
+Coordinator detects
+
+```
+Heartbeat Missing
+```
+
+Reassigns
+
+```
+Shard2
+
+↓
+
+Scheduler1
+```
+
+Now Scheduler1 owns
+
+```
+Shard1
+
++
+
+Shard2
+```
+
+No jobs are lost because the Jobs table remains the source of truth.
+
+---
+
+# New Scheduler Joins
+
+Suppose
+
+```
+Scheduler4
+```
+
+starts.
+
+Coordinator rebalances ownership.
+
+Before
+
+```
+S1 → Shard1
+
+S2 → Shard2
+
+S3 → Shard3
+```
+
+After
+
+```
+S1 → Shard1
+
+S2 → Shard2
+
+S3 → Half of Shard3
+
+S4 → Half of Shard3
+```
+
+(or assigns newly created shards).
+
+---
+
+# Why Assign Shards Instead of Batches?
+
+The Coordinator should **not** assign individual batches of jobs.
+
+Bad
+
+```
+Coordinator
+
+↓
+
+Scheduler
+
+↓
+
+Batch
+
+↓
+
+Ask Again
+```
+
+Problems
+
+- Coordinator becomes a bottleneck.
+- High network overhead.
+- Constant coordination.
+
+Instead
+
+Coordinator assigns
+
+```
+Ownership
+```
+
+Each Scheduler continuously executes
+
+```sql
+SELECT *
+FROM Jobs_SharedShard
+WHERE nextRunTime <= NOW()
+LIMIT 1000;
+```
+
+The Scheduler decides batching.
+
+The Coordinator only decides ownership.
+
+This is the same model used by Kafka Consumer Groups.
+
+---
+
+# Production Scheduler Architecture
+
+```
+                  Job Service
+
+                       │
+
+                  Jobs Database
+
+         Shard1     Shard2     Shard3
+
+            ▲          ▲          ▲
+
+            │          │          │
+
+      Scheduler1 Scheduler2 Scheduler3
+
+                 ▲
+
+                 │
+
+           Coordinator
+
+       (Shard Ownership)
+
+                 │
+
+            Heartbeats
+
+                 ▼
+
+             Kafka Queue
+
+                 ▼
+
+             Worker Pool
+```
+
+---
+
+# Interview Answer
+
+> For smaller deployments, multiple Scheduler instances can safely poll the database using `SELECT ... FOR UPDATE SKIP LOCKED`, allowing the database to prevent duplicate scheduling. At larger scale, I would introduce a lightweight Coordinator responsible only for shard ownership. Each Scheduler owns one or more database shards and independently polls only those shards for due jobs. The Coordinator monitors Scheduler heartbeats, detects failures, reassigns shards, and rebalances ownership as new Scheduler instances join. This eliminates lock contention, avoids duplicate scheduling, and allows the Scheduler layer to scale horizontally.
+
+
+# Job Scheduler - Final Production Design
+
+> This is the final design I would present in a Senior Backend/System Design interview. It is simple, scalable, and keeps each component focused on a single responsibility.
+
+---
+
+# High Level Architecture
+
+```
+                    Client
+
+                       │
+
+                Job Service APIs
+
+                       │
+
+                       ▼
+
+                   Jobs Table
+             (Recurring Job Definitions)
+
+                       │
+             Creates First Execution
+
+                       ▼
+
+              TaskExecution Table
+         (Pending Executions to Schedule)
+
+                       ▲
+                       │
+                Scheduler Polls
+                       │
+                       ▼
+
+                 Execution Topic
+                     (Kafka)
+
+                       │
+
+                 Worker Pool
+
+                       │
+
+        ┌──────────────┴──────────────┐
+
+        ▼                             ▼
+
+   Execution Success           Execution Failed
+
+        │                             │
+
+        ▼                             ▼
+
+Create Next                Retry Allowed?
+Recurring Execution              │
+                                 │
+                       ┌─────────┴──────────┐
+                       ▼                    ▼
+
+            Create Retry Execution     Publish to DLQ
+
+```
+
+---
+
+# Responsibilities
+
+## Job Service
+
+Responsible for
+
+- Creating jobs
+- Updating jobs
+- Deleting jobs
+- Pausing jobs
+- Resuming jobs
+
+When a new recurring job is created, the Job Service computes the first execution time and inserts the first TaskExecution row.
+
+---
+
+## Scheduler
+
+The Scheduler is intentionally very lightweight.
+
+Its only responsibility is
+
+```
+Find pending executions whose scheduled time has arrived.
+
+Publish them to Kafka.
+```
+
+Scheduler **does not**
+
+- execute jobs
+- compute retries
+- calculate exponential backoff
+- understand business logic
+
+Scheduler simply runs
+
+```sql
+SELECT *
+FROM TaskExecution
+WHERE status='PENDING'
+AND scheduledTime <= NOW()
+LIMIT 1000;
+```
+
+Marks them
+
+```
+IN_PROGRESS
+```
+
+Publishes
+
+```
+ExecutionId
+```
+
+to Kafka.
+
+---
+
+## Worker
+
+Worker owns the entire execution lifecycle.
+
+It
+
+- Loads Job definition
+- Executes business logic
+- Updates execution status
+- Computes retries
+- Computes exponential backoff
+- Creates retry executions
+- Creates next recurring execution after success
+
+Workers understand the retry policy.
+
+Schedulers do not.
+
+---
+
+# Database Design
+
+Only **two business tables** are required.
+
+---
+
+# 1. Jobs Table
+
+Stores recurring job definitions.
+
+| Column | Description |
+|---------|-------------|
+| JobId | Primary Key |
+| JobName | Human-readable name |
+| CronExpression | Cron schedule |
+| Payload | Input required to execute the job |
+| RetryPolicy | Max retries, base delay, backoff strategy |
+| Status | ACTIVE / PAUSED / DELETED |
+
+Example
+
+| JobId | JobName | Cron | RetryPolicy |
+|-------|----------|------|-------------|
+|101|Daily Report|0 9 * * *|3 retries|
+
+The Jobs table is a template.
+
+It does **not** track execution state.
+
+---
+
+# 2. TaskExecution Table
+
+Every execution gets one row.
+
+This includes
+
+- First execution
+- Retry executions
+- Future recurring executions
+
+| Column | Description |
+|---------|-------------|
+| ExecutionId | Primary Key |
+| JobId | FK to Jobs |
+| Attempt | Retry attempt number |
+| ScheduledTime | When this execution should run |
+| Status | PENDING / IN_PROGRESS / COMPLETED / FAILED |
+| StartedAt | Actual execution start time |
+| CompletedAt | Completion time |
+| ErrorMessage | Failure reason |
+
+Example
+
+| ExecutionId | JobId | Attempt | ScheduledTime | Status |
+|-------------|-------|---------|---------------|--------|
+|5001|101|1|Today 9:00|PENDING|
+
+The Scheduler polls **only this table**.
+
+---
+
+# Why don't we need TaskExecutionHistory?
+
+Initially it seems useful.
+
+But TaskExecution already stores
+
+- every execution
+- every retry
+- completion status
+- timestamps
+
+Example
+
+| Execution | Attempt | Status |
+|------------|----------|--------|
+|5001|1|FAILED|
+|5002|2|FAILED|
+|5003|3|COMPLETED|
+|5004|1|PENDING (Tomorrow)|
+
+This already provides execution history.
+
+A separate history table is unnecessary unless the business requires auditing every status transition.
+
+---
+
+# Why don't we store DLQ in the database?
+
+Dead Letter Queue is usually implemented as a Kafka topic.
+
+```
+Execution Topic
+
+↓
+
+Worker
+
+↓
+
+FAILED after Max Retries
+
+↓
+
+task_dlq
+```
+
+Operations can consume
+
+```
+task_dlq
+```
+
+to investigate failed executions.
+
+Therefore
+
+DLQ is **not** another database table.
+
+---
+
+# Complete Execution Flow
+
+## Step 1
+
+User creates
+
+```
+Daily Report
+
+Every day at 9 AM
+```
+
+Insert into
+
+```
+Jobs
+```
+
+Immediately create the first execution.
+
+```
+TaskExecution
+
+Execution5001
+
+ScheduledTime = Today 9 AM
+
+Status = PENDING
+```
+
+---
+
+## Step 2
+
+Scheduler polls
+
+```sql
+SELECT *
+FROM TaskExecution
+WHERE status='PENDING'
+AND scheduledTime <= NOW();
+```
+
+Finds
+
+```
+Execution5001
+```
+
+Updates
+
+```
+Status = IN_PROGRESS
+```
+
+Publishes
+
+```
+Execution5001
+```
+
+to Kafka.
+
+---
+
+## Step 3
+
+Worker receives
+
+```
+Execution5001
+```
+
+Loads
+
+```
+Job101
+```
+
+from Jobs table.
+
+Gets
+
+- Cron
+- Payload
+- Retry Policy
+
+Executes business logic.
+
+---
+
+# Success Flow
+
+Worker updates
+
+```
+Execution5001
+
+↓
+
+COMPLETED
+```
+
+Worker computes
+
+```
+Tomorrow 9 AM
+```
+
+Creates another TaskExecution row.
+
+| ExecutionId | JobId | Attempt | ScheduledTime | Status |
+|-------------|-------|----------|---------------|--------|
+|5002|101|1|Tomorrow 9 AM|PENDING|
+
+Recurring schedule continues.
+
+---
+
+# Failure Flow
+
+Suppose execution fails.
+
+Worker updates
+
+```
+Execution5001
+
+↓
+
+FAILED
+```
+
+Worker checks
+
+```
+Current Attempt = 1
+
+Maximum Retry = 3
+```
+
+Retry allowed.
+
+Worker computes exponential delay.
+
+Example
+
+```
+30 seconds
+```
+
+Creates another execution.
+
+| ExecutionId | JobId | Attempt | ScheduledTime | Status |
+|-------------|-------|----------|---------------|--------|
+|5003|101|2|Today 9:00:30|PENDING|
+
+The Scheduler does not know this is a retry.
+
+It simply sees another pending execution.
+
+---
+
+# Retry Success
+
+At
+
+```
+9:00:30
+```
+
+Scheduler polls again.
+
+Finds
+
+```
+Execution5003
+```
+
+Publishes it.
+
+Worker executes.
+
+Suppose it succeeds.
+
+Worker updates
+
+```
+Execution5003
+
+↓
+
+COMPLETED
+```
+
+Creates tomorrow's recurring execution.
+
+---
+
+# Retry Exhausted
+
+Suppose
+
+```
+Attempt = 3
+
+Maximum Retry = 3
+```
+
+Worker updates
+
+```
+Execution5003
+
+↓
+
+FAILED
+```
+
+Publishes
+
+```
+Execution5003
+```
+
+to
+
+```
+task_dlq
+```
+
+Operations team can inspect and replay the message if necessary.
+
+---
+
+# Exponential Backoff
+
+The Worker computes retry delays.
+
+Example
+
+```
+delay = BaseDelay × 2^(Attempt-1)
+```
+
+Example
+
+| Attempt | Delay |
+|----------|--------|
+|1|30 sec|
+|2|60 sec|
+|3|120 sec|
+
+Worker inserts another TaskExecution row using
+
+```
+ScheduledTime = NOW + delay
+```
+
+Scheduler simply waits until
+
+```
+ScheduledTime <= NOW
+```
+
+---
+
+# Scaling Scheduler
+
+For small systems
+
+Multiple Scheduler instances poll the same TaskExecution table.
+
+Use
+
+```sql
+SELECT ...
+FOR UPDATE SKIP LOCKED
+LIMIT 1000;
+```
+
+to prevent duplicate scheduling.
+
+---
+
+For very large systems
+
+Introduce a lightweight Coordinator.
+
+Coordinator responsibilities
+
+- Assign database shards to Scheduler instances
+- Monitor Scheduler heartbeats
+- Detect failures
+- Reassign shards
+- Rebalance ownership
+
+The Coordinator does **not** assign jobs.
+
+It only assigns shard ownership.
+
+Example
+
+```
+Coordinator
+
+↓
+
+Scheduler1 → Shard1
+
+Scheduler2 → Shard2
+
+Scheduler3 → Shard3
+```
+
+Each Scheduler polls only its own shard.
+
+This eliminates lock contention and scales horizontally.
+
+---
+
+# Kafka Topics
+
+Execution Topic
+
+```
+task_execution
+```
+
+Worker consumes from here.
+
+Dead Letter Queue
+
+```
+task_dlq
+```
+
+Failed executions after exhausting retries are published here.
+
+No retry topics are required in this design.
+
+Retries are handled by creating another TaskExecution row.
+
+---
+
+# Component Responsibilities
+
+## Job Service
+
+- Create Job
+- Update Job
+- Delete Job
+- Pause Job
+- Create first TaskExecution
+
+---
+
+## Scheduler
+
+- Poll TaskExecution
+- Publish due executions
+- Mark executions IN_PROGRESS
+
+Nothing else.
+
+---
+
+## Worker
+
+- Execute business logic
+- Update execution status
+- Compute exponential backoff
+- Create retry executions
+- Create next recurring execution
+- Publish permanently failed executions to DLQ
+
+---
+
+# Why This Design?
+
+Advantages
+
+- Only two business tables.
+- Scheduler polls one table.
+- Retries and recurring executions use exactly the same pipeline.
+- Scheduler remains extremely simple.
+- Workers own execution lifecycle.
+- Easy to scale horizontally.
+- Clean separation of responsibilities.
+
+---
+
+# Interview Summary
+
+> I model the system using two business tables: **Jobs** and **TaskExecution**. The Jobs table stores recurring job definitions such as the cron expression, payload, and retry policy. Every actual execution—whether it is the first scheduled run or a retry—is represented by a row in the TaskExecution table. The Scheduler continuously polls only the TaskExecution table for pending executions whose scheduled time has arrived and publishes their ExecutionIds to Kafka. Workers load the associated Job definition, execute the business logic, update execution status, and either create the next recurring execution on success or create a new retry execution with an exponentially delayed scheduled time on failure. If the retry limit is exceeded, the Worker publishes the execution to a Dead Letter Queue. This keeps the Scheduler simple while allowing retries, recurring scheduling, and horizontal scaling through a single execution pipeline.
