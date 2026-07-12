@@ -64411,8 +64411,9 @@ Approve / Decline / Review
 > "The fraud system sits within the issuing bank's authorization flow and must return a decision synchronously before transaction approval."
 
 ---
-
 # 4. High-Level Architecture
+
+The fraud decision is part of the payment authorization flow and is highly latency-sensitive. To minimize response time, the decision path remains completely synchronous. Kafka is used **after** the fraud decision for asynchronous processing such as persistence, analytics, notifications, feature engineering, and model training.
 
 ```
                          Payment Network
@@ -64434,7 +64435,7 @@ Approve / Decline / Review
      ▼                          ▼                          ▼
 
 Online Feature Store      Rules Engine              ML Inference
-     (Redis)               (Business Rules)          (Fraud Model)
+     (Redis)             (Business Rules)          (Fraud Model)
 
      └──────────────────────────┼──────────────────────────┘
 
@@ -64497,45 +64498,68 @@ Online Feature Store      Rules Engine              ML Inference
 
 ---
 
-**Interview Line**
+## Why This Architecture?
 
-> "The authorization path is completely synchronous to minimize latency. Kafka is used only after the fraud decision for asynchronous workloads such as persistence, analytics, notifications, feature engineering, and model training."
+The payment network is waiting for a fraud decision before completing the transaction authorization. Therefore, the synchronous path should only perform the work required to make that decision.
+
+The Fraud Decision Service retrieves precomputed features from the online feature store, evaluates business rules and the ML model, and immediately returns **Approve**, **Decline**, or **Review**.
+
+After the response is returned, the transaction is published to Kafka for downstream asynchronous processing. This prevents storage, analytics, notifications, and model training from impacting customer-facing latency.
 
 ---
 
+**Interview Line**
+
+> "I separate the synchronous authorization path from asynchronous processing. The fraud decision is made immediately using Redis, business rules, and the ML model, while Kafka handles persistence, analytics, notifications, feature engineering, and model training after the response has been returned."
+
 # 5. Request Flow
 
-Transactions arrive synchronously from the payment network.
+Transactions arrive synchronously from the payment network through a REST or gRPC API.
+
+The request flows through the API Gateway to the Fraud Decision Service, where the transaction is normalized, enriched with precomputed features, evaluated by the rules engine and ML model, and a decision is returned. After the response is sent back to the payment network, the transaction is published to Kafka for asynchronous processing.
+
+---
 
 ## API Gateway Responsibilities
+
+The API Gateway handles cross-cutting concerns before forwarding the request to the Fraud Decision Service.
+
+Responsibilities
 
 - Authentication
 - Authorization
 - Rate limiting
 - Request validation
-- Routing
+- Request routing
+- Logging and metrics
 
 ---
 
 ## Fraud Decision Service Responsibilities
 
+The Fraud Decision Service orchestrates the real-time fraud decision.
+
+Responsibilities
+
 - Normalize incoming transaction
+- Validate required fields
 - Generate internal metadata
-- Retrieve features from Redis
+- Fetch features from the Online Feature Store (Redis)
 - Execute business rules
 - Execute ML inference
 - Combine rule and ML results
 - Return Approve / Decline / Review
+- Publish transaction event to Kafka after responding
 
-No heavy processing occurs on this path.
+No heavy processing such as analytics, reporting, or model training occurs on this synchronous path.
 
 ---
 
-### Why Normalize?
+## Why Normalize?
 
-Different payment processors and card networks send different payload formats.
+Different payment processors and card networks send transactions using different payload formats.
 
-Normalization converts them into a canonical internal model.
+Normalization converts these external payloads into a canonical internal format understood by the fraud platform.
 
 Example
 
@@ -64552,33 +64576,307 @@ Internal
 
 ```json
 {
+  "transactionId":"txn123",
   "transactionAmount":125,
   "merchant":"Starbucks",
   "currency":"USD",
-  "transactionId":"txn123"
+  "timestamp":"2026-07-12T10:15:30Z"
 }
 ```
 
-Normalization includes
+Normalization typically includes
 
-- Standardized field names
-- Currency normalization
-- Merchant normalization
-- Timestamp normalization
+- Standardizing field names
 - Data type conversion
-- Internal metadata
+- Currency normalization
+- Timestamp normalization
+- Merchant normalization
+- Adding internal metadata
 
 ---
 
 **Interview Line**
 
-> "The Fraud Decision Service keeps the request path lightweight by performing only the work required to make a fraud decision."
+> "The Fraud Decision Service keeps the authorization path lightweight by performing only the work required to generate a fraud decision. Heavy downstream processing is delegated to Kafka after the response has been returned."
+
+# 6. Feature Store
+
+Instead of computing fraud features during every authorization request, we precompute them and store them in dedicated feature stores. This significantly reduces latency and enables the Fraud Decision Service to make decisions within the required SLA.
+
+We maintain two types of feature stores:
+
+- **Online Feature Store** for real-time inference
+- **Offline Feature Store** for historical analysis and model training
 
 ---
 
-# 6. Real-Time Decision Path (Critical)
+## Online Feature Store
 
-The payment authorization flow should complete within approximately **100–200 ms**.
+The Online Feature Store is typically implemented using **Redis** because it provides extremely low-latency lookups.
+
+Purpose
+
+- Store the latest behavioral features
+- Serve features required during real-time fraud detection
+- Support sub-millisecond to low-millisecond access
+
+Key
+
+```
+cardId
+
+or
+
+userId
+
+or
+
+accountId
+```
+
+Example Features
+
+- Last transaction amount
+- Transaction velocity (transactions/minute)
+- Last transaction location
+- Device ID
+- Merchant frequency
+- Average spending
+- Failed login attempts
+- Recent declined transactions
+
+Typical Lookup Latency
+
+```
+1–5 ms
+```
+
+The Fraud Decision Service retrieves these features before executing the Rules Engine and ML model.
+
+---
+
+**Interview Line**
+
+> "The Online Feature Store provides low-latency access to recent customer behavior, allowing us to make fraud decisions without performing expensive real-time computations."
+
+---
+
+## Offline Feature Store
+
+The Offline Feature Store maintains historical transaction data used for analytics and machine learning.
+
+Typical Technologies
+
+- S3
+- Data Lake
+- Snowflake
+- BigQuery
+
+Stores
+
+- Historical transactions
+- Aggregated customer features
+- Fraud labels
+- Model training datasets
+
+Used For
+
+- Feature engineering
+- Model training
+- Historical analysis
+- Fraud investigations
+
+Typical Flow
+
+```
+Kafka
+
+↓
+
+Feature Engineering Pipeline
+
+↓
+
+Offline Feature Store
+
+↓
+
+Model Training
+
+↓
+
+Generate Updated Features
+
+↓
+
+Refresh Online Feature Store (Redis)
+```
+
+The offline pipeline continuously computes new features and retrains fraud models using historical transaction data. Once validated, the updated features and models are deployed to production.
+
+---
+
+**Interview Line**
+
+> "We separate online and offline feature stores because real-time inference requires extremely low latency, while feature engineering and model training are compute-intensive batch workloads."
+
+# 7. Decision Engine
+
+The Decision Engine is the core component of the fraud detection platform. It evaluates each transaction using a combination of deterministic business rules and machine learning models to determine whether the transaction should be approved, declined, or sent for manual review.
+
+Using both approaches provides the best balance between explainability, speed, and fraud detection accuracy.
+
+---
+
+## Rules Engine
+
+The Rules Engine performs deterministic checks based on predefined business policies.
+
+Examples
+
+```
+Transaction Amount > $10,000
+
+New Country
+
+Blacklisted Merchant
+
+Velocity > 20 Transactions / Minute
+
+Device Not Seen Before
+
+Multiple Failed Login Attempts
+```
+
+Advantages
+
+- Explainable
+- Fast
+- Easy to modify
+- Deterministic
+- Ideal for regulatory and compliance requirements
+
+Business users can often update these rules without retraining machine learning models.
+
+---
+
+## Machine Learning Model
+
+The Machine Learning model evaluates behavioral patterns that are difficult to capture using static rules.
+
+Input Features
+
+- Transaction amount
+- Transaction velocity
+- Merchant category
+- Device information
+- Geographic location
+- Historical spending behavior
+- Customer risk profile
+- Previous fraud history
+
+Output
+
+```
+Fraud Score
+
+0.92
+```
+
+The fraud score represents the probability that the transaction is fraudulent.
+
+Higher scores indicate higher fraud risk.
+
+---
+
+## Decision Layer
+
+The Decision Layer combines the outputs from the Rules Engine and the ML Model to produce the final fraud decision.
+
+Possible outcomes
+
+```
+APPROVE
+
+DECLINE
+
+REVIEW
+```
+
+Example
+
+```
+Rules
+
+High Amount
+
++
+
+New Country
+
++
+
+ML Score = 0.93
+
+↓
+
+DECLINE
+```
+
+Another Example
+
+```
+Rules
+
+No Violations
+
++
+
+ML Score = 0.35
+
+↓
+
+APPROVE
+```
+
+Borderline Example
+
+```
+Rules
+
+Velocity Threshold Exceeded
+
++
+
+ML Score = 0.68
+
+↓
+
+REVIEW
+```
+
+The exact decision thresholds are configurable and may vary depending on customer risk profiles, merchant categories, or business policies.
+
+---
+
+## Why Combine Rules and ML?
+
+Rules provide deterministic and explainable decisions that satisfy compliance and regulatory requirements.
+
+Machine Learning detects complex fraud patterns that are difficult to express as static rules.
+
+Together, they improve fraud detection accuracy while minimizing false positives.
+
+---
+
+**Interview Line**
+
+> "The Rules Engine provides fast, deterministic, and explainable decisions, while the ML model identifies complex behavioral patterns. The Decision Layer combines both to generate the final approve, decline, or review outcome."
+
+
+# 8. Real-Time Decision Flow (Critical)
+
+The fraud detection system participates in the payment authorization flow and must return a decision within approximately **100–200 ms**. Therefore, the synchronous path is optimized to perform only the work required to generate the fraud decision.
 
 ```
 Receive Transaction
@@ -64589,7 +64887,7 @@ Normalize Request
 
 ↓
 
-Fetch Features (Redis)
+Fetch Features from Redis
 
 ↓
 
@@ -64618,242 +64916,93 @@ Publish Transaction to Kafka
 
 ---
 
-## Why Keep Kafka After the Decision?
+## Step 1 – Receive Transaction
 
-The payment network is waiting for a response.
+The payment network sends the authorization request to the Fraud Decision Service through the API Gateway.
 
-Adding Kafka before the decision introduces
+The request typically contains
 
-- Publish latency
-- Queueing latency
-- Consumer scheduling latency
-
-Although Kafka itself is fast, queueing delays under heavy load increase overall response time.
-
-Instead,
-
-the synchronous path only performs operations required to generate the fraud decision.
-
-Everything else executes asynchronously after the response has been returned.
+- Transaction ID
+- Card ID
+- Merchant
+- Amount
+- Currency
+- Timestamp
+- Device Information
+- Location
 
 ---
 
-**Interview Line**
+## Step 2 – Normalize Request
 
-> "Kafka is intentionally placed after the authorization response because persistence, analytics, and model training are not latency-critical."
+The Fraud Decision Service converts the external request into a canonical internal format.
 
----
+This includes
 
-# 9. Asynchronous Processing
-
-Once the fraud decision has been returned,
-
-the transaction is published to Kafka.
-
-```
-Kafka
-
-↓
-
-Consumer Groups
-
-↓
-
-Persistence
-
-Analytics
-
-Notifications
-
-Feature Engineering
-
-Model Training
-```
-
-Responsibilities
-
-- Persist transaction history
-- Store fraud decision
-- Audit logging
-- Fraud analytics
-- Alert generation
-- Feature computation
-- Offline feature store updates
-- Model retraining
-- Replay support
-
-These workloads are independent and can scale horizontally without affecting authorization latency.
+- Standardizing field names
+- Currency normalization
+- Timestamp normalization
+- Merchant normalization
+- Data validation
+- Adding internal metadata
 
 ---
 
-## Why Kafka Here?
+## Step 3 – Fetch Features
 
-Kafka provides
-
-- Durable event storage
-- Replay
-- Loose coupling
-- Independent scaling
-- Backpressure handling
-- Fault tolerance
-
-Since these operations are asynchronous,
-
-temporary slowdowns never impact customer-facing latency.
-
----
-
-**Interview Line**
-
-> "Kafka enables reliable asynchronous processing while ensuring the real-time authorization path remains fast and predictable."
-
-# 7. Feature Store
-
-Instead of computing fraud features during every request, we precompute them.
-
----
-
-## Online Feature Store
-
-Typically Redis.
-
-Purpose
-
-Low-latency lookups.
-
-Key
-
-```
-cardId
-
-or
-
-userId
-```
-
-Example features
-
-- Last transaction amount
-- Velocity (transactions/minute)
-- Last country
-- Device ID
-- Merchant frequency
-- Average spending
-
-Lookup latency
-
-```
-1–5 ms
-```
-
----
-
-**Interview Line**
-
-> "The online feature store provides low-latency access to recent user behavior for real-time scoring."
-
----
-
-## Offline Feature Store
-
-Typically
-
-- S3
-- Data Lake
-- BigQuery
-- Snowflake
-
-Stores
-
-- Historical transactions
-- Aggregated features
-- Fraud labels
-
-Used for
-
-- Model training
-- Feature engineering
-
-Flow
-
-```
-Historical Transactions
-
-↓
-
-Batch Jobs
-
-↓
-
-Feature Computation
-
-↓
-
-Push to Redis
-```
-
----
-
-**Interview Line**
-
-> "We separate online and offline feature stores because real-time inference and model training have very different latency requirements."
-
----
-
-# 8. Decision Engine
-
-This is the core of fraud detection.
-
----
-
-## Rules Engine
-
-Deterministic checks.
+The Fraud Decision Service retrieves precomputed customer features from the Online Feature Store (Redis).
 
 Examples
 
-```
-Amount > $10,000
+- Last transaction amount
+- Transaction velocity
+- Average spending
+- Last transaction location
+- Device history
+- Merchant frequency
 
-New Country
-
-Blacklisted Merchant
-
-Velocity > 20 txns/min
-```
-
-Advantages
-
-- Explainable
-- Fast
-- Easy to update
+Since these features are already computed, Redis typically returns them within **1–5 ms**.
 
 ---
 
-## Machine Learning Model
+## Step 4 – Execute Rules Engine
 
-Input
+The Rules Engine evaluates deterministic business rules.
 
-- Features
-- Historical behavior
-- Device patterns
+Examples
 
-Output
+- High transaction amount
+- Blacklisted merchant
+- Velocity exceeded
+- New country
+- Device not seen before
+
+Rule evaluation is lightweight and completes in a few milliseconds.
+
+---
+
+## Step 5 – Execute ML Model
+
+The Machine Learning model evaluates the transaction using the retrieved features.
+
+The model generates a fraud probability score.
+
+Example
 
 ```
-Fraud Score
-
-0.92
+Fraud Score = 0.92
 ```
 
 ---
 
-## Decision Layer
+## Step 6 – Combine Results
 
-Combines
+The Decision Layer combines
 
-- Rule results
-- ML score
+- Rule evaluation results
+- ML fraud score
+
+to generate the final recommendation.
 
 Possible outcomes
 
@@ -64865,191 +65014,483 @@ DECLINE
 REVIEW
 ```
 
-Example
+Business-defined thresholds determine how the final decision is made.
 
-```
-Rules
+---
 
-High Amount
+## Step 7 – Return Response
 
-+
+Once the fraud decision is generated, the Fraud Decision Service immediately returns the response to the payment network.
 
-ML Score = 0.93
+At this point, the customer-facing authorization flow is complete.
 
-↓
+---
 
-DECLINE
-```
+## Step 8 – Publish Event to Kafka
+
+After the response has been returned, the Fraud Decision Service publishes the transaction to Kafka.
+
+This event is consumed asynchronously for
+
+- Transaction persistence
+- Audit logging
+- Analytics
+- Notifications
+- Feature engineering
+- Model training
+- Replay
+
+Since these workloads are asynchronous, they never impact payment authorization latency.
+
+---
+
+## Why Keep Kafka After the Decision?
+
+The payment network is waiting for a fraud decision before completing the authorization.
+
+Adding Kafka before the decision introduces additional publish, queueing, and consumer latency.
+
+Although Kafka itself is very fast, queueing delays under load can increase end-to-end response time.
+
+By publishing to Kafka **after** returning the fraud decision, the authorization path remains fast and predictable while still benefiting from an event-driven architecture.
 
 ---
 
 **Interview Line**
 
-> "Rules provide explainability and deterministic enforcement, while ML improves fraud detection accuracy."
-
----
+> "I keep the synchronous path as short as possible by limiting it to feature retrieval, rule evaluation, ML inference, and decision generation. After returning the response, I publish the transaction to Kafka so persistence, analytics, and model training execute asynchronously without affecting authorization latency."
 
 # 9. Asynchronous Processing
 
-Heavy work should not block authorization.
+Once the fraud decision has been returned to the payment network, the Fraud Decision Service publishes the transaction event to Kafka.
+
+Moving these workloads out of the synchronous authorization path ensures that heavy processing does not impact customer-facing latency.
 
 ```
-Kafka
+                Publish Event
 
-↓
+                      │
 
-Consumers
+                      ▼
 
-↓
+                   Kafka
 
-Storage
+                      │
 
-Analytics
+      ┌───────────────┼────────────────┬────────────────┐
 
-Alerts
+      ▼               ▼                ▼
 
-ML Pipeline
+ Persistence      Analytics      Notifications
+
+      │               │                │
+
+      └───────────────┼────────────────┘
+
+                      ▼
+
+         Feature Engineering Pipeline
+
+                      ▼
+
+         Offline Feature Store
+
+                      ▼
+
+           Model Training Pipeline
+
+                      ▼
+
+        Deploy Updated Model & Features
+
+                      ▼
+
+        Refresh Online Feature Store
 ```
 
-Responsibilities
+---
 
-- Persist transactions
-- Fraud analytics
-- Alert generation
-- Model retraining
-- Reporting
+## Persistence
+
+A Persistence Consumer stores the transaction and fraud decision in the transactional database.
+
+Stored Data
+
+- Transaction details
+- Fraud score
+- Final decision
+- Audit information
+
+This enables
+
+- Transaction history
+- Customer support
+- Regulatory compliance
+- Investigations
+
+---
+
+## Analytics
+
+Analytics consumers process transaction events to generate
+
+- Fraud trends
+- Merchant risk analysis
+- Customer behavior analysis
+- Operational dashboards
+- Business reports
+
+Since analytics is asynchronous, large analytical workloads never impact payment authorization.
+
+---
+
+## Notifications
+
+Notification consumers generate alerts for
+
+- Suspicious transactions
+- Customer notifications
+- Fraud operations teams
+- Case management systems
+
+Examples
+
+- SMS
+- Email
+- Push notifications
+- Internal alerting systems
+
+---
+
+## Feature Engineering
+
+Historical transactions are processed to generate new fraud features such as
+
+- Spending patterns
+- Transaction velocity
+- Merchant frequency
+- Device behavior
+- Geographic patterns
+
+These features are written to the Offline Feature Store.
+
+---
+
+## Model Training
+
+The Machine Learning pipeline periodically trains new fraud detection models using
+
+- Historical transactions
+- Fraud labels
+- Engineered features
+
+Once validated, the updated models are deployed and the Online Feature Store is refreshed with newly computed features.
+
+---
+
+## Why Kafka?
+
+Kafka provides several advantages for asynchronous processing.
+
+- Decouples fraud detection from downstream systems
+- Enables independent scaling of each consumer
+- Supports replay for recovery and debugging
+- Provides durable event storage
+- Handles temporary downstream failures through buffering
+- Allows new consumers to be added without changing the Fraud Decision Service
 
 ---
 
 **Interview Line**
 
-> "Heavy processing is asynchronous so it never impacts real-time authorization latency."
-
----
+> "Kafka allows the Fraud Decision Service to remain focused on low-latency decision making while downstream consumers independently handle persistence, analytics, notifications, feature engineering, and model training. This keeps the authorization path fast while enabling a scalable event-driven architecture."
 
 # 10. Storage
 
+Different storage technologies are used because they serve different purposes and have different performance requirements.
+
+---
+
+## Online Feature Store
+
+Typically
+
+```
+Redis
+```
+
+Purpose
+
+- Store precomputed fraud features
+- Provide low-latency lookups during authorization
+- Support real-time ML inference
+
+Example Features
+
+- Transaction velocity
+- Average spending
+- Last transaction location
+- Device history
+- Merchant frequency
+
+Typical latency
+
+```
+1–5 ms
+```
+
+Redis is optimized for fast reads and is **not** the system of record.
+
+---
+
 ## OLTP Database
-
-Stores
-
-- Transactions
-- Fraud decisions
-- Audit logs
 
 Typically
 
 ```
 PostgreSQL
+
+MySQL
+
+Aurora
 ```
 
----
+Purpose
 
-## Analytics Database
-
-Stores
-
-- Fraud trends
-- Historical reports
-- Training data
+Store the current transactional state of the system.
 
 Examples
 
-- Snowflake
-- BigQuery
-- Redshift
+- Transaction details
+- Fraud score
+- Final fraud decision
+- Investigation status
+- Case management information
+
+This database supports
+
+- Customer support
+- Operational dashboards
+- Transaction lookups
+- Regulatory reporting
+
+The OLTP database is optimized for transactional reads and writes.
 
 ---
 
-# 11. Correctness & Consistency
+## Offline Feature Store
 
-## Idempotency
-
-Retries should not generate duplicate decisions.
-
-Use
+Typically
 
 ```
-transactionId
+S3
+
+Data Lake
+
+Snowflake
+
+BigQuery
 ```
 
-as the idempotency key.
+Purpose
 
-Approach
+Store historical transaction data and engineered features used for analytics and machine learning.
 
-- Insert transactionId into an idempotency store
-- If already exists, return previous result
+Stores
+
+- Historical transactions
+- Aggregated customer features
+- Fraud labels
+- Training datasets
+
+Used for
+
+- Feature engineering
+- Model training
+- Historical analysis
 
 ---
 
-## Ordering
+## Kafka
 
-Partition Kafka by
+Kafka acts as the event backbone of the system.
 
-```
-cardId
-```
+Purpose
 
-to preserve transaction order.
+- Durable event storage
+- Decouple producers and consumers
+- Replay historical events
+- Independent consumer scaling
+- Buffer traffic spikes
 
-Ordering is important for
+Kafka is **not** used as the primary database.
 
-- Velocity detection
-- Geographic anomalies
-- Spending sequences
-
----
-
-## Delivery Guarantee
-
-Use
-
-```
-At-Least-Once Delivery
-```
-
-Consumers must be idempotent.
+Instead, it provides reliable event propagation between services.
 
 ---
 
-## Reconciliation
+## Storage Summary
 
-Run scheduled reconciliation jobs to detect missed transactions.
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Online Feature Store | Redis | Low-latency feature lookup |
+| OLTP Database | PostgreSQL / Aurora | Current transaction state and fraud decisions |
+| Offline Feature Store | S3 / Snowflake / BigQuery | Historical data and model training |
+| Kafka | Event Streaming Platform | Event propagation, replay, and asynchronous processing |
 
 ---
 
 **Interview Line**
 
-> "We design for idempotency and reconciliation rather than relying on exactly-once guarantees."
+> "Each storage technology is optimized for a different workload. Redis provides low-latency feature access for real-time inference, the OLTP database stores the current transactional state, the Offline Feature Store supports analytics and machine learning, and Kafka serves as the durable event backbone that decouples producers from downstream consumers."
+
+# 11. Correctness & Consistency
+
+A fraud detection system must be both highly available and highly accurate. Since distributed systems are inherently unreliable, the platform must handle retries, duplicate requests, out-of-order events, and temporary failures without affecting correctness.
 
 ---
 
+## API Idempotency
+
+A client or payment network may retry a request if it does not receive a response due to network failures or timeouts.
+
+To prevent duplicate transactions from entering the system, the Fraud Decision Service performs an API idempotency check before processing the request.
+
+Approach
+
+- The client sends a unique `transactionId` (or `eventId`) with every request.
+- The Event Ingestion/Fraud Decision Service checks Redis for the identifier.
+- If the request is new, it is processed normally and the identifier is stored with a short TTL.
+- If the same request is retried, the service returns the previously cached response without processing or publishing the event again.
+
+This ensures duplicate API requests never create duplicate transactions.
+
+---
+
+## Consumer Idempotency
+
+Kafka provides **at-least-once delivery**, which means a consumer may receive the same event more than once.
+
+To prevent duplicate processing, each event contains a unique `eventId`.
+
+During persistence, the system inserts the event into the immutable **events** table using a unique constraint on `eventId`.
+
+If the event already exists, the transaction is rolled back and the duplicate event is ignored.
+
+This guarantees that each business event is processed only once, even if Kafka redelivers it.
+
+---
+
+## Ordering
+
+Some fraud detection rules depend on transaction order.
+
+Examples
+
+- Transaction velocity
+- Geographic anomalies
+- Spending patterns
+
+Kafka topics are partitioned using
+
+```
+cardId
+
+or
+
+accountId
+```
+
+This ensures all events for the same card or account are processed in order by a single consumer within that partition.
+
+---
+
+## Delivery Guarantee
+
+Kafka provides
+
+```
+At-Least-Once Delivery
+```
+
+Instead of relying on exactly-once delivery guarantees, the system combines
+
+- At-least-once delivery
+- Idempotent consumers
+
+to achieve exactly-once business outcomes.
+
+---
+
+## Replay
+
+Kafka retains events for a configurable retention period.
+
+Replay enables
+
+- Recovering from consumer failures
+- Rebuilding downstream systems
+- Reprocessing historical transactions after bug fixes
+- Onboarding new consumers
+
+Replay is one of the key advantages of an event-driven architecture.
+
+---
+
+## Reconciliation
+
+Despite retries and replay, external systems can occasionally miss transactions.
+
+Scheduled reconciliation jobs periodically compare transaction records between the payment network and the fraud platform to detect missing or inconsistent data.
+
+Any missing transactions are safely reprocessed using the platform's idempotency mechanisms.
+
+---
+
+**Interview Line**
+
+> "Rather than relying on exactly-once delivery, I design the platform using at-least-once messaging combined with idempotent processing. Ordering is preserved by partitioning Kafka on the card or account ID, while replay and reconciliation ensure the system can recover safely from failures without introducing duplicate business effects."
+
 # 12. Key Challenges
+
+Building a real-time fraud detection platform requires balancing latency, accuracy, scalability, and operational reliability.
+
+---
 
 ## Latency
 
+The fraud decision is part of the payment authorization flow and must typically complete within **100–200 ms**.
+
 Solution
 
-- Redis
+- Online Feature Store (Redis)
 - Precomputed features
-- Efficient models
+- Lightweight business rules
+- Optimized ML inference
+- Asynchronous processing through Kafka
+
+The synchronous path performs only the work required to generate the fraud decision.
 
 ---
 
 ## False Positives
 
-Introduce
+Incorrectly declining legitimate transactions impacts customer experience and revenue.
+
+To reduce false positives, the platform introduces a third outcome:
 
 ```
 REVIEW
 ```
 
-state.
+Borderline transactions are routed to manual review instead of being automatically declined.
 
-Combine
+The final decision combines
 
-- Rules
-- ML
+- Business rules
+- Machine learning predictions
+
+to improve overall accuracy.
 
 ---
 
@@ -65057,7 +65498,7 @@ Combine
 
 ### Precision
 
-How many flagged transactions are actually fraud?
+How many flagged transactions are actually fraudulent?
 
 Higher precision
 
@@ -65067,13 +65508,13 @@ Lower false positives
 
 ↓
 
-May miss some fraud
+May miss some fraudulent transactions
 
 ---
 
 ### Recall
 
-How many fraudulent transactions did we catch?
+How many fraudulent transactions are successfully detected?
 
 Higher recall
 
@@ -65083,9 +65524,11 @@ Catch more fraud
 
 ↓
 
-More false positives
+May increase false positives
 
-Tradeoff
+---
+
+Trade-off
 
 ```
 Higher Precision
@@ -65103,36 +65546,68 @@ Higher Recall
 Lower Precision
 ```
 
+The optimal balance depends on business priorities and risk tolerance.
+
 ---
 
 ## Model Drift
 
-Fraud patterns evolve.
+Fraud patterns continuously evolve over time.
+
+A model trained on historical data may gradually become less accurate as customer behavior and attack patterns change.
 
 Solution
 
-- Continuous retraining
-- Feedback loop
-- Fresh labeled data
+- Continuous model retraining
+- Feature engineering pipeline
+- Feedback from confirmed fraud cases
+- Periodic model evaluation
+- Deployment of updated models
+
+---
+
+## Scalability
+
+Transaction volume can increase significantly during peak shopping periods or seasonal events.
+
+Solution
+
+- Stateless services
+- Horizontal scaling
+- Kafka partitioning
+- Consumer groups
+- Redis Cluster
+- Database partitioning and read replicas
+
+---
+
+## Availability
+
+The fraud platform is part of the payment authorization path, so downtime directly impacts transaction processing.
+
+Solution
+
+- Multiple service instances
+- Load balancing
+- Kafka replication
+- Database replication
+- Automatic failover
+- Health checks and monitoring
 
 ---
 
 **Interview Line**
 
-> "We continuously retrain models using newly confirmed fraud cases to handle model drift."
-
----
+> "The biggest challenge is balancing low latency with high fraud detection accuracy. I keep the synchronous path lightweight, leverage Redis for fast feature retrieval, use Kafka for asynchronous processing, and continuously retrain ML models to adapt to evolving fraud patterns."
 
 # 13. Scaling
 
-The platform scales horizontally.
+The platform is designed to scale horizontally at every layer.
 
 ## Kafka
 
-Increase
-
-- Partitions
-- Consumer groups
+- Increase partitions
+- Scale consumer groups independently
 
 ---
 
@@ -65144,25 +65619,26 @@ Use
 Redis Cluster
 ```
 
+to support low-latency feature lookups.
+
 ---
 
 ## Database
 
 - Read replicas
-- Partitioning
-- Sharding
+- Partitioning / Sharding (when needed)
 
 ---
 
 ## Services
 
-All services remain stateless.
+All services remain stateless and can be scaled independently behind a load balancer.
 
 ---
 
 **Interview Line**
 
-> "External transaction volume is fixed, so we horizontally scale every internal component independently."
+> "Every layer scales independently, allowing the platform to handle increasing transaction volumes without impacting authorization latency."
 
 ---
 
@@ -65170,51 +65646,34 @@ All services remain stateless.
 
 ## Phase 1
 
-Rules only
+- Rule-based fraud detection
 
 ---
 
 ## Phase 2
 
-Kafka
-
-Distributed processing
+- Kafka-based asynchronous processing
+- Distributed consumers
 
 ---
 
 ## Phase 3
 
-Machine Learning
-
-Feature Store
-
-Real-time optimization
+- Machine Learning
+- Online & Offline Feature Stores
+- Continuous model retraining
 
 ---
 
 **Interview Line**
 
-> "I would evolve from deterministic rules to a hybrid rules-plus-ML architecture while keeping the system loosely coupled through Kafka."
+> "I'd start with deterministic rules, then evolve to an event-driven architecture, and finally introduce machine learning as sufficient historical data becomes available."
 
 ---
 
 # 15. Final Interview Summary
 
-> "I'd design a low-latency, event-driven fraud detection platform where transactions are ingested through synchronous APIs, normalized, and evaluated through a real-time decision engine combining deterministic rules and machine learning. The decision engine retrieves precomputed behavioral features from an online feature store such as Redis, enabling sub-200 ms authorization. Heavy processing—including persistence, analytics, alerts, and model training—is performed asynchronously through Kafka so it never impacts transaction latency. The system is horizontally scalable and ensures correctness through idempotency, ordered processing, replay, and reconciliation."
-
----
-
-# Senior-Level Talking Points
-
-- Kafka decouples ingestion from downstream processing and enables replay.
-- Online feature stores optimize real-time inference, while offline stores support model training.
-- Rules provide deterministic and explainable decisions; ML improves fraud detection accuracy.
-- Consumers are idempotent because retries are inevitable in distributed systems.
-- Kafka is partitioned by cardId to preserve ordering for velocity-based fraud detection.
-- We optimize reads using Redis and precomputed features instead of expensive real-time computations.
-- Heavy workloads such as analytics and model training are asynchronous to preserve authorization latency.
-- We design for eventual consistency using retries, replay, and reconciliation instead of relying on exactly-once delivery.
-
+> "I'd design a low-latency fraud detection platform where transactions are processed synchronously through a Fraud Decision Service. The service retrieves precomputed features from Redis, evaluates business rules and ML models, and returns an approve, decline, or review decision within the required latency. After responding, the transaction is published to Kafka for asynchronous processing such as persistence, analytics, notifications, feature engineering, and model training. The platform ensures correctness through idempotency, ordered processing, replay, and reconciliation while scaling horizontally at every layer."
 
 # High Throughput Event Processing Platform
 
