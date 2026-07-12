@@ -53797,3 +53797,909 @@ Advantages
 # Interview Summary
 
 > I model the system using two business tables: **Jobs** and **TaskExecution**. The Jobs table stores recurring job definitions such as the cron expression, payload, and retry policy. Every actual execution—whether it is the first scheduled run or a retry—is represented by a row in the TaskExecution table. The Scheduler continuously polls only the TaskExecution table for pending executions whose scheduled time has arrived and publishes their ExecutionIds to Kafka. Workers load the associated Job definition, execute the business logic, update execution status, and either create the next recurring execution on success or create a new retry execution with an exponentially delayed scheduled time on failure. If the retry limit is exceeded, the Worker publishes the execution to a Dead Letter Queue. This keeps the Scheduler simple while allowing retries, recurring scheduling, and horizontal scaling through a single execution pipeline.
+
+# Job Scheduler - Pause and Resume Design
+
+## Overview
+
+A recurring job should be pausable without affecting already completed executions.
+
+When a user pauses a job:
+
+- No future executions should be scheduled.
+- Already running executions should be allowed to complete.
+- The Scheduler should not have to perform complex joins or additional logic.
+
+Since our final design keeps **only one pending execution per recurring job**, pausing becomes very simple.
+
+---
+
+# Current Design
+
+We have only two business tables.
+
+```
+Jobs
+
+↓
+
+TaskExecution
+```
+
+Jobs stores
+
+- Cron Expression
+- Payload
+- Retry Policy
+- Job Status
+
+TaskExecution stores
+
+- Next scheduled execution
+- Retry executions
+- Current execution state
+
+There is only **one pending execution** for a recurring job.
+
+---
+
+# Before Pause
+
+## Jobs
+
+| JobId | Status |
+|--------|---------|
+|101|ACTIVE|
+
+## TaskExecution
+
+| ExecutionId | JobId | Status | ScheduledTime |
+|-------------|-------|---------|---------------|
+|5002|101|PENDING|Tomorrow 9 AM|
+
+---
+
+# User Clicks Pause
+
+Both tables are updated in a single transaction.
+
+```sql
+BEGIN TRANSACTION;
+
+UPDATE Jobs
+SET status='PAUSED'
+WHERE jobId=101;
+
+UPDATE TaskExecution
+SET status='PAUSED'
+WHERE jobId=101
+AND status='PENDING';
+
+COMMIT;
+```
+
+---
+
+# After Pause
+
+## Jobs
+
+| JobId | Status |
+|--------|---------|
+|101|PAUSED|
+
+## TaskExecution
+
+| ExecutionId | JobId | Status | ScheduledTime |
+|-------------|-------|---------|---------------|
+|5002|101|PAUSED|Tomorrow 9 AM|
+
+The pending execution is preserved.
+
+It simply won't be picked by the Scheduler.
+
+---
+
+# Scheduler Query
+
+The Scheduler remains extremely simple.
+
+```sql
+SELECT *
+FROM TaskExecution
+WHERE status='PENDING'
+AND scheduledTime <= NOW()
+LIMIT 1000;
+```
+
+No joins.
+
+No knowledge of the Jobs table.
+
+No additional filtering.
+
+---
+
+# Resume Flow
+
+When the user resumes the job,
+
+both tables are updated.
+
+```sql
+BEGIN TRANSACTION;
+
+UPDATE Jobs
+SET status='ACTIVE'
+WHERE jobId=101;
+
+UPDATE TaskExecution
+SET status='PENDING'
+WHERE jobId=101
+AND status='PAUSED';
+
+COMMIT;
+```
+
+The existing pending execution becomes eligible for scheduling again.
+
+No new execution needs to be created.
+
+---
+
+# What if the Job is Already Running?
+
+Suppose the Scheduler has already published the execution.
+
+```
+Scheduler
+
+↓
+
+Kafka
+
+↓
+
+Worker
+```
+
+Then the user clicks Pause.
+
+The running execution is **not interrupted**.
+
+It continues until completion.
+
+Only future executions are paused.
+
+This is the behavior followed by most enterprise schedulers.
+
+---
+
+# Why Update Both Tables?
+
+Since our design keeps only **one future pending execution**, updating TaskExecution is an O(1) operation.
+
+Advantages
+
+- Scheduler polls only one table.
+- No joins required.
+- Simpler Scheduler implementation.
+- Pause and Resume are very fast.
+- Clear separation of responsibilities.
+
+---
+
+# Final Pause Flow
+
+```
+User
+
+↓
+
+Pause Job
+
+↓
+
+BEGIN TRANSACTION
+
+↓
+
+Jobs.status = PAUSED
+
+↓
+
+TaskExecution.status = PAUSED
+
+↓
+
+COMMIT
+
+↓
+
+Scheduler ignores paused execution
+```
+
+---
+
+# Final Resume Flow
+
+```
+User
+
+↓
+
+Resume Job
+
+↓
+
+BEGIN TRANSACTION
+
+↓
+
+Jobs.status = ACTIVE
+
+↓
+
+TaskExecution.status = PENDING
+
+↓
+
+COMMIT
+
+↓
+
+Scheduler schedules execution normally
+```
+
+---
+
+# Why This Design?
+
+This design is efficient because:
+
+- Only one pending execution exists per recurring job.
+- Both tables are updated atomically.
+- Scheduler remains stateless and simple.
+- No additional joins are required.
+- Running executions are unaffected.
+- Future executions are immediately paused or resumed.
+
+This keeps the scheduling pipeline clean while making pause/resume operations extremely inexpensive and easy to reason about during a system design interview.
+
+"The ScheduledTime represents the earliest time the execution is eligible to run, not a guarantee that it starts at that exact instant. Actual execution depends on scheduler polling intervals, queue latency, worker availability, and downstream processing delays. We therefore record both ScheduledTime and StartedAt so we can measure scheduling latency and monitor SLA compliance
+
+# Job Scheduler - Final Database Design & Execution Flow
+
+> This is the final production-ready design for a distributed Job Scheduler. It keeps the Scheduler extremely lightweight while allowing retries, pause/resume, horizontal scaling, and execution history using only **two business tables**.
+
+---
+
+# High-Level Architecture
+
+```text
+                    Client
+
+                       │
+
+                 Job Service APIs
+
+                       │
+
+                       ▼
+
+                    Jobs Table
+             (Recurring Job Definition)
+
+                       │
+          Creates First TaskExecution
+
+                       ▼
+
+               TaskExecution Table
+     (Pending / Running / Completed / Failed)
+
+                       ▲
+
+                       │
+
+                  Scheduler
+
+                       │
+
+              task_execution Topic
+                    (Kafka)
+
+                       │
+
+                  Worker Pool
+
+                       │
+
+      ┌────────────────┴─────────────────┐
+
+      ▼                                  ▼
+
+ Success                           Failure
+
+      │                                  │
+
+      ▼                                  ▼
+
+Create Next                    Retry Allowed?
+Execution                             │
+                                      │
+                            ┌─────────┴─────────┐
+                            ▼                   ▼
+
+                 Create Retry Execution      Publish to DLQ
+```
+
+---
+
+# Database Tables
+
+We only need **two business tables**.
+
+---
+
+# 1. Jobs Table
+
+Stores the recurring job definition.
+
+This is the **template** for all future executions.
+
+| Column | Description |
+|----------|-------------|
+| jobId | Primary Key |
+| jobName | Human readable name |
+| cronExpression | Cron schedule |
+| payload | Input required by Worker |
+| retryPolicy | Max retries, base delay, backoff strategy |
+| status | ACTIVE / PAUSED / DELETED |
+| createdAt | Creation timestamp |
+| updatedAt | Last modified timestamp |
+
+Example
+
+| jobId | jobName | cron | status |
+|-------|----------|------|--------|
+|101|Daily Report|0 9 * * *|ACTIVE|
+
+Notice that this table **does not contain execution state**.
+
+It only defines
+
+- What to execute
+- When to execute
+- Retry configuration
+
+---
+
+# 2. TaskExecution Table
+
+Every execution gets one row.
+
+This includes
+
+- Initial execution
+- Retry executions
+- Future recurring executions
+
+| Column | Description |
+|----------|-------------|
+| executionId | Primary Key |
+| jobId | FK to Jobs |
+| attempt | Retry attempt number |
+| scheduledTime | Earliest time this execution may run |
+| status | PENDING / IN_PROGRESS / COMPLETED / FAILED / PAUSED |
+| startedAt | Actual execution start time |
+| completedAt | Completion timestamp |
+| errorMessage | Failure reason |
+
+---
+
+# Why only two tables?
+
+TaskExecution itself already provides execution history.
+
+Example
+
+| ExecutionId | JobId | Attempt | Status | StartedAt | CompletedAt |
+|-------------|-------|----------|--------|-----------|-------------|
+|5001|101|1|FAILED|9:00:01|9:00:05|
+|5002|101|2|COMPLETED|9:00:30|9:00:36|
+|5003|101|1|PENDING|NULL|NULL|
+
+This already tells us
+
+- Every retry
+- Every execution
+- Success/failure
+- Timing information
+
+A separate history table is unnecessary unless the business requires auditing every state transition.
+
+---
+
+# Execution Flow
+
+## Step 1 - Create Job
+
+User creates
+
+```
+Daily Report
+
+Runs every day at 9 AM
+```
+
+Insert into
+
+```
+Jobs
+```
+
+Immediately create the first execution.
+
+TaskExecution
+
+| ExecutionId | JobId | Attempt | ScheduledTime | Status |
+|-------------|-------|----------|---------------|--------|
+|5001|101|1|Today 9:00|PENDING|
+
+---
+
+## Step 2 - Scheduler
+
+Every second (or every few seconds)
+
+Scheduler executes
+
+```sql
+SELECT *
+FROM TaskExecution
+WHERE status='PENDING'
+AND scheduledTime <= NOW()
+LIMIT 1000;
+```
+
+Scheduler updates
+
+```
+Status = IN_PROGRESS
+```
+
+Publishes
+
+```
+Execution5001
+```
+
+to Kafka.
+
+---
+
+## Step 3 - Worker
+
+Worker receives
+
+```
+Execution5001
+```
+
+Loads Job101 from Jobs table.
+
+Gets
+
+- Payload
+- Cron Expression
+- Retry Policy
+
+Executes business logic.
+
+---
+
+# Success Flow
+
+Worker updates
+
+```
+Execution5001
+
+↓
+
+COMPLETED
+```
+
+Worker computes
+
+```
+Tomorrow 9:00 AM
+```
+
+Creates another execution.
+
+| ExecutionId | JobId | Attempt | ScheduledTime | Status |
+|-------------|-------|----------|---------------|--------|
+|5002|101|1|Tomorrow 9:00|PENDING|
+
+Recurring schedule continues.
+
+---
+
+# Failure Flow
+
+Suppose execution fails.
+
+Worker updates
+
+```
+Execution5001
+
+↓
+
+FAILED
+```
+
+Reads retry policy
+
+```
+Max Retry = 3
+
+Base Delay = 30 seconds
+```
+
+Current attempt
+
+```
+1
+```
+
+Computes exponential backoff
+
+```
+Delay = 30 seconds
+```
+
+Creates another execution.
+
+| ExecutionId | JobId | Attempt | ScheduledTime | Status |
+|-------------|-------|----------|---------------|--------|
+|5003|101|2|Today 9:00:30|PENDING|
+
+Scheduler treats this exactly like every other execution.
+
+No retry-specific logic is needed.
+
+---
+
+# Retry Success
+
+At
+
+```
+9:00:30
+```
+
+Scheduler finds
+
+```
+Execution5003
+```
+
+Publishes it.
+
+Worker executes.
+
+Suppose it succeeds.
+
+Worker updates
+
+```
+Execution5003
+
+↓
+
+COMPLETED
+```
+
+Creates tomorrow's recurring execution.
+
+---
+
+# Retry Exhausted
+
+Suppose
+
+```
+Attempt = 3
+
+Maximum Retry = 3
+```
+
+Worker updates
+
+```
+Execution5003
+
+↓
+
+FAILED
+```
+
+Publishes
+
+```
+Execution5003
+```
+
+to
+
+```
+task_dlq
+```
+
+for manual investigation or replay.
+
+---
+
+# Exponential Backoff
+
+Worker calculates retry delay.
+
+Formula
+
+```
+Delay = BaseDelay × 2^(Attempt-1)
+```
+
+Example
+
+| Attempt | Delay |
+|----------|--------|
+|1|30 sec|
+|2|60 sec|
+|3|120 sec|
+
+Worker creates another TaskExecution row using
+
+```
+scheduledTime = NOW + Delay
+```
+
+Scheduler simply waits until
+
+```
+scheduledTime <= NOW
+```
+
+---
+
+# Understanding scheduledTime
+
+The Scheduler never guarantees execution at the exact scheduled timestamp.
+
+Instead,
+
+```
+scheduledTime
+```
+
+means
+
+> **The earliest time this execution is eligible to run.**
+
+Actual execution depends on
+
+- Scheduler polling interval
+- Kafka queue latency
+- Worker availability
+- Network delays
+
+Therefore we store
+
+- scheduledTime
+- startedAt
+- completedAt
+
+Example
+
+| ExecutionId | ScheduledTime | StartedAt |
+|-------------|---------------|-----------|
+|5001|9:00:00|9:00:07|
+
+Scheduling Delay
+
+```
+StartedAt - ScheduledTime
+
+=
+
+7 seconds
+```
+
+This delay is expected in distributed systems.
+
+---
+
+# Pause / Resume
+
+## Pause
+
+User clicks Pause.
+
+Transaction
+
+```sql
+BEGIN;
+
+UPDATE Jobs
+SET status='PAUSED'
+WHERE jobId=101;
+
+UPDATE TaskExecution
+SET status='PAUSED'
+WHERE jobId=101
+AND status='PENDING';
+
+COMMIT;
+```
+
+Running executions continue.
+
+Future executions stop.
+
+---
+
+## Resume
+
+```sql
+BEGIN;
+
+UPDATE Jobs
+SET status='ACTIVE'
+WHERE jobId=101;
+
+UPDATE TaskExecution
+SET status='PENDING'
+WHERE jobId=101
+AND status='PAUSED';
+
+COMMIT;
+```
+
+Scheduler resumes scheduling normally.
+
+---
+
+# Kafka Topics
+
+Execution Topic
+
+```
+task_execution
+```
+
+Used for normal executions.
+
+Dead Letter Queue
+
+```
+task_dlq
+```
+
+Used after all retries are exhausted.
+
+No retry topics are required in this design.
+
+---
+
+# Scheduler Scaling
+
+## Small Scale
+
+Multiple Scheduler instances poll the same TaskExecution table.
+
+Use
+
+```sql
+SELECT ...
+FOR UPDATE SKIP LOCKED
+LIMIT 1000;
+```
+
+to prevent duplicate scheduling.
+
+---
+
+## Large Scale
+
+Introduce a Coordinator.
+
+Coordinator responsibilities
+
+- Assign database shards to Scheduler instances
+- Receive Scheduler heartbeats
+- Detect Scheduler failures
+- Reassign shard ownership
+- Rebalance when new Scheduler instances join
+
+The Coordinator does **not** assign jobs.
+
+It only assigns shard ownership.
+
+Example
+
+```
+Coordinator
+
+↓
+
+Scheduler1 → Shard1
+
+Scheduler2 → Shard2
+
+Scheduler3 → Shard3
+```
+
+Each Scheduler polls only its assigned shard.
+
+---
+
+# Final Responsibilities
+
+## Job Service
+
+- Create Job
+- Update Job
+- Pause Job
+- Resume Job
+- Delete Job
+- Create first TaskExecution
+
+---
+
+## Scheduler
+
+- Poll TaskExecution
+- Mark execution IN_PROGRESS
+- Publish ExecutionId to Kafka
+
+Scheduler does **not**
+
+- execute jobs
+- compute retries
+- calculate exponential backoff
+
+---
+
+## Worker
+
+- Load Job definition
+- Execute business logic
+- Update execution status
+- Compute exponential backoff
+- Create retry executions
+- Create next recurring execution
+- Publish permanently failed executions to DLQ
+
+---
+
+# Why This Design?
+
+Advantages
+
+- Only two business tables.
+- Scheduler polls only one table.
+- No retry-specific scheduling logic.
+- Retries and normal executions follow the same pipeline.
+- Workers own execution lifecycle.
+- Easy to scale horizontally.
+- Simple pause/resume implementation.
+- Easy to explain during interviews.
+
+---
+
+# Interview Summary
+
+> The system uses two business tables: **Jobs** and **TaskExecution**. The Jobs table stores recurring job definitions including the cron expression, payload, retry policy, and status. Every actual execution—including retries—is represented by a row in the TaskExecution table. The Scheduler continuously polls TaskExecution for pending executions whose scheduled time has arrived, marks them IN_PROGRESS, and publishes them to Kafka. Workers execute the job, update execution status, compute exponential backoff when necessary, create retry executions as new TaskExecution rows, and create the next recurring execution after successful completion. If retries are exhausted, the Worker publishes the execution to a Dead Letter Queue. This keeps the Scheduler lightweight while supporting retries, pause/resume, execution history, and horizontal scalability through a single execution pipeline.
