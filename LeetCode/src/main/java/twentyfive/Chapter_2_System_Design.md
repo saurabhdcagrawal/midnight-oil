@@ -1034,6 +1034,390 @@ Instead, it provides reliable event propagation between services.
 
 ---
 
+# ML Model & Feature Store – Common Interview Questions
+
+## Why do we need an Offline Feature Store?
+
+The Offline Feature Store stores historical transaction data used for:
+
+- Feature engineering
+- Model training
+- Historical analysis
+
+It is **not** used during real-time fraud detection because querying historical data would be too slow.
+
+---
+
+## Why do we need Redis?
+
+The ML model requires input features such as:
+
+- Average spending
+- Transaction velocity
+- Merchant frequency
+- Device history
+
+Computing these features from millions of historical transactions during every authorization request would be too expensive.
+
+Instead, these features are **precomputed** and stored in Redis for fast (1–5 ms) lookups.
+
+**Redis stores features, not the ML model.**
+
+---
+
+## How does the ML model use Redis?
+
+During authorization:
+
+```
+Transaction
+
+↓
+
+Fetch Features from Redis
+
+↓
+
+ML Model
+
+↓
+
+Fraud Score
+```
+
+The Fraud Decision Service combines:
+
+- Current transaction
+- Precomputed features from Redis
+
+and passes them to the deployed ML model.
+
+---
+
+## What does the Offline Pipeline produce?
+
+The offline pipeline has **two outputs**:
+
+### 1. Updated ML Model
+
+```
+Historical Transactions
+
+↓
+
+Model Training
+
+↓
+
+New ML Model
+
+↓
+
+Deploy to Fraud Decision Service
+```
+
+The deployed model is then used for real-time inference.
+
+---
+
+### 2. Updated Features
+
+```
+Historical Transactions
+
+↓
+
+Feature Engineering
+
+↓
+
+Redis
+```
+
+Feature engineering computes historical features and refreshes Redis.
+
+---
+
+## How often is Redis updated?
+
+It depends on the feature.
+
+### Batch Updates (Every few hours or daily)
+
+Examples
+
+- Average spending
+- Merchant frequency
+- Monthly spending
+
+```
+Historical Transactions
+
+↓
+
+Feature Engineering
+
+↓
+
+Redis
+```
+
+### Real-Time Updates
+
+Examples
+
+- Last transaction
+- Transaction velocity
+- Last merchant
+- Last country
+
+```
+Transaction
+
+↓
+
+Kafka
+
+↓
+
+Feature Update Consumer
+
+↓
+
+Redis
+```
+
+---
+
+## How often is the ML model retrained?
+
+The model is trained **offline**, not during every transaction.
+
+Typical frequencies
+
+- Daily
+- Weekly
+- On demand (if performance degrades)
+
+After training, the new model is validated and deployed only if it performs better than the current production model.
+
+---
+
+## End-to-End Flow
+
+```
+Historical Transactions
+
+        │
+
+        ├──────────────┐
+
+        ▼              ▼
+
+Feature Engineering   Model Training
+
+        │              │
+
+        ▼              ▼
+
+      Redis       New ML Model
+
+        │              │
+
+        └──────┬───────┘
+
+               ▼
+
+      Fraud Decision Service
+
+               ▲
+
+        New Transaction
+```
+
+---
+
+## Interview Summary
+
+> The Offline Feature Store serves two purposes: it trains improved ML models and computes historical features. The trained model is deployed to the Fraud Decision Service, while the precomputed features are loaded into Redis. During authorization, the Fraud Decision Service retrieves these features from Redis and combines them with the current transaction to generate a fraud score with the deployed ML model.
+
+
+# Understanding the Offline Feature Store
+
+## What is the Offline Feature Store?
+
+The Offline Feature Store is **not** a collection of ML models.
+
+It is a repository of **historical transaction data and engineered features** used for analytics, feature engineering, and model training.
+
+Typical technologies include:
+
+- S3
+- Data Lake
+- Snowflake
+- BigQuery
+
+---
+
+## What does it store?
+
+### Historical Transactions
+
+| transactionId | customerId | merchant | amount | fraudLabel |
+|--------------|------------|----------|--------|------------|
+| T1 | C101 | Starbucks | 8 | No |
+| T2 | C101 | Apple | 999 | No |
+| T3 | C102 | Unknown | 4500 | Yes |
+
+---
+
+### Engineered Features
+
+These features are computed from historical transactions.
+
+| Customer | Avg Spend | Merchant Frequency | Fraud Count | Last 90-Day Spend |
+|----------|-----------:|-------------------:|------------:|------------------:|
+| C101 | 420 | 18 | 0 | 3250 |
+| C102 | 980 | 45 | 2 | 8900 |
+
+These features are primarily used for training ML models.
+
+---
+
+## Why don't we query it during authorization?
+
+The Offline Feature Store contains millions or billions of historical records.
+
+Querying it during every payment authorization would be too slow.
+
+Instead, we periodically compute the important features and load them into the Online Feature Store (Redis).
+
+---
+
+## What is stored in Redis?
+
+Redis stores only the latest precomputed features needed during real-time fraud detection.
+
+Examples
+
+- Average spending
+- Merchant frequency
+- Transaction velocity
+- Device history
+- Last transaction location
+
+Redis provides these features in **1–5 ms**, enabling low-latency fraud decisions.
+
+---
+
+## Relationship Between the Offline Feature Store, Redis, and ML Model
+
+The offline pipeline has **two outputs**.
+
+### 1. Train a New ML Model
+
+```
+Historical Transactions
+
+↓
+
+Model Training
+
+↓
+
+New ML Model
+
+↓
+
+Deploy to Fraud Decision Service
+```
+
+The deployed model is then used for real-time inference.
+
+---
+
+### 2. Compute New Features
+
+```
+Historical Transactions
+
+↓
+
+Feature Engineering
+
+↓
+
+Redis
+```
+
+Feature engineering computes historical features and refreshes Redis.
+
+---
+
+## Real-Time Fraud Detection Flow
+
+```
+Transaction
+
+↓
+
+Fetch Features from Redis
+
+↓
+
+Deployed ML Model
+
+↓
+
+Fraud Score
+```
+
+The Fraud Decision Service combines
+
+- Current transaction
+- Features from Redis
+
+and passes them to the deployed ML model to generate the fraud score.
+
+---
+
+## Mental Model
+
+```
+Offline Feature Store
+
+↓
+
+Historical Data + Engineered Features
+
+        │
+
+        ├──────────────┐
+
+        ▼              ▼
+
+Train Model     Compute Features
+
+        │              │
+
+        ▼              ▼
+
+ Deploy Model      Refresh Redis
+
+        └──────┬───────┘
+
+               ▼
+
+      Fraud Decision Service
+```
+
+---
+
+## Interview Summary
+
+> The Offline Feature Store is a repository of historical transactions and engineered features used for analytics and model training. It is not queried during real-time authorization. Instead, the offline pipeline periodically trains new ML models and computes updated features. The trained model is deployed to the Fraud Decision Service, while the computed features are loaded into Redis for low-latency inference during fraud detection.
+
+
 **Interview Line**
 
 > "Each storage technology is optimized for a different workload. Redis provides low-latency feature access for real-time inference, the OLTP database stores the current transactional state, the Offline Feature Store supports analytics and machine learning, and Kafka serves as the durable event backbone that decouples producers from downstream consumers."
