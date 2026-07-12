@@ -47928,6 +47928,618 @@ Before moving to the Scheduler algorithm itself.
 
 # Job Scheduler System Design
 
+# Chapter 2 - Database Design
+
+---
+
+# Goal
+
+The database is the source of truth.
+
+It stores
+
+- Job definitions
+- Schedule
+- Retry policy
+- Execution history
+- Current status
+
+Unlike WhatsApp, the scheduler doesn't store billions of messages.
+
+Instead, it stores
+
+- millions of jobs
+- millions of executions
+
+The schema should support
+
+- Fast lookup of due jobs
+- Fast updates after execution
+- Execution history
+- Retry management
+
+---
+
+# Tables
+
+We'll use three primary tables.
+
+```
+Jobs
+
+↓
+
+JobExecutions
+
+↓
+
+DeadLetterQueue (optional)
+```
+
+---
+
+# 1. Jobs Table
+
+This is the most important table.
+
+Every scheduled job has exactly one row.
+
+| Column | Description |
+|---------|-------------|
+| jobId | Primary Key |
+| jobName | Human readable name |
+| cronExpression | Scheduling rule |
+| payload | Job data |
+| status | ACTIVE / PAUSED |
+| nextRunTime | Next scheduled execution |
+| retryPolicy | Retry configuration |
+| createdAt | Creation time |
+| updatedAt | Last update |
+
+Example
+
+| jobId | jobName | cron | nextRunTime | status |
+|--------|----------|------|-------------|---------|
+|101|Daily Report|0 9 * * *|2026-07-12 09:00|ACTIVE|
+
+---
+
+# Why Store nextRunTime?
+
+Suppose we only stored
+
+```
+Cron Expression
+
+0 9 * * *
+```
+
+Every second
+
+the scheduler would need to parse
+
+every cron expression
+
+for every job.
+
+Example
+
+```
+10 Million Jobs
+
+↓
+
+Parse Cron
+
+↓
+
+Every Second
+```
+
+Impossible.
+
+Instead
+
+we precompute
+
+```
+Next Run
+
+↓
+
+2026-07-12 09:00
+```
+
+Now Scheduler simply asks
+
+```sql
+SELECT *
+FROM Jobs
+WHERE nextRunTime <= NOW()
+```
+
+Much faster.
+
+---
+
+# After Execution
+
+Suppose
+
+Daily Report
+
+runs successfully.
+
+Scheduler computes
+
+```
+Tomorrow
+
+9:00 AM
+```
+
+Updates
+
+```
+nextRunTime
+```
+
+The cron is parsed only
+
+after execution,
+
+not every second.
+
+Huge optimization.
+
+---
+
+# Payload
+
+Every job needs some input.
+
+Example
+
+Send Email
+
+```json
+{
+   "to":"admin@test.com",
+   "subject":"Daily Report"
+}
+```
+
+Cleanup Job
+
+```json
+{
+   "directory":"/logs"
+}
+```
+
+Retry Payment
+
+```json
+{
+   "paymentId":12345
+}
+```
+
+Payload is usually stored as JSON.
+
+---
+
+# Status
+
+Common values
+
+```
+ACTIVE
+
+PAUSED
+
+COMPLETED
+
+FAILED
+```
+
+Scheduler only executes
+
+```
+ACTIVE
+```
+
+jobs.
+
+---
+
+# Retry Policy
+
+Different jobs have different retry rules.
+
+Example
+
+```
+Retry
+
+3 times
+
+Every 30 seconds
+```
+
+or
+
+```
+No Retry
+```
+
+Store this with the job.
+
+---
+
+# Indexes
+
+The most important index
+
+```
+(nextRunTime, status)
+```
+
+Why?
+
+Scheduler executes
+
+```sql
+SELECT *
+FROM Jobs
+WHERE status='ACTIVE'
+AND nextRunTime <= NOW()
+ORDER BY nextRunTime
+LIMIT 1000;
+```
+
+This query runs every second.
+
+Without an index,
+
+the database scans
+
+every job.
+
+With millions of jobs,
+
+that's unacceptable.
+
+---
+
+# 2. JobExecution Table
+
+Jobs table stores
+
+"What should run."
+
+JobExecution stores
+
+"What actually happened."
+
+---
+
+Schema
+
+| Column | Description |
+|---------|-------------|
+| executionId | Primary Key |
+| jobId | Foreign Key |
+| startTime | Execution started |
+| endTime | Execution finished |
+| status | SUCCESS / FAILED |
+| attempt | Retry number |
+| workerId | Worker executing |
+| errorMessage | Failure reason |
+
+---
+
+Example
+
+| executionId | jobId | status | attempt |
+|-------------|--------|----------|----------|
+|5001|101|SUCCESS|1|
+|5002|102|FAILED|2|
+
+---
+
+Why separate table?
+
+Suppose
+
+Daily Report
+
+runs every day.
+
+We don't overwrite yesterday's execution.
+
+We keep history.
+
+Useful for
+
+- Monitoring
+- Auditing
+- Debugging
+
+---
+
+# 3. Dead Letter Queue (Optional)
+
+Suppose
+
+Retry Policy
+
+```
+3 Attempts
+```
+
+All fail.
+
+Now what?
+
+Move the job to
+
+```
+Dead Letter Queue
+```
+
+Example
+
+| jobId | reason |
+|--------|---------|
+|105|SMTP Server Down|
+
+Operations team investigates later.
+
+---
+
+# Common Queries
+
+---
+
+## Find Due Jobs
+
+```sql
+SELECT *
+FROM Jobs
+WHERE status='ACTIVE'
+AND nextRunTime<=NOW()
+ORDER BY nextRunTime
+LIMIT 1000;
+```
+
+Runs continuously.
+
+This is the most important query.
+
+---
+
+## Job History
+
+```sql
+SELECT *
+FROM JobExecution
+WHERE jobId=101
+ORDER BY startTime DESC;
+```
+
+---
+
+## Pause Job
+
+```sql
+UPDATE Jobs
+SET status='PAUSED'
+WHERE jobId=101;
+```
+
+Scheduler automatically ignores it.
+
+---
+
+## Resume Job
+
+```sql
+UPDATE Jobs
+SET status='ACTIVE'
+WHERE jobId=101;
+```
+
+---
+
+# Scaling
+
+Suppose
+
+```
+100 Million Jobs
+```
+
+One database won't be enough.
+
+Shard
+
+by
+
+```
+jobId
+```
+
+or
+
+```
+TenantId
+```
+
+Example
+
+```
+Shard1
+
+Jobs 1-10M
+
+Shard2
+
+Jobs 10M-20M
+```
+
+Scheduler instances own different shards.
+
+---
+
+# Why Not Shard By nextRunTime?
+
+Looks tempting.
+
+Problem
+
+Every execution updates
+
+```
+nextRunTime
+```
+
+The row would continuously move between shards.
+
+Very expensive.
+
+---
+
+# Database vs Queue
+
+Important distinction.
+
+Database
+
+stores
+
+```
+Job Definition
+```
+
+Queue
+
+stores
+
+```
+Execution Request
+```
+
+Example
+
+Database
+
+```
+Run Every Day
+```
+
+Queue
+
+```
+Run NOW
+```
+
+Completely different purposes.
+
+---
+
+# Job Lifecycle
+
+```
+Create Job
+
+↓
+
+Jobs Table
+
+↓
+
+Scheduler Finds Due Job
+
+↓
+
+Queue
+
+↓
+
+Worker Executes
+
+↓
+
+JobExecution Table
+
+↓
+
+Update nextRunTime
+
+↓
+
+Wait for next schedule
+```
+
+---
+
+# Interview Questions
+
+## Why store nextRunTime?
+
+Avoid parsing millions of cron expressions every second.
+
+---
+
+## Why separate JobExecution?
+
+Maintain execution history without modifying the job definition.
+
+---
+
+## Why keep execution history?
+
+- Debugging
+- Auditing
+- Monitoring
+- SLA reporting
+
+---
+
+## Why not overwrite the last execution?
+
+You lose history.
+
+You can't answer
+
+"Did this job fail yesterday?"
+
+---
+
+## Why use an index on nextRunTime?
+
+Scheduler continuously searches for jobs that are due.
+
+Without an index,
+
+every polling cycle becomes a full table scan.
+
+---
+
+## Why database instead of queue?
+
+The database stores durable job definitions.
+
+The queue stores short-lived execution requests.
+
+---
+
+# Interview Summary
+
+> The database is the durable source of truth for the scheduler. The `Jobs` table stores the job definition, cron expression, payload, retry policy, and the precomputed `nextRunTime`, allowing the Scheduler to efficiently find only jobs that are due. The `JobExecution` table records every execution attempt for monitoring, debugging, and auditing. After each successful execution, the Scheduler computes the next execution time and updates the `nextRunTime` field. The most critical optimization is indexing `(status, nextRunTime)`, which enables efficient retrieval of due jobs without scanning the entire table.
+
+
 # Chapter 3 - Scheduler Service Deep Dive
 
 ---
