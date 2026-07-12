@@ -64302,3 +64302,9010 @@ You now have a complete design covering:
 - Senior-Level Talking Points
 
 This is the level of detail expected in Senior Backend Engineer and Staff Engineer system design interviews.
+
+
+# Real-Time Fraud Detection System Design
+
+---
+
+# 1. Introduction
+
+## Interview Opening
+
+> "I'll start by clarifying the problem. We're designing a real-time fraud detection system that processes high-volume transactions—on the order of tens of thousands per second—and needs to make decisions within around **100–200 milliseconds**. The goal is to accurately detect fraud while minimizing false positives. I'll assume this system is part of the transaction authorization flow and participates in real-time decisioning."
+
+### Alternative (Fraud-as-a-Service)
+
+If the fraud engine is external:
+
+> "I'll assume this system is integrated as an external fraud service that provides a risk score and recommendation, while the final approval decision is made by the issuing bank or payment processor."
+
+Architecture:
+
+```
+Payment Processor
+       │
+       ▼
+ Fraud Detection API
+       │
+       ▼
+Risk Score + Recommendation
+       │
+       ▼
+Payment Processor / Issuing Bank
+```
+
+Example:
+
+```
+Risk Score = 0.92
+
+Recommendation = DECLINE
+```
+
+The issuing bank ultimately decides whether to approve or decline the transaction.
+
+**Interview Line**
+
+> "In this model, we act as a decision-support system rather than the final decision maker."
+
+---
+
+# 2. Requirements
+
+## Functional Requirements
+
+- Detect fraud in real time
+- Approve / Decline / Review transactions
+- Generate risk score
+- Store transaction history
+- Support audit trail
+- Support model retraining
+
+---
+
+## Non-Functional Requirements
+
+- Ultra-low latency (10–100 ms, target <200 ms)
+- High throughput (50K+ TPS)
+- High availability
+- High accuracy
+- Low false positives
+- Horizontal scalability
+- Strong auditability
+
+**Interview Line**
+
+> "Latency and accuracy are the most critical constraints in this system."
+
+---
+
+# 3. Where the Fraud System Sits
+
+```
+Merchant
+
+↓
+
+Payment Gateway
+
+↓
+
+Card Network (Visa / Mastercard)
+
+↓
+
+Issuing Bank
+
+↓
+
+Fraud Detection System
+
+↓
+
+Approve / Decline / Review
+```
+
+**Interview Line**
+
+> "The fraud system sits within the issuing bank's authorization flow and must return a decision synchronously before transaction approval."
+
+---
+
+# 4. High-Level Architecture
+
+```
+                  Payment Network
+
+                         │
+
+                         ▼
+
+                   API Gateway
+
+                         │
+
+                         ▼
+
+                 Ingestion Service
+
+                         │
+
+                         ▼
+
+                      Kafka
+
+                         │
+
+          ┌──────────────┴──────────────┐
+
+          ▼                             ▼
+
+ Online Feature Store              Async Pipeline
+
+      (Redis)                          (Kafka)
+
+          │                             │
+
+          ▼                             ▼
+
+   Decision Engine          Storage / Analytics / ML
+
+ (Rules + ML Model)
+
+          │
+
+          ▼
+
+ Approve / Decline / Review
+```
+
+**Interview Line**
+
+> "We separate the real-time decision path from asynchronous processing so heavy downstream work doesn't impact authorization latency."
+
+---
+
+# 5. Ingestion Layer
+
+Transactions arrive synchronously through APIs.
+
+## API Gateway Responsibilities
+
+- Authentication
+- Authorization
+- Rate limiting
+- Request validation
+- Routing
+
+---
+
+## Ingestion Service Responsibilities
+
+- Normalize transaction
+- Add internal metadata
+- Publish event to Kafka
+
+---
+
+### Why Normalize?
+
+Different payment networks send different payloads.
+
+Normalization converts them into a common internal format.
+
+Example:
+
+External
+
+```json
+{
+  "amt":"125",
+  "merchant_name":"STARBUCKS #123"
+}
+```
+
+Internal
+
+```json
+{
+  "transactionAmount":125,
+  "merchant":"Starbucks",
+  "currency":"USD",
+  "eventId":"evt123"
+}
+```
+
+Normalization includes
+
+- Standardizing field names
+- Data type conversion
+- Currency normalization
+- Timestamp normalization
+- Merchant normalization
+- Internal metadata
+
+---
+
+**Interview Line**
+
+> "Kafka decouples ingestion from downstream processing, enables replay, and allows the system to scale independently."
+
+---
+
+# 6. Real-Time Decision Path (Critical)
+
+The authorization flow must complete within approximately **200 ms**.
+
+```
+Receive Transaction
+
+↓
+
+Fetch Features
+
+↓
+
+Evaluate Rules
+
+↓
+
+Evaluate ML Model
+
+↓
+
+Return Decision
+```
+
+---
+
+## Why Optimize This Path?
+
+Every millisecond impacts customer experience.
+
+Heavy computation is avoided during authorization.
+
+---
+
+# 7. Feature Store
+
+Instead of computing fraud features during every request, we precompute them.
+
+---
+
+## Online Feature Store
+
+Typically Redis.
+
+Purpose
+
+Low-latency lookups.
+
+Key
+
+```
+cardId
+
+or
+
+userId
+```
+
+Example features
+
+- Last transaction amount
+- Velocity (transactions/minute)
+- Last country
+- Device ID
+- Merchant frequency
+- Average spending
+
+Lookup latency
+
+```
+1–5 ms
+```
+
+---
+
+**Interview Line**
+
+> "The online feature store provides low-latency access to recent user behavior for real-time scoring."
+
+---
+
+## Offline Feature Store
+
+Typically
+
+- S3
+- Data Lake
+- BigQuery
+- Snowflake
+
+Stores
+
+- Historical transactions
+- Aggregated features
+- Fraud labels
+
+Used for
+
+- Model training
+- Feature engineering
+
+Flow
+
+```
+Historical Transactions
+
+↓
+
+Batch Jobs
+
+↓
+
+Feature Computation
+
+↓
+
+Push to Redis
+```
+
+---
+
+**Interview Line**
+
+> "We separate online and offline feature stores because real-time inference and model training have very different latency requirements."
+
+---
+
+# 8. Decision Engine
+
+This is the core of fraud detection.
+
+---
+
+## Rules Engine
+
+Deterministic checks.
+
+Examples
+
+```
+Amount > $10,000
+
+New Country
+
+Blacklisted Merchant
+
+Velocity > 20 txns/min
+```
+
+Advantages
+
+- Explainable
+- Fast
+- Easy to update
+
+---
+
+## Machine Learning Model
+
+Input
+
+- Features
+- Historical behavior
+- Device patterns
+
+Output
+
+```
+Fraud Score
+
+0.92
+```
+
+---
+
+## Decision Layer
+
+Combines
+
+- Rule results
+- ML score
+
+Possible outcomes
+
+```
+APPROVE
+
+DECLINE
+
+REVIEW
+```
+
+Example
+
+```
+Rules
+
+High Amount
+
++
+
+ML Score = 0.93
+
+↓
+
+DECLINE
+```
+
+---
+
+**Interview Line**
+
+> "Rules provide explainability and deterministic enforcement, while ML improves fraud detection accuracy."
+
+---
+
+# 9. Asynchronous Processing
+
+Heavy work should not block authorization.
+
+```
+Kafka
+
+↓
+
+Consumers
+
+↓
+
+Storage
+
+Analytics
+
+Alerts
+
+ML Pipeline
+```
+
+Responsibilities
+
+- Persist transactions
+- Fraud analytics
+- Alert generation
+- Model retraining
+- Reporting
+
+---
+
+**Interview Line**
+
+> "Heavy processing is asynchronous so it never impacts real-time authorization latency."
+
+---
+
+# 10. Storage
+
+## OLTP Database
+
+Stores
+
+- Transactions
+- Fraud decisions
+- Audit logs
+
+Typically
+
+```
+PostgreSQL
+```
+
+---
+
+## Analytics Database
+
+Stores
+
+- Fraud trends
+- Historical reports
+- Training data
+
+Examples
+
+- Snowflake
+- BigQuery
+- Redshift
+
+---
+
+# 11. Correctness & Consistency
+
+## Idempotency
+
+Retries should not generate duplicate decisions.
+
+Use
+
+```
+transactionId
+```
+
+as the idempotency key.
+
+Approach
+
+- Insert transactionId into an idempotency store
+- If already exists, return previous result
+
+---
+
+## Ordering
+
+Partition Kafka by
+
+```
+cardId
+```
+
+to preserve transaction order.
+
+Ordering is important for
+
+- Velocity detection
+- Geographic anomalies
+- Spending sequences
+
+---
+
+## Delivery Guarantee
+
+Use
+
+```
+At-Least-Once Delivery
+```
+
+Consumers must be idempotent.
+
+---
+
+## Reconciliation
+
+Run scheduled reconciliation jobs to detect missed transactions.
+
+---
+
+**Interview Line**
+
+> "We design for idempotency and reconciliation rather than relying on exactly-once guarantees."
+
+---
+
+# 12. Key Challenges
+
+## Latency
+
+Solution
+
+- Redis
+- Precomputed features
+- Efficient models
+
+---
+
+## False Positives
+
+Introduce
+
+```
+REVIEW
+```
+
+state.
+
+Combine
+
+- Rules
+- ML
+
+---
+
+## Precision vs Recall
+
+### Precision
+
+How many flagged transactions are actually fraud?
+
+Higher precision
+
+↓
+
+Lower false positives
+
+↓
+
+May miss some fraud
+
+---
+
+### Recall
+
+How many fraudulent transactions did we catch?
+
+Higher recall
+
+↓
+
+Catch more fraud
+
+↓
+
+More false positives
+
+Tradeoff
+
+```
+Higher Precision
+
+↓
+
+Lower Recall
+
+----------------
+
+Higher Recall
+
+↓
+
+Lower Precision
+```
+
+---
+
+## Model Drift
+
+Fraud patterns evolve.
+
+Solution
+
+- Continuous retraining
+- Feedback loop
+- Fresh labeled data
+
+---
+
+**Interview Line**
+
+> "We continuously retrain models using newly confirmed fraud cases to handle model drift."
+
+---
+
+# 13. Scaling
+
+The platform scales horizontally.
+
+## Kafka
+
+Increase
+
+- Partitions
+- Consumer groups
+
+---
+
+## Redis
+
+Use
+
+```
+Redis Cluster
+```
+
+---
+
+## Database
+
+- Read replicas
+- Partitioning
+- Sharding
+
+---
+
+## Services
+
+All services remain stateless.
+
+---
+
+**Interview Line**
+
+> "External transaction volume is fixed, so we horizontally scale every internal component independently."
+
+---
+
+# 14. System Evolution
+
+## Phase 1
+
+Rules only
+
+---
+
+## Phase 2
+
+Kafka
+
+Distributed processing
+
+---
+
+## Phase 3
+
+Machine Learning
+
+Feature Store
+
+Real-time optimization
+
+---
+
+**Interview Line**
+
+> "I would evolve from deterministic rules to a hybrid rules-plus-ML architecture while keeping the system loosely coupled through Kafka."
+
+---
+
+# 15. Final Interview Summary
+
+> "I'd design a low-latency, event-driven fraud detection platform where transactions are ingested through synchronous APIs, normalized, and evaluated through a real-time decision engine combining deterministic rules and machine learning. The decision engine retrieves precomputed behavioral features from an online feature store such as Redis, enabling sub-200 ms authorization. Heavy processing—including persistence, analytics, alerts, and model training—is performed asynchronously through Kafka so it never impacts transaction latency. The system is horizontally scalable and ensures correctness through idempotency, ordered processing, replay, and reconciliation."
+
+---
+
+# Senior-Level Talking Points
+
+- Kafka decouples ingestion from downstream processing and enables replay.
+- Online feature stores optimize real-time inference, while offline stores support model training.
+- Rules provide deterministic and explainable decisions; ML improves fraud detection accuracy.
+- Consumers are idempotent because retries are inevitable in distributed systems.
+- Kafka is partitioned by cardId to preserve ordering for velocity-based fraud detection.
+- We optimize reads using Redis and precomputed features instead of expensive real-time computations.
+- Heavy workloads such as analytics and model training are asynchronous to preserve authorization latency.
+- We design for eventual consistency using retries, replay, and reconciliation instead of relying on exactly-once delivery.
+
+
+# High Throughput Event Processing Platform
+
+# Part 1 – Introduction, Requirements & Capacity Estimation
+
+---
+
+# Problem Statement
+
+Design a distributed platform capable of processing **50 million events per day** (or higher depending on business growth).
+
+The system should reliably ingest events from multiple producers, process them asynchronously, persist the results, and make processed data available to downstream services.
+
+The platform should support
+
+- High throughput
+- Low latency
+- Fault tolerance
+- Horizontal scalability
+- Replay
+- Monitoring
+- Disaster recovery
+
+The solution should be generic so it can power systems such as
+
+- Post Trade Processing
+- Payment Processing
+- Order Management
+- Notification Platforms
+- IoT Platforms
+- Fraud Detection
+- Audit Pipelines
+
+---
+
+# Interview Opening
+
+A good opening immediately gives structure.
+
+> "I'll assume we're designing a generic high-throughput event processing platform. Events are produced by upstream systems, ingested through an Event Ingestion API, buffered in Kafka, processed asynchronously through independent processing stages, persisted into storage, and exposed to downstream consumers. Since we're processing millions of events, scalability, fault tolerance, and correctness are primary design goals."
+
+Notice
+
+I intentionally say
+
+```
+Event Producer
+```
+
+instead of
+
+```
+Client
+```
+
+because producers could be
+
+- Web applications
+- Mobile apps
+- Internal microservices
+- Trading systems
+- Payment processors
+- IoT devices
+
+The architecture remains the same.
+
+---
+
+# Functional Requirements
+
+The platform should
+
+- Receive events
+- Validate events
+- Persist events
+- Execute business processing
+- Publish processed events
+- Retry failed processing
+- Replay historical events
+- Support multiple downstream consumers
+
+---
+
+# Non-Functional Requirements
+
+The platform should provide
+
+## High Throughput
+
+Target
+
+```
+50 Million Events / Day
+```
+
+with the ability to scale significantly higher.
+
+---
+
+## Low Latency
+
+The ingestion path should acknowledge requests within
+
+```
+<100 ms
+```
+
+Heavy processing should be asynchronous.
+
+---
+
+## Horizontal Scalability
+
+Every layer should scale independently.
+
+Examples
+
+- API
+- Kafka
+- Processing
+- Database
+
+---
+
+## Reliability
+
+The platform should never lose events.
+
+Failures should be handled through
+
+- Retry
+- DLQ
+- Replay
+
+---
+
+## Correctness
+
+Duplicate events should never create duplicate side effects.
+
+Consumers must be idempotent.
+
+---
+
+## Availability
+
+Target
+
+```
+99.99%
+```
+
+No single point of failure.
+
+---
+
+## Observability
+
+Every event should be traceable.
+
+Support
+
+- Metrics
+- Logs
+- Distributed tracing
+- Alerts
+
+---
+
+# Assumptions
+
+We assume
+
+- Event producers communicate through an Event Ingestion API.
+- Heavy processing is asynchronous.
+- Kafka is the event backbone.
+- Services are stateless.
+- Storage is strongly consistent.
+- Multiple downstream systems consume processed events.
+
+---
+
+# Capacity Estimation
+
+Assume
+
+```
+50 Million Events / Day
+```
+
+Average throughput
+
+```
+50,000,000
+
+/
+
+86,400
+
+≈580 Events/sec
+```
+
+Peak traffic
+
+Assume
+
+```
+10x
+```
+
+Peak throughput
+
+```
+≈6,000 Events/sec
+```
+
+Always design for peak traffic rather than average traffic.
+
+---
+
+# Event Size
+
+Assume
+
+```
+2 KB/Event
+```
+
+Daily Storage
+
+```
+50M × 2 KB
+
+≈100 GB/day
+```
+
+Yearly
+
+```
+≈36 TB/year
+```
+
+excluding replication and indexes.
+
+---
+
+# Read vs Write Ratio
+
+Depends on domain.
+
+Typical
+
+```
+Writes
+
+↓
+
+Processing
+
+↓
+
+Many Readers
+```
+
+Approximate
+
+```
+Reads
+
+:
+
+Writes
+
+=
+
+5 : 1
+```
+
+Some systems may have much higher read traffic.
+
+---
+
+# High-Level Design Principles
+
+Every architectural decision follows these principles.
+
+---
+
+## Event-Driven
+
+Services communicate using events rather than synchronous APIs.
+
+Advantages
+
+- Loose coupling
+- Replay
+- Independent deployment
+
+---
+
+## Stateless
+
+Application servers store no local state.
+
+Scaling simply means adding more instances.
+
+---
+
+## Idempotent
+
+Duplicate events should produce the same final result.
+
+---
+
+## Horizontally Scalable
+
+Every component scales independently.
+
+---
+
+## Fault Tolerant
+
+Failure of one service should not stop the platform.
+
+---
+
+## Replayable
+
+Historical events should be reprocessed without asking producers to resend them.
+
+---
+
+# High-Level Layers
+
+The platform consists of four logical layers.
+
+```
+Event Ingestion
+
+↓
+
+Streaming
+
+↓
+
+Processing
+
+↓
+
+Serving
+```
+
+---
+
+## Event Ingestion Layer
+
+Receives events from producers.
+
+Responsible for
+
+- Authentication
+- Validation
+- Rate limiting
+- Idempotency
+- Publishing to Kafka
+
+---
+
+## Streaming Layer
+
+Kafka
+
+Provides
+
+- Buffering
+- Replay
+- Ordering
+- Scalability
+
+---
+
+## Processing Layer
+
+Consumes events.
+
+Performs
+
+- Validation
+- Business Logic
+- Persistence
+
+Publishes processed events.
+
+---
+
+## Serving Layer
+
+Provides
+
+- Query APIs
+- Analytics
+- Reporting
+- Dashboards
+
+---
+
+# Event Producer
+
+Instead of saying
+
+```
+Client
+```
+
+we use
+
+```
+Event Producer
+```
+
+because the producer may be
+
+- Web application
+- Mobile application
+- Internal microservice
+- Trading platform
+- Payment processor
+- IoT gateway
+
+This keeps the design generic.
+
+---
+
+# Interview Talking Points
+
+> I intentionally model the upstream component as an Event Producer instead of a Client because the same architecture applies whether events originate from an external application or an internal enterprise system.
+
+> I separate the platform into four logical layers: Event Ingestion, Streaming, Processing, and Serving. This separation allows every layer to scale and evolve independently.
+
+> Heavy business processing is asynchronous, allowing the ingestion path to remain fast while ensuring the platform can absorb traffic spikes.
+
+> Since this is a distributed event processing platform, reliability, replay, and idempotency are more important than minimizing individual component latency.
+
+---
+
+# Next Chapter
+
+Part 2 – Event Ingestion API & High-Level Architecture
+
+We'll design
+
+- Event API
+- Load Balancer
+- API Gateway
+- Event Ingestion Service
+- Authentication
+- Idempotency
+- Normalization
+- Kafka Producer
+- High-Level Architecture
+
+# High Throughput Event Processing Platform
+
+# Part 2 – Event Ingestion Layer & High-Level Architecture
+
+---
+
+# Overview
+
+The Event Ingestion Layer is the entry point into the platform.
+
+Its responsibility is **not** to process business logic.
+
+Instead, it is responsible for **accepting events reliably**, performing lightweight validation, and publishing them to Kafka as quickly as possible.
+
+A common mistake is putting business logic in the ingestion layer.
+
+The ingestion layer should remain thin.
+
+---
+
+# High-Level Architecture
+
+```
+                    Event Producer
+
+                         │
+
+                         ▼
+
+                  Load Balancer
+
+                         │
+
+                         ▼
+
+                   API Gateway
+
+                         │
+
+                         ▼
+
+              Event Ingestion Service
+
+       Authentication
+       Authorization
+       Rate Limiting
+       Validation
+       Idempotency
+       Normalization
+       Correlation ID
+
+                         │
+
+                         ▼
+
+                  Kafka Producer
+
+                         │
+
+                         ▼
+
+                       Kafka
+```
+
+---
+
+# Why use an Event Ingestion API?
+
+Instead of allowing producers to publish directly into Kafka
+
+```
+Producer
+
+↓
+
+Kafka
+```
+
+we introduce an Event Ingestion Service.
+
+Advantages
+
+- Authentication
+- Authorization
+- Request validation
+- Rate limiting
+- Idempotency
+- Schema validation
+- Centralized logging
+- Observability
+- Kafka remains internal
+
+This makes the platform easier to evolve without impacting producers.
+
+---
+
+# Who are the Event Producers?
+
+The producer depends on the domain.
+
+Examples
+
+```
+Web Application
+
+Mobile App
+
+Payment Gateway
+
+Order Service
+
+Trade Capture Service
+
+OMS
+
+IoT Gateway
+
+Another Microservice
+```
+
+The architecture remains identical.
+
+This is why we intentionally use
+
+```
+Event Producer
+```
+
+instead of
+
+```
+Client
+```
+
+---
+
+# Load Balancer
+
+The Load Balancer distributes requests across multiple ingestion instances.
+
+```
+             Event Producers
+
+                    │
+
+                    ▼
+
+              Load Balancer
+
+      ┌─────────────┼─────────────┐
+
+      ▼             ▼             ▼
+
+  Ingestion1   Ingestion2   Ingestion3
+```
+
+Benefits
+
+- High availability
+- Horizontal scaling
+- Fault tolerance
+
+Examples
+
+- AWS ALB
+- NGINX
+- HAProxy
+
+---
+
+# API Gateway
+
+The API Gateway sits in front of the ingestion service.
+
+Responsibilities
+
+- Authentication
+- Authorization
+- TLS termination
+- Request validation
+- Rate limiting
+- Logging
+- Metrics
+- Routing
+
+The API Gateway should never execute business logic.
+
+---
+
+# Event Ingestion Service
+
+This is the most important component in the ingestion layer.
+
+Responsibilities
+
+✓ Receive events
+
+✓ Validate schema
+
+✓ Authenticate request
+
+✓ Normalize payload
+
+✓ Generate metadata
+
+✓ Publish to Kafka
+
+Return immediately.
+
+---
+
+# What should NOT happen here?
+
+The ingestion service should **not**
+
+- Perform business validation
+- Update databases
+- Execute workflows
+- Call downstream services
+- Execute heavy processing
+
+All heavy processing belongs downstream.
+
+---
+
+# Event Flow
+
+```
+Producer
+
+↓
+
+POST /events
+
+↓
+
+API Gateway
+
+↓
+
+Event Ingestion Service
+
+↓
+
+Kafka
+```
+
+Notice
+
+The ingestion service acknowledges the request quickly.
+
+Heavy processing is asynchronous.
+
+---
+
+# Event API
+
+Example
+
+```
+POST /v1/events
+```
+
+Example Request
+
+```json
+{
+   "eventType":"ORDER_CREATED",
+   "producerId":"order-service",
+   "payload":{
+      "orderId":"12345",
+      "customerId":"100",
+      "amount":250
+   }
+}
+```
+
+---
+
+# Response
+
+We should not wait for processing.
+
+Instead
+
+```
+HTTP 202 Accepted
+```
+
+Example
+
+```json
+{
+   "eventId":"evt-1001",
+   "status":"ACCEPTED"
+}
+```
+
+Meaning
+
+The event has been accepted into the platform.
+
+Processing continues asynchronously.
+
+---
+
+# Why HTTP 202?
+
+Returning
+
+```
+200 OK
+```
+
+could imply
+
+```
+Processing Complete
+```
+
+which is not true.
+
+Instead
+
+```
+202 Accepted
+```
+
+means
+
+```
+Accepted for Processing
+```
+
+---
+
+# Authentication
+
+Every producer should authenticate.
+
+Possible mechanisms
+
+- OAuth
+- JWT
+- API Keys
+- mTLS (internal systems)
+
+The choice depends on the environment.
+
+---
+
+# Authorization
+
+Even authenticated producers may only publish certain event types.
+
+Example
+
+```
+Order Service
+
+↓
+
+ORDER_CREATED
+
+✓
+
+-------------------
+
+Inventory Service
+
+↓
+
+ORDER_CREATED
+
+✗
+```
+
+---
+
+# Schema Validation
+
+Validate
+
+- Required fields
+- Event type
+- Payload format
+- Version
+
+Example
+
+Required
+
+```
+eventId
+
+eventType
+
+producerId
+
+timestamp
+
+payload
+```
+
+Invalid requests return
+
+```
+HTTP 400
+```
+
+---
+
+# Event Normalization
+
+Different producers may send different payload formats.
+
+Example
+
+Producer A
+
+```json
+{
+   "custId":"100",
+   "amt":"250"
+}
+```
+
+Producer B
+
+```json
+{
+   "customer":"100",
+   "amount":250.0
+}
+```
+
+Normalize into
+
+```json
+{
+   "customerId":"100",
+   "amount":250,
+   "currency":"USD"
+}
+```
+
+This creates a consistent internal schema.
+
+---
+
+# Metadata Generation
+
+The ingestion service enriches events with internal metadata.
+
+Example
+
+```json
+{
+   "eventId":"evt-123",
+   "receivedTimestamp":"...",
+   "correlationId":"abc-xyz",
+   "producer":"OMS"
+}
+```
+
+Benefits
+
+- Tracing
+- Debugging
+- Monitoring
+
+---
+
+# Idempotency
+
+Network retries happen.
+
+Suppose
+
+```
+Producer
+
+↓
+
+Timeout
+
+↓
+
+Retry
+```
+
+The same event may arrive twice.
+
+Solution
+
+Use
+
+```
+Idempotency-Key
+```
+
+or
+
+```
+eventId
+```
+
+Example
+
+```
+eventId
+
+↓
+
+evt-100
+```
+
+If already processed,
+
+return previous acknowledgement.
+
+No duplicate Kafka publish.
+
+---
+
+# Rate Limiting
+
+Protect the platform.
+
+Example
+
+```
+1000 Requests
+
+Per Second
+
+Per Producer
+```
+
+Exceed
+
+↓
+
+Return
+
+```
+429 Too Many Requests
+```
+
+This prevents one producer from overwhelming the system.
+
+---
+
+# Correlation ID
+
+Every request receives
+
+```
+Correlation ID
+```
+
+Example
+
+```
+Request
+
+↓
+
+API Gateway
+
+↓
+
+Kafka
+
+↓
+
+Consumers
+
+↓
+
+Database
+```
+
+The same ID follows the event through every service.
+
+Critical for debugging.
+
+---
+
+# Publishing to Kafka
+
+After lightweight processing
+
+```
+Authentication
+
+↓
+
+Validation
+
+↓
+
+Normalization
+
+↓
+
+Metadata
+
+↓
+
+Kafka Producer
+```
+
+The ingestion service becomes the Kafka producer.
+
+---
+
+# Producer Configuration
+
+Typical Kafka producer configuration
+
+```
+acks = all
+
+enable.idempotence = true
+
+compression = lz4
+
+batch.size
+
+linger.ms
+```
+
+These settings improve
+
+- durability
+- throughput
+- batching
+
+---
+
+# Why keep ingestion lightweight?
+
+Suppose
+
+processing takes
+
+```
+500 ms
+```
+
+If done synchronously,
+
+throughput drops dramatically.
+
+Instead
+
+```
+Accept Event
+
+↓
+
+Publish Kafka
+
+↓
+
+Return
+
+<50 ms
+```
+
+Heavy work continues later.
+
+---
+
+# Failure Handling
+
+Suppose Kafka is unavailable.
+
+Possible options
+
+1.
+
+Retry
+
+↓
+
+Kafka available
+
+↓
+
+Publish
+
+---
+
+2.
+
+Persist temporarily
+
+↓
+
+Retry later
+
+---
+
+3.
+
+Return
+
+```
+503 Service Unavailable
+```
+
+The approach depends on business requirements.
+
+---
+
+# Scaling
+
+The ingestion service is stateless.
+
+Scale
+
+```
+2 Pods
+
+↓
+
+10 Pods
+
+↓
+
+100 Pods
+```
+
+behind a Load Balancer.
+
+No code changes required.
+
+---
+
+# Design Principles
+
+The ingestion layer follows
+
+## Thin Layer
+
+Only lightweight work.
+
+---
+
+## Stateless
+
+No local state.
+
+---
+
+## Fast
+
+Return quickly.
+
+---
+
+## Durable
+
+Events enter Kafka before acknowledgement.
+
+---
+
+## Secure
+
+Authentication
+
+Authorization
+
+Rate limiting
+
+---
+
+# Interview Talking Points
+
+> I introduce an Event Ingestion Service instead of exposing Kafka directly. This allows us to centralize authentication, validation, rate limiting, schema management, idempotency, and observability while keeping Kafka as an internal implementation detail.
+
+> The ingestion path is intentionally lightweight. Its primary responsibility is to reliably accept events and publish them to Kafka with minimal latency. Heavy business processing is deferred to downstream consumers.
+
+> Every event is normalized into a common internal schema and enriched with metadata such as an Event ID and Correlation ID before entering Kafka. This ensures downstream services operate on a consistent event format regardless of the producer.
+
+> Since the ingestion service is stateless, it can scale horizontally behind a load balancer simply by adding more instances.
+
+---
+
+# Next Chapter
+
+# Part 3 – Kafka Architecture & Streaming Layer
+
+Topics
+
+- Why Kafka
+- Topic Design
+- Partition Strategy
+- Consumer Groups
+- Ordering
+- Replication
+- Exactly Once
+- Replay
+- DLQ
+- Retry
+- Schema Registry
+- Scaling Kafka
+- Producer & Consumer Design
+
+# High Throughput Event Processing Platform
+
+# Part 3 – Kafka Architecture & Streaming Layer
+
+> Kafka is the backbone of the event processing platform. It decouples event ingestion from downstream processing, provides durable event storage, enables replay, preserves ordering where required, and allows every processing stage to scale independently.
+
+---
+
+# Why Kafka?
+
+Imagine the Event Ingestion Service directly calling downstream services.
+
+```
+Event Producer
+
+↓
+
+Event Ingestion
+
+↓
+
+Validation
+
+↓
+
+Business Logic
+
+↓
+
+Database
+
+↓
+
+Analytics
+
+↓
+
+Notifications
+```
+
+Problems
+
+- Tight coupling
+- Cascading failures
+- No replay
+- Difficult scaling
+- High latency
+
+Instead, introduce Kafka.
+
+```
+Event Producer
+
+↓
+
+Event Ingestion
+
+↓
+
+Kafka
+
+↓
+
+Consumers
+```
+
+Kafka acts as a durable buffer between producers and consumers.
+
+---
+
+# Benefits of Kafka
+
+Kafka provides
+
+✓ Durable event storage
+
+✓ Decoupling
+
+✓ Horizontal scalability
+
+✓ Replay
+
+✓ Fault isolation
+
+✓ Consumer independence
+
+✓ Ordering within partitions
+
+---
+
+# High-Level Architecture
+
+```
+              Event Producer
+
+                     │
+
+                     ▼
+
+          Event Ingestion Service
+
+                     │
+
+                     ▼
+
+                Kafka Producer
+
+                     │
+
+                     ▼
+
+        ┌────────────────────────┐
+        │                        │
+        │        Kafka           │
+        │                        │
+        └────────────────────────┘
+
+          │         │         │
+
+          ▼         ▼         ▼
+
+   Validation   Processing   Analytics
+
+          │
+
+          ▼
+
+      Persistence
+```
+
+Notice
+
+The producer knows only Kafka.
+
+Consumers know only Kafka.
+
+Neither side knows about each other.
+
+This loose coupling is one of Kafka's biggest strengths.
+
+---
+
+# Topic Design
+
+Avoid placing all events into one topic.
+
+Bad
+
+```
+events
+```
+
+Better
+
+```
+orders
+
+payments
+
+notifications
+
+shipments
+
+audit
+```
+
+or
+
+```
+events.raw
+
+events.validated
+
+events.processed
+
+events.failed
+```
+
+Topic design should align with business domains or processing stages.
+
+---
+
+# Example Topic Flow
+
+```
+events.raw
+
+↓
+
+Validation Consumer
+
+↓
+
+events.validated
+
+↓
+
+Business Consumer
+
+↓
+
+events.processed
+```
+
+This allows replay of individual stages without replaying the entire pipeline.
+
+---
+
+# Message Structure
+
+Example
+
+```json
+{
+  "eventId":"evt-1001",
+  "eventType":"ORDER_CREATED",
+  "producerId":"order-service",
+  "timestamp":"2026-07-12T10:15:30Z",
+  "correlationId":"corr-789",
+  "payload":{
+      "orderId":"12345",
+      "customerId":"100",
+      "amount":250
+  }
+}
+```
+
+Metadata should be separated from business payload.
+
+---
+
+# Partition Strategy
+
+Choosing the correct partition key is one of the most important Kafka decisions.
+
+Kafka guarantees ordering **within a partition**, not across partitions.
+
+---
+
+## Poor Partition Key
+
+```
+Random UUID
+```
+
+Same customer's events may land in different partitions.
+
+Ordering is lost.
+
+---
+
+## Better Partition Keys
+
+Choose based on the business requirement.
+
+Examples
+
+```
+customerId
+
+accountId
+
+orderId
+
+deviceId
+
+tradeId
+```
+
+Example
+
+```
+hash(customerId)
+
+↓
+
+Partition 5
+```
+
+All events for that customer go to the same partition.
+
+---
+
+# Ordering
+
+Kafka guarantees
+
+```
+Ordering
+
+Within
+
+One Partition
+```
+
+Example
+
+```
+Customer123
+
+↓
+
+Partition 3
+
+↓
+
+Event1
+
+↓
+
+Event2
+
+↓
+
+Event3
+```
+
+Events are processed in order.
+
+Across different partitions, there is no ordering guarantee.
+
+---
+
+# How Many Partitions?
+
+Suppose
+
+```
+Peak
+
+6,000 Events/sec
+```
+
+One consumer can process
+
+```
+500 Events/sec
+```
+
+Required throughput
+
+```
+6000 / 500
+
+≈12 Consumers
+```
+
+Create at least
+
+```
+12 Partitions
+```
+
+Often we provision additional partitions for future growth.
+
+Example
+
+```
+24 Partitions
+```
+
+---
+
+# Consumer Groups
+
+A Consumer Group allows multiple consumers to process events in parallel.
+
+```
+Topic
+
+24 Partitions
+
+↓
+
+Consumer Group
+
+Validation
+
+↓
+
+Validation-1
+
+Validation-2
+
+Validation-3
+
+Validation-4
+```
+
+Kafka automatically distributes partitions among consumers.
+
+---
+
+# Scaling Consumers
+
+Example
+
+```
+24 Partitions
+
+↓
+
+6 Consumers
+
+↓
+
+4 Partitions Each
+```
+
+Increase consumers
+
+```
+24 Consumers
+
+↓
+
+1 Partition Each
+```
+
+Horizontal scaling becomes simple.
+
+---
+
+# Multiple Consumer Groups
+
+Different services consume the same topic independently.
+
+```
+events.processed
+
+        │
+
+ ┌──────┼────────┬─────────┐
+
+ ▼      ▼        ▼         ▼
+
+Billing Reporting Search Analytics
+```
+
+Each consumer group maintains its own offset.
+
+One service does not affect another.
+
+---
+
+# Producer Configuration
+
+Typical producer settings
+
+```
+acks=all
+
+enable.idempotence=true
+
+compression=lz4
+
+linger.ms=5
+
+batch.size=64KB
+```
+
+---
+
+## Why acks=all?
+
+Leader waits for replicas before acknowledging.
+
+Improves durability.
+
+---
+
+## Why Idempotent Producer?
+
+Suppose
+
+```
+Producer
+
+↓
+
+Timeout
+
+↓
+
+Retry
+```
+
+Without idempotence
+
+```
+Duplicate Kafka Messages
+```
+
+With idempotence
+
+Kafka stores only one copy.
+
+Important
+
+Producer idempotence only prevents duplicate writes **between the producer and Kafka**.
+
+It does **not** eliminate duplicate business events coming from producers.
+
+Application-level idempotency is still required.
+
+---
+
+# Replication
+
+Each partition has multiple replicas.
+
+Example
+
+```
+Partition 3
+
+↓
+
+Leader
+
+↓
+
+Follower
+
+↓
+
+Follower
+```
+
+Replication Factor
+
+```
+3
+```
+
+If the leader fails,
+
+Kafka elects a follower as the new leader.
+
+No data loss (assuming ISR is healthy).
+
+---
+
+# ISR (In-Sync Replicas)
+
+ISR represents replicas that are fully caught up with the leader.
+
+```
+Leader
+
+Follower1
+
+Follower2
+```
+
+If Follower2 falls behind,
+
+it leaves the ISR.
+
+Kafka only acknowledges writes according to the configured acknowledgment policy.
+
+---
+
+# Offsets
+
+Every event receives an offset.
+
+Example
+
+```
+Partition 2
+
+Offset
+
+100
+
+101
+
+102
+
+103
+```
+
+Consumers commit offsets after successful processing.
+
+---
+
+# Consumer Failure
+
+Suppose a consumer crashes after processing offset
+
+```
+101
+```
+
+After restart
+
+Kafka resumes from
+
+```
+102
+```
+
+No events are lost.
+
+---
+
+# Replay
+
+Replay is one of Kafka's biggest strengths.
+
+Suppose
+
+```
+Analytics Service
+
+↓
+
+Bug
+```
+
+Fix deployed.
+
+Reset consumer offset.
+
+Replay
+
+```
+events.processed
+```
+
+No producer involvement is required.
+
+---
+
+# Retry Strategy
+
+Not every failure should immediately go to a DLQ.
+
+Transient failures
+
+- Database unavailable
+- Temporary network issue
+- External API timeout
+
+Retry
+
+↓
+
+Exponential Backoff
+
+↓
+
+Retry Topic (optional)
+
+↓
+
+Process Again
+
+---
+
+# Dead Letter Queue (DLQ)
+
+Permanent failures should be isolated.
+
+Examples
+
+- Invalid schema
+- Corrupt payload
+- Unsupported event version
+
+Flow
+
+```
+Consumer
+
+↓
+
+Retry
+
+↓
+
+Retry
+
+↓
+
+Retry
+
+↓
+
+events.dlq
+```
+
+Operations teams investigate later.
+
+---
+
+# Schema Registry
+
+As events evolve,
+
+schemas change.
+
+Version 1
+
+```json
+{
+   "customerId":"100"
+}
+```
+
+Version 2
+
+```json
+{
+   "customerId":"100",
+   "customerTier":"Gold"
+}
+```
+
+Schema Registry ensures
+
+- Version compatibility
+- Backward compatibility
+- Forward compatibility
+- Producer/Consumer validation
+
+This prevents consumers from breaking when schemas evolve.
+
+---
+
+# Backpressure
+
+Suppose producers send
+
+```
+20,000 Events/sec
+```
+
+Consumers process
+
+```
+8,000 Events/sec
+```
+
+Kafka absorbs the burst.
+
+Consumers gradually catch up.
+
+Consumer lag increases temporarily, but no events are lost.
+
+This ability to absorb traffic spikes is a major advantage of Kafka.
+
+---
+
+# Monitoring Kafka
+
+Key metrics
+
+- Producer Throughput
+- Consumer Throughput
+- Consumer Lag
+- Broker Health
+- Partition Utilization
+- ISR Count
+- Replication Lag
+- DLQ Size
+- Retry Rate
+- Failed Publishes
+
+Alert when
+
+- Consumer lag grows rapidly
+- Brokers become unavailable
+- ISR shrinks
+- DLQ increases unexpectedly
+
+---
+
+# Design Trade-offs
+
+## More Partitions
+
+Advantages
+
+- Higher parallelism
+- Better scalability
+
+Trade-off
+
+- More broker overhead
+- More partition management
+
+---
+
+## Larger Batch Size
+
+Advantages
+
+- Better throughput
+- Lower network overhead
+
+Trade-off
+
+- Higher latency
+
+---
+
+## Higher Replication Factor
+
+Advantages
+
+- Better durability
+- Higher availability
+
+Trade-off
+
+- More storage
+- Slower writes
+
+---
+
+# Interview Talking Points
+
+> Kafka decouples event ingestion from downstream processing, allowing producers and consumers to evolve independently while providing durable storage and replay capabilities.
+
+> Choosing the correct partition key is critical because Kafka guarantees ordering only within a partition. We typically partition by a business identifier such as `customerId`, `accountId`, or `orderId`, depending on the ordering requirements.
+
+> Multiple consumer groups allow independent services such as billing, reporting, analytics, and notifications to process the same event stream without interfering with one another.
+
+> Producer idempotence prevents duplicate writes caused by producer retries, but application-level idempotency is still required because duplicate business events can originate upstream.
+
+> Replay is one of Kafka's strongest capabilities. If a downstream service fails or business logic changes, we can reset consumer offsets and reprocess historical events without asking producers to resend data.
+
+---
+
+# Next Chapter
+
+# Part 4 – Event Processing Pipeline
+
+Topics
+
+- Validation
+- Deduplication
+- Ordering
+- Business Processing
+- Enrichment
+- Persistence
+- Publishing Processed Events
+- Retry
+- DLQ
+- Idempotent Consumers
+- Exactly-Once Processing
+
+# High Throughput Event Processing Platform
+
+# Part 4 – Event Processing Pipeline
+
+> The Event Processing Pipeline is the heart of the platform. Once events are durably stored in Kafka, they flow through a series of independent processing stages. Each stage has a single responsibility, communicates through Kafka, and can be scaled independently.
+
+---
+
+# Overview
+
+The goal of the processing pipeline is to transform raw events into processed business events.
+
+Responsibilities include
+
+- Validation
+- Deduplication
+- Ordering
+- Business Processing
+- Persistence
+- Publishing downstream events
+
+Rather than implementing everything in one large service, we split the pipeline into independent stages.
+
+---
+
+# High-Level Pipeline
+
+```
+                    Kafka
+
+                      │
+
+                      ▼
+
+              Validation Service
+
+                      │
+
+                      ▼
+
+            Deduplication Service
+
+                      │
+
+                      ▼
+
+              Business Processing
+
+                      │
+
+                      ▼
+
+             Persistence Service
+
+                      │
+
+                      ▼
+
+             events.processed
+
+        ┌─────────┼─────────┬───────────┐
+
+        ▼         ▼         ▼           ▼
+
+    Reporting  Analytics  Search  Notifications
+```
+
+Each stage is independently deployable and scalable.
+
+---
+
+# Why Multiple Processing Stages?
+
+Instead of
+
+```
+Consumer
+
+↓
+
+Everything
+```
+
+we use
+
+```
+Validation
+
+↓
+
+Deduplication
+
+↓
+
+Business Logic
+
+↓
+
+Persistence
+```
+
+Advantages
+
+- Easier maintenance
+- Better scalability
+- Fault isolation
+- Independent deployment
+- Replay individual stages
+
+---
+
+# Stage 1 – Validation Service
+
+Purpose
+
+Ensure the event is structurally valid before processing.
+
+---
+
+## Responsibilities
+
+Validate
+
+- Required fields
+- Event version
+- Schema
+- Data types
+- Mandatory metadata
+
+Example
+
+Required
+
+```
+eventId
+
+eventType
+
+timestamp
+
+payload
+```
+
+---
+
+## Invalid Event
+
+Example
+
+```json
+{
+   "eventId":"123",
+   "amount":"ABC"
+}
+```
+
+Invalid amount.
+
+Do not continue processing.
+
+Instead
+
+```
+events.dlq
+```
+
+---
+
+# Why Validate Early?
+
+Without validation,
+
+invalid events reach downstream systems.
+
+This creates
+
+- inconsistent databases
+- failed consumers
+- difficult debugging
+
+Validation should always be the first processing stage.
+
+---
+
+# Stage 2 – Deduplication
+
+Duplicate events are inevitable.
+
+Causes
+
+- Producer retries
+- Network failures
+- Consumer retries
+- Manual replay
+
+The platform must safely process duplicates.
+
+---
+
+# Deduplication Key
+
+Choose a business identifier.
+
+Examples
+
+```
+eventId
+
+transactionId
+
+orderId
+
+tradeId
+```
+
+---
+
+# Example
+
+Incoming
+
+```
+evt100
+
+evt100
+
+evt100
+```
+
+After deduplication
+
+```
+evt100
+```
+
+Only one business event is processed.
+
+---
+
+# How to Implement?
+
+Several approaches exist.
+
+## Option 1
+
+Database Constraint
+
+```sql
+UNIQUE(eventId)
+```
+
+Simple
+
+Reliable
+
+---
+
+## Option 2
+
+Redis Cache
+
+Store recently processed IDs.
+
+Advantages
+
+Very fast
+
+Trade-off
+
+Cache eviction
+
+---
+
+## Option 3
+
+Idempotency Table
+
+```
+ProcessedEvents
+
+eventId
+
+processedTime
+```
+
+Common in financial systems.
+
+---
+
+# Interview Line
+
+> Consumers should always be idempotent because retries and replay are expected in distributed systems.
+
+---
+
+# Stage 3 – Business Processing
+
+This stage contains
+
+domain-specific logic.
+
+Examples
+
+Payment
+
+```
+Calculate Fees
+```
+
+Trading
+
+```
+Allocate Trades
+```
+
+Orders
+
+```
+Reserve Inventory
+```
+
+Fraud
+
+```
+Compute Risk Score
+```
+
+Business logic should remain isolated from infrastructure concerns.
+
+---
+
+# External Dependencies
+
+Sometimes business logic calls
+
+- Pricing Service
+- Customer Service
+- Fraud Service
+- Exchange Rates
+- ML Model
+
+Always protect external calls.
+
+Use
+
+- Timeouts
+- Retries
+- Circuit Breakers
+
+Never allow one slow dependency to block the pipeline.
+
+---
+
+# Stage 4 – Persistence
+
+Business processing completed.
+
+Now persist results.
+
+Responsibilities
+
+- Insert records
+- Update existing records
+- Maintain audit history
+
+---
+
+# Transaction
+
+Typical flow
+
+```
+Insert Event
+
+↓
+
+Update Business Tables
+
+↓
+
+Commit
+```
+
+Only after commit
+
+↓
+
+Publish downstream event.
+
+---
+
+# Why Publish After Commit?
+
+Incorrect
+
+```
+Publish Kafka
+
+↓
+
+Database Commit
+```
+
+Consumer may receive an event
+
+before
+
+the database transaction succeeds.
+
+Correct
+
+```
+Database Commit
+
+↓
+
+Publish Kafka
+```
+
+This avoids inconsistencies.
+
+(We'll improve this further using the Outbox Pattern in a later chapter.)
+
+---
+
+# Publishing Processed Events
+
+After persistence
+
+publish
+
+```
+events.processed
+```
+
+Consumers
+
+- Reporting
+- Analytics
+- Notifications
+- Search
+- ML
+
+subscribe independently.
+
+---
+
+# Event Choreography
+
+Example
+
+```
+Order Created
+
+↓
+
+Inventory
+
+↓
+
+Payment
+
+↓
+
+Shipping
+
+↓
+
+Notification
+```
+
+No orchestration required.
+
+Each service reacts to events.
+
+---
+
+# Retry Strategy
+
+Not every failure is permanent.
+
+Examples
+
+- Temporary database outage
+- External API timeout
+- Network issue
+
+Retry
+
+↓
+
+Exponential Backoff
+
+↓
+
+Retry Topic (optional)
+
+↓
+
+Process Again
+
+---
+
+# Exponential Backoff
+
+Example
+
+```
+Retry 1
+
+30 sec
+
+Retry 2
+
+60 sec
+
+Retry 3
+
+120 sec
+```
+
+Avoid immediate retries.
+
+This reduces pressure on downstream systems.
+
+---
+
+# Dead Letter Queue
+
+Permanent failures
+
+↓
+
+DLQ
+
+Examples
+
+- Invalid schema
+- Unsupported version
+- Corrupted payload
+
+Flow
+
+```
+Processing
+
+↓
+
+Retry
+
+↓
+
+Retry
+
+↓
+
+Retry
+
+↓
+
+events.dlq
+```
+
+Operations investigate later.
+
+---
+
+# Idempotent Consumers
+
+Consumers should produce
+
+the same result
+
+whether they process an event
+
+once
+
+or
+
+multiple times.
+
+Example
+
+```
+evt100
+
+↓
+
+Insert Row
+
+↓
+
+Replay
+
+↓
+
+No Duplicate Row
+```
+
+Implementation
+
+- Unique constraints
+- UPSERT
+- Idempotency table
+
+---
+
+# Exactly-Once Processing
+
+This is a common interview topic.
+
+There are three delivery guarantees.
+
+---
+
+## At Most Once
+
+```
+No Retries
+
+Possible Data Loss
+```
+
+---
+
+## At Least Once
+
+```
+Retries
+
+Possible Duplicates
+```
+
+Most Kafka systems use this model.
+
+---
+
+## Exactly Once
+
+Business effect occurs only once.
+
+Kafka supports
+
+- Idempotent Producers
+- Transactions
+
+However,
+
+application-level idempotency is still required.
+
+---
+
+# Ordering
+
+Kafka guarantees ordering
+
+within a partition.
+
+Suppose
+
+```
+Customer100
+
+↓
+
+Partition3
+
+↓
+
+Event1
+
+↓
+
+Event2
+
+↓
+
+Event3
+```
+
+Business processing preserves order.
+
+---
+
+# Parallel Processing
+
+Different partitions
+
+↓
+
+Different consumers
+
+↓
+
+Parallel execution
+
+```
+Partition1
+
+↓
+
+Consumer1
+
+---------------
+
+Partition2
+
+↓
+
+Consumer2
+
+---------------
+
+Partition3
+
+↓
+
+Consumer3
+```
+
+Excellent scalability.
+
+---
+
+# Failure Recovery
+
+Suppose
+
+Business Processing crashes.
+
+Kafka
+
+↓
+
+Offset not committed
+
+↓
+
+Restart
+
+↓
+
+Reprocess Event
+
+No data loss.
+
+---
+
+# Replay
+
+Suppose
+
+Business logic changes.
+
+Reset consumer offset.
+
+Replay
+
+```
+events.validated
+```
+
+No producer involvement required.
+
+---
+
+# Monitoring
+
+Track
+
+- Processing latency
+- Consumer lag
+- Retry count
+- DLQ count
+- Processing throughput
+- Failed events
+- Business errors
+
+Alert when
+
+- DLQ grows
+- Retry rate spikes
+- Consumer lag increases
+
+---
+
+# Design Principles
+
+Every processing stage follows
+
+## Single Responsibility
+
+Each service performs one job.
+
+---
+
+## Stateless
+
+No local state.
+
+State belongs in Kafka and databases.
+
+---
+
+## Idempotent
+
+Duplicate events produce the same business result.
+
+---
+
+## Replayable
+
+Historical events can be processed again.
+
+---
+
+## Horizontally Scalable
+
+Simply add more consumers.
+
+---
+
+# Design Trade-offs
+
+## Small Services
+
+Advantages
+
+- Independent deployment
+- Easier scaling
+- Better ownership
+
+Trade-off
+
+- More network hops
+- Operational complexity
+
+---
+
+## Retry vs DLQ
+
+Retry
+
+Good for
+
+Temporary failures
+
+DLQ
+
+Good for
+
+Permanent failures
+
+---
+
+## Synchronous Processing
+
+Advantages
+
+Simple
+
+Trade-off
+
+Poor scalability
+
+---
+
+## Event-Driven Processing
+
+Advantages
+
+Highly scalable
+
+Fault tolerant
+
+Replay
+
+Trade-off
+
+Eventual consistency
+
+---
+
+# Interview Talking Points
+
+> The processing pipeline is implemented as a series of independent Kafka consumers, each responsible for a single stage such as validation, deduplication, business processing, or persistence. This separation improves scalability, replayability, and fault isolation.
+
+> Every consumer is designed to be idempotent because retries and replay are expected in distributed systems. Techniques such as unique database constraints, UPSERT operations, or idempotency tables prevent duplicate business effects.
+
+> Business logic is isolated from infrastructure concerns. External dependencies are protected using timeouts, retries, and circuit breakers to prevent cascading failures.
+
+> Processed events are published only after successful database persistence, ensuring downstream consumers never observe data that hasn't been durably committed.
+
+> Kafka's partitioning model allows parallel processing while preserving ordering for related events, providing both scalability and correctness.
+
+---
+
+# Next Chapter
+
+# Part 5 – Database Design, CQRS & Storage Architecture
+
+Topics
+
+- Database Selection
+- OLTP vs NoSQL
+- CQRS
+- Read Models
+- Redis
+- Snowflake
+- Partitioning
+- Sharding
+- Read Replicas
+- Storage Trade-offs
+
+# High Throughput Event Processing Platform
+
+# Part 5 – Database Design, CQRS & Storage Architecture
+
+> The storage layer is responsible for durably persisting processed events while supporting high write throughput, low-latency reads, analytics, replay, and horizontal scalability. A single database is rarely sufficient, so we use different storage technologies for different workloads.
+
+---
+
+# Overview
+
+After an event successfully passes through the processing pipeline, it must be persisted.
+
+The storage layer has several responsibilities:
+
+- Store processed events
+- Maintain business state
+- Serve read APIs
+- Support analytics
+- Support replay
+- Support auditing
+
+Instead of using one database for everything, we separate storage based on workload.
+
+---
+
+# Storage Architecture
+
+```
+                Processing Pipeline
+
+                        │
+
+                        ▼
+
+               OLTP Database
+             (PostgreSQL/MySQL)
+
+                        │
+
+        ┌───────────────┼──────────────┐
+
+        ▼               ▼              ▼
+
+      Redis        Read Models     Outbox
+
+        │
+
+        ▼
+
+     Read APIs
+
+                        │
+
+                        ▼
+
+                  Kafka Events
+
+                        │
+
+                        ▼
+
+          Analytics Pipeline
+
+                        │
+
+                        ▼
+
+         Snowflake / BigQuery
+```
+
+---
+
+# Why Multiple Storage Systems?
+
+Every database has strengths and weaknesses.
+
+Trying to solve every problem with one database usually results in poor performance.
+
+| Storage | Purpose |
+|----------|----------|
+| PostgreSQL | Source of Truth |
+| Redis | Low latency reads |
+| Snowflake | Analytics |
+| Kafka | Event propagation |
+| Object Storage | Long-term archival |
+
+Each storage system is optimized for a different workload.
+
+---
+
+# Source of Truth
+
+The OLTP database is the authoritative source of business state.
+
+Examples
+
+```
+Orders
+
+Trades
+
+Payments
+
+Users
+
+Accounts
+```
+
+If Redis is lost,
+
+the database can rebuild it.
+
+If analytics is lost,
+
+the database remains correct.
+
+---
+
+# Database Choice
+
+The choice depends on the workload.
+
+---
+
+## PostgreSQL
+
+Best for
+
+- ACID transactions
+- Financial systems
+- Strong consistency
+- Relational data
+
+Examples
+
+- Payments
+- Orders
+- Trading
+- Banking
+
+---
+
+## Cassandra
+
+Best for
+
+- Massive write throughput
+- Time-series events
+- Event logs
+
+Trade-off
+
+Eventually consistent.
+
+---
+
+## DynamoDB
+
+Best for
+
+- Key-value access
+- Cloud-native workloads
+- Automatic scaling
+
+---
+
+## ClickHouse
+
+Best for
+
+- Analytical queries
+- Event analytics
+- Large aggregations
+
+---
+
+# Example Data Model
+
+Suppose
+
+```
+Order Processing
+```
+
+Events Table
+
+| Column | Description |
+|---------|-------------|
+| eventId | Primary Key |
+| eventType | Event Type |
+| producerId | Producer |
+| payload | Event Payload |
+| status | Processing Status |
+| createdAt | Timestamp |
+
+---
+
+Business Table
+
+Example
+
+Orders
+
+| orderId | customerId | amount | status |
+
+Business tables represent the current state.
+
+Events represent what happened.
+
+---
+
+# Why Store Events?
+
+Even after updating business tables,
+
+store the original event.
+
+Benefits
+
+- Replay
+- Audit
+- Debugging
+- Historical analysis
+
+This is similar to Event Sourcing,
+
+although we're not implementing full Event Sourcing here.
+
+---
+
+# Read vs Write Workloads
+
+Most systems have different read and write patterns.
+
+Example
+
+```
+Writes
+
+↓
+
+Processing
+
+↓
+
+Reads
+
+Dashboard
+
+Reporting
+
+Search
+```
+
+Optimizing both with one schema is difficult.
+
+---
+
+# CQRS
+
+CQRS stands for
+
+```
+Command Query Responsibility Segregation
+```
+
+Separate
+
+```
+Write Model
+
+and
+
+Read Model
+```
+
+---
+
+# Without CQRS
+
+```
+API
+
+↓
+
+Database
+
+↓
+
+Reads
+
+Writes
+```
+
+Both compete for resources.
+
+---
+
+# With CQRS
+
+```
+Commands
+
+↓
+
+Write Database
+
+↓
+
+Kafka
+
+↓
+
+Read Model
+
+↓
+
+Read APIs
+```
+
+Write path
+
+↓
+
+Optimized for correctness.
+
+Read path
+
+↓
+
+Optimized for speed.
+
+---
+
+# Write Path
+
+```
+Event
+
+↓
+
+Business Processing
+
+↓
+
+PostgreSQL
+```
+
+The write model owns business transactions.
+
+---
+
+# Read Path
+
+```
+Kafka
+
+↓
+
+Projection Service
+
+↓
+
+Redis
+
+↓
+
+Dashboard
+```
+
+Read models are derived from the write model.
+
+---
+
+# Why CQRS?
+
+Advantages
+
+- Independent scaling
+- Different schemas
+- Faster queries
+- Better separation of concerns
+
+Trade-off
+
+Eventual consistency.
+
+---
+
+# Read Models
+
+Instead of querying large transactional tables,
+
+build optimized read models.
+
+Example
+
+Dashboard
+
+```
+Customer Summary
+
+Current Balance
+
+Last 10 Events
+
+Recent Orders
+```
+
+Designed specifically for read APIs.
+
+---
+
+# Redis
+
+Redis caches
+
+- Dashboard
+- Frequently accessed entities
+- Read models
+- Session data
+
+Example
+
+```
+dashboard:customer100
+```
+
+Response
+
+```
+2–5 ms
+```
+
+instead of querying PostgreSQL.
+
+---
+
+# Cache Invalidation
+
+After database commit
+
+```
+Update Database
+
+↓
+
+Publish Event
+
+↓
+
+Projection Service
+
+↓
+
+Update Redis
+```
+
+Never update Redis before the database commit.
+
+---
+
+# Read Replicas
+
+Reads usually exceed writes.
+
+Architecture
+
+```
+Primary
+
+↓
+
+Replica1
+
+Replica2
+
+Replica3
+```
+
+Writes
+
+↓
+
+Primary
+
+Reads
+
+↓
+
+Replicas
+
+This significantly improves scalability.
+
+---
+
+# Partitioning
+
+Suppose
+
+```
+10 Billion Events
+```
+
+A single table becomes inefficient.
+
+Partition by
+
+```
+Date
+
+or
+
+Hash(eventId)
+```
+
+Benefits
+
+- Faster scans
+- Smaller indexes
+- Easier maintenance
+
+---
+
+# Sharding
+
+Eventually
+
+one database server is not enough.
+
+Shard by
+
+```
+customerId
+
+accountId
+
+tenantId
+```
+
+Example
+
+```
+Shard1
+
+Customers A–M
+
+------------------
+
+Shard2
+
+Customers N–Z
+```
+
+Each shard owns a subset of data.
+
+---
+
+# Archival
+
+Suppose
+
+```
+10 Years
+
+of Events
+```
+
+Keep
+
+```
+Recent Data
+
+↓
+
+PostgreSQL
+```
+
+Older events
+
+↓
+
+Object Storage
+
+↓
+
+S3
+
+↓
+
+Data Lake
+
+Supports
+
+- Replay
+- Compliance
+- Analytics
+
+---
+
+# Analytics Database
+
+Analytical queries should never run on the production database.
+
+Instead
+
+```
+events.processed
+
+↓
+
+Kafka
+
+↓
+
+Analytics Pipeline
+
+↓
+
+Snowflake
+
+BigQuery
+
+ClickHouse
+```
+
+Used for
+
+- Business Intelligence
+- Trend Analysis
+- Machine Learning
+- Historical Reports
+
+---
+
+# Database Transactions
+
+Example
+
+```
+Insert Event
+
+↓
+
+Update Business Table
+
+↓
+
+Commit
+```
+
+Only after successful commit
+
+↓
+
+Publish downstream event.
+
+This prevents inconsistencies.
+
+(The Outbox Pattern will improve this further.)
+
+---
+
+# Scaling Strategy
+
+Start simple
+
+```
+One Database
+```
+
+↓
+
+Read Replicas
+
+↓
+
+Partitioning
+
+↓
+
+Sharding
+
+↓
+
+Distributed Database
+
+Scale incrementally.
+
+---
+
+# Monitoring Storage
+
+Monitor
+
+- Write latency
+- Read latency
+- Replication lag
+- Cache hit ratio
+- Slow queries
+- Connection pool
+- Storage utilization
+- Lock contention
+
+Alerts
+
+- Replica lag
+- Disk usage
+- Failed writes
+- High query latency
+
+---
+
+# Design Trade-offs
+
+## Relational Database
+
+Advantages
+
+- ACID
+- Constraints
+- Transactions
+
+Trade-off
+
+Scaling writes becomes harder.
+
+---
+
+## NoSQL
+
+Advantages
+
+- Massive scalability
+- Flexible schema
+
+Trade-off
+
+Weaker consistency.
+
+---
+
+## CQRS
+
+Advantages
+
+- Independent read/write scaling
+- Faster queries
+- Better performance
+
+Trade-off
+
+Eventual consistency
+More operational complexity
+
+---
+
+## Redis
+
+Advantages
+
+- Very low latency
+- Reduced database load
+
+Trade-off
+
+Cache invalidation
+Additional infrastructure
+
+---
+
+# Interview Talking Points
+
+> The OLTP database serves as the source of truth for business state, while Redis and read models are derived views optimized for query performance.
+
+> I separate read and write workloads using CQRS. Commands update the write database, while events are used to build optimized read models asynchronously.
+
+> Read replicas improve read scalability, partitioning improves large-table performance, and sharding is introduced only when a single database can no longer handle write throughput.
+
+> Analytics workloads are isolated from transactional workloads by streaming processed events into an analytics database such as Snowflake or ClickHouse.
+
+> Every storage technology serves a specific purpose—PostgreSQL for consistency, Redis for speed, Kafka for propagation, and analytical databases for large-scale reporting.
+
+---
+
+# Next Chapter
+
+# Part 6 – Outbox Pattern & Exactly-Once Processing
+
+Topics
+
+- Dual Write Problem
+- Outbox Pattern
+- Outbox Publisher
+- Transaction Boundaries
+- Exactly-Once Semantics
+- Idempotent Consumers
+- Producer Idempotence
+- Kafka Transactions
+- Trade-offs
+
+# High Throughput Event Processing Platform
+
+# Part 6 – Outbox Pattern & Exactly-Once Processing
+
+> One of the most common failure scenarios in distributed systems is the **Dual Write Problem**. A service often needs to update its database and publish an event to Kafka. If one succeeds and the other fails, the system becomes inconsistent. The Outbox Pattern solves this problem by making database updates and event publication reliable.
+
+---
+
+# The Dual Write Problem
+
+Consider a simple order processing service.
+
+```
+Order Created
+
+↓
+
+Update Database
+
+↓
+
+Publish Kafka Event
+```
+
+Looks simple.
+
+Unfortunately, failures can happen between these two operations.
+
+---
+
+# Scenario 1
+
+Database succeeds
+
+Kafka publish fails
+
+```
+Update Database
+
+✓
+
+↓
+
+Publish Kafka
+
+✗
+```
+
+Result
+
+The order exists in the database,
+
+but downstream services never receive the event.
+
+Inventory
+
+Shipping
+
+Notifications
+
+Analytics
+
+remain unaware.
+
+---
+
+# Scenario 2
+
+Kafka succeeds
+
+Database fails
+
+```
+Publish Kafka
+
+✓
+
+↓
+
+Database Commit
+
+✗
+```
+
+Consumers receive an event
+
+for data that doesn't exist.
+
+This is even worse.
+
+---
+
+# Why is this difficult?
+
+Because
+
+```
+Database
+
+and
+
+Kafka
+```
+
+are two different distributed systems.
+
+A normal database transaction cannot span both.
+
+---
+
+# Naive Solution
+
+Retry Kafka publishing.
+
+```
+DB
+
+↓
+
+Kafka
+
+↓
+
+Retry
+```
+
+Problems
+
+- Duplicate events
+- Lost events
+- Complex error handling
+
+Still not reliable.
+
+---
+
+# The Outbox Pattern
+
+Instead of writing to
+
+```
+Database
+
++
+
+Kafka
+```
+
+inside the same code path,
+
+write to
+
+```
+Database
+
++
+
+Outbox Table
+```
+
+inside one database transaction.
+
+A separate publisher later sends events to Kafka.
+
+---
+
+# High-Level Architecture
+
+```
+Business Service
+
+       │
+
+       ▼
+
+Database Transaction
+
+       │
+
+ ┌─────┴─────────────┐
+
+ ▼                   ▼
+
+Business Table   Outbox Table
+
+                       │
+
+                       ▼
+
+               Outbox Publisher
+
+                       │
+
+                       ▼
+
+                    Kafka
+```
+
+Notice
+
+The application never writes directly to Kafka.
+
+---
+
+# What is the Outbox Table?
+
+It is a normal database table.
+
+Example
+
+| Column | Description |
+|---------|-------------|
+| outboxId | Primary Key |
+| eventId | Unique Event ID |
+| eventType | Event Type |
+| payload | Serialized Event |
+| status | NEW / SENT |
+| createdAt | Timestamp |
+
+---
+
+# Database Transaction
+
+Suppose an order is created.
+
+Inside one transaction
+
+```
+BEGIN
+
+↓
+
+Insert Order
+
+↓
+
+Insert Outbox Row
+
+↓
+
+COMMIT
+```
+
+Either both succeed
+
+or both fail.
+
+Atomicity is guaranteed.
+
+---
+
+# Example
+
+```
+BEGIN
+
+Insert Order
+
+Insert Outbox Event
+
+COMMIT
+```
+
+Result
+
+```
+Orders
+
+✓
+
+Outbox
+
+✓
+```
+
+No inconsistency.
+
+---
+
+# Outbox Publisher
+
+A separate service continuously scans
+
+```
+Outbox Table
+```
+
+for new rows.
+
+Flow
+
+```
+Outbox
+
+↓
+
+Publisher
+
+↓
+
+Kafka
+
+↓
+
+Mark SENT
+```
+
+---
+
+# Publisher Flow
+
+```
+Read NEW Rows
+
+↓
+
+Publish Kafka
+
+↓
+
+Success?
+
+      │
+
+ ┌────┴────┐
+
+ ▼         ▼
+
+Yes        No
+
+ │          │
+
+ ▼          ▼
+
+Mark SENT Retry Later
+```
+
+---
+
+# Why is this reliable?
+
+Suppose the publisher crashes.
+
+```
+Publish
+
+↓
+
+Crash
+```
+
+Row still exists in the Outbox.
+
+Publisher restarts.
+
+Reads NEW rows again.
+
+Nothing is lost.
+
+---
+
+# Duplicate Publish
+
+Suppose Kafka receives the event,
+
+but the publisher crashes before updating
+
+```
+status = SENT
+```
+
+After restart
+
+Publisher republishes.
+
+Duplicate event appears.
+
+Is this okay?
+
+Yes.
+
+Because consumers are idempotent.
+
+Exactly-once effects
+
+are achieved through idempotent consumers,
+
+not by assuming duplicate events never occur.
+
+---
+
+# Cleaning the Outbox
+
+After successful publication,
+
+rows can be
+
+- Deleted
+- Archived
+- Marked SENT
+
+Many systems periodically archive processed rows.
+
+---
+
+# Polling vs CDC
+
+How does the Outbox Publisher detect new rows?
+
+There are two common approaches.
+
+---
+
+## Option 1 – Polling
+
+```
+Every Second
+
+↓
+
+SELECT *
+
+FROM Outbox
+
+WHERE status='NEW'
+```
+
+Advantages
+
+- Simple
+- Easy to implement
+
+Trade-off
+
+Small polling delay.
+
+---
+
+## Option 2 – Change Data Capture (CDC)
+
+Use tools like
+
+```
+Debezium
+```
+
+Database changes
+
+↓
+
+Captured automatically
+
+↓
+
+Kafka
+
+No polling required.
+
+Advantages
+
+- Near real-time
+- Efficient
+- Highly scalable
+
+Trade-off
+
+More operational complexity.
+
+---
+
+# Exactly-Once Processing
+
+Interviewers frequently ask
+
+"What does exactly-once mean?"
+
+Many engineers misunderstand it.
+
+---
+
+# Three Delivery Guarantees
+
+---
+
+## At Most Once
+
+```
+No Retry
+
+Possible Data Loss
+```
+
+---
+
+## At Least Once
+
+```
+Retry
+
+Possible Duplicates
+```
+
+Most distributed systems operate here.
+
+---
+
+## Exactly Once
+
+Business effect happens only once.
+
+Example
+
+```
+Customer Charged
+
+Exactly Once
+```
+
+even if duplicate messages arrive.
+
+---
+
+# Does Kafka Provide Exactly Once?
+
+Kafka provides
+
+- Idempotent Producers
+- Transactions
+
+These prevent
+
+producer duplicates
+
+and
+
+coordinate writes across Kafka topics.
+
+However,
+
+Kafka alone cannot guarantee
+
+exactly-once business processing.
+
+Application logic still matters.
+
+---
+
+# Idempotent Consumers
+
+Consumers must safely handle duplicate events.
+
+Example
+
+```
+OrderCreated
+
+↓
+
+Replay
+
+↓
+
+Replay
+
+↓
+
+Replay
+```
+
+Final database state
+
+```
+One Order
+```
+
+not three.
+
+---
+
+# How to Build Idempotent Consumers?
+
+Common approaches
+
+## Unique Constraint
+
+```sql
+UNIQUE(eventId)
+```
+
+---
+
+## UPSERT
+
+```sql
+INSERT ...
+
+ON CONFLICT
+
+DO UPDATE
+```
+
+---
+
+## Processed Events Table
+
+```
+ProcessedEvents
+
+eventId
+
+processedTime
+```
+
+Before processing
+
+↓
+
+Check table.
+
+If already processed
+
+↓
+
+Ignore.
+
+---
+
+# Transaction Boundary
+
+Ideal flow
+
+```
+Read Kafka
+
+↓
+
+Business Logic
+
+↓
+
+Database Transaction
+
+↓
+
+Commit
+
+↓
+
+Commit Kafka Offset
+```
+
+Important
+
+Only commit the Kafka offset
+
+after
+
+the database transaction succeeds.
+
+Otherwise
+
+messages may be lost.
+
+---
+
+# Failure Scenarios
+
+---
+
+## Scenario 1
+
+Database commit fails
+
+```
+No Offset Commit
+
+↓
+
+Kafka Redelivers
+```
+
+Safe.
+
+---
+
+## Scenario 2
+
+Kafka offset committed first
+
+↓
+
+Database fails
+
+Event lost.
+
+Never commit offsets before the database commit.
+
+---
+
+# Combining Outbox + Kafka
+
+Complete flow
+
+```
+Producer
+
+↓
+
+Kafka
+
+↓
+
+Consumer
+
+↓
+
+Database Transaction
+
+    │
+
+    ├── Business Tables
+
+    └── Outbox Table
+
+↓
+
+Commit
+
+↓
+
+Outbox Publisher
+
+↓
+
+Kafka
+
+↓
+
+Downstream Services
+```
+
+This pattern is used extensively in
+
+- Banking
+- Payments
+- Trading
+- E-commerce
+
+---
+
+# Monitoring
+
+Monitor
+
+- Outbox size
+- Publish latency
+- Failed publishes
+- Retry count
+- Duplicate publishes
+- Consumer idempotency failures
+
+Alert when
+
+- Outbox grows continuously
+- Publisher stops
+- Kafka publish failures increase
+
+---
+
+# Design Trade-offs
+
+## Direct Kafka Publish
+
+Advantages
+
+- Simple
+- Low latency
+
+Trade-off
+
+Dual-write problem.
+
+---
+
+## Outbox Pattern
+
+Advantages
+
+- Reliable
+- Atomic
+- No lost events
+- Industry standard
+
+Trade-off
+
+Additional table
+Additional publisher
+Operational complexity
+
+---
+
+## Polling
+
+Advantages
+
+- Easy
+
+Trade-off
+
+Polling latency
+
+---
+
+## CDC
+
+Advantages
+
+- Near real-time
+- Efficient
+
+Trade-off
+
+More infrastructure
+
+---
+
+# Interview Talking Points
+
+> The Outbox Pattern solves the dual-write problem by storing both the business update and the event in the same database transaction. A separate publisher asynchronously delivers outbox events to Kafka.
+
+> We never attempt to update the database and Kafka within the same application transaction because they are independent distributed systems without a shared transaction coordinator.
+
+> The Outbox Publisher can safely retry failed publications because downstream consumers are designed to be idempotent.
+
+> Kafka's exactly-once features prevent duplicate producer writes, but true exactly-once business behavior still requires idempotent consumers and careful transaction boundaries.
+
+> Kafka offsets should only be committed after the corresponding database transaction has successfully committed, ensuring that events are never lost during failures.
+
+---
+
+# Next Chapter
+
+# Part 7 – Reliability, Retry, DLQ & Replay
+
+Topics
+
+- Retry Strategies
+- Exponential Backoff
+- Retry Topics
+- Dead Letter Queue (DLQ)
+- Event Replay
+- Backpressure
+- Circuit Breakers
+- Rate Limiting
+- Failure Recovery
+- Operational Best Practices
+
+# High Throughput Event Processing Platform
+
+# Part 7 – Reliability, Retry, DLQ & Replay
+
+> In distributed systems, failures are inevitable. Services crash, databases become unavailable, networks experience intermittent issues, and downstream systems slow down. A robust event processing platform must be designed assuming failures are normal rather than exceptional. This chapter discusses how the platform maintains reliability through retries, dead-letter queues, replay, backpressure, and failure recovery.
+
+---
+
+# Reliability Principles
+
+The platform follows these principles.
+
+✓ Never lose events
+
+✓ Retry transient failures
+
+✓ Isolate permanent failures
+
+✓ Support replay
+
+✓ Process events idempotently
+
+✓ Prevent cascading failures
+
+---
+
+# Failure Scenarios
+
+Some common failures include
+
+- Database unavailable
+- Kafka broker failure
+- Consumer crash
+- Producer timeout
+- Network partition
+- External API failure
+- Invalid payload
+- High traffic spikes
+
+The architecture should continue operating despite these failures.
+
+---
+
+# High-Level Reliability Flow
+
+```
+              Kafka
+
+                │
+
+                ▼
+
+           Consumer
+
+                │
+
+       Process Event
+
+                │
+
+         ┌──────┴──────┐
+
+         ▼             ▼
+
+     Success         Failure
+
+         │             │
+
+         ▼             ▼
+
+ Commit Offset     Retry
+
+                         │
+
+                 ┌───────┴────────┐
+
+                 ▼                ▼
+
+          Retry Success      Retry Limit Exceeded
+
+                 │                │
+
+                 ▼                ▼
+
+          Commit Offset        Dead Letter Queue
+```
+
+---
+
+# Retry Strategy
+
+Not every failure should immediately move to the DLQ.
+
+Transient failures should be retried.
+
+Examples
+
+- Temporary database outage
+- Network timeout
+- External API unavailable
+- Service restart
+
+---
+
+# Exponential Backoff
+
+Instead of retrying immediately
+
+```
+Retry
+
+↓
+
+Retry
+
+↓
+
+Retry
+```
+
+increase the delay after each attempt.
+
+Example
+
+```
+Attempt 1
+
+30 sec
+
+Attempt 2
+
+60 sec
+
+Attempt 3
+
+120 sec
+
+Attempt 4
+
+240 sec
+```
+
+Benefits
+
+- Prevents retry storms
+- Gives downstream systems time to recover
+- Reduces unnecessary load
+
+---
+
+# Retry Topics
+
+Instead of blocking the main consumer,
+
+publish failed events to retry topics.
+
+```
+events.raw
+
+↓
+
+Consumer
+
+↓
+
+Failure
+
+↓
+
+events.retry.1
+
+↓
+
+Retry Consumer
+
+↓
+
+Failure
+
+↓
+
+events.retry.2
+
+↓
+
+Retry Consumer
+
+↓
+
+Success
+```
+
+Advantages
+
+- Main consumers continue processing
+- Retries do not block healthy traffic
+- Different retry delays can be configured
+
+---
+
+# Which Failures Should Be Retried?
+
+Retry
+
+✓ Database timeout
+
+✓ HTTP 503
+
+✓ Connection reset
+
+✓ Kafka temporarily unavailable
+
+Do Not Retry
+
+✗ Invalid schema
+
+✗ Unsupported version
+
+✗ Missing mandatory fields
+
+✗ Business validation failure
+
+Permanent failures belong in the DLQ.
+
+---
+
+# Dead Letter Queue (DLQ)
+
+The DLQ stores events that cannot be processed successfully after all retries are exhausted.
+
+```
+Consumer
+
+↓
+
+Retry
+
+↓
+
+Retry
+
+↓
+
+Retry
+
+↓
+
+events.dlq
+```
+
+DLQ events are never discarded.
+
+---
+
+# What Goes into the DLQ?
+
+Examples
+
+- Invalid payload
+- Corrupted data
+- Unknown event type
+- Serialization errors
+- Max retry exceeded
+
+Operations teams can inspect and replay these events later.
+
+---
+
+# DLQ Message Example
+
+```json
+{
+  "eventId":"evt-1001",
+  "failureReason":"INVALID_SCHEMA",
+  "retryCount":3,
+  "originalPayload":{
+      ...
+  }
+}
+```
+
+Include enough metadata to debug the failure.
+
+---
+
+# Replay
+
+Replay is one of the biggest advantages of Kafka.
+
+Suppose a bug is found in the Processing Service.
+
+Old events
+
+↓
+
+Need reprocessing.
+
+Instead of asking producers to resend data,
+
+reset the consumer offset.
+
+```
+Kafka
+
+↓
+
+Replay
+
+↓
+
+Processing Pipeline
+```
+
+No data is lost.
+
+---
+
+# Replay Scenarios
+
+Replay is useful when
+
+- Business logic changes
+- Bug fixes
+- New downstream consumer added
+- Analytics needs historical data
+- Read models need rebuilding
+
+---
+
+# Consumer Failure
+
+Suppose a consumer crashes while processing an event.
+
+```
+Kafka
+
+↓
+
+Consumer
+
+↓
+
+Crash
+```
+
+If the offset has not been committed,
+
+Kafka delivers the event again after restart.
+
+No events are lost.
+
+---
+
+# Offset Commit Strategy
+
+Correct flow
+
+```
+Read Event
+
+↓
+
+Business Logic
+
+↓
+
+Database Commit
+
+↓
+
+Commit Kafka Offset
+```
+
+Never commit the offset before processing succeeds.
+
+---
+
+# Kafka Broker Failure
+
+Kafka replicates partitions.
+
+Example
+
+```
+Partition
+
+Leader
+
+Follower
+
+Follower
+```
+
+If the leader fails,
+
+Kafka elects a follower.
+
+The producer continues publishing.
+
+---
+
+# Backpressure
+
+Suppose producers generate
+
+```
+20,000 Events/sec
+```
+
+Consumers process
+
+```
+8,000 Events/sec
+```
+
+Without buffering,
+
+the system collapses.
+
+With Kafka
+
+```
+Producer
+
+↓
+
+Kafka
+
+↓
+
+Consumers
+```
+
+Kafka absorbs the burst.
+
+Consumer lag grows temporarily,
+
+then decreases as consumers catch up.
+
+---
+
+# Consumer Lag
+
+Consumer Lag measures
+
+```
+Produced Offset
+
+-
+
+Consumed Offset
+```
+
+Large lag indicates consumers cannot keep up.
+
+Possible actions
+
+- Add more consumers
+- Increase partitions
+- Optimize processing
+- Increase consumer resources
+
+---
+
+# Bounded Queues
+
+Every service should use bounded queues.
+
+Instead of allowing unlimited memory growth,
+
+configure limits.
+
+```
+Queue Full
+
+↓
+
+Reject
+
+or
+
+Throttle
+```
+
+This prevents OutOfMemory errors.
+
+---
+
+# Rate Limiting
+
+Suppose one producer sends
+
+```
+100,000 Requests/sec
+```
+
+while others send
+
+```
+500 Requests/sec
+```
+
+Without limits,
+
+one producer could starve the platform.
+
+Apply rate limiting at the API Gateway.
+
+Example
+
+```
+1000 Requests/sec
+
+Per Producer
+```
+
+---
+
+# Circuit Breaker
+
+Suppose an external service becomes unavailable.
+
+Without protection
+
+```
+Request
+
+↓
+
+Timeout
+
+↓
+
+Retry
+
+↓
+
+Timeout
+
+↓
+
+Retry
+```
+
+Eventually
+
+all worker threads become blocked.
+
+Use a Circuit Breaker.
+
+```
+Failure Threshold Reached
+
+↓
+
+Circuit Opens
+
+↓
+
+Fail Fast
+
+↓
+
+Periodic Health Check
+
+↓
+
+Recover
+```
+
+Benefits
+
+- Prevents cascading failures
+- Protects worker threads
+- Allows downstream recovery
+
+---
+
+# Timeouts
+
+Every external dependency should have a timeout.
+
+Never wait indefinitely.
+
+Example
+
+```
+Pricing Service
+
+Timeout
+
+500 ms
+```
+
+If exceeded,
+
+retry or move to DLQ depending on business rules.
+
+---
+
+# Bulkheads
+
+Separate thread pools for different workloads.
+
+Example
+
+```
+Payments
+
+↓
+
+Thread Pool A
+
+-------------------
+
+Notifications
+
+↓
+
+Thread Pool B
+```
+
+A slow notification service should never block payment processing.
+
+---
+
+# Monitoring Reliability
+
+Important metrics
+
+- Retry Rate
+- DLQ Size
+- Consumer Lag
+- Failed Events
+- Throughput
+- Processing Latency
+- Timeout Count
+- Circuit Breaker State
+
+Alert when
+
+- DLQ grows continuously
+- Retry rate spikes
+- Consumer lag increases
+- Processing latency exceeds SLA
+
+---
+
+# Operational Recovery
+
+If the DLQ grows unexpectedly
+
+Operations should
+
+1. Identify root cause
+
+2. Deploy fix
+
+3. Replay affected events
+
+4. Verify successful processing
+
+This minimizes data loss and manual intervention.
+
+---
+
+# End-to-End Failure Recovery
+
+```
+Producer
+
+↓
+
+Kafka
+
+↓
+
+Consumer
+
+↓
+
+Database Timeout
+
+↓
+
+Retry Topic
+
+↓
+
+Retry Consumer
+
+↓
+
+Database Available
+
+↓
+
+Success
+
+↓
+
+Commit Offset
+```
+
+If retries fail
+
+```
+Retry Limit Exceeded
+
+↓
+
+DLQ
+
+↓
+
+Manual Investigation
+
+↓
+
+Replay
+```
+
+---
+
+# Design Trade-offs
+
+## Immediate Retry
+
+Advantages
+
+- Simple
+
+Trade-off
+
+Can overload downstream systems.
+
+---
+
+## Exponential Backoff
+
+Advantages
+
+- Reduces retry storms
+- Better system stability
+
+Trade-off
+
+Longer recovery time.
+
+---
+
+## DLQ
+
+Advantages
+
+- Prevents blocking
+- Isolates bad events
+
+Trade-off
+
+Requires operational monitoring.
+
+---
+
+## Replay
+
+Advantages
+
+- Recover from bugs
+- Rebuild downstream systems
+
+Trade-off
+
+Requires idempotent consumers.
+
+---
+
+# Interview Talking Points
+
+> Failures are expected in distributed systems, so the platform is designed around retries, replay, and idempotent processing rather than assuming every operation succeeds the first time.
+
+> Transient failures are retried using exponential backoff and retry topics, while permanent failures are routed to a Dead Letter Queue for later investigation.
+
+> Kafka's durability allows us to replay historical events whenever business logic changes or downstream systems need to be rebuilt, eliminating the need for producers to resend data.
+
+> Consumer offsets are committed only after successful business processing and database commits, ensuring that events are never lost during failures.
+
+> Reliability is strengthened through circuit breakers, bounded queues, rate limiting, backpressure handling, and comprehensive monitoring, preventing localized failures from cascading across the platform.
+
+---
+
+# Next Chapter
+
+# Part 8 – Scalability, Performance & Distributed Systems
+
+Topics
+
+- Horizontal Scaling
+- Auto Scaling
+- Load Balancing
+- Partition Scaling
+- Database Scaling
+- Read Replicas
+- Sharding
+- CAP Theorem
+- Consistency Models
+- Distributed Locks
+- Leader Election
+- Consensus
+- Clock Skew
+- Performance Optimizations
+
+# High Throughput Event Processing Platform
+
+# Part 8 – Scalability, Performance & Distributed Systems
+
+> A high-throughput event processing platform must continue operating efficiently as event volume grows from thousands to millions of events per second. This chapter discusses how the platform scales horizontally, maintains availability, and applies distributed systems principles to achieve high throughput and reliability.
+
+---
+
+# Overview
+
+Scalability should be built into every layer of the platform.
+
+Instead of scaling one large monolithic application,
+
+we scale each component independently.
+
+```
+Event Producer
+
+↓
+
+Ingestion
+
+↓
+
+Kafka
+
+↓
+
+Processing
+
+↓
+
+Storage
+
+↓
+
+Serving
+```
+
+Every layer has different bottlenecks and therefore different scaling strategies.
+
+---
+
+# Horizontal Scaling
+
+The platform follows one fundamental principle:
+
+> **Every service should be stateless.**
+
+Since services don't store local state,
+
+any instance can process any request.
+
+```
+                Load Balancer
+
+                      │
+
+      ┌───────────────┼───────────────┐
+
+      ▼               ▼               ▼
+
+ Ingestion-1     Ingestion-2     Ingestion-3
+```
+
+Need more capacity?
+
+Simply add more instances.
+
+---
+
+# Load Balancing
+
+The Load Balancer distributes traffic across healthy instances.
+
+Benefits
+
+- High availability
+- Better resource utilization
+- No single point of failure
+
+Examples
+
+- AWS ALB
+- NGINX
+- HAProxy
+
+---
+
+# Auto Scaling
+
+Suppose CPU utilization exceeds
+
+```
+70%
+```
+
+Auto Scaling
+
+↓
+
+Launch additional instances
+
+When traffic decreases
+
+↓
+
+Terminate unused instances
+
+Common implementations
+
+- Kubernetes HPA
+- AWS Auto Scaling Groups
+
+---
+
+# Kafka Scaling
+
+Kafka scales primarily through partitions.
+
+Example
+
+```
+Topic
+
+↓
+
+48 Partitions
+```
+
+Each partition can be consumed independently.
+
+---
+
+# Scaling Consumers
+
+Suppose
+
+```
+48 Partitions
+```
+
+Initially
+
+```
+12 Consumers
+
+↓
+
+4 Partitions Each
+```
+
+Traffic increases.
+
+Increase
+
+```
+24 Consumers
+
+↓
+
+2 Partitions Each
+```
+
+No application code changes required.
+
+---
+
+# Partition Sizing
+
+Too Few Partitions
+
+- Poor parallelism
+- Limited scalability
+
+Too Many Partitions
+
+- Higher broker overhead
+- Increased metadata
+- Longer leader elections
+
+Choose enough partitions to support expected peak throughput with room for growth.
+
+---
+
+# Stateless Processing
+
+Consumers should not store local state.
+
+State belongs in
+
+- Kafka
+- Database
+- Redis
+
+Benefits
+
+- Easier scaling
+- Easier recovery
+- Simpler deployments
+
+---
+
+# Database Scaling
+
+Scaling databases is harder than scaling stateless services.
+
+A common progression is
+
+```
+Primary
+
+↓
+
+Read Replicas
+
+↓
+
+Partitioning
+
+↓
+
+Sharding
+```
+
+Scale only when required.
+
+---
+
+# Read Replicas
+
+Read-heavy workloads benefit from replicas.
+
+```
+Primary
+
+↓
+
+Replica1
+
+Replica2
+
+Replica3
+```
+
+Writes
+
+↓
+
+Primary
+
+Reads
+
+↓
+
+Replicas
+
+Improves read throughput significantly.
+
+---
+
+# Partitioning
+
+Large tables become difficult to maintain.
+
+Partition
+
+by
+
+```
+Date
+
+or
+
+Hash(eventId)
+```
+
+Benefits
+
+- Faster scans
+- Smaller indexes
+- Better maintenance
+
+---
+
+# Sharding
+
+Eventually
+
+one database instance becomes insufficient.
+
+Shard by
+
+```
+customerId
+
+tenantId
+
+accountId
+```
+
+Example
+
+```
+Shard1
+
+Customers A–M
+
+-------------------
+
+Shard2
+
+Customers N–Z
+```
+
+Each shard owns a subset of data.
+
+---
+
+# Redis Scaling
+
+Redis supports
+
+- Replication
+- Clustering
+- Sharding
+
+Example
+
+```
+Redis Cluster
+
+↓
+
+Shard1
+
+Shard2
+
+Shard3
+```
+
+Allows both higher throughput and more memory.
+
+---
+
+# Asynchronous Processing
+
+Heavy work should always be asynchronous.
+
+```
+Ingestion
+
+↓
+
+Kafka
+
+↓
+
+Processing
+```
+
+Instead of
+
+```
+Ingestion
+
+↓
+
+Business Logic
+
+↓
+
+Database
+
+↓
+
+Analytics
+```
+
+This dramatically improves throughput.
+
+---
+
+# Batching
+
+Instead of writing one event at a time,
+
+batch writes.
+
+Example
+
+```
+100 Events
+
+↓
+
+Single Database Write
+```
+
+Advantages
+
+- Fewer network calls
+- Higher throughput
+
+Trade-off
+
+Slightly higher latency.
+
+---
+
+# Compression
+
+Kafka producers should compress batches.
+
+Examples
+
+```
+LZ4
+
+Snappy
+
+ZSTD
+```
+
+Benefits
+
+- Reduced network traffic
+- Higher throughput
+
+Trade-off
+
+Additional CPU usage.
+
+---
+
+# Backpressure
+
+Suppose
+
+```
+Producer
+
+20,000 Events/sec
+```
+
+Consumers
+
+```
+8,000 Events/sec
+```
+
+Kafka buffers the excess.
+
+Consumer lag grows temporarily.
+
+Scale consumers
+
+↓
+
+Lag decreases.
+
+Without buffering,
+
+the system would collapse.
+
+---
+
+# CAP Theorem
+
+A common Staff-level interview topic.
+
+CAP states that during a network partition,
+
+a distributed system can choose only two of
+
+```
+Consistency
+
+Availability
+
+Partition Tolerance
+```
+
+---
+
+# What Does This Mean?
+
+Suppose a network partition occurs.
+
+You must choose
+
+```
+Consistency
+
+or
+
+Availability
+```
+
+You cannot guarantee both.
+
+---
+
+# Example
+
+Financial systems
+
+typically prefer
+
+```
+Consistency
+
++
+
+Partition Tolerance
+```
+
+Social media
+
+may choose
+
+```
+Availability
+
++
+
+Partition Tolerance
+```
+
+depending on business requirements.
+
+---
+
+# Consistency Models
+
+Not every system requires strong consistency.
+
+Common models
+
+---
+
+## Strong Consistency
+
+Every read sees the latest write.
+
+Examples
+
+- Banking
+- Trading
+
+---
+
+## Eventual Consistency
+
+Data converges over time.
+
+Examples
+
+- Analytics
+- Dashboards
+- Notifications
+
+---
+
+## Read-Your-Writes
+
+A user immediately sees their own updates.
+
+Often used in user-facing applications.
+
+---
+
+# Distributed Locks
+
+Sometimes multiple consumers compete for the same resource.
+
+Example
+
+```
+Inventory
+
+1 Item Left
+```
+
+Only one consumer should reserve it.
+
+Solutions
+
+- Database row locks
+- Redis
+- ZooKeeper
+
+Use distributed locks sparingly.
+
+They reduce scalability.
+
+---
+
+# Leader Election
+
+Some workloads require only one active worker.
+
+Example
+
+```
+Scheduler
+
+Cleanup Job
+
+Partition Rebalancing
+```
+
+Leader Election
+
+↓
+
+One instance becomes leader.
+
+Others remain followers.
+
+Technologies
+
+- ZooKeeper
+- etcd
+- Kubernetes Lease API
+
+---
+
+# Consensus
+
+Consensus ensures distributed nodes agree on shared state.
+
+Algorithms
+
+- Raft
+- Paxos
+
+Examples
+
+- Kafka controller election
+- etcd
+- ZooKeeper
+
+Interview note
+
+You don't implement consensus yourself.
+
+You rely on systems that already provide it.
+
+---
+
+# Clock Skew
+
+Distributed machines do not share perfectly synchronized clocks.
+
+Problem
+
+```
+Server A
+
+10:00:01
+
+----------------
+
+Server B
+
+09:59:59
+```
+
+Ordering based solely on timestamps becomes unreliable.
+
+Solutions
+
+- NTP
+- Logical ordering
+- Kafka offsets
+- Lamport clocks (advanced systems)
+
+---
+
+# Why Kafka Offsets Matter
+
+Instead of relying solely on timestamps,
+
+Kafka provides
+
+```
+Partition
+
+↓
+
+Offset
+```
+
+Offsets provide deterministic ordering within a partition.
+
+---
+
+# Network Partitions
+
+Suppose
+
+one data center loses connectivity.
+
+The platform should continue operating where possible.
+
+Use
+
+- Replication
+- Leader election
+- Automatic failover
+
+to recover.
+
+---
+
+# Performance Optimizations
+
+Common optimizations
+
+- Batch processing
+- Connection pooling
+- Compression
+- Async I/O
+- Efficient serialization
+- Redis caching
+- Prepared SQL statements
+- Horizontal scaling
+
+Optimize only after measuring bottlenecks.
+
+---
+
+# Monitoring Scalability
+
+Track
+
+- CPU
+- Memory
+- Kafka Throughput
+- Consumer Lag
+- DB Connections
+- Query Latency
+- Cache Hit Ratio
+- Queue Depth
+
+Alert before bottlenecks become outages.
+
+---
+
+# Design Trade-offs
+
+## More Consumers
+
+Advantages
+
+- Better throughput
+
+Trade-off
+
+More infrastructure cost.
+
+---
+
+## More Partitions
+
+Advantages
+
+- Better scalability
+
+Trade-off
+
+Higher Kafka overhead.
+
+---
+
+## Strong Consistency
+
+Advantages
+
+- Correctness
+
+Trade-off
+
+Higher latency
+Reduced availability during partitions.
+
+---
+
+## Eventual Consistency
+
+Advantages
+
+- Better scalability
+- Better availability
+
+Trade-off
+
+Temporary stale reads.
+
+---
+
+## Distributed Locks
+
+Advantages
+
+- Prevent concurrent updates
+
+Trade-off
+
+Reduced throughput
+Potential bottlenecks
+
+Use only when absolutely necessary.
+
+---
+
+# Interview Talking Points
+
+> Every service in the platform is stateless, allowing horizontal scaling simply by adding more instances behind a load balancer.
+
+> Kafka partitions enable parallel processing, while consumer groups allow independent scaling of downstream services without impacting producers.
+
+> Database scaling progresses from read replicas to partitioning and eventually sharding as write throughput increases.
+
+> Different components require different consistency guarantees. Transactional systems typically prioritize strong consistency, while dashboards and analytics can tolerate eventual consistency.
+
+> Distributed systems require careful consideration of CAP, leader election, consensus, clock skew, and backpressure. Rather than implementing these mechanisms ourselves, we leverage mature distributed technologies such as Kafka, Kubernetes, ZooKeeper, and etcd.
+
+---
+
+# Next Chapter
+
+# Part 9 – Observability, Monitoring & Disaster Recovery
+
+Topics
+
+- Metrics
+- Logging
+- Distributed Tracing
+- Correlation IDs
+- Health Checks
+- Alerting
+- Disaster Recovery
+- Multi-AZ
+- Cross-Region Replication
+- RPO/RTO
+- Production Readiness
+
+# High Throughput Event Processing Platform
+
+# Part 9 – Observability, Monitoring & Disaster Recovery
+
+> Building a scalable distributed system is only half the challenge. Operating it reliably in production is equally important. Observability enables engineers to understand system behavior, diagnose failures, and recover quickly. Disaster recovery ensures the platform remains available even when infrastructure fails.
+
+---
+
+# Overview
+
+A production-ready platform should answer the following questions at any time:
+
+- Is the system healthy?
+- Are events flowing through the pipeline?
+- Where is the bottleneck?
+- Are consumers keeping up?
+- Is any data being lost?
+- How quickly can we recover from failures?
+
+To answer these questions, we rely on
+
+- Metrics
+- Logging
+- Distributed Tracing
+- Health Checks
+- Alerting
+- Disaster Recovery
+
+---
+
+# Three Pillars of Observability
+
+Every production system should implement
+
+```
+        Observability
+
+             │
+
+   ┌─────────┼─────────┐
+
+   ▼         ▼         ▼
+
+Metrics    Logs     Traces
+```
+
+Each pillar answers different questions.
+
+---
+
+# Metrics
+
+Metrics provide quantitative information about system health.
+
+Examples
+
+```
+Requests/sec
+
+Latency
+
+CPU
+
+Memory
+
+Consumer Lag
+
+Throughput
+
+Error Rate
+```
+
+Metrics are aggregated over time and displayed on dashboards.
+
+---
+
+# Important Platform Metrics
+
+## API Layer
+
+Monitor
+
+- Request Rate
+- Success Rate
+- Error Rate
+- Response Time
+- Authentication Failures
+- Rate Limit Violations
+
+---
+
+## Kafka
+
+Monitor
+
+- Producer Throughput
+- Consumer Throughput
+- Consumer Lag
+- Broker Health
+- Replication Lag
+- ISR Count
+- Partition Utilization
+
+---
+
+## Processing Pipeline
+
+Monitor
+
+- Events Processed/sec
+- Retry Count
+- DLQ Size
+- Processing Latency
+- Failure Rate
+
+---
+
+## Database
+
+Monitor
+
+- Read Latency
+- Write Latency
+- Connection Pool Usage
+- Slow Queries
+- Lock Contention
+- Replication Lag
+
+---
+
+## Redis
+
+Monitor
+
+- Cache Hit Ratio
+- Cache Miss Ratio
+- Memory Usage
+- Evictions
+
+---
+
+# Dashboards
+
+Typical production dashboards include
+
+```
+System Health
+
+Kafka
+
+Consumers
+
+Database
+
+Redis
+
+Business KPIs
+```
+
+Common tools
+
+- Grafana
+- Datadog
+- New Relic
+- CloudWatch
+
+---
+
+# Logging
+
+Metrics tell us **something is wrong**.
+
+Logs tell us **why**.
+
+Always use
+
+```
+Structured Logs
+```
+
+instead of plain text.
+
+---
+
+# Example
+
+Good
+
+```json
+{
+  "eventId":"evt100",
+  "customerId":"cust123",
+  "status":"Processed",
+  "latencyMs":18
+}
+```
+
+Bad
+
+```
+Processing completed successfully
+```
+
+Structured logs are searchable and machine-readable.
+
+---
+
+# Log Levels
+
+```
+DEBUG
+
+INFO
+
+WARN
+
+ERROR
+
+FATAL
+```
+
+Use the appropriate level.
+
+Avoid excessive DEBUG logging in production.
+
+---
+
+# Correlation ID
+
+Every request receives a
+
+```
+Correlation ID
+```
+
+Example
+
+```
+Producer
+
+↓
+
+API Gateway
+
+↓
+
+Kafka
+
+↓
+
+Validation
+
+↓
+
+Business Logic
+
+↓
+
+Persistence
+```
+
+Every log contains
+
+```
+Correlation ID
+```
+
+This allows engineers to trace one event through the entire platform.
+
+---
+
+# Distributed Tracing
+
+Modern systems consist of many services.
+
+Tracing connects them.
+
+```
+Request
+
+↓
+
+API
+
+↓
+
+Kafka
+
+↓
+
+Processing
+
+↓
+
+Database
+
+↓
+
+Redis
+```
+
+Tools
+
+- OpenTelemetry
+- Jaeger
+- Zipkin
+- AWS X-Ray
+
+---
+
+# Trace Example
+
+A trace may show
+
+```
+API
+
+12 ms
+
+↓
+
+Kafka Publish
+
+8 ms
+
+↓
+
+Validation
+
+5 ms
+
+↓
+
+Persistence
+
+18 ms
+
+↓
+
+Total
+
+43 ms
+```
+
+Easy to identify bottlenecks.
+
+---
+
+# Health Checks
+
+Every service should expose
+
+```
+/health
+
+/ready
+
+/live
+```
+
+---
+
+## Liveness Probe
+
+Answers
+
+```
+Is the process alive?
+```
+
+If not,
+
+restart it.
+
+---
+
+## Readiness Probe
+
+Answers
+
+```
+Can this instance accept traffic?
+```
+
+If not,
+
+remove it from the load balancer.
+
+---
+
+# Alerting
+
+Metrics are useful only if someone notices them.
+
+Configure alerts.
+
+Examples
+
+```
+Consumer Lag
+
+>
+
+100,000
+
+↓
+
+Alert
+```
+
+```
+API Error Rate
+
+>
+
+5%
+
+↓
+
+Alert
+```
+
+```
+DLQ Size Growing
+
+↓
+
+Alert
+```
+
+---
+
+# Common Alerts
+
+- Kafka Broker Down
+- Consumer Lag
+- DLQ Growth
+- Database Replication Lag
+- High API Latency
+- Redis Unavailable
+- Disk Space Low
+- CPU > 80%
+- Memory > 85%
+
+Alerts should notify
+
+- PagerDuty
+- Slack
+- Email
+- Ops Team
+
+---
+
+# SLOs and SLIs
+
+Production systems typically define
+
+## SLI (Service Level Indicator)
+
+Measured value
+
+Example
+
+```
+99.95%
+
+Availability
+```
+
+---
+
+## SLO (Service Level Objective)
+
+Target
+
+Example
+
+```
+Availability
+
+99.9%
+```
+
+Engineering teams monitor whether the SLO is being met.
+
+---
+
+# Disaster Recovery
+
+Infrastructure failures are inevitable.
+
+Plan for them.
+
+---
+
+# Multi-AZ Deployment
+
+Deploy services across multiple Availability Zones.
+
+```
+AZ-1
+
+API
+
+Kafka
+
+Consumer
+
+----------------
+
+AZ-2
+
+API
+
+Kafka
+
+Consumer
+```
+
+If one AZ fails,
+
+traffic automatically shifts.
+
+---
+
+# Cross-Region Replication
+
+For regional failures,
+
+replicate data to another region.
+
+```
+Region A
+
+↓
+
+Replication
+
+↓
+
+Region B
+```
+
+Replicate
+
+- Kafka
+- Database
+- Object Storage
+
+---
+
+# Backup Strategy
+
+Regular backups
+
+```
+Daily Full Backup
+
+Hourly Incremental Backup
+```
+
+Store backups
+
+offsite
+
+and
+
+encrypted.
+
+---
+
+# Point-in-Time Recovery
+
+Suppose accidental deletion occurs.
+
+Restore database
+
+to
+
+```
+10:42 AM
+```
+
+instead of yesterday's backup.
+
+Critical for financial systems.
+
+---
+
+# RPO and RTO
+
+Two common interview terms.
+
+---
+
+## RPO
+
+Recovery Point Objective
+
+Maximum acceptable data loss.
+
+Example
+
+```
+5 Minutes
+```
+
+Meaning
+
+Losing up to five minutes of data is acceptable.
+
+---
+
+## RTO
+
+Recovery Time Objective
+
+Maximum acceptable downtime.
+
+Example
+
+```
+15 Minutes
+```
+
+Meaning
+
+The system should recover within fifteen minutes.
+
+---
+
+# Failover
+
+Suppose
+
+Primary Database fails.
+
+```
+Primary
+
+↓
+
+Replica Promotion
+
+↓
+
+New Primary
+```
+
+Applications reconnect automatically.
+
+---
+
+# Rolling Deployments
+
+Avoid downtime during releases.
+
+```
+Old Version
+
+↓
+
+New Instance
+
+↓
+
+Health Check
+
+↓
+
+Shift Traffic
+
+↓
+
+Remove Old Instance
+```
+
+No downtime.
+
+---
+
+# Blue-Green Deployment
+
+Maintain two environments.
+
+```
+Blue
+
+(Current)
+
+Green
+
+(New)
+```
+
+Switch traffic after validation.
+
+Rollback becomes simple.
+
+---
+
+# Canary Deployment
+
+Deploy to
+
+```
+5%
+
+↓
+
+20%
+
+↓
+
+50%
+
+↓
+
+100%
+```
+
+of users gradually.
+
+Detect problems early.
+
+---
+
+# Chaos Engineering
+
+Test failures intentionally.
+
+Examples
+
+- Kill Kafka Broker
+- Stop Consumer
+- Increase Network Latency
+- Disconnect Database
+
+Verify
+
+the platform recovers automatically.
+
+Tools
+
+- Chaos Monkey
+- Litmus
+- Gremlin
+
+---
+
+# Operational Runbooks
+
+For every major alert,
+
+maintain a runbook.
+
+Example
+
+```
+Consumer Lag High
+
+↓
+
+Check Consumer Health
+
+↓
+
+Scale Consumers
+
+↓
+
+Check Broker
+
+↓
+
+Verify Recovery
+```
+
+Runbooks reduce incident response time.
+
+---
+
+# Production Readiness Checklist
+
+✓ Metrics
+
+✓ Logs
+
+✓ Tracing
+
+✓ Health Checks
+
+✓ Alerts
+
+✓ Auto Scaling
+
+✓ Backups
+
+✓ Multi-AZ
+
+✓ Disaster Recovery
+
+✓ Runbooks
+
+✓ Load Testing
+
+✓ Security Reviews
+
+---
+
+# Design Trade-offs
+
+## More Metrics
+
+Advantages
+
+- Better visibility
+
+Trade-off
+
+Higher storage cost.
+
+---
+
+## More Logging
+
+Advantages
+
+- Easier debugging
+
+Trade-off
+
+Higher storage and indexing costs.
+
+---
+
+## Multi-Region
+
+Advantages
+
+- Better resilience
+
+Trade-off
+
+Higher operational complexity and cost.
+
+---
+
+## Frequent Backups
+
+Advantages
+
+- Lower RPO
+
+Trade-off
+
+More storage and backup overhead.
+
+---
+
+# Interview Talking Points
+
+> Observability is built on three pillars: metrics, logs, and distributed tracing. Metrics tell us that a problem exists, logs explain why, and traces identify where latency or failures occur across service boundaries.
+
+> Every request receives a Correlation ID that propagates through Kafka, processing services, databases, and downstream systems, allowing end-to-end debugging.
+
+> We continuously monitor consumer lag, retry rates, DLQ growth, database latency, and cache health. These metrics provide early indicators of bottlenecks before they become outages.
+
+> Disaster recovery is achieved through multi-AZ deployments, cross-region replication, automated failover, encrypted backups, and clearly defined RPO and RTO targets.
+
+> Production readiness extends beyond code. Automated deployments, health checks, alerting, chaos testing, and operational runbooks are essential for operating a high-throughput distributed platform at scale.
+
+---
+
+# Next Chapter
+
+# Part 10 – Complete End-to-End Walkthrough & Interview Guide
+
+Topics
+
+- End-to-End Event Flow
+- Sequence Diagram
+- Failure Scenarios
+- Common Interview Questions
+- Trade-offs
+- Staff Engineer Talking Points
+- 5-Minute Interview Answer
+- 10-Minute Interview Answer
+- Architecture Summary
+
+# High Throughput Event Processing Platform
+
+# Part 10 – Complete End-to-End Walkthrough, Trade-offs & Interview Guide
+
+> This chapter brings together every component of the platform and demonstrates how an event flows through the system from ingestion to downstream consumers. It also covers common interview questions, trade-offs, and how to present the design in a Staff-level interview.
+
+---
+
+# Complete System Architecture
+
+```
+                           Event Producer
+
+                                 │
+
+                                 ▼
+
+                          Load Balancer
+
+                                 │
+
+                                 ▼
+
+                           API Gateway
+
+                                 │
+
+                                 ▼
+
+                    Event Ingestion Service
+
+      Authentication
+      Authorization
+      Schema Validation
+      Rate Limiting
+      Idempotency
+      Normalization
+      Correlation ID
+
+                                 │
+
+                                 ▼
+
+                          Kafka Producer
+
+                                 │
+
+                                 ▼
+
+                         Kafka Cluster
+
+                                 │
+
+      ┌──────────────────────────┴─────────────────────────┐
+
+      ▼                                                    ▼
+
+ Validation Consumer                              Other Consumers
+
+      │
+
+      ▼
+
+ Deduplication Consumer
+
+      │
+
+      ▼
+
+ Business Processing
+
+      │
+
+      ▼
+
+ Persistence Service
+
+      │
+
+      ├──────────────┐
+
+      ▼              ▼
+
+ Business DB     Outbox Table
+
+                      │
+
+                      ▼
+
+              Outbox Publisher
+
+                      │
+
+                      ▼
+
+               events.processed
+
+      ┌────────────┬─────────────┬──────────────┬─────────────┐
+
+      ▼            ▼             ▼              ▼
+
+ Reporting     Analytics     Notifications     Search
+
+      │
+
+      ▼
+
+ Redis / Read Models
+```
+
+---
+
+# End-to-End Event Flow
+
+Let's follow one event through the platform.
+
+---
+
+# Step 1 – Event Produced
+
+An upstream producer generates an event.
+
+Example
+
+```json
+{
+  "eventType":"ORDER_CREATED",
+  "customerId":"C100",
+  "orderId":"O500",
+  "amount":250
+}
+```
+
+The producer could be
+
+- Mobile App
+- Order Service
+- Payment Gateway
+- Trading System
+- IoT Device
+
+---
+
+# Step 2 – Event Ingestion
+
+Producer calls
+
+```
+POST /events
+```
+
+Flow
+
+```
+Producer
+
+↓
+
+Load Balancer
+
+↓
+
+API Gateway
+
+↓
+
+Event Ingestion Service
+```
+
+The ingestion layer performs
+
+- Authentication
+- Authorization
+- Schema Validation
+- Rate Limiting
+- Idempotency
+- Normalization
+- Correlation ID Generation
+
+---
+
+# Step 3 – Publish to Kafka
+
+After lightweight validation
+
+```
+Event
+
+↓
+
+Kafka Producer
+
+↓
+
+Kafka
+```
+
+The request returns
+
+```
+HTTP 202 Accepted
+```
+
+Heavy processing has **not** started yet.
+
+---
+
+# Step 4 – Validation
+
+Validation Consumer
+
+checks
+
+- Schema
+- Required fields
+- Version
+- Metadata
+
+Invalid events
+
+↓
+
+DLQ
+
+Valid events
+
+↓
+
+Next Stage
+
+---
+
+# Step 5 – Deduplication
+
+Duplicate event?
+
+Example
+
+```
+evt100
+
+↓
+
+evt100
+
+↓
+
+evt100
+```
+
+Deduplication
+
+↓
+
+Single business event
+
+Techniques
+
+- UNIQUE constraint
+- UPSERT
+- Idempotency table
+
+---
+
+# Step 6 – Business Processing
+
+Business logic executes.
+
+Examples
+
+Payment
+
+↓
+
+Calculate Fees
+
+Trading
+
+↓
+
+Allocate Trade
+
+Order
+
+↓
+
+Reserve Inventory
+
+Fraud
+
+↓
+
+Calculate Risk
+
+External services are protected using
+
+- Timeouts
+- Retries
+- Circuit Breakers
+
+---
+
+# Step 7 – Persistence
+
+Business state is updated.
+
+Inside one database transaction
+
+```
+Insert Business Data
+
+↓
+
+Insert Outbox Event
+
+↓
+
+Commit
+```
+
+Business state
+
+and
+
+Outbox
+
+remain consistent.
+
+---
+
+# Step 8 – Outbox Publisher
+
+Publisher continuously scans
+
+```
+Outbox
+```
+
+Publishes
+
+↓
+
+Kafka
+
+Marks event
+
+↓
+
+SENT
+
+---
+
+# Step 9 – Downstream Consumers
+
+Different consumer groups process
+
+```
+events.processed
+```
+
+independently.
+
+Examples
+
+```
+Reporting
+
+Analytics
+
+Notifications
+
+Search
+
+ML
+```
+
+None of these consumers know about each other.
+
+---
+
+# Step 10 – Read Models
+
+Projection Service
+
+updates
+
+```
+Redis
+
+↓
+
+Read Database
+```
+
+Dashboard APIs become extremely fast.
+
+---
+
+# Complete Sequence Diagram
+
+```
+Producer
+
+↓
+
+API Gateway
+
+↓
+
+Event Ingestion
+
+↓
+
+Kafka
+
+↓
+
+Validation
+
+↓
+
+Deduplication
+
+↓
+
+Business Processing
+
+↓
+
+Database
+
+↓
+
+Outbox
+
+↓
+
+Kafka
+
+↓
+
+Reporting
+
+Analytics
+
+Notifications
+
+Search
+
+↓
+
+Redis
+
+↓
+
+Read APIs
+```
+
+---
+
+# Failure Scenario 1
+
+Kafka Unavailable
+
+Solution
+
+- Retry publish
+- Return 503 if durability cannot be guaranteed
+- Producer retries
+
+---
+
+# Failure Scenario 2
+
+Consumer Crash
+
+Kafka
+
+↓
+
+Offset not committed
+
+↓
+
+Restart
+
+↓
+
+Reprocess
+
+No event loss.
+
+---
+
+# Failure Scenario 3
+
+Database Failure
+
+Consumer
+
+↓
+
+Retry
+
+↓
+
+Retry Topic
+
+↓
+
+Database Recovers
+
+↓
+
+Success
+
+---
+
+# Failure Scenario 4
+
+Retry Exhausted
+
+```
+Retry
+
+↓
+
+Retry
+
+↓
+
+Retry
+
+↓
+
+DLQ
+```
+
+Operations investigate later.
+
+---
+
+# Failure Scenario 5
+
+Business Logic Bug
+
+Deploy Fix
+
+↓
+
+Reset Consumer Offset
+
+↓
+
+Replay Kafka
+
+No producer involvement required.
+
+---
+
+# Failure Scenario 6
+
+Redis Failure
+
+Read APIs
+
+↓
+
+Fallback
+
+↓
+
+Database
+
+Higher latency
+
+No outage.
+
+---
+
+# Failure Scenario 7
+
+Region Failure
+
+Traffic
+
+↓
+
+Secondary Region
+
+↓
+
+Consumers Continue
+
+Cross-region replication minimizes downtime.
+
+---
+
+# Why This Architecture?
+
+## Why Kafka?
+
+- Durable storage
+- Replay
+- Decoupling
+- Parallel processing
+
+---
+
+## Why Event Ingestion Service?
+
+- Authentication
+- Validation
+- Idempotency
+- Schema evolution
+- Kafka abstraction
+
+---
+
+## Why CQRS?
+
+Separate
+
+```
+Writes
+
+↓
+
+OLTP
+
+Reads
+
+↓
+
+Redis / Read Models
+```
+
+Independent scaling.
+
+---
+
+## Why Outbox?
+
+Eliminates the dual-write problem.
+
+Database
+
+and
+
+Kafka
+
+remain consistent.
+
+---
+
+## Why Redis?
+
+Read-heavy APIs
+
+↓
+
+Low latency
+
+↓
+
+Reduced database load.
+
+---
+
+## Why Consumer Groups?
+
+Independent scaling.
+
+Analytics
+
+does not impact
+
+Notifications.
+
+---
+
+## Why Replay?
+
+Allows
+
+- Bug fixes
+- Rebuilding projections
+- New consumers
+- Historical analytics
+
+without requesting producers to resend events.
+
+---
+
+# Design Trade-offs
+
+## API Before Kafka
+
+Advantages
+
+- Validation
+- Security
+- Governance
+
+Trade-off
+
+One additional network hop.
+
+---
+
+## Kafka
+
+Advantages
+
+- Scalability
+- Replay
+- Decoupling
+
+Trade-off
+
+Operational complexity.
+
+---
+
+## CQRS
+
+Advantages
+
+- Faster reads
+- Independent scaling
+
+Trade-off
+
+Eventual consistency.
+
+---
+
+## Outbox
+
+Advantages
+
+- Reliable event publishing
+
+Trade-off
+
+Additional infrastructure.
+
+---
+
+## Event-Driven Architecture
+
+Advantages
+
+- Loose coupling
+- Replay
+- Horizontal scaling
+
+Trade-off
+
+Harder debugging
+Eventually consistent workflows.
+
+---
+
+# Common Interview Questions
+
+---
+
+## Why not publish directly to Kafka?
+
+Because
+
+the Event Ingestion Service centralizes
+
+- Authentication
+- Validation
+- Idempotency
+- Observability
+- Schema management
+
+Kafka remains an internal implementation detail.
+
+---
+
+## Why not process synchronously?
+
+Processing
+
+↓
+
+Database
+
+↓
+
+Notifications
+
+↓
+
+Analytics
+
+would significantly increase latency.
+
+Kafka decouples ingestion from processing.
+
+---
+
+## Why not one database?
+
+Different workloads
+
+- Transactions
+- Caching
+- Analytics
+
+require different storage technologies.
+
+---
+
+## Why Outbox instead of DB + Kafka?
+
+Direct dual writes are unreliable.
+
+Outbox guarantees atomicity.
+
+---
+
+## Why At-Least-Once instead of Exactly-Once?
+
+Exactly-once delivery across distributed systems is extremely difficult.
+
+Instead
+
+we combine
+
+- At-least-once delivery
+- Idempotent consumers
+
+to achieve exactly-once business effects.
+
+---
+
+## Why partition by Customer ID?
+
+Ordering.
+
+All events for one customer remain in the same partition.
+
+---
+
+## How does the system scale?
+
+Every layer scales independently.
+
+- API
+- Kafka
+- Consumers
+- Database
+- Redis
+
+---
+
+# Staff Engineer Talking Points
+
+These are concise, high-signal statements suitable for senior interviews.
+
+> I separate event ingestion from business processing so the ingestion path remains lightweight and can acknowledge requests quickly while downstream processing scales independently.
+
+---
+
+> Kafka acts as the durable event backbone, enabling replay, loose coupling, independent consumer scaling, and resilience to downstream failures.
+
+---
+
+> Every consumer is idempotent because retries and replay are fundamental characteristics of distributed systems rather than exceptional cases.
+
+---
+
+> I separate command and query responsibilities using CQRS, allowing the transactional database to optimize writes while Redis and read models optimize query performance.
+
+---
+
+> The Outbox Pattern eliminates the dual-write problem by ensuring database updates and event publication remain consistent without requiring distributed transactions.
+
+---
+
+> Rather than relying on exactly-once delivery guarantees, I design for at-least-once delivery combined with idempotent consumers to achieve exactly-once business outcomes.
+
+---
+
+> Operational excellence is built through observability, automated recovery, replay capabilities, circuit breakers, retries, and disaster recovery rather than assuming infrastructure never fails.
+
+---
+
+# 5-Minute Interview Answer
+
+> "I'd design the platform as an event-driven architecture with four logical layers: Event Ingestion, Streaming, Processing, and Serving. Event Producers submit events through an Event Ingestion API, which performs authentication, validation, idempotency checks, normalization, and publishes events to Kafka. Kafka serves as the durable event backbone, enabling decoupling, replay, and independent scaling. Processing is implemented as a pipeline of stateless consumers responsible for validation, deduplication, business logic, and persistence. The write path persists business data and an Outbox record within the same transaction, while a separate Outbox Publisher reliably publishes downstream events. CQRS separates the write model from optimized read models stored in Redis. Reliability is achieved through retries, DLQs, replay, circuit breakers, and idempotent consumers. The platform scales horizontally at every layer and is monitored using metrics, logs, tracing, and automated alerting."
+
+---
+
+# Architecture Summary
+
+```
+Event Producer
+
+↓
+
+Event Ingestion
+
+↓
+
+Kafka
+
+↓
+
+Validation
+
+↓
+
+Deduplication
+
+↓
+
+Business Processing
+
+↓
+
+Persistence
+
+↓
+
+Outbox
+
+↓
+
+Kafka
+
+↓
+
+Reporting
+
+Analytics
+
+Search
+
+Notifications
+
+↓
+
+Redis / Read Models
+```
+
+---
+
+# Complete Topics Covered
+
+This design includes
+
+- Requirements
+- Capacity Planning
+- Event Ingestion
+- Kafka Architecture
+- Processing Pipeline
+- Database Design
+- CQRS
+- Outbox Pattern
+- Exactly-Once Processing
+- Retry
+- DLQ
+- Replay
+- Scalability
+- CAP Theorem
+- Distributed Systems Concepts
+- Observability
+- Disaster Recovery
+- Trade-offs
+- End-to-End Flow
+- Staff-Level Talking Points
+- Interview Summary
+
+---
+
+# Final Interview Closing
+
+> "The key design principle is to keep event ingestion lightweight, decouple processing through Kafka, make every consumer idempotent, and build the platform around replayability, fault tolerance, and horizontal scalability. Rather than optimizing for perfect delivery guarantees, I optimize for operational correctness through idempotent processing, durable messaging, retries, and observability. This architecture scales from thousands to millions of events while remaining resilient, maintainable, and easy to evolve."
