@@ -792,3 +792,724 @@ A production-scale social media platform separates concerns:
 - **Batch** → Compute historical insights.
 
 Kafka acts as the central event backbone, allowing all three pipelines to process the same events independently without coupling them to the Tweet Service.
+
+# Machine Learning Models in Large-Scale Social Media Platforms
+
+## Overview
+
+A common misconception is that platforms like **Twitter/X, Facebook, Instagram, LinkedIn, and YouTube** train **one ML model per user**.
+
+**They do not.**
+
+Instead:
+
+- They train **many different models**, each solving a different business problem.
+- Each model is trained using data from **millions or billions of users**.
+- During inference, the model receives user-specific features, tweet/post features, query features, or context features to produce a personalized prediction.
+
+**Key Idea**
+
+> **Many models for many business problems, NOT one model per user.**
+
+---
+
+# High-Level Architecture
+
+```text
+                    Data Lake
+                         |
+                         |
+              Spark Feature Engineering
+                         |
+                         |
+                  Feature Store
+                         |
+      +------------------+------------------+
+      |                  |                  |
+      |                  |                  |
+      v                  v                  v
+ User Models       Content Models     Search Models
+      |                  |                  |
+      +------------------+------------------+
+                         |
+                   Online Inference
+                         |
+     +----------+---------+----------+----------+
+     |          |                    |          |
+     v          v                    v          v
+ Timeline    Search          Recommendations  Ads
+```
+
+The **Feature Store** provides reusable features for multiple models.
+
+---
+
+# 1. User Models
+
+These models predict something **about a user**.
+
+---
+
+## Churn Prediction
+
+### Business Question
+
+Will this user stop using Twitter?
+
+### Input Features
+
+- Login frequency
+- Session duration
+- Tweets per week
+- Likes
+- Retweets
+- Notifications opened
+
+### Output
+
+```text
+Probability(User Churns)
+```
+
+### Use Case
+
+Marketing campaigns
+
+Retention emails
+
+Push notifications
+
+---
+
+## User Interest Model
+
+### Business Question
+
+What topics does the user enjoy?
+
+### Input
+
+- Likes
+- Retweets
+- Search history
+- Following list
+- Watch history
+
+### Output
+
+```text
+Sports = 0.95
+
+Politics = 0.10
+
+Technology = 0.80
+```
+
+These interests become part of the user's profile.
+
+---
+
+## Notification Model
+
+### Business Question
+
+Should we notify this user?
+
+### Input
+
+- Previous notification clicks
+- Time of day
+- Activity history
+
+### Output
+
+```text
+Probability(User Opens Notification)
+```
+
+---
+
+# 2. Content (Tweet/Post) Models
+
+These models predict something **about the content itself**.
+
+---
+
+## Engagement Prediction
+
+### Business Question
+
+How popular will this tweet become?
+
+### Input
+
+- Author followers
+- Tweet text
+- Topic
+- Time posted
+- Hashtags
+
+### Output
+
+```text
+Expected Likes
+
+Expected Retweets
+```
+
+---
+
+## Spam Detection
+
+### Business Question
+
+Is this tweet spam?
+
+### Input
+
+- Tweet text
+- URLs
+- Mentions
+- User reputation
+
+### Output
+
+```text
+Spam Score
+```
+
+---
+
+## Toxicity Detection
+
+### Business Question
+
+Does this content contain hate speech or abusive language?
+
+### Output
+
+```text
+Toxicity Score
+```
+
+---
+
+## Language Detection
+
+### Business Question
+
+What language is this tweet?
+
+### Output
+
+```text
+English
+
+Spanish
+
+Hindi
+
+French
+```
+
+---
+
+## Fake News Detection
+
+### Input
+
+- Tweet
+- Source
+- Propagation graph
+- Fact-check labels
+
+### Output
+
+```text
+Probability(Misinformation)
+```
+
+---
+
+# 3. User-Tweet Models
+
+These are the most common recommendation models.
+
+Input
+
+```text
+(User,
+
+Tweet)
+```
+
+↓
+
+Output
+
+```text
+Probability(User Likes Tweet)
+```
+
+---
+
+## Timeline Ranking
+
+Business Question
+
+Which tweets should appear first?
+
+Features
+
+User Features
+
+- Interests
+- Activity
+- Following
+
+Tweet Features
+
+- Likes
+- Retweets
+- Freshness
+- Author Quality
+
+Output
+
+```text
+Ranking Score
+```
+
+---
+
+# 4. User-User Models
+
+Business Question
+
+Should Alice follow Bob?
+
+Input
+
+```text
+(User A,
+
+User B)
+```
+
+↓
+
+Output
+
+```text
+Follow Probability
+```
+
+Used for:
+
+- People You May Know
+- Follow recommendations
+
+---
+
+# 5. Tweet-Tweet Models
+
+Business Question
+
+What tweets are similar?
+
+Input
+
+```text
+Tweet A
+
+Tweet B
+```
+
+↓
+
+Output
+
+```text
+Similarity Score
+```
+
+Used for:
+
+- Related Tweets
+- Similar Content
+- Recommendations
+
+---
+
+# 6. Query-Tweet Models
+
+Used by Search.
+
+Input
+
+```text
+(Query,
+
+Tweet)
+```
+
+↓
+
+Output
+
+```text
+Relevance Score
+```
+
+Example
+
+```text
+football
+
++
+
+Tweet123
+
+↓
+
+0.94
+```
+
+---
+
+# 7. User-Query-Tweet Models
+
+Personalized Search.
+
+Input
+
+```text
+(User,
+
+Query,
+
+Tweet)
+```
+
+↓
+
+Output
+
+```text
+Probability(User Clicks Tweet)
+```
+
+Different users receive different rankings.
+
+---
+
+# 8. Advertisement Models
+
+Business Question
+
+Which advertisement should be shown?
+
+Input
+
+```text
+(User,
+
+Advertisement)
+```
+
+↓
+
+Output
+
+```text
+Click Probability
+```
+
+---
+
+# 9. Community Detection Models
+
+Business Question
+
+Which communities exist?
+
+Input
+
+```text
+Social Graph
+```
+
+↓
+
+Output
+
+```text
+Sports Community
+
+Technology Community
+
+Politics Community
+```
+
+Used for:
+
+- Recommendations
+- Feed ranking
+- Ads
+- Suggested groups
+
+---
+
+# 10. Trending Prediction
+
+Business Question
+
+Will this topic become trending?
+
+Input
+
+- Tweet velocity
+- Retweet velocity
+- Geographic spread
+- Likes per minute
+
+Output
+
+```text
+Trending Score
+```
+
+---
+
+# 11. Search Ranking Model
+
+Business Question
+
+Which search result should appear first?
+
+Input
+
+```text
+(User,
+
+Query,
+
+Tweet)
+```
+
+Features
+
+- BM25
+- Freshness
+- Likes
+- Friend affinity
+- Author quality
+- Previous clicks
+
+Output
+
+```text
+Search Ranking Score
+```
+
+---
+
+# 12. Recommendation Model
+
+Business Question
+
+Which tweets should appear in the user's timeline?
+
+Input
+
+```text
+(User,
+
+Tweet)
+```
+
+Output
+
+```text
+Recommendation Score
+```
+
+---
+
+# Feature Engineering
+
+Raw events are transformed into reusable ML features.
+
+Example:
+
+Raw Event
+
+```text
+User123 liked Tweet456
+```
+
+Spark computes:
+
+| Feature | Example |
+|----------|----------|
+| LikesLast7Days | 180 |
+| AvgSessionTime | 24 min |
+| FavoriteTopic | Sports |
+| ActiveHours | 7 PM–10 PM |
+| AvgRetweetsReceived | 120 |
+| FriendAffinityScore | 0.84 |
+| CTR | 0.37 |
+
+These features are stored in a **Feature Store**.
+
+---
+
+# Why Feature Store?
+
+Without a Feature Store:
+
+Every model computes features independently.
+
+With a Feature Store:
+
+```text
+            Data Lake
+                 |
+                 v
+      Spark Feature Engineering
+                 |
+                 v
+          Feature Store
+                 |
+      +----------+----------+
+      |          |          |
+      v          v          v
+ Timeline   Search     Ads Model
+   Model     Model
+```
+
+All models reuse the same features.
+
+Benefits:
+
+- No duplicate computation
+- Consistent features
+- Easier maintenance
+- Faster model development
+
+---
+
+# Training Pipeline
+
+```text
+               Kafka
+                  |
+                  v
+            S3 Data Lake
+                  |
+                  v
+     Spark Feature Engineering
+                  |
+                  v
+           Feature Store
+                  |
+                  v
+          ML Training Jobs
+                  |
+                  v
+          Model Registry
+                  |
+                  v
+         Online Inference Service
+                  |
+                  +-----------------------------+
+                  |             |               |
+                  v             v               v
+            Timeline      Search Ranking    Recommendations
+```
+
+---
+
+# Important Interview Question
+
+## Do we train one model per user?
+
+**No.**
+
+A common misconception is that every user gets their own ML model.
+
+Instead:
+
+- Train one **global model** for each business problem.
+- During inference, the model receives:
+  - User features
+  - Tweet features
+  - Query features
+  - Context features
+
+Different inputs produce personalized predictions.
+
+Example:
+
+Alice
+
+```text
+(User,
+
+Tweet)
+```
+
+↓
+
+```text
+0.95
+```
+
+Bob
+
+```text
+(User,
+
+Same Tweet)
+```
+
+↓
+
+```text
+0.15
+```
+
+The **same model** produced different scores because the inputs were different.
+
+---
+
+# Summary
+
+| Model | Input | Output | Business Use Case |
+|--------|-------|--------|-------------------|
+| Churn Prediction | User | Churn Probability | User retention |
+| User Interest | User | Interest Scores | Personalization |
+| Notification Model | User | Open Probability | Push notifications |
+| Engagement Prediction | Tweet | Expected Likes | Ranking |
+| Spam Detection | Tweet | Spam Score | Moderation |
+| Toxicity Detection | Tweet | Toxicity Score | Content safety |
+| Fake News Detection | Tweet | Misinformation Score | Trust & Safety |
+| Timeline Ranking | User + Tweet | Ranking Score | Home feed |
+| Follow Recommendation | User + User | Follow Probability | People You May Know |
+| Tweet Similarity | Tweet + Tweet | Similarity Score | Related content |
+| Search Ranking | User + Query + Tweet | Ranking Score | Search results |
+| Ad Ranking | User + Ad | CTR Probability | Advertising |
+| Community Detection | Social Graph | Communities | Recommendations |
+| Trending Prediction | Tweet Stream | Trending Score | Trending topics |
+
+---
+
+# Key Takeaway
+
+Large-scale platforms do **not** train one model per user.
+
+Instead:
+
+- Train **many task-specific global models**.
+- Reuse features through a **Feature Store**.
+- Personalization comes from **different input features**, not from separate models for each user.
