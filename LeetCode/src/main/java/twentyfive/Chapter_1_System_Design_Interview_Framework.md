@@ -43699,6 +43699,141 @@ This demonstrates why the system is heavily optimized for reads.
 
 ## Responsibilities
 
+# 6. User Service
+
+The **User Service** is the system of record for all user-related information. It manages user profiles, authentication, social relationships, and user preferences.
+
+---
+
+## Responsibilities
+
+- Manage user profiles
+- User registration
+- Authentication and authorization
+- Follow / Unfollow users
+- Manage user preferences
+- Retrieve user information for downstream services
+
+---
+
+## Typical APIs
+
+### Create User
+
+```http
+POST /users
+```
+
+Creates a new user account.
+
+---
+
+### Get User Profile
+
+```http
+GET /users/{userId}
+```
+
+Returns user profile information.
+
+---
+
+### Update User Profile
+
+```http
+PUT /users/{userId}
+```
+
+Updates profile details.
+
+---
+
+### Follow User
+
+```http
+POST /users/{userId}/follow
+```
+
+Creates a follow relationship.
+
+---
+
+### Unfollow User
+
+```http
+DELETE /users/{userId}/follow
+```
+
+Removes a follow relationship.
+
+---
+
+### Get Followers
+
+```http
+GET /users/{userId}/followers
+```
+
+Returns a paginated list of followers.
+
+---
+
+### Get Following
+
+```http
+GET /users/{userId}/following
+```
+
+Returns users that the current user follows.
+
+---
+
+## Database
+
+**MySQL**
+
+### users
+
+| Column | Description |
+|---------|-------------|
+| userId (PK) | Unique user identifier |
+| username | Unique username |
+| displayName | User display name |
+| bio | User biography |
+| profileImageUrl | Profile picture |
+| createdAt | Account creation timestamp |
+
+---
+
+### follows
+
+| Column | Description |
+|---------|-------------|
+| followerId (PK) | User following someone |
+| followeeId (PK) | User being followed |
+| createdAt | Follow timestamp |
+
+---
+
+## Why MySQL?
+
+MySQL provides:
+
+- Strong consistency
+- ACID transactions
+- Referential integrity
+- Efficient point lookups
+
+Since user profiles and follow relationships are transactional in nature, a relational database is a good fit.
+
+---
+
+## Interview Line
+
+> "The User Service is the source of truth for user identities and social relationships. It exposes APIs for profile management and follow operations while storing transactional user data in MySQL."
+
+
+
 Stores:
 
 - User profile
@@ -43732,7 +43867,7 @@ Reason:
 # 7. Social Graph Service
 
 ## Purpose
-
+Creates an ecosystem of how everyone is connected witg 
 Stores relationships:
 
 User A follows User B
@@ -45020,7 +45155,7 @@ This allows very fast keyword lookup.
 
 # 5. Search Indexing Pipeline
 
-
+```text
 Tweet Created
       |
       Kafka
@@ -45028,14 +45163,14 @@ Tweet Created
  Search Index Consumer
       |
  Elasticsearch
-
+```text
 
 Why asynchronous indexing?
 
 The user should not wait for search indexing before a tweet is successfully posted.
 
 Tweet creation path:
-
+```text
 User
  |
 Tweet Service
@@ -45043,16 +45178,16 @@ Tweet Service
 Cassandra
  |
 Return Success
-
+```text
 
 Background path:
-
+```text
 Kafka
  |
 Search Consumer
  |
 Elasticsearch
-
+```text
 
 Trade-off:
 
@@ -45152,19 +45287,19 @@ Examples:
 
 Instead of running the same Elasticsearch query repeatedly:
 
-
+```text
 Search Request
        |
  Redis Cache
        |
-    Hit
+      Hit
        |
  Return results
-
+```text
 
 On cache miss:
 
-
+```text
 Search Service
        |
  Elasticsearch
@@ -45172,7 +45307,7 @@ Search Service
  Redis
        |
  User
-
+```text
 
 ---
 
@@ -45207,21 +45342,21 @@ Examples:
 A hashtag suddenly increases:
 
 #WorldCupFinal
-
+```text
 10 mentions/minute
       ↓
 50 mentions/minute
       ↓
 5000 mentions/minute
 
-
+```text
 The system must detect the spike.
 
 ---
 
 # 11. Trending Pipeline
 
-
+```text
 Tweet Events
       |
       Kafka
@@ -45235,7 +45370,7 @@ Tweet Events
  Trending Service
       |
  Redis Cache
-
+```text
 
 ---
 
@@ -45275,13 +45410,13 @@ Examples:
 
 
 Pipeline:
-
+```text
 Kafka
  |
 Spark Streaming/Flink
  |
 Redis
-
+```text
 
 Latency:
 
@@ -45431,7 +45566,7 @@ Caching reduces:
 ---
 
 # Part 4 Summary
-
+```text
 Search Architecture:
 
 Tweet Service
@@ -45455,7 +45590,7 @@ Tweet Events
        |
  Redis
 
-
+```text
 Storage Choices:
 
 - Elasticsearch → Full-text search
