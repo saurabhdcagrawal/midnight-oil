@@ -5714,6 +5714,8 @@ O(number of words)
 
 This makes autocomplete extremely fast.
 
+"Autocomplete is usually backed by a dedicated prefix index such as a Trie or FST rather than the inverted index. During indexing, when new posts, hashtags, pages, or users are added, the indexing pipeline extracts candidate terms and updates both the search index and the autocomplete index. The Trie efficiently retrieves all terms matching a prefix, and those candidates are then ranked using popularity, recent trends, and personalization before being returned to the user.
+
 ---
 
 # Ranking Autocomplete Suggestions
