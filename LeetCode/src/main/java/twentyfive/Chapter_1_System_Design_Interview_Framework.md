@@ -45155,7 +45155,7 @@ This allows very fast keyword lookup.
 
 # 5. Search Indexing Pipeline
 
-```text
+
 Tweet Created
       |
       Kafka
@@ -45163,14 +45163,14 @@ Tweet Created
  Search Index Consumer
       |
  Elasticsearch
-```text
+
 
 Why asynchronous indexing?
 
 The user should not wait for search indexing before a tweet is successfully posted.
 
 Tweet creation path:
-```text
+
 User
  |
 Tweet Service
@@ -45178,16 +45178,16 @@ Tweet Service
 Cassandra
  |
 Return Success
-```text
+
 
 Background path:
-```text
+
 Kafka
  |
 Search Consumer
  |
 Elasticsearch
-```text
+
 
 Trade-off:
 
@@ -45287,19 +45287,19 @@ Examples:
 
 Instead of running the same Elasticsearch query repeatedly:
 
-```text
+
 Search Request
        |
  Redis Cache
        |
-      Hit
+    Hit
        |
  Return results
-```text
+
 
 On cache miss:
 
-```text
+
 Search Service
        |
  Elasticsearch
@@ -45307,7 +45307,7 @@ Search Service
  Redis
        |
  User
-```text
+
 
 ---
 
@@ -45342,21 +45342,21 @@ Examples:
 A hashtag suddenly increases:
 
 #WorldCupFinal
-```text
+
 10 mentions/minute
       ↓
 50 mentions/minute
       ↓
 5000 mentions/minute
 
-```text
+
 The system must detect the spike.
 
 ---
 
 # 11. Trending Pipeline
 
-```text
+
 Tweet Events
       |
       Kafka
@@ -45370,7 +45370,7 @@ Tweet Events
  Trending Service
       |
  Redis Cache
-```text
+
 
 ---
 
@@ -45410,13 +45410,13 @@ Examples:
 
 
 Pipeline:
-```text
+
 Kafka
  |
 Spark Streaming/Flink
  |
 Redis
-```text
+
 
 Latency:
 
@@ -45566,7 +45566,7 @@ Caching reduces:
 ---
 
 # Part 4 Summary
-```text
+
 Search Architecture:
 
 Tweet Service
@@ -45590,7 +45590,7 @@ Tweet Events
        |
  Redis
 
-```text
+
 Storage Choices:
 
 - Elasticsearch → Full-text search
