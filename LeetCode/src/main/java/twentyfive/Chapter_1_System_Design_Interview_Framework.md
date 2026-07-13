@@ -43651,27 +43651,46 @@ This demonstrates why the system is heavily optimized for reads.
 ---
 
 # 5. High-Level Architecture
+```text
+                               Client
+                                  │
+                                  ▼
+                           Load Balancer
+                                  │
+                                  ▼
+                            API Gateway
+                                  │
+        ┌─────────────────────────┼─────────────────────────┐
+        │                         │                         │
+        ▼                         ▼                         ▼
+ +----------------+       +----------------+       +------------------+
+ | User Service   |       | Tweet Service  |       | Timeline Service |
+ +----------------+       +----------------+       +------------------+
+        │                         │                         │
+        ▼                         ▼                         ▼
+     MySQL                  Cassandra              Redis Cache
+                                  │
+                                  ▼
+                           Publish Tweet Event
+                                  │
+                                  ▼
+================================================================================
+                                 Kafka
+                         Topic : tweets.created
+================================================================================
+                                  │
+        ┌─────────────────────────┼─────────────────────────┐
+        │                         │                         │
+        ▼                         ▼                         ▼
++------------------+    +------------------+     +------------------+
+| Feed Processor   |    | Search Pipeline  |     | Analytics        |
++------------------+    +------------------+     +------------------+
+        │                         │                         │
+        ▼                         ▼                         ▼
+   Cassandra             Elasticsearch          Hadoop / Spark
+        
+```
 
-                      Client
-                         |
-                    Load Balancer
-                         |
-                    API Gateway
-                         |
-        ------------------------------------------------
-        |                 |               |
-        |                 |               |
-    User Service     Tweet Service   Timeline Service
-        |                 |               |
-      MySQL          Cassandra        Redis Cache
-                          |
-                       Kafka
-                          |
-       ------------------------------------------------
-       |                    |                         |
- Feed Processor      Search Pipeline            Analytics
-       |                    |                         |
- Cassandra         Elasticsearch             Hadoop/Spark
 
 
 ---
