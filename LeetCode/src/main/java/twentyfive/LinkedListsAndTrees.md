@@ -2598,6 +2598,1149 @@ From the caller's perspective, it appears as though the head node was deleted.
 ---
 
 
+# LeetCode 355 - Design Twitter
+
+## Pattern
+
+> **Merge K Sorted Lists using a Max Heap**
+
+This is one of the most important design problems because the optimal solution is **not** to collect all tweets and sort them.
+
+The key observation is:
+
+> **Each user's tweets are already stored in sorted order (newest → oldest).**
+
+Instead of processing every tweet, we only process the **current newest remaining tweet** from each followed user.
+
+---
+
+# Heuristic
+
+Whenever you see:
+
+- Multiple users
+- Each user's data is already ordered
+- Need the global Top K newest/latest
+
+Think:
+
+```
+Merge K Sorted Lists
+```
+
+NOT
+
+```
+Top K Elements
+```
+
+---
+
+# Data Structures
+
+```java
+Map<Integer, Set<Integer>> userFollowerMap;
+```
+
+```
+User
+    ↓
+People the user follows
+```
+
+Example
+
+```
+1 -> {2,3}
+
+2 -> {4}
+
+3 -> {}
+```
+
+---
+
+```java
+Map<Integer, Tweet> userTweetMap;
+```
+
+Instead of storing a list of tweets, store **only the head** of a linked list.
+
+Example
+
+```
+userTweetMap
+
+1 ----------------------+
+                        |
+                        v
+                  Tweet(100)
+                        |
+                        v
+                  Tweet(90)
+                        |
+                        v
+                  Tweet(80)
+
+2 ----------------------+
+                        |
+                        v
+                  Tweet(110)
+                        |
+                        v
+                  Tweet(95)
+```
+
+The map stores only one pointer per user.
+
+Every older tweet is reachable through
+
+```java
+tweet.next
+```
+
+---
+
+# Why Linked List?
+
+Posting a tweet becomes
+
+```java
+Tweet lastTweet = userTweetMap.get(userId);
+
+Tweet newTweet = new Tweet(tweetId, clock++);
+
+newTweet.next = lastTweet;
+
+userTweetMap.put(userId, newTweet);
+```
+
+which is simply
+
+```
+newTweet
+
+↓
+
+old head
+```
+
+Insertion is always O(1).
+
+---
+
+# News Feed Logic
+
+## Step 1
+
+Collect
+
+```
+All followees
+
++
+
+The user himself
+```
+
+---
+
+## Step 2
+
+Insert only the **head tweet** of every user into a Max Heap.
+
+Example
+
+```
+User1
+
+100
+ |
+90
+ |
+80
+
+----------------
+
+User2
+
+95
+ |
+70
+
+----------------
+
+User3
+
+110
+ |
+60
+ |
+40
+```
+
+Initially the heap contains only
+
+```
+110
+
+100
+
+95
+```
+
+NOT
+
+```
+110
+
+100
+
+95
+
+90
+
+80
+
+70
+
+60
+
+40
+```
+
+This is the optimization.
+
+---
+
+## Step 3
+
+Pop
+
+```
+110
+```
+
+Add to news feed.
+
+Now insert
+
+```
+110.next
+
+↓
+
+60
+```
+
+Heap becomes
+
+```
+100
+
+95
+
+60
+```
+
+---
+
+Pop
+
+```
+100
+```
+
+Insert
+
+```
+90
+```
+
+Heap
+
+```
+95
+
+90
+
+60
+```
+
+Continue until
+
+- heap becomes empty OR
+- 10 tweets have been returned.
+
+---
+
+# Why does this work?
+
+At any point,
+
+the heap contains only
+
+> **The newest remaining tweet from every user's timeline.**
+
+Whenever one tweet is removed,
+
+we reveal the next older tweet from that user by following
+
+```java
+tweet.next
+```
+
+Exactly like Merge K Sorted Lists.
+
+---
+
+# Similarity with Merge K Sorted Lists (LeetCode 23)
+
+Merge K Lists
+
+```
+1 -> 4 -> 5
+
+1 -> 3 -> 4
+
+2 -> 6
+```
+
+Initially insert
+
+```
+1
+
+1
+
+2
+```
+
+Pop
+
+```
+1
+```
+
+Insert
+
+```
+4
+```
+
+Pop
+
+```
+1
+```
+
+Insert
+
+```
+3
+```
+
+Repeat.
+
+---
+
+Twitter does the exact same thing.
+
+The only difference is that every user's tweets are stored
+
+```
+Newest
+
+↓
+
+Older
+
+↓
+
+Older
+```
+
+instead of
+
+```
+Smallest
+
+↓
+
+Largest
+```
+
+Therefore
+
+Merge K Lists
+
+↓
+
+uses
+
+```
+Min Heap
+```
+
+Twitter
+
+↓
+
+uses
+
+```
+Max Heap
+```
+
+because we want the newest tweet first.
+
+---
+
+# Complexity Comparison
+
+Let
+
+```
+F = number of followees
+
+T = total tweets across all followees
+
+K = number of tweets requested
+```
+
+(K = 10 for this problem.)
+
+---
+
+## Approach 1
+
+### Max Heap containing ALL tweets
+
+Insert every tweet into a Max Heap.
+
+```
+Time
+
+Insert all tweets
+
+O(T log T)
+
++
+
+Pop K tweets
+
+O(K log T)
+
+--------------------------------
+
+O(T log T)
+```
+
+Space
+
+```
+O(T)
+```
+
+---
+
+## Approach 2
+
+### Min Heap of size K (Top K pattern)
+
+Process every tweet.
+
+Maintain
+
+```
+Min Heap
+
+size = K
+```
+
+For every tweet
+
+```
+offer()
+
+if(size > K)
+
+poll()
+```
+
+Time
+
+```
+Every tweet
+
+↓
+
+O(log K)
+
+Total
+
+↓
+
+O(T log K)
+```
+
+Space
+
+```
+O(K)
+```
+
+Better than Approach 1 because we never keep more than K tweets.
+
+However,
+
+we still scan every tweet.
+
+---
+
+## Approach 3 (Optimal)
+
+### Merge K Sorted Lists
+
+Initially insert only the newest tweet from every followed user.
+
+Heap size
+
+```
+F
+```
+
+Time
+
+```
+Insert F heads
+
+O(F log F)
+
++
+
+K polls
+
+O(K log F)
+
++
+
+K offers
+
+O(K log F)
+
+--------------------------------
+
+O((F + K) log F)
+```
+
+Since
+
+```
+K = 10
+```
+
+people usually simplify it to
+
+```
+O(F log F)
+```
+
+Space
+
+```
+O(F)
+```
+
+---
+
+# Why is Merge K better?
+
+Suppose
+
+```
+100 followees
+
+Each has
+
+10,000 tweets
+```
+
+Then
+
+```
+F = 100
+
+T = 1,000,000
+```
+
+Approach 1
+
+```
+Looks at
+
+1,000,000 tweets
+```
+
+Approach 2
+
+```
+Still scans
+
+1,000,000 tweets
+```
+
+Approach 3
+
+Initially looks at only
+
+```
+100 tweets
+```
+
+Then processes only enough tweets to produce the answer.
+
+This is a massive optimization.
+
+---
+
+# Final Code
+
+```java
+public class Twitter {
+
+    Map<Integer,Set<Integer>> userFollowerMap;
+    //1->{2,3}
+    //1 follows 2 and 3
+
+    //store only heads...
+    //Tweet is a LL..
+    Map<Integer,Tweet> userTweetMap;
+    // 1 tweets 2 and 6
+
+    int clock=1;
+
+    /** Initialize your data structure here. */
+    public Twitter() {
+        userFollowerMap= new HashMap<>();
+        userTweetMap= new HashMap<>();
+    }
+
+    /** Compose a new tweet. */
+    public void postTweet(int userId, int tweetId) {
+        Tweet lastTweet= userTweetMap.get(userId);
+        Tweet newTweet= new Tweet(tweetId, clock++);
+        newTweet.next=lastTweet;
+        userTweetMap.put(userId,newTweet);
+    }
+
+    /** Retrieve the 10 most recent tweet ids in the user's news feed. */
+    public List<Integer> getNewsFeed(int userId) {
+
+        PriorityQueue<Tweet> maxHeap =
+            new PriorityQueue<>((a,b) ->
+                Integer.compare(b.timestamp,a.timestamp));
+
+        List<Integer> newsFeed = new ArrayList<>();
+
+        Set<Integer> userFollowersPlusUser = new HashSet<>();
+
+        if(userFollowerMap.containsKey(userId)){
+            userFollowersPlusUser.addAll(userFollowerMap.get(userId));
+        }
+
+        userFollowersPlusUser.add(userId);
+
+        for(Integer follower : userFollowersPlusUser){
+
+            Tweet tweet = userTweetMap.get(follower);
+
+            if(tweet != null){
+                maxHeap.add(tweet);
+            }
+        }
+
+        while(!maxHeap.isEmpty() && newsFeed.size() < 10){
+
+            Tweet tweet = maxHeap.poll();
+
+            newsFeed.add(tweet.tweetId);
+
+            if(tweet.next != null){
+                maxHeap.add(tweet.next);
+            }
+        }
+
+        return newsFeed;
+    }
+
+    /** Follower follows a followee. */
+    public void follow(int followerId, int followeeId) {
+
+        if(!userFollowerMap.containsKey(followerId)){
+            userFollowerMap.put(followerId,new HashSet<>());
+        }
+
+        userFollowerMap.get(followerId).add(followeeId);
+    }
+
+    /** Follower unfollows a followee. */
+    public void unfollow(int followerId, int followeeId) {
+
+        if(!userFollowerMap.containsKey(followerId))
+            return;
+
+        userFollowerMap.get(followerId).remove(followeeId);
+    }
+
+    class Tweet{
+
+        int tweetId;
+        int timestamp;
+
+        Tweet next;
+
+        public Tweet(int tweetId,int timestamp){
+            this.tweetId=tweetId;
+            this.timestamp=timestamp;
+        }
+    }
+}
+```
+
+---
+
+# Interview Takeaway
+
+Whenever you hear:
+
+> **Multiple sorted streams + return latest/top elements**
+
+Immediately ask yourself:
+
+> **Can I treat this as Merge K Sorted Lists instead of scanning everything?**
+
+That single observation changes the solution from **O(T log T)** to **O((F + K) log F)** and is exactly what interviewers are looking for.
+
+
+# LeetCode 23 - Merge K Sorted Lists
+
+## Pattern
+
+> **Merge K Sorted Lists using a Min Heap**
+
+This is one of the most important heap patterns.
+
+Whenever you have:
+
+- Multiple sorted streams/lists
+- Need to repeatedly pick the smallest (or largest) element
+
+Think:
+
+```
+Merge K Sorted Lists
+```
+
+---
+
+# Heuristic
+
+Ask yourself:
+
+> "At every step, how many candidates do I need to compare?"
+
+Initially there are **K** candidates (one from each list).
+
+Instead of scanning all K every time, store them in a **Min Heap**.
+
+The heap always gives the smallest node in **O(log K)** time.
+
+---
+
+# Approaches
+
+## Approach 1 - Brute Force
+
+Ignore that the lists are already sorted.
+
+### Steps
+
+1. Traverse every list.
+2. Store all nodes (or values) in an array.
+3. Sort the array.
+4. Rebuild the linked list.
+
+### Complexity
+
+Let
+
+```
+N = total number of nodes
+```
+
+Time
+
+```
+Collect nodes      O(N)
+
+Sort              O(N log N)
+
+Rebuild list      O(N)
+
+--------------------------
+
+Overall           O(N log N)
+```
+
+Space
+
+```
+O(N)
+```
+
+---
+
+## Approach 2 - Linear Search (K-way Merge without Heap)
+
+Maintain one pointer into each list.
+
+Example
+
+```
+List1
+
+1 -> 4 -> 7
+
+List2
+
+2 -> 3 -> 8
+
+List3
+
+5 -> 6
+```
+
+Initially the pointers are
+
+```
+1
+
+2
+
+5
+```
+
+To produce the next node,
+
+scan all current pointers
+
+```
+1
+
+2
+
+5
+```
+
+Choose
+
+```
+1
+```
+
+Advance only List1.
+
+Pointers become
+
+```
+4
+
+2
+
+5
+```
+
+Again scan all K pointers.
+
+Repeat until all nodes are processed.
+
+### Why is it O(NK)?
+
+There are
+
+```
+N
+```
+
+nodes to output.
+
+For **every node**, you scan
+
+```
+K
+```
+
+current pointers.
+
+Therefore
+
+```
+N × K
+
+=
+
+O(NK)
+```
+
+Space
+
+```
+O(1)
+```
+
+---
+
+## Approach 3 - Min Heap (Optimal)
+
+Instead of scanning K pointers every time,
+
+store those K pointers inside a Min Heap.
+
+Initially
+
+```
+Heap
+
+1
+
+2
+
+5
+```
+
+Pop
+
+```
+1
+```
+
+Append to answer.
+
+Insert
+
+```
+4
+```
+
+Heap
+
+```
+2
+
+4
+
+5
+```
+
+Pop
+
+```
+2
+```
+
+Insert
+
+```
+3
+```
+
+Continue until the heap becomes empty.
+
+The heap always contains **only one node from each list**.
+
+---
+
+# Complexity
+
+Let
+
+```
+K = number of lists
+
+N = total number of nodes
+```
+
+### Initial heap construction
+
+Insert
+
+```
+K
+```
+
+heads.
+
+```
+O(K log K)
+```
+
+### Processing nodes
+
+Every node
+
+- enters heap once
+- leaves heap once
+
+Each heap operation
+
+```
+O(log K)
+```
+
+Therefore
+
+```
+O(N log K)
+```
+
+### Overall
+
+Strictly
+
+```
+O(K log K + N log K)
+
+=
+
+O((N + K) log K)
+```
+
+Since
+
+```
+N >> K
+```
+
+we usually write
+
+```
+O(N log K)
+```
+
+Space
+
+```
+O(K)
+```
+
+---
+
+# Why does the heap help?
+
+Without a heap
+
+```
+Need the smallest node?
+
+↓
+
+Scan all K pointers
+
+↓
+
+O(K)
+```
+
+With a heap
+
+```
+Need the smallest node?
+
+↓
+
+Heap top
+
+↓
+
+O(log K)
+```
+
+The heap replaces a repeated **linear search** with a **logarithmic search**.
+
+---
+
+# Similar Interview Problems
+
+Exactly the same pattern appears in:
+
+- Merge K Sorted Arrays
+- Twitter News Feed (Max Heap instead of Min Heap)
+- External Merge Sort
+- Smallest Range Covering K Lists
+- Merge Sorted Files / Log Files
+
+---
+
+# Code
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode() {}
+ *     ListNode(int val) { this.val = val; }
+ *     ListNode(int val, ListNode next) {
+ *         this.val = val;
+ *         this.next = next;
+ *     }
+ * }
+ */
+class Solution {
+
+    public ListNode mergeKLists(ListNode[] lists) {
+
+        ListNode dummy = new ListNode(0);
+        ListNode result = dummy;
+
+        PriorityQueue<ListNode> pq =
+            new PriorityQueue<>((a, b) ->
+                Integer.compare(a.val, b.val));
+
+        // Insert the head of every non-empty list.
+        // The heap always stores the smallest remaining node
+        // from each list.
+
+        for (ListNode list : lists) {
+            if (list != null)
+                pq.offer(list);
+        }
+
+        while (!pq.isEmpty()) {
+
+            ListNode node = pq.poll();
+
+            result.next = node;
+            result = result.next;
+
+            // Advance only the list from which
+            // the smallest node was removed.
+
+            if (node.next != null)
+                pq.offer(node.next);
+        }
+
+        return dummy.next;
+    }
+}
+```
+
+# Interview Explanation
+
+> "Since every linked list is already sorted, I don't need to insert all nodes into the heap. I only insert the head of each list. The heap always contains the smallest remaining node from each list. After removing the smallest node, I insert only its next node from the same list. This is exactly the Merge K Sorted Lists pattern and gives an optimal complexity of **O(N log K)** instead of **O(NK)** or **O(N log N)**."
+
 # Trees
 
 Trees are one of the most important data structures for coding interviews. Many interview problems involving recursion, DFS, and BSTs are based on trees.

@@ -5220,6 +5220,14 @@ Heap
 ```
 
 This distinction alone solves a large class of interview problems.
+*** IMPORTANT
+
+| Pattern                                             | Heap         |
+| --------------------------------------------------- | ------------ |
+| Top K while scanning all data                       | **Min Heap** |
+| Merge K sorted ascending lists                      | **Min Heap** |
+| Merge K sorted descending lists (Twitter/news feed) | **Max Heap** |
+
 
 
 # Chapter 7: Graphs & Topological Sort
