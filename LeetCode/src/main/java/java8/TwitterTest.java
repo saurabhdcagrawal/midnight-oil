@@ -1,4 +1,4 @@
-package main.java.java8;
-
-public class TwitterTest {
+import static org.junit.jupiter.api.Assertions.*;
+class TwitterTest {
+  
 }

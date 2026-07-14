@@ -10793,3 +10793,1190 @@ This is one of the most important recursion patterns in binary tree problems.
 # One Sentence to Remember
 
 > **A BST's inorder traversal must be strictly increasing. During the traversal, maintain a single shared `prev` variable representing the previously visited node. If the current node is ever less than or equal to `prev`, the tree is not a valid BST.**
+
+
+# White-Box vs Black-Box Testing
+
+One of the most common misconceptions in unit testing is:
+
+> **"A unit test should test only one method."**
+
+That statement is **partially true**, but there are two different philosophies of testing.
+
+---
+
+# 1. White-Box Testing (State Verification)
+
+White-box testing verifies the **internal implementation** of the class.
+
+You inspect the object's internal state after calling a method.
+
+Example:
+
+```java
+class Stack {
+
+    List<Integer> stack = new ArrayList<>();
+
+    public void push(int x){
+        stack.add(x);
+    }
+}
+```
+
+Test
+
+```java
+@Test
+void push() {
+
+    Stack stack = new Stack();
+
+    stack.push(5);
+
+    assertEquals(1, stack.stack.size());
+
+    assertEquals(5, stack.stack.get(0));
+}
+```
+
+Here we're checking
+
+```
+Internal List
+
+↓
+
+size
+
+↓
+
+contents
+```
+
+instead of the external behavior.
+
+---
+
+## Advantages
+
+- Easy to write.
+- Good for testing low-level data structures.
+- Can verify intermediate state.
+
+---
+
+## Disadvantages
+
+Suppose tomorrow we replace
+
+```java
+ArrayList
+```
+
+with
+
+```java
+LinkedList
+```
+
+or
+
+```java
+ArrayDeque
+```
+
+The implementation changes even though the Stack still behaves correctly.
+
+Many white-box tests would now fail.
+
+They are tightly coupled to the implementation.
+
+---
+
+# 2. Black-Box Testing (Behavior Verification)
+
+Black-box testing verifies the **observable behavior** of the class.
+
+It doesn't care how the class is implemented internally.
+
+Instead it asks
+
+> "Did the public API produce the correct result?"
+
+Using the same Stack example
+
+```java
+@Test
+void push() {
+
+    Stack stack = new Stack();
+
+    stack.push(5);
+
+    assertEquals(5, stack.pop());
+}
+```
+
+Notice
+
+We never inspect
+
+```
+ArrayList
+
+size
+
+indexes
+```
+
+We only verify
+
+```
+Behavior
+```
+
+---
+
+# Twitter Example
+
+Consider our Twitter implementation.
+
+```java
+Map<Integer, Set<Integer>> userFollowerMap;
+
+Map<Integer, List<Integer>> userTweetMap;
+```
+
+These maps are **implementation details**.
+
+Users of the class never access them directly.
+
+The public API is
+
+```java
+postTweet()
+
+follow()
+
+unfollow()
+
+getNewsFeed()
+```
+
+---
+
+# White-Box Test
+
+Suppose we write
+
+```java
+@Test
+void postTweet() {
+
+    Twitter twitter = new Twitter();
+
+    twitter.postTweet(1,5);
+
+    assertEquals(
+        1,
+        twitter.userTweetMap.get(1).size()
+    );
+}
+```
+
+We're checking
+
+```
+HashMap
+
+↓
+
+ArrayList
+
+↓
+
+size
+```
+
+instead of testing Twitter's behavior.
+
+---
+
+# Why is this bad?
+
+Suppose we optimize our implementation.
+
+Old
+
+```java
+Map<Integer,List<Integer>>
+```
+
+↓
+
+New
+
+```java
+Map<Integer,Tweet>
+```
+
+↓
+
+Or
+
+```
+Database
+```
+
+Twitter still behaves correctly.
+
+But our white-box test breaks because the implementation changed.
+
+---
+
+# Black-Box Test
+
+Instead we write
+
+```java
+@Test
+void postTweet_ShouldAppearInOwnFeed() {
+
+    Twitter twitter = new Twitter();
+
+    twitter.postTweet(1,5);
+
+    assertEquals(
+        List.of(5),
+        twitter.getNewsFeed(1)
+    );
+}
+```
+
+Notice
+
+We're testing the contract
+
+```
+After posting,
+
+the tweet appears in the news feed.
+```
+
+We don't care how Twitter stores the tweets internally.
+
+---
+
+# Another Example - follow()
+
+Instead of
+
+```java
+assertTrue(
+    twitter.userFollowerMap
+           .get(1)
+           .contains(2)
+);
+```
+
+Test
+
+```java
+Twitter twitter = new Twitter();
+
+twitter.postTweet(2,6);
+
+twitter.follow(1,2);
+
+assertEquals(
+    List.of(6),
+    twitter.getNewsFeed(1)
+);
+```
+
+We're verifying
+
+```
+Behavior
+
+↓
+
+User can now see followee's tweets.
+```
+
+---
+
+# Another Example - unfollow()
+
+Instead of
+
+```java
+assertFalse(
+    twitter.userFollowerMap
+           .get(1)
+           .contains(2)
+);
+```
+
+Test
+
+```java
+Twitter twitter = new Twitter();
+
+twitter.postTweet(2,6);
+
+twitter.follow(1,2);
+
+twitter.unfollow(1,2);
+
+assertEquals(
+    List.of(),
+    twitter.getNewsFeed(1)
+);
+```
+
+Again,
+
+we verify behavior instead of internal state.
+
+---
+
+# "But aren't we testing another method?"
+
+This is where many developers get confused.
+
+Consider
+
+```java
+public void postTweet(...)
+```
+
+It returns
+
+```java
+void
+```
+
+How do we verify it worked?
+
+There are only two options.
+
+### Option 1
+
+Inspect internal state
+
+```
+userTweetMap
+```
+
+(White-box)
+
+### Option 2
+
+Observe the effect using another public method
+
+```
+getNewsFeed()
+```
+
+(Black-box)
+
+Most teams prefer Option 2 because it tests the public contract rather than the implementation.
+
+---
+
+# Why use another method?
+
+Suppose
+
+```
+deposit(100)
+```
+
+in a BankAccount class.
+
+How do we verify the deposit succeeded?
+
+Not by checking the private variable
+
+```
+balance
+```
+
+Instead
+
+```java
+account.deposit(100);
+
+assertEquals(
+    100,
+    account.getBalance()
+);
+```
+
+We're testing
+
+```
+deposit()
+
+↓
+
+observable behavior
+
+↓
+
+getBalance()
+```
+
+This is completely normal.
+
+---
+
+# Which one is preferred?
+
+For business applications
+
+```
+Twitter
+
+Shopping Cart
+
+Order Service
+
+Bank Account
+
+Library Management
+```
+
+Prefer
+
+```
+Black-box Testing
+```
+
+because tests remain valid even if the implementation changes.
+
+---
+
+For low-level data structures
+
+```
+Linked List
+
+HashMap
+
+Binary Heap
+
+LRU Cache Internals
+```
+
+White-box testing is acceptable because the internal data structure **is** the thing you're implementing.
+
+---
+
+# Comparison
+
+| White-Box Testing | Black-Box Testing |
+|-------------------|-------------------|
+| Tests internal implementation | Tests external behavior |
+| Verifies internal state | Verifies public contract |
+| Coupled to implementation | Independent of implementation |
+| Breaks when implementation changes | Continues to pass if behavior is unchanged |
+| Good for low-level data structures | Preferred for application/business logic |
+
+---
+
+# Interview Perspective
+
+Suppose the interviewer asks
+
+> **"Write unit tests for Twitter."**
+
+A good answer is
+
+```java
+@Test
+void follow_ShouldIncludeFolloweeTweets() {
+
+    Twitter twitter = new Twitter();
+
+    twitter.postTweet(1,5);
+
+    twitter.postTweet(2,6);
+
+    twitter.follow(1,2);
+
+    assertEquals(
+        List.of(6,5),
+        twitter.getNewsFeed(1)
+    );
+}
+```
+
+Instead of
+
+```java
+assertTrue(
+    twitter.userFollowerMap
+           .get(1)
+           .contains(2)
+);
+```
+
+because interviewers usually want to verify **behavior**, not the internal implementation.
+
+---
+
+# Rule of Thumb
+
+Whenever writing a unit test, ask yourself:
+
+> **If I completely rewrite the internals of this class but keep the public API the same, should this test still pass?**
+
+If the answer is **Yes**, you're most likely writing a good **black-box** test.
+
+If the answer is **No**, you're probably testing implementation details and writing a **white-box** test.
+
+# JUnit 5 Syntax & Best Practices
+
+JUnit is the standard testing framework for Java.
+
+A test class usually looks like:
+
+```java
+package main.java.java8;
+
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+class TwitterTest {
+
+    @Test
+    void postTweet() {
+
+        Twitter twitter = new Twitter();
+
+        twitter.postTweet(1, 5);
+        twitter.postTweet(2, 6);
+        twitter.follow(1, 2);
+
+        List<Integer> tweets = twitter.getNewsFeed(1);
+
+        assertEquals(2, tweets.size());
+    }
+}
+```
+
+---
+
+# Package
+
+```java
+package main.java.java8;
+```
+
+Specifies the package containing the test.
+
+Usually the test package mirrors the production package.
+
+Example
+
+```
+src
+
+ ├── main
+ │      └── java
+ │             └── twitter
+ │                    Twitter.java
+ │
+ └── test
+        └── java
+               └── twitter
+                      TwitterTest.java
+```
+
+---
+
+# Imports
+
+## Static Import
+
+```java
+import static org.junit.jupiter.api.Assertions.*;
+```
+
+This imports all assertion methods.
+
+Without it
+
+```java
+Assertions.assertEquals(2, tweets.size());
+```
+
+With static import
+
+```java
+assertEquals(2, tweets.size());
+```
+
+Much cleaner.
+
+---
+
+## Test Annotation
+
+```java
+import org.junit.jupiter.api.Test;
+```
+
+Makes
+
+```java
+@Test
+```
+
+available.
+
+JUnit scans for methods marked with
+
+```java
+@Test
+```
+
+and executes them.
+
+---
+
+# Test Class
+
+```java
+class TwitterTest
+```
+
+Convention
+
+```
+<ClassName>
+
++
+
+Test
+```
+
+Examples
+
+```
+Twitter
+
+↓
+
+TwitterTest
+
+----------------
+
+OrderService
+
+↓
+
+OrderServiceTest
+
+----------------
+
+Calculator
+
+↓
+
+CalculatorTest
+```
+
+---
+
+# @Test
+
+```java
+@Test
+void postTweet() {
+}
+```
+
+Marks this method as a unit test.
+
+JUnit automatically executes every method annotated with
+
+```
+@Test
+```
+
+---
+
+# Test Method Name
+
+Instead of
+
+```java
+void postTweet()
+```
+
+prefer
+
+```java
+void postTweet_ShouldAppearInNewsFeed()
+```
+
+or
+
+```java
+void follow_ShouldIncludeFolloweeTweets()
+```
+
+Pattern
+
+```
+MethodBeingTested
+
++
+
+ExpectedBehavior
+```
+
+Examples
+
+```
+deposit_ShouldIncreaseBalance()
+
+withdraw_ShouldThrowException()
+
+login_ShouldReturnJwt()
+
+follow_ShouldIncludeTweets()
+```
+
+These names explain
+
+- what is being tested
+- expected result
+
+without opening the method.
+
+---
+
+# Arrange • Act • Assert (AAA Pattern)
+
+Most production code follows this layout.
+
+```java
+@Test
+void follow_ShouldIncludeTweets() {
+
+    // Arrange
+    Twitter twitter = new Twitter();
+
+    twitter.postTweet(1,5);
+    twitter.postTweet(2,6);
+
+    // Act
+    twitter.follow(1,2);
+
+    List<Integer> tweets =
+            twitter.getNewsFeed(1);
+
+    // Assert
+    assertEquals(
+        List.of(6,5),
+        tweets
+    );
+}
+```
+
+---
+
+## Arrange
+
+Create objects.
+
+Prepare data.
+
+Example
+
+```java
+Twitter twitter = new Twitter();
+
+twitter.postTweet(1,5);
+
+twitter.postTweet(2,6);
+```
+
+---
+
+## Act
+
+Execute the method under test.
+
+```java
+twitter.follow(1,2);
+
+List<Integer> tweets =
+        twitter.getNewsFeed(1);
+```
+
+---
+
+## Assert
+
+Verify expected behavior.
+
+```java
+assertEquals(
+    List.of(6,5),
+    tweets
+);
+```
+
+---
+
+# Assertions
+
+## assertEquals()
+
+```java
+assertEquals(expected, actual);
+```
+
+Always remember
+
+```
+Expected first
+
+Actual second
+```
+
+Correct
+
+```java
+assertEquals(2, tweets.size());
+```
+
+Wrong
+
+```java
+assertEquals(tweets.size(), 2);
+```
+
+Why?
+
+If the test fails,
+
+JUnit prints
+
+```
+Expected : 2
+
+Actual : 3
+```
+
+which is much easier to understand.
+
+---
+
+## assertTrue()
+
+```java
+assertTrue(condition);
+```
+
+Example
+
+```java
+assertTrue(
+    tweets.contains(6)
+);
+```
+
+---
+
+## assertFalse()
+
+```java
+assertFalse(condition);
+```
+
+Example
+
+```java
+assertFalse(
+    tweets.isEmpty()
+);
+```
+
+---
+
+## assertNull()
+
+```java
+assertNull(object);
+```
+
+---
+
+## assertNotNull()
+
+```java
+assertNotNull(object);
+```
+
+---
+
+## assertThrows()
+
+Verify exceptions.
+
+```java
+assertThrows(
+    IllegalArgumentException.class,
+    () -> calculator.divide(5,0)
+);
+```
+
+---
+
+# One Assertion vs Multiple Assertions
+
+Good
+
+```java
+assertEquals(
+    List.of(6,5),
+    tweets
+);
+```
+
+Instead of
+
+```java
+assertEquals(2, tweets.size());
+
+assertEquals(6, tweets.get(0));
+
+assertEquals(5, tweets.get(1));
+```
+
+Comparing the whole object is cleaner whenever possible.
+
+---
+
+# One Behavior Per Test
+
+Good
+
+```java
+@Test
+void follow_ShouldIncludeTweets()
+```
+
+Bad
+
+```java
+@Test
+void everything()
+```
+
+Each test should verify one behavior.
+
+---
+
+# Independent Tests
+
+Each test should create its own object.
+
+Good
+
+```java
+@Test
+void test1(){
+
+    Twitter twitter = new Twitter();
+
+}
+```
+
+Another test
+
+```java
+@Test
+void test2(){
+
+    Twitter twitter = new Twitter();
+
+}
+```
+
+Never depend on previous tests.
+
+JUnit may execute tests
+
+- in any order
+- in parallel
+
+---
+
+# Common JUnit 5 Annotations
+
+## @BeforeEach
+
+Runs before every test.
+
+```java
+@BeforeEach
+void setup(){
+
+    twitter = new Twitter();
+}
+```
+
+Equivalent to creating a fresh object for every test.
+
+---
+
+## @AfterEach
+
+Runs after every test.
+
+Used for cleanup.
+
+---
+
+## @BeforeAll
+
+Runs once before all tests.
+
+Usually for expensive initialization.
+
+---
+
+## @AfterAll
+
+Runs once after all tests.
+
+Cleanup.
+
+---
+
+# Best Practices
+
+## ✅ Good
+
+Descriptive test name
+
+```java
+postTweet_ShouldAppearInNewsFeed()
+```
+
+---
+
+AAA pattern
+
+```
+Arrange
+
+↓
+
+Act
+
+↓
+
+Assert
+```
+
+---
+
+One behavior per test.
+
+---
+
+Independent tests.
+
+---
+
+Compare expected before actual.
+
+```java
+assertEquals(expected, actual);
+```
+
+---
+
+Prefer comparing complete objects.
+
+```java
+assertEquals(
+    List.of(6,5),
+    tweets
+);
+```
+
+instead of checking every index individually.
+
+---
+
+Test behavior rather than implementation.
+
+Good
+
+```java
+assertEquals(
+    List.of(6,5),
+    twitter.getNewsFeed(1)
+);
+```
+
+Avoid
+
+```java
+assertEquals(
+    2,
+    twitter.userFollowerMap.get(1).size()
+);
+```
+
+because that couples the test to internal implementation.
+
+---
+
+# Typical Interview Test
+
+```java
+@Test
+void follow_ShouldIncludeFolloweeTweets() {
+
+    // Arrange
+    Twitter twitter = new Twitter();
+
+    twitter.postTweet(1,5);
+    twitter.postTweet(2,6);
+
+    // Act
+    twitter.follow(1,2);
+
+    List<Integer> tweets =
+            twitter.getNewsFeed(1);
+
+    // Assert
+    assertEquals(
+        List.of(6,5),
+        tweets
+    );
+}
+```
+
+This demonstrates nearly every JUnit best practice:
+
+- Uses `@Test`
+- Follows Arrange–Act–Assert
+- Creates an independent test
+- Tests one behavior
+- Verifies observable behavior (black-box testing)
+- Uses `assertEquals(expected, actual)`
+- Compares the full result rather than individual elements
