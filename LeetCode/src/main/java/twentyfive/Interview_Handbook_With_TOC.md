@@ -5955,6 +5955,464 @@ DFS + White/Gray/Black
 
 This combination solves a large percentage of graph interview problems.
 
+# LeetCode 210 - Course Schedule II (DFS Topological Sort)
+
+## Pattern
+
+> **Graph + DFS + Cycle Detection (White, Gray, Black Coloring)**
+
+This problem asks us to return a valid ordering of courses such that every course is taken **after** all of its prerequisites.
+
+If no such ordering exists (because of a cycle), we return an empty array.
+
+---
+
+# Intuition
+
+We can model the problem as a **Directed Graph**.
+
+- Each **course** is a vertex.
+- A **dependency** is represented as a directed edge.
+
+### My Graph Representation
+
+Unlike the conventional representation, I model
+
+```
+Course
+
+↓
+
+Prerequisite
+```
+
+For example
+
+```
+[1,0]
+```
+
+means
+
+```
+Course 1 depends on Course 0
+```
+
+I create the edge
+
+```
+1 → 0
+```
+
+instead of the more common
+
+```
+0 → 1
+```
+
+Both representations are valid.
+
+The difference is that with my representation, **adding the course after DFS naturally produces the correct order**, so I don't need to reverse the result.
+
+---
+
+# Example
+
+Input
+
+```
+[1,0]
+
+[2,0]
+
+[3,1]
+
+[3,2]
+```
+
+Graph
+
+```
+1 → 0
+
+2 → 0
+
+3 → 1
+
+3 → 2
+```
+
+DFS from
+
+```
+3
+```
+
+visits
+
+```
+3
+
+↓
+
+1
+
+↓
+
+0
+```
+
+After finishing
+
+```
+0
+```
+
+it gets added first.
+
+Eventually
+
+```
+0
+
+1
+
+2
+
+3
+```
+
+is produced.
+
+Every prerequisite appears before the course that depends on it.
+
+---
+
+# Cycle Detection
+
+We use the standard
+
+```
+WHITE
+
+GRAY
+
+BLACK
+```
+
+DFS coloring technique.
+
+---
+
+## WHITE
+
+```
+Not Visited
+```
+
+---
+
+## GRAY
+
+```
+Currently being explored.
+
+Present in recursion stack.
+```
+
+---
+
+## BLACK
+
+```
+Completely processed.
+
+All prerequisites have already been explored.
+```
+
+---
+
+# Detecting a Cycle
+
+Suppose
+
+```
+0 → 1
+
+1 → 2
+
+2 → 0
+```
+
+DFS
+
+```
+0
+
+↓
+
+1
+
+↓
+
+2
+
+↓
+
+0
+```
+
+When DFS reaches
+
+```
+0
+```
+
+again,
+
+it is already
+
+```
+GRAY
+```
+
+That means we've found a **back edge**.
+
+A back edge indicates a cycle.
+
+Therefore,
+
+```
+Impossible to finish all courses.
+
+Return empty array.
+```
+
+---
+
+# DFS Flow
+
+```
+Visit Course
+
+↓
+
+Mark GRAY
+
+↓
+
+Visit all prerequisites
+
+↓
+
+Mark BLACK
+
+↓
+
+Add course to answer
+```
+
+Notice
+
+A course is added **only after** all of its prerequisites have been processed.
+
+---
+
+# Complexity
+
+Let
+
+```
+V = Number of Courses
+
+E = Number of Prerequisites
+```
+
+### Building Graph
+
+```
+O(E)
+```
+
+---
+
+### DFS
+
+Each course is visited once.
+
+Each edge is explored once.
+
+```
+O(V + E)
+```
+
+---
+
+### Space
+
+Adjacency List
+
+```
+O(V + E)
+```
+
+Visited Array
+
+```
+O(V)
+```
+
+Recursion Stack
+
+```
+O(V)
+```
+
+Overall
+
+```
+Time  : O(V + E)
+
+Space : O(V + E)
+```
+
+---
+
+# Code
+
+```java
+class Solution {
+
+    // We can model this as a graph problem with each course represented as a vertex.
+    //
+    // If course 1 depends on course 0, I intentionally model an edge
+    //
+    //      1 -> 0
+    //
+    // (course -> prerequisite).
+    //
+    // This is the reverse of the conventional representation
+    // (prerequisite -> course), but with this modeling,
+    // adding a node after DFS naturally produces a valid course order
+    // without reversing the final list.
+    //
+    // DFS uses the standard WHITE-GRAY-BLACK coloring technique.
+    //
+    // WHITE : Not visited.
+    // GRAY  : Currently in recursion stack.
+    // BLACK : Completely processed.
+    //
+    // Encountering a GRAY node means a cycle exists,
+    // so it is impossible to complete all courses.
+
+    public static int WHITE = 0;
+    public static int GRAY = 1;
+    public static int BLACK = 2;
+
+    // Time Complexity:
+    // O(V + E)
+    //
+    // V = Number of Courses
+    // E = Number of Prerequisite Edges
+    //
+    // Space:
+    // Adjacency List -> O(V + E)
+    // Recursion Stack -> O(V)
+
+    public int[] findOrder(int numCourses, int[][] prerequisites) {
+
+        // Build adjacency list.
+        List<Integer>[] adjList = new List[numCourses];
+
+        for (int i = 0; i < numCourses; i++)
+            adjList[i] = new ArrayList<>();
+
+        for (int[] prerequisite : prerequisites) {
+            adjList[prerequisite[0]].add(prerequisite[1]);
+        }
+
+        int[] visited = new int[numCourses];
+
+        List<Integer> order = new ArrayList<>();
+
+        for (int i = 0; i < numCourses; i++) {
+
+            if (visited[i] == WHITE) {
+
+                boolean flag = dfs(i, adjList, visited, order);
+
+                if (!flag)
+                    return new int[]{};
+            }
+        }
+
+        int[] result = new int[order.size()];
+
+        for (int i = 0; i < order.size(); i++)
+            result[i] = order.get(i);
+
+        return result;
+    }
+
+    public boolean dfs(int course,
+                       List<Integer>[] adjList,
+                       int[] visited,
+                       List<Integer> order) {
+
+        // Found a back edge.
+        // Cycle detected.
+        if (visited[course] == GRAY)
+            return false;
+
+        visited[course] = GRAY;
+
+        for (int i = 0; i < adjList[course].size(); i++) {
+
+            int neighbor = adjList[course].get(i);
+
+            if (visited[neighbor] != BLACK) {
+
+                boolean flag = dfs(neighbor,
+                                   adjList,
+                                   visited,
+                                   order);
+
+                if (!flag)
+                    return false;
+            }
+        }
+
+        // All prerequisites have been processed.
+        // Safe to mark BLACK and add to answer.
+
+        visited[course] = BLACK;
+
+        order.add(course);
+
+        return true;
+    }
+}
+```
+
+---
+
+# Interview Explanation
+
+> "I model the problem as a directed graph where each course is a node. Since course A depends on course B, I intentionally create an edge from **A → B** (course → prerequisite), which is the reverse of the conventional prerequisite graph. I then perform a DFS using the WHITE–GRAY–BLACK coloring technique for cycle detection. WHITE means unvisited, GRAY means the node is currently in the recursion stack, and BLACK means it has been completely processed. Encountering a GRAY node indicates a cycle, so I immediately return an empty array. After visiting all prerequisites of a course, I mark it BLACK and append it to the result. Because of my graph representation (course → prerequisite), the post-order DFS already produces a valid course ordering, so I don't need to reverse the final result. The overall time complexity is **O(V + E)** and the space complexity is **O(V + E)**."
+
+---
+
+# Key Takeaways
+
+- Model the problem as a **Directed Graph**.
+- My implementation uses **course → prerequisite** edges.
+- DFS with **WHITE-GRAY-BLACK** coloring detects cycles.
+- A **GRAY** node means a **back edge**, indicating a cycle.
+- Add a course **after** all its prerequisites have been processed (post-order DFS).
+- Because of the chosen graph direction, **no reversal of the final result is needed**.
+- Time Complexity: **O(V + E)**
+- Space Complexity: **O(V + E)**
+
 # Clone Graph (DFS + HashMap)
 
 ## Idea
