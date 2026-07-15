@@ -4243,6 +4243,8 @@ or
 Lazy Delete
 ```
 
+For removal, the heap has no idea where the element is stored 
+It needs to go through the entire heap ,swap it with last element and heapify.. so O(N)
 ---
 
 # Final Java Solution
@@ -4330,27 +4332,27 @@ class TaskManager {
 
     public int execTop() {
 
-        while (!pq.isEmpty()) {
+        while (!maxHeap.isEmpty()) {
 
-            HeapNode heapEntry = pq.poll();
+            HeapNode heapTask = maxHeap.poll();
 
-            UserTask userTask =
-                taskMap.get(heapEntry.taskId);
-
-            if (userTask == null)
+            // Keep your implementation exactly as is.
+            if (!taskMap.containsKey(heapTask.taskId))
                 continue;
 
-            if (userTask.priority !=
-                heapEntry.priority)
+            UserTask userTask = taskMap.get(heapTask.taskId);
+
+            if (userTask.priority != heapTask.priority)
                 continue;
 
-            taskMap.remove(heapEntry.taskId);
+            taskMap.remove(heapTask.taskId);
 
             return userTask.userId;
         }
 
         return -1;
-    }
+	}
+
 }
 
 class UserTask {
@@ -6412,6 +6414,8 @@ class Solution {
 - Because of the chosen graph direction, **no reversal of the final result is needed**.
 - Time Complexity: **O(V + E)**
 - Space Complexity: **O(V + E)**
+
+---
 
 # Clone Graph (DFS + HashMap)
 
