@@ -18703,3 +18703,378 @@ class Solution {
     }
 }
 ```
+# LeetCode 621 - Task Scheduler
+
+## Pattern
+
+> **Max Heap + Cooldown Queue**
+
+Whenever you need to repeatedly execute the **highest priority task**, but tasks cannot be executed immediately again due to a cooldown period, think of this pattern.
+
+---
+
+# Intuition
+
+We want to minimize idle time.
+
+Therefore, at every time unit, we should execute the task with the **highest remaining frequency**.
+
+Example
+
+```
+A A A B B C
+```
+
+If we don't execute the most frequent task first, we may end up with unnecessary idle slots later.
+
+---
+
+# Data Structures
+
+## 1. Frequency Map
+
+```java
+Map<Character, Integer> hmap;
+```
+
+Stores
+
+```
+Task -> Remaining Count
+```
+
+Example
+
+```
+A -> 3
+
+B -> 2
+
+C -> 1
+```
+
+---
+
+## 2. Max Heap
+
+```java
+PriorityQueue<Integer> maxHeap;
+```
+
+The heap stores **only the remaining frequencies**.
+
+We don't need the task characters themselves because the problem only asks for the minimum time, not the execution order.
+
+Example
+
+```
+Heap
+
+3
+
+2
+
+1
+```
+
+The largest frequency is always executed first.
+
+---
+
+## 3. Cooldown Queue
+
+```java
+Queue<TasksRemaining> q;
+```
+
+Each entry stores
+
+```java
+class TasksRemaining {
+
+    int taskCount;
+
+    int scheduledTime;
+}
+```
+
+Example
+
+```
+Remaining Count
+
+↓
+
+2
+
+Cooldown Ends
+
+↓
+
+Time 8
+```
+
+---
+
+# Why Queue instead of another Heap?
+
+Tasks enter cooldown in **chronological order**.
+
+Example
+
+```
+(A,5)
+
+↓
+
+(B,7)
+
+↓
+
+(C,9)
+```
+
+The earliest task to become available is always at the front.
+
+Therefore,
+
+a simple **FIFO Queue** is sufficient.
+
+We don't need another heap because we're **not prioritizing by frequency** while tasks are cooling down—we only care about **which task becomes available first**.
+
+---
+
+# Simulation
+
+At every time unit
+
+```
+Increase Time
+
+↓
+
+Execute highest-frequency task
+
+↓
+
+If task still remains
+
+↓
+
+Move to cooldown queue
+
+↓
+
+Release tasks whose cooldown has expired
+
+↓
+
+Repeat
+```
+
+---
+
+# Example
+
+```
+Tasks
+
+A A
+
+n = 2
+```
+
+Timeline
+
+```
+Time 1
+
+Execute A
+
+Remaining = 1
+
+Queue
+
+(1,3)
+```
+
+---
+
+```
+Time 2
+
+Heap Empty
+
+Idle
+```
+
+---
+
+```
+Time 3
+
+Cooldown expires
+
+Move A back to Heap
+```
+
+---
+
+```
+Time 4
+
+Execute A
+```
+
+Timeline
+
+```
+1   A
+
+2   idle
+
+3   release
+
+4   A
+```
+
+Notice that the task is **released** at time 3 but **executed** at time 4 because execution already happened earlier during that iteration.
+
+---
+
+# Complexity
+
+Let
+
+```
+N = total number of tasks
+
+K = distinct task types
+```
+
+Building frequency map
+
+```
+O(N)
+```
+
+Building heap
+
+```
+O(K log K)
+```
+
+Each remaining task count
+
+- enters the heap once
+- leaves the heap once
+
+Overall
+
+```
+O(N log K)
+```
+
+Space
+
+```
+O(K)
+```
+
+---
+
+# Code
+
+```java
+class Solution {
+
+    public int leastInterval(char[] tasks, int n) {
+
+        // Max Heap stores remaining frequencies.
+        // Always execute the task with the highest remaining count
+        // to minimize idle time.
+        PriorityQueue<Integer> maxHeap =
+                new PriorityQueue<>((a, b) -> Integer.compare(b, a));
+
+        // Frequency Map
+        Map<Character, Integer> hmap = new HashMap<>();
+
+        for (char c : tasks) {
+            hmap.put(c, hmap.getOrDefault(c, 0) + 1);
+        }
+
+        // We only need frequencies.
+        // The execution sequence itself is not required.
+        for (char task : hmap.keySet()) {
+            maxHeap.offer(hmap.get(task));
+        }
+
+        // Queue stores tasks currently in cooldown.
+        // Tasks enter the queue in chronological order,
+        // so the earliest task to become available is always
+        // at the front (FIFO).
+
+        Queue<TasksRemaining> q = new LinkedList<>();
+
+        int t = 0;
+
+        while (!maxHeap.isEmpty() || !q.isEmpty()) {
+
+            t++;
+
+            // Execute the task with the highest remaining frequency.
+            if (!maxHeap.isEmpty()) {
+
+                int taskCount = maxHeap.poll();
+
+                taskCount--;
+
+                // If the task still has remaining executions,
+                // put it into cooldown.
+                if (taskCount > 0)
+                    q.offer(new TasksRemaining(taskCount, t + n));
+            }
+
+            // Release every task whose cooldown has expired.
+            // Using <= makes the simulation slightly more robust
+            // than checking only equality.
+            while (!q.isEmpty() && q.peek().scheduledTime <= t) {
+                maxHeap.offer(q.poll().taskCount);
+            }
+        }
+
+        return t;
+    }
+}
+
+class TasksRemaining {
+
+    int taskCount;
+    int scheduledTime;
+
+    public TasksRemaining(int taskCount, int scheduledTime) {
+        this.taskCount = taskCount;
+        this.scheduledTime = scheduledTime;
+    }
+}
+```
+
+---
+
+# Interview Explanation
+
+> "I first count the frequency of every task. Since we want to minimize idle time, I always execute the task with the highest remaining frequency using a Max Heap. If that task still has remaining executions, I place it into a cooldown queue along with the earliest time it can become available again. Since cooldowns expire in chronological order, a FIFO queue is sufficient. At each time unit, I execute one task if available and then move every task whose cooldown has expired back into the heap."
+
+---
+
+# Key Takeaways
+
+- Use a **Max Heap** whenever you repeatedly need the highest-priority element.
+- Use a **Queue** because cooldown expiration happens in chronological order.
+- The heap stores **remaining frequencies**, not task characters.
+- This is a **time simulation** problem using two data structures:
+  - **Max Heap** → scheduling
+  - **Queue** → cooldown management
+- Overall complexity:
+  - **Time:** `O(N log K)`
+  - **Space:** `O(K)`
