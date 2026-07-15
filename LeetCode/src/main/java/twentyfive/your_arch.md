@@ -25,8 +25,7 @@ The goal is to provide enough context for the interviewer to start asking deeper
 # 90-Second Interview Answer
 
 The largest production system I worked on was Morgan Stanley's real-time client screening platform.
-
-Whenever a new institutional client is onboarded or an existing client profile changes, upstream business applications need to determine whether that client matches sanctions lists, politically exposed person (PEP) databases, or adverse media before allowing onboarding or further processing.
+Whenever a new institutional client is onboarded or an existing client's KYC profile undergoes a significant change, upstream business applications invoke our screening platform to determine whether the client matches sanctions lists, PEP databases, or adverse media. The screening decision is then used to determine whether onboarding or further processing can proceed.
 
 The key business requirement was balancing two competing goals.
 
@@ -55,6 +54,34 @@ By separating synchronous decisioning from asynchronous distribution, we kept on
 Wait for the interviewer to ask the next question.
 
 ---
+
+# Important
+Banks are legally required to perform ongoing customer due diligence (CDD), not just screening at account opening.
+
+This ensures they can identify new risks if:
+
+Watchlists change.
+Customer information changes.
+Regulatory requirements change
+
+Screening doesn't happen only once.
+
+Banks continuously monitor customers because regulations require ongoing due diligence.
+
+
+Examples of profile changes include:
+Customer changes legal name.
+Company merges or changes ownership.
+Address changes.
+Date of birth correction.
+New beneficial owner is added.
+Risk classification/ranking changes.
+Periodic KYC refresh.
+
+Any significant change may require the client to be screened again
+
+
+
 
 # Why This Introduction Works
 
