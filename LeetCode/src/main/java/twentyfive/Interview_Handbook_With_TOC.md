@@ -16795,6 +16795,594 @@ HashMap
 ```
 ```
 
+# LeetCode 706 - Design HashMap
+
+## Pattern
+
+Implement a HashMap using **Separate Chaining**.
+
+Each bucket stores a linked list of key-value pairs.
+
+If multiple keys hash to the same bucket, they are stored in the same linked list.
+
+---
+
+# Data Structure
+
+```java
+capacity = 769
+
+LinkedList<KeyValue>[] buckets;
+```
+
+Why **769**?
+
+- Prime numbers generally distribute keys more uniformly.
+- Reduces collisions compared to many composite numbers.
+
+---
+
+# Hash Function
+
+```java
+bucketIndex = key % capacity;
+```
+
+Example
+
+```
+capacity = 769
+
+key = 1000
+
+bucketIndex = 1000 % 769 = 231
+```
+
+---
+
+# Collision Handling
+
+Suppose
+
+```
+capacity = 10
+```
+
+Insert
+
+```
+12
+
+22
+
+32
+```
+
+All hash to
+
+```
+2
+```
+
+Bucket 2 becomes
+
+```
+Bucket 2
+
+↓
+
+(12,100)
+
+↓
+
+(22,200)
+
+↓
+
+(32,300)
+```
+
+This technique is called **Separate Chaining**.
+
+---
+
+# Lazy Initialization
+
+Instead of eagerly creating every bucket
+
+```java
+for (...) {
+    bucket[i] = new LinkedList<>();
+}
+```
+
+we only allocate a bucket when it is first needed.
+
+```java
+if (bucket[bucketIndex] == null)
+    bucket[bucketIndex] = new LinkedList<>();
+```
+
+### Why?
+
+Suppose
+
+```
+capacity = 1,000,000
+```
+
+but only
+
+```
+10
+```
+
+keys are inserted.
+
+Creating one million linked lists wastes memory.
+
+Lazy initialization creates only the buckets that are actually used.
+
+This is more memory efficient and is closer to how many real implementations allocate resources.
+
+---
+
+# put()
+
+Steps
+
+1. Compute bucket index.
+2. Lazily create the bucket if necessary.
+3. Search for the key.
+4. If found, update value.
+5. Otherwise insert a new key-value pair.
+
+### Complexity
+
+Average
+
+```
+O(1)
+```
+
+Worst
+
+```
+O(N)
+```
+
+---
+
+# get()
+
+Steps
+
+1. Compute bucket index.
+2. Traverse linked list.
+3. Return value if found.
+4. Otherwise return -1.
+
+### Complexity
+
+Average
+
+```
+O(1)
+```
+
+Worst
+
+```
+O(N)
+```
+
+---
+
+# remove()
+
+Steps
+
+1. Compute bucket index.
+2. Search for the key.
+3. Remove it from the linked list.
+
+### Complexity
+
+Average
+
+```
+O(1)
+```
+
+Worst
+
+```
+O(N)
+```
+
+---
+
+# Load Factor
+
+One limitation of this implementation is the fixed capacity.
+
+HashMaps monitor
+
+```
+Load Factor
+
+=
+
+size / capacity
+```
+
+Example
+
+```
+capacity = 16
+
+size = 12
+
+Load Factor = 12 / 16 = 0.75
+```
+
+As the load factor increases,
+
+collision chains become longer.
+
+Lookups become slower.
+
+Most production HashMaps resize once the load factor exceeds roughly
+
+```
+0.75
+```
+
+---
+
+# Resizing (Rehashing)
+
+When
+
+```
+size / capacity >= 0.75
+```
+
+we
+
+```
+Double capacity
+
+↓
+
+Allocate a new bucket array
+
+↓
+
+Rehash every key
+
+↓
+
+Insert into new buckets
+```
+
+Why rehash?
+
+Because
+
+```
+key % oldCapacity
+```
+
+is different from
+
+```
+key % newCapacity
+```
+
+Example
+
+```
+Old Capacity = 10
+
+21 % 10 = 1
+```
+
+After resizing
+
+```
+New Capacity = 20
+
+21 % 20 = 1
+```
+
+Another key
+
+```
+35 % 10 = 5
+
+35 % 20 = 15
+```
+
+The bucket changes, so every key must be inserted again.
+
+---
+
+# Common Resize Bugs
+
+### Bug 1
+
+Forgetting null buckets
+
+Wrong
+
+```java
+for (LinkedList<KeyValue> ll : oldBuckets) {
+    for (KeyValue kv : ll) {
+        ...
+    }
+}
+```
+
+Some buckets are
+
+```
+null
+```
+
+because of lazy initialization.
+
+Correct
+
+```java
+for (LinkedList<KeyValue> ll : oldBuckets) {
+
+    if (ll == null)
+        continue;
+
+    for (KeyValue kv : ll) {
+        put(kv.key, kv.value);
+    }
+}
+```
+
+---
+
+### Bug 2
+
+Forgetting to reset size
+
+Suppose
+
+```
+size = 100
+```
+
+During resize
+
+```
+put(...)
+```
+
+is called 100 times.
+
+If
+
+```
+size
+```
+
+isn't reset,
+
+it becomes
+
+```
+200
+```
+
+Correct
+
+```java
+size = 0;
+
+for (...) {
+    put(...);
+}
+```
+
+The calls to `put()` will rebuild the correct size.
+
+---
+
+### Bug 3
+
+Forgetting to trigger resize
+
+After inserting a **new** key
+
+```java
+size++;
+
+if ((double) size / capacity >= 0.75)
+    resizeHashMap();
+```
+
+---
+
+# Complexity
+
+| Operation | Average | Worst |
+|-----------|---------|--------|
+| put | O(1) | O(N) |
+| get | O(1) | O(N) |
+| remove | O(1) | O(N) |
+| resize | O(N) | O(N) |
+
+Although resizing is O(N), it happens infrequently.
+
+Therefore
+
+```
+put()
+
+=
+
+O(1) amortized
+```
+
+---
+
+# Interview Follow-up
+
+If asked
+
+> **"How would you improve this implementation?"**
+
+A good answer is:
+
+- Track the number of keys (`size`).
+- Compute the load factor (`size / capacity`).
+- Resize when the load factor exceeds 0.75.
+- Allocate a larger bucket array (typically double the capacity).
+- Rehash every existing key into the new table.
+- This keeps bucket chains short and preserves O(1) average-time operations.
+
+---
+
+# Code
+
+```java
+class MyHashMap {
+
+    int capacity = 769;
+    // int size = 0;    // Needed if implementing resizing
+
+    LinkedList<KeyValue>[] bucket;
+
+    public MyHashMap() {
+        bucket = new LinkedList[capacity];
+    }
+
+    public void put(int key, int value) {
+
+        int bucketIndex = getBucketIndex(key);
+
+        // Lazy initialization.
+        // Only create the bucket when it is first used.
+        if (bucket[bucketIndex] == null)
+            bucket[bucketIndex] = new LinkedList<>();
+
+        // Update existing key.
+        for (KeyValue kv : bucket[bucketIndex]) {
+            if (kv.key == key) {
+                kv.value = value;
+                return;
+            }
+        }
+
+        // Insert new key.
+        bucket[bucketIndex].add(new KeyValue(key, value));
+
+        // If resizing is implemented:
+        //
+        // size++;
+        // if ((double) size / capacity >= 0.75)
+        //     resizeHashMap();
+    }
+
+    public int get(int key) {
+
+        int bucketIndex = getBucketIndex(key);
+
+        if (bucket[bucketIndex] == null)
+            return -1;
+
+        for (KeyValue kv : bucket[bucketIndex]) {
+            if (kv.key == key)
+                return kv.value;
+        }
+
+        return -1;
+    }
+
+    public void remove(int key) {
+
+        int bucketIndex = getBucketIndex(key);
+
+        if (bucket[bucketIndex] == null)
+            return;
+
+        int index = 0;
+        boolean notFound = true;
+
+        for (KeyValue kv : bucket[bucketIndex]) {
+
+            if (kv.key == key) {
+                notFound = false;
+                break;
+            }
+
+            index++;
+        }
+
+        if (notFound)
+            return;
+
+        bucket[bucketIndex].remove(index);
+
+        // If tracking size:
+        // size--;
+    }
+
+    public int getBucketIndex(int key) {
+        return key % capacity;
+    }
+
+    // Optional improvement for production-quality HashMap.
+    public void resizeHashMap() {
+
+        capacity *= 2;
+
+        LinkedList<KeyValue>[] oldBuckets = bucket;
+
+        bucket = new LinkedList[capacity];
+
+        // Important:
+        // size = 0;
+        // because put() will rebuild the count.
+
+        for (LinkedList<KeyValue> ll : oldBuckets) {
+
+            if (ll == null)
+                continue;
+
+            for (KeyValue kv : ll) {
+                put(kv.key, kv.value);
+            }
+        }
+    }
+}
+
+class KeyValue {
+
+    int key;
+    int value;
+
+    public KeyValue(int key, int value) {
+        this.key = key;
+        this.value = value;
+    }
+}
+```
+
+# Interview Summary
+
+- Uses **Separate Chaining** to resolve collisions.
+- Uses a **prime bucket size (769)** for better key distribution.
+- Uses **lazy initialization** to reduce memory usage.
+- Supports `put`, `get`, and `remove` in **O(1)** average time.
+- Production implementations improve this further using **load factor**, **rehashing**, and **dynamic resizing** while maintaining **O(1) amortized** insertion.
+
 # Subarray Problems: Understanding O(n²) vs O(n³)
 
 Subarray problems
