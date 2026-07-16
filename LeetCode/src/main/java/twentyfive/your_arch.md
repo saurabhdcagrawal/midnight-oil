@@ -728,25 +728,27 @@ Everything else revolves around this service.
 
 # High-Level Architecture
 
-                   API Gateway
-                        │
-                        ▼
-               Screening Service
-                        │
-        ┌───────────────┼────────────────┐
-        ▼               ▼                ▼
- Validation      Vendor Adapter    Decision Engine
-        │               │                │
-        └───────────────┼────────────────┘
-                        ▼
-                  Bridger / RDC
-                        │
-                        ▼
-             Response Normalizer
-                        │
-        ┌───────────────┼────────────────┐
-        ▼                                ▼
- Return Response                   Kafka Producer
+```text
+                    API Gateway
+                         │
+                         ▼
+                Screening Service
+                         │
+         ┌───────────────┼────────────────┐
+         ▼               ▼                ▼
+   Validation      Vendor Adapter    Decision Engine
+         │               │                │
+         └───────────────┼────────────────┘
+                         ▼
+                   Bridger / RDC
+                         │
+                         ▼
+              Response Normalizer
+                         │
+         ┌───────────────┼────────────────┐
+         ▼                                ▼
+  Return Response                 Kafka Producer
+```
 
 ---
 
