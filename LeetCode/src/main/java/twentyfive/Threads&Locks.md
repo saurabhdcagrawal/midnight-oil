@@ -1,4 +1,4 @@
-# Thread Safety for Running Mean Service (BlackRock Interview)
+# Thread Safety for Running Mean Service
 
 ## Problem
 
