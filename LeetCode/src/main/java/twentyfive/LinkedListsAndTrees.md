@@ -11980,3 +11980,475 @@ This demonstrates nearly every JUnit best practice:
 - Verifies observable behavior (black-box testing)
 - Uses `assertEquals(expected, actual)`
 - Compares the full result rather than individual elements
+
+
+# Lowest Common Ancestor (Binary Tree)
+
+**LeetCode 236**
+
+---
+
+# Intuition
+
+We solve this problem using **Postorder DFS**.
+
+Instead of asking
+
+> "Is this node the LCA?"
+
+each recursive call answers a simpler question:
+
+> **"What is the best answer for my subtree?"**
+
+That answer can be only one of four things:
+
+| Return Value | Meaning |
+|--------------|---------|
+| `null` | Neither `p` nor `q` found |
+| `p` | Only `p` found |
+| `q` | Only `q` found |
+| `LCA` | Lowest Common Ancestor already found |
+
+The parent simply combines the answers returned by the left and right subtrees.
+
+---
+
+# Java Solution
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+
+class Solution {
+
+    // Time : O(N)
+    // Space: O(H) where H is the tree height
+
+    public TreeNode lowestCommonAncestor(TreeNode root,
+                                         TreeNode p,
+                                         TreeNode q) {
+
+        // Base Case 1
+        if(root == null)
+            return null;
+
+        // Base Case 2
+        // If we found either p or q,
+        // return it immediately.
+        if(root == p || root == q)
+            return root;
+
+        // Explore both subtrees.
+        // Each recursive call returns the best answer
+        // for its subtree:
+        //
+        // null
+        // p
+        // q
+        // LCA
+        TreeNode left = lowestCommonAncestor(root.left, p, q);
+        TreeNode right = lowestCommonAncestor(root.right, p, q);
+
+        // One node found on each side.
+        // Therefore current node is the LCA.
+        if(left != null && right != null)
+            return root;
+
+        // Otherwise propagate whichever subtree
+        // returned a valid answer.
+        if(right == null)
+            return left;
+
+        return right;
+    }
+}
+```
+
+---
+
+# Recursive Invariant ⭐
+
+Every recursive call returns
+
+> **The best answer for its subtree.**
+
+That answer can be
+
+```
+null
+
+↓
+
+p
+
+↓
+
+q
+
+↓
+
+Lowest Common Ancestor
+```
+
+The parent never needs to know which one it received.
+
+It only asks
+
+- Did left return something?
+- Did right return something?
+
+If both returned non-null,
+
+```
+Current node is the Lowest Common Ancestor.
+```
+
+Otherwise,
+
+return whichever subtree returned something.
+
+---
+
+# Example 1
+
+## p and q are on opposite sides
+
+```
+        3
+      /   \
+     5     1
+    / \   / \
+   6   2 0   8
+
+p = 6
+
+q = 8
+```
+
+Expected Answer
+
+```
+3
+```
+
+---
+
+### Recursive Calls
+
+```
+LCA(3)
+
+    left = LCA(5)
+
+        left = LCA(6)
+
+            return 6
+
+        right = LCA(2)
+
+            return null
+
+        return 6
+
+    right = LCA(1)
+
+        left = LCA(0)
+
+            return null
+
+        right = LCA(8)
+
+            return 8
+
+        return 8
+```
+
+Back at node 3
+
+```
+left = 6
+
+right = 8
+```
+
+Both non-null
+
+```
+return 3
+```
+
+---
+
+# Example 2
+
+## Both nodes are in the left subtree
+
+```
+          3
+         /
+        5
+       / \
+      6   2
+         / \
+        7   4
+
+p = 7
+
+q = 4
+```
+
+Expected Answer
+
+```
+2
+```
+
+---
+
+### Recursive Calls
+
+```
+LCA(3)
+
+    left = LCA(5)
+
+        left = LCA(6)
+
+            return null
+
+        right = LCA(2)
+
+            left = LCA(7)
+
+                return 7
+
+            right = LCA(4)
+
+                return 4
+
+            left = 7
+
+            right = 4
+
+            return 2
+```
+
+Back at node 5
+
+```
+left = null
+
+right = 2
+
+return 2
+```
+
+Back at node 3
+
+```
+left = 2
+
+right = null
+
+return 2
+```
+
+Notice
+
+The recursion already found the LCA.
+
+Node 3 simply propagates it upward.
+
+---
+
+# Example 3
+
+## One node is the ancestor of the other
+
+```
+        3
+       /
+      5
+     / \
+    6   2
+       / \
+      7   4
+
+p = 5
+
+q = 4
+```
+
+Expected Answer
+
+```
+5
+```
+
+---
+
+### Recursive Calls
+
+```
+LCA(3)
+
+    left = LCA(5)
+```
+
+At node 5
+
+```
+root == p
+
+return 5
+```
+
+Notice
+
+The recursion **does NOT continue below.**
+
+It never visits
+
+```
+6
+
+2
+
+7
+
+4
+```
+
+Back at node 3
+
+```
+left = 5
+
+right = null
+
+return 5
+```
+
+---
+
+# Why don't we search below?
+
+Suppose
+
+```
+p = 5
+
+q = 4
+```
+
+As soon as recursion reaches node **5**
+
+```
+if(root == p || root == q)
+    return root;
+```
+
+The recursion immediately returns.
+
+Why?
+
+Because
+
+- 5 is already one of the target nodes.
+- If the other node exists anywhere below,
+  then 5 is automatically the Lowest Common Ancestor.
+
+Searching deeper cannot produce a lower ancestor.
+
+---
+
+# Two Different Types of Returns
+
+## 1. Base Case Return
+
+```java
+if(root == p || root == q)
+    return root;
+```
+
+Stops recursion immediately.
+
+Children are never explored.
+
+---
+
+## 2. Propagation Return
+
+```java
+if(left != null && right != null)
+    return root;
+
+return left != null ? left : right;
+```
+
+This simply propagates the best answer already found.
+
+---
+
+# Complexity
+
+## Time
+
+```
+O(N)
+```
+
+Every node is visited once.
+
+---
+
+## Space
+
+```
+O(H)
+```
+
+where
+
+```
+H = Height of Tree
+```
+
+Worst Case
+
+```
+O(N)
+```
+
+Balanced Tree
+
+```
+O(log N)
+```
+
+---
+
+# Interview Explanation (30 seconds)
+
+"I solve this using Postorder DFS.
+
+Each recursive call returns the best answer for its subtree, which can be:
+
+- null
+- p
+- q
+- or an LCA already found deeper in the tree.
+
+After exploring both subtrees:
+
+- If both left and right return non-null values, one target was found in each subtree, so the current node is the Lowest Common Ancestor.
+- Otherwise, I propagate whichever subtree returned a valid answer upward.
+
+The algorithm visits every node once, giving O(N) time complexity with O(H) recursion stack space."

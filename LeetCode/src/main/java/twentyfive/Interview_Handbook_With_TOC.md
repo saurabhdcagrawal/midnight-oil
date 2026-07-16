@@ -19467,6 +19467,7 @@ class Solution {
 
         // We only need frequencies.
         // The execution sequence itself is not required.
+		//note we are not storing task frequencies
         for (char task : hmap.keySet()) {
             maxHeap.offer(hmap.get(task));
         }

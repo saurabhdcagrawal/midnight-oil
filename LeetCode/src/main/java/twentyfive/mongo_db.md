@@ -912,3 +912,186 @@ Supports:
 * Range sharding
 
 Provides horizontal scalability.
+
+# MongoDB Interview Notes
+
+---
+
+# Table of Contents
+
+1. MongoDB Fundamentals
+2. BSON and Documents
+3. Collections
+4. Flexible Schema
+5. Schema Validation
+6. MongoDB Data Modeling Philosophy
+7. Embedding vs Referencing
+8. SQL Normalization vs MongoDB Embedding
+9. Relationship Modeling
+    - One-to-One
+    - One-to-Few
+    - One-to-Many
+    - One-to-Zillions
+    - Many-to-Many
+10. Arrays
+11. Polymorphism
+12. Read-heavy vs Write-heavy Workloads
+13. Embed vs Reference Decision Tree
+14. MongoDB Design Patterns
+15. MongoDB Anti-Patterns
+16. Interview Cheat Sheet
+
+# MongoDB Fundamentals
+
+## What is MongoDB?
+
+MongoDB is a NoSQL document database.
+
+Unlike relational databases that store data in rows and tables,
+MongoDB stores data as **documents** inside **collections**.
+
+```
+Database
+    |
+    +------ Collection
+                |
+                +------ Document
+                |
+                +------ Document
+                |
+                +------ Document
+```
+
+Example
+
+```
+Library Database
+
+    |
+    +------ Books Collection
+
+            |
+            +------ Book Document
+
+            |
+            +------ Book Document
+```
+
+---
+
+## Document
+
+A document is similar to a JSON object.
+
+Example
+
+```json
+{
+    "_id": ObjectId(...),
+    "title": "The Hobbit",
+    "author": "J.R.R. Tolkien",
+    "price": 19.99
+}
+```
+
+Every document stores related information together.
+
+Unlike relational databases,
+documents are **self-contained**.
+
+---
+
+## Collection
+
+A Collection is similar to a SQL table.
+
+```
+Books Collection
+
+Book 1
+
+Book 2
+
+Book 3
+```
+
+Unlike SQL tables,
+
+documents inside the same collection do **not** need to have identical fields.
+
+Example
+
+```json
+{
+    "title":"Harry Potter"
+}
+```
+
+```json
+{
+    "title":"Dune",
+    "pages":600,
+    "publisher":"Penguin"
+}
+```
+
+Both are valid documents inside the same collection.
+
+---
+
+## BSON
+
+MongoDB stores documents internally using **BSON** (Binary JSON).
+
+BSON supports more data types than JSON.
+
+Examples
+
+```
+String
+
+Integer
+
+Boolean
+
+Date
+
+Timestamp
+
+Binary
+
+Decimal128
+
+ObjectId
+```
+
+Applications send and receive JSON,
+
+while MongoDB stores BSON internally for better performance.
+
+---
+
+## _id
+
+Every MongoDB document has a unique
+
+```
+_id
+```
+
+field.
+
+If not provided,
+
+MongoDB automatically generates one.
+
+Example
+
+```json
+{
+    "_id": ObjectId("67fd..."),
+    "title":"The Hobbit"
+}
+```
+
+The `_id` field uniquely identifies each document and is automatically indexed.
