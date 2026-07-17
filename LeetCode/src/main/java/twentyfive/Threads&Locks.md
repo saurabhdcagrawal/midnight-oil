@@ -320,3 +320,321 @@ O(1)
 > When an event arrives, I locate the corresponding `SecurityData`, acquire its **write lock**, update the event list, and release the lock.
 >
 > Different CUSIPs have different lock objects, so they can be processed concurrently, while updates to the same CUSIP are serialized safely.
+
+# ConcurrentHashMap vs HashMap (Interview Notes)
+
+## My Original Confusion
+
+My question was:
+
+> "If I already have a `ReentrantLock` inside `SecurityData`, why do I even need a `ConcurrentHashMap`? Doesn't the lock already protect the AAPL list?"
+
+The answer is:
+
+**The `ConcurrentHashMap` does NOT protect the AAPL list.**
+
+The `ReentrantLock` protects the AAPL list.
+
+The `ConcurrentHashMap` only protects the **map's internal data structure**.
+
+---
+
+# What does each one protect?
+
+```
+ConcurrentHashMap
+        │
+        ▼
+"AAPL"  --->  SecurityData
+                    │
+                    ▼
+             ReentrantLock
+                    │
+                    ▼
+         events, sum, count
+```
+
+### ConcurrentHashMap protects
+
+- the mapping from key → value
+- internal buckets
+- resizing
+- insertions
+- removals
+- lookups while other threads are modifying the map
+
+### ReentrantLock protects
+
+- the mutable state inside one SecurityData object
+    - event list
+    - running sum
+    - count
+    - any other mutable fields
+
+---
+
+# Why isn't HashMap enough?
+
+Suppose two threads execute simultaneously.
+
+```java
+map.put("AAPL", data1);
+```
+
+and
+
+```java
+map.put("MSFT", data2);
+```
+
+A normal `HashMap` is **not thread-safe**.
+
+Both threads may modify the internal bucket structure at the same time.
+
+Possible consequences include:
+
+- corrupted bucket chains
+- lost entries
+- inconsistent reads
+- undefined behavior
+
+The problem is **inside the HashMap itself**, not your application logic.
+
+---
+
+# What happens after map.get()?
+
+Suppose we already have
+
+```
+AAPL  ---> SecurityData A
+```
+
+Thread 1
+
+```java
+SecurityData data = map.get("AAPL");
+```
+
+Thread 2
+
+```java
+SecurityData data = map.get("AAPL");
+```
+
+Both receive the same object.
+
+Now both try
+
+```java
+data.events.add(...)
+```
+
+This is where
+
+```java
+data.lock.lock();
+```
+
+is needed.
+
+The map is no longer involved.
+
+---
+
+# Phone Book Analogy
+
+Think of the map as a phone book.
+
+```
+Phone Book
+
+AAPL ---> Room 101
+MSFT ---> Room 102
+```
+
+The phone book only tells you where the room is.
+
+Once you reach Room 101,
+
+the **door lock** protects the room.
+
+The phone book does not protect what happens inside the room.
+
+```
+ConcurrentHashMap
+        │
+Find Room 101
+        │
+        ▼
+ReentrantLock
+        │
+Protects the room (events, sum, count)
+```
+
+---
+
+# When should I use ConcurrentHashMap?
+
+## Case 1: Single thread
+
+```java
+HashMap
+```
+
+✅ Perfectly fine.
+
+---
+
+## Case 2: Multiple threads, read-only map
+
+Example:
+
+```
+Application starts
+
+↓
+
+Load all CUSIPs
+
+↓
+
+Never modify map again
+
+↓
+
+100 threads only call get()
+```
+
+```java
+HashMap
+```
+
+✅ Safe.
+
+Concurrent reads are fine if the map is never modified after initialization.
+
+---
+
+## Case 3: Multiple threads reading AND writing
+
+Example:
+
+```
+Thread 1 -> put(AAPL)
+
+Thread 2 -> get(MSFT)
+
+Thread 3 -> remove(GOOG)
+```
+
+Now a normal HashMap is **not safe**.
+
+Use either:
+
+- ConcurrentHashMap
+- HashMap protected by synchronization
+
+---
+
+## Case 4: BlackRock Streaming System
+
+Suppose new securities can arrive dynamically.
+
+```
+consume(AAPL)
+
+consume(MSFT)
+
+consume(NVDA)
+```
+
+Some threads may perform
+
+```java
+map.put(newCusip, new SecurityData());
+```
+
+while others perform
+
+```java
+map.get(existingCusip);
+```
+
+This is exactly where `ConcurrentHashMap` is useful.
+
+---
+
+## Case 5: All securities are preloaded
+
+Suppose during startup
+
+```
+Load all securities
+
+↓
+
+Never modify the map again
+
+↓
+
+Only update SecurityData
+```
+
+Then
+
+```java
+HashMap<String, SecurityData>
+```
+
+is sufficient.
+
+The per-CUSIP `ReentrantLock` protects each SecurityData object.
+
+---
+
+# Interview Answer
+
+If asked:
+
+> "Why ConcurrentHashMap?"
+
+A good answer is:
+
+> "Not because my event list needs protection—that's handled by the per-CUSIP `ReentrantLock`. I use `ConcurrentHashMap` so concurrent lookups, insertions, and removals do not corrupt the map's internal structure."
+
+---
+
+# Easy Rule to Remember
+
+| Scenario | HashMap | ConcurrentHashMap |
+|----------|---------|-------------------|
+| Single thread | ✅ | Not needed |
+| Multiple threads, read-only after initialization | ✅ | Optional |
+| Multiple threads, concurrent reads + writes | ❌ | ✅ |
+| Concurrent put/remove/get | ❌ | ✅ |
+
+---
+
+# Key Takeaway
+
+**ConcurrentHashMap protects the directory.**
+
+```
+CUSIP
+   │
+   ▼
+SecurityData
+```
+
+**ReentrantLock protects the actual data inside one SecurityData object.**
+
+```
+SecurityData
+    │
+    ├── events
+    ├── sum
+    └── count
+```
+
+They solve **different concurrency problems**, and are often used together.
