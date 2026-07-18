@@ -1337,3 +1337,169 @@ private int robHouses(int[] nums, int start, int end) {
 }
 
 ```
+
+# Longest Common Subsequence (LeetCode 1143)
+
+## Approach: Bottom-Up Dynamic Programming
+
+### State Definition
+
+`dp[i][j]` represents the length of the **Longest Common Subsequence (LCS)** between:
+
+- First `i` characters of `text1`
+- First `j` characters of `text2`
+
+So,
+
+```text
+dp[i][j] = LCS(text1[0...i-1], text2[0...j-1])
+```
+
+We create a DP table of size `(m+1) x (n+1)`.
+
+The extra row and column represent an **empty string**, whose LCS is always `0`.
+
+---
+
+## DP Transition
+
+### Case 1: Characters Match
+
+If
+
+```java
+text1.charAt(i-1) == text2.charAt(j-1)
+```
+
+then we include that character in the LCS.
+
+```text
+dp[i][j] = 1 + dp[i-1][j-1]
+```
+
+---
+
+### Case 2: Characters Do Not Match
+
+One of the current characters cannot be part of the optimal subsequence.
+
+So we try:
+
+- Skip character from `text1`
+- Skip character from `text2`
+
+```text
+dp[i][j] =
+max(dp[i-1][j],
+    dp[i][j-1])
+```
+
+---
+
+## Complexity
+
+### Time Complexity
+
+There are
+
+```text
+(m+1) × (n+1)
+```
+
+states.
+
+Each state takes **O(1)** time.
+
+Therefore,
+
+```text
+Time = O(m × n)
+```
+
+---
+
+### Space Complexity
+
+The DP table contains
+
+```text
+(m+1) × (n+1)
+```
+
+cells.
+
+Therefore,
+
+```text
+Space = O(m × n)
+```
+
+---
+
+## Example
+
+```text
+text1 = "abcde"
+
+text2 = "ace"
+```
+
+### DP Table
+
+|     | "" | a | c | e |
+|-----|---:|---:|---:|---:|
+| ""  | 0 | 0 | 0 | 0 |
+| a   | 0 | 1 | 1 | 1 |
+| b   | 0 | 1 | 1 | 1 |
+| c   | 0 | 1 | 2 | 2 |
+| d   | 0 | 1 | 2 | 2 |
+| e   | 0 | 1 | 2 | 3 |
+
+Final Answer:
+
+```text
+dp[5][3] = 3
+```
+
+LCS:
+
+```text
+ace
+```
+
+---
+
+## Interview Explanation
+
+> "`dp[i][j]` stores the length of the Longest Common Subsequence between the first `i` characters of `text1` and the first `j` characters of `text2`. If the current characters match, I extend the previous subsequence using `1 + dp[i-1][j-1]`. Otherwise, I try skipping one character from either string and take the maximum. After filling the table from top-left to bottom-right, the answer is stored in `dp[m][n]`."
+
+---
+
+## Code
+
+```java
+class Solution {
+    public int longestCommonSubsequence(String text1, String text2) {
+        int m= text1.length();
+        int n= text2.length();
+
+        // dp[i][j] means the length of the Longest Common Subsequence
+        // between the first i characters of text1 and
+        // the first j characters of text2.
+        int[][] dp = new int[m+1][n+1];
+
+        for(int i=1;i<=m;i++){
+            for(int j=1;j<=n;j++){
+
+                dp[i][j] =
+                    text1.charAt(i-1)==text2.charAt(j-1)
+                    ? 1 + dp[i-1][j-1]
+                    : Math.max(dp[i-1][j], dp[i][j-1]);
+
+            }
+        }
+
+        return dp[m][n];
+    }
+}
+```
