@@ -1173,3 +1173,167 @@ class Solution {
 - Add **Memoization** to avoid recomputing overlapping subproblems.
 - Convert it to **Bottom-Up DP** by filling from right to left.
 - Observe that each state only depends on the next **two** states, allowing **O(1)** space optimization.
+
+
+# House Robber II (LeetCode 213)
+
+## Difference from House Robber I
+
+In House Robber I, houses are arranged in a **straight line**.
+
+```text
+1 --- 2 --- 3 --- 4
+```
+
+In House Robber II, houses are arranged in a **circle**.
+
+```text
+      1
+   /     \
+  2       4
+    \   /
+      3
+```
+
+Since the **first and last houses are adjacent**, they **cannot both be robbed**.
+
+---
+
+## Key Observation
+
+There are only **two possible cases**:
+
+### Case 1: Rob from House[0] to House[n-2]
+
+Exclude the last house.
+
+```text
+[2,3,2]
+
+Take
+
+[2,3]
+```
+
+---
+
+### Case 2: Rob from House[1] to House[n-1]
+
+Exclude the first house.
+
+```text
+[2,3,2]
+
+Take
+
+[3,2]
+```
+
+Now both cases become the original **House Robber I** problem.
+
+Compute both and return the maximum.
+
+```text
+answer =
+max(
+    rob(0...n-2),
+    rob(1...n-1)
+)
+```
+
+---
+
+## Edge Case
+
+If there is only one house,
+
+```java
+if(nums.length == 1)
+    return nums[0];
+```
+
+---
+
+## Complexity
+
+- Time: **O(n)**
+- Space:
+  - **O(n)** (copying arrays)
+  - Can be optimized to **O(1)** extra space by passing start/end indices instead of creating new arrays.
+
+---
+
+## Code
+
+```java
+public int rob(int[] nums) {
+    /*    1
+        1    2
+          3   */
+    /*Since House[1] and House[n] are adjacent, they cannot be robbed together.
+      Therefore, the problem becomes to rob either House[1]-House[n-1]
+      or House[2]-House[n], depending on which choice offers more money.
+      Now the problem has degenerated to the House Robber,
+      which is already been solved.
+    */
+
+    if(nums.length==1)
+        return nums[0];
+
+    int [] nums1= new int[nums.length-1];
+    int [] nums2= new int[nums.length-1];
+
+    copyArrayElems(nums1,0,nums);
+    copyArrayElems(nums2,1,nums);
+
+    return Math.max(robHouses(nums1),robHouses(nums2));
+}
+
+//LCS
+//edit distance
+//coins..
+public void copyArrayElems(int [] arr, int copyIndex,int[] nums){
+
+    for(int i=0;i<arr.length;i++){
+          arr[i]= nums[copyIndex++];
+    }
+
+}
+```
+
+## Interview Explanation
+
+> "Because the first and last houses are adjacent, they cannot both be robbed. So there are only two valid possibilities: either exclude the last house or exclude the first house. Each case becomes the original House Robber problem. I solve both independently and return the maximum result."
+```java
+public int rob(int[] nums) {
+
+    if(nums.length == 1)
+        return nums[0];
+
+    return Math.max(
+        robHouses(nums, 0, nums.length - 2),
+        robHouses(nums, 1, nums.length - 1)
+    );
+}
+//Now we tell it which part of the array to process.
+private int robHouses(int[] nums, int start, int end) {
+
+    int robNextPlusOne = 0;
+    int robNext = nums[end];
+    int current = 0;
+
+    for(int i = end - 1; i >= start; i--) {
+
+        current = Math.max(
+                nums[i] + robNextPlusOne,
+                robNext
+        );
+
+        robNextPlusOne = robNext;
+        robNext = current;
+    }
+
+    return robNext;
+}
+
+```
