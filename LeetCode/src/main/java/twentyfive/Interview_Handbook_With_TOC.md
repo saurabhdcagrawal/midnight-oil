@@ -19541,3 +19541,298 @@ class TasksRemaining {
 - Overall complexity:
   - **Time:** `O(N log K)`
   - **Space:** `O(K)`
+  
+  
+  # LeetCode 15 - 3Sum
+
+## Prerequisites
+
+Before solving **3Sum**, you should know these two problems.
+
+---
+
+# 1. Two Sum (Unsorted Array)
+
+**LeetCode 1**
+
+### Idea
+
+- Since the array is **not sorted**, we cannot use two pointers.
+- Use a **HashMap** to store numbers we've already seen.
+- For each number, check if its complement (`target - nums[i]`) exists in the map.
+
+### Complexity
+
+- **Time:** O(n)
+- **Space:** O(n)
+
+---
+
+# 2. Two Sum II (Sorted Array)
+
+**LeetCode 167**
+
+### Idea
+
+- Since the array is sorted, we can use the **Two Pointer** technique.
+- Start one pointer at the beginning and one at the end.
+- If the current sum is:
+  - Smaller than target → move `lo++`
+  - Greater than target → move `hi--`
+  - Equal → answer found
+
+### Complexity
+
+- **Time:** O(n)
+- **Space:** O(1)
+
+---
+
+# 3. 3Sum
+
+**LeetCode 15**
+
+## Idea
+
+This problem is simply an extension of **Two Sum II**.
+
+Instead of finding **2 numbers** that sum to the target,
+
+we **fix one number**, then use the **Two Pointer** technique to find the remaining two numbers.
+
+### Steps
+
+1. Sort the array.
+2. Fix one element `nums[i]`.
+3. Remaining target becomes:
+
+```text
+target = -nums[i]
+```
+
+4. Use two pointers on the remaining array.
+
+---
+
+## Why Sort?
+
+Sorting allows us to use the Two Pointer technique.
+
+If
+
+```text
+sum < target
+```
+
+increase the sum by moving
+
+```text
+lo++
+```
+
+If
+
+```text
+sum > target
+```
+
+decrease the sum by moving
+
+```text
+hi--
+```
+
+---
+
+## Why Skip Duplicate `i`?
+
+Example
+
+```text
+[-1,-1,-1,2,2]
+```
+
+If we use every `-1` as the first number, we'll generate the same triplet multiple times.
+
+So before starting the Two Pointer search:
+
+```java
+if(i != 0 && nums[i] == nums[i-1])
+    continue;
+```
+
+---
+
+## Why Don't We Break After Finding One Match?
+
+Example
+
+```text
+[-2,0,1,1,2]
+```
+
+For
+
+```text
+i = -2
+```
+
+we have **two** valid triplets.
+
+```text
+[-2,0,2]
+
+[-2,1,1]
+```
+
+Therefore after finding one answer we **continue searching** instead of breaking.
+
+---
+
+## Why Skip Duplicate `lo` and `hi`?
+
+Suppose we found
+
+```text
+[-2,0,2]
+```
+
+and the array is
+
+```text
+[-2,0,0,0,2,2]
+```
+
+Moving the pointers once gives
+
+```text
+lo -> another 0
+
+hi -> another 2
+```
+
+If we don't skip duplicates, we'll add the same triplet again.
+
+Since we've already moved both pointers,
+
+remember to compare against the values we **just used**.
+
+```java
+while(lo < hi && nums[lo] == nums[lo-1])
+    lo++;
+
+while(lo < hi && nums[hi] == nums[hi+1])
+    hi--;
+```
+
+---
+
+# Time Complexity
+
+Sorting
+
+```text
+O(n log n)
+```
+
+Outer loop
+
+```text
+O(n)
+```
+
+Two Pointer
+
+```text
+O(n)
+```
+
+Overall
+
+```text
+O(n²)
+```
+
+Space
+
+```text
+O(1)
+```
+
+(ignoring the output list)
+
+---
+
+# Interview Explanation
+
+> I first sort the array so I can use the Two Pointer technique.
+>
+> I fix one element and convert the problem into a Two Sum problem on the remaining part of the array.
+>
+> Since the array is sorted, I move the left pointer if the sum is too small and the right pointer if the sum is too large.
+>
+> To avoid duplicate triplets, I skip duplicate first elements before the search, and after finding a valid triplet I move both pointers and skip duplicate values for the second and third elements.
+>
+> This gives an overall complexity of **O(n²)**.
+
+---
+
+# Code
+
+```java
+class Solution {
+    public List<List<Integer>> threeSum(int[] nums) {
+
+        List<List<Integer>> result = new ArrayList<>();
+
+        Arrays.sort(nums);
+
+        for (int i = 0; i < nums.length; i++) {
+
+            // Skip duplicate first element
+            if (i != 0 && nums[i] == nums[i - 1])
+                continue;
+
+            int target = -1 * nums[i];
+
+            int lo = i + 1;
+            int hi = nums.length - 1;
+
+            while (lo < hi) {
+
+                int sum = nums[lo] + nums[hi];
+
+                if (sum == target) {
+
+                    result.add(Arrays.asList(nums[i], nums[lo], nums[hi]));
+
+                    // Can't break because there may be another valid pair.
+                    // Example:
+                    // [-2,0,2]
+                    // [-2,1,1]
+                    lo++;
+                    hi--;
+
+                    // We already incremented lo and decremented hi,
+                    // so compare against the values we just used.
+                    while (lo < hi && nums[lo] == nums[lo - 1])
+                        lo++;
+
+                    while (lo < hi && nums[hi] == nums[hi + 1])
+                        hi--;
+
+                } else if (sum < target) {
+
+                    lo++;
+
+                } else {
+
+                    hi--;
+                }
+            }
+        }
+
+        return result;
+    }
+}
+```
