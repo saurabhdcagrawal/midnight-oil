@@ -537,7 +537,7 @@ Use either:
 
 ---
 
-## Case 4: BlackRock Streaming System
+## Case 4: Streaming System
 
 Suppose new securities can arrive dynamically.
 
