@@ -1803,3 +1803,227 @@ class Solution {
 
 }
 ```
+
+## Example: Computing `dp[1][1]`
+
+Suppose:
+
+```text
+word1 = "horse"
+word2 = "ros"
+```
+
+We are computing:
+
+```text
+dp[1][1]
+```
+
+which means:
+
+> Convert **"h"** into **"r"**.
+
+Current DP table:
+
+|      | "" | r |
+|------|---:|---:|
+| **""** | 0 | 1 |
+| **h**  | 1 | ? |
+
+Since
+
+```text
+h != r
+```
+
+we consider all three operations.
+
+---
+
+### Option 1: Insert (Left)
+
+Look at the left cell:
+
+```text
+dp[1][0] = 1
+```
+
+This already converts:
+
+```text
+"h"
+
+↓
+
+""
+```
+
+Now we still need to convert
+
+```text
+""
+
+↓
+
+"r"
+```
+
+So we **insert** `'r'`.
+
+Operations:
+
+```text
+h
+↓ Delete
+
+""
+
+↓ Insert r
+
+r
+```
+
+Cost:
+
+```text
+dp[1][0] + 1
+
+= 1 + 1
+
+= 2
+```
+
+---
+
+### Option 2: Delete (Top)
+
+Look at the top cell:
+
+```text
+dp[0][1] = 1
+```
+
+This already converts:
+
+```text
+""
+
+↓
+
+"r"
+```
+
+Now we still have an extra `'h'`.
+
+Delete it.
+
+Operations:
+
+```text
+h
+
+↓
+
+Delete
+
+""
+```
+
+Cost:
+
+```text
+dp[0][1] + 1
+
+= 1 + 1
+
+= 2
+```
+
+---
+
+### Option 3: Replace (Diagonal)
+
+Look at the diagonal cell:
+
+```text
+dp[0][0] = 0
+```
+
+This converts:
+
+```text
+""
+
+↓
+
+""
+```
+
+Now simply replace:
+
+```text
+h
+
+↓
+
+r
+```
+
+Cost:
+
+```text
+dp[0][0] + 1
+
+= 0 + 1
+
+= 1
+```
+
+---
+
+### Take the Minimum
+
+```text
+Insert  = 2
+
+Delete  = 2
+
+Replace = 1
+```
+
+Therefore,
+
+```text
+dp[1][1] = 1
+```
+
+The best operation is **Replace**.
+
+```text
+h
+↓ Replace
+r
+```
+
+Only **one operation** is required.
+
+---
+
+### Memory Trick
+
+```
+           word2
+        ""  r  o  s
+
+      ← Insert
+word1
+      ↑ Delete
+
+      ↖ Replace / Match
+```
+
+Think of the operations as changes to **`word1`**:
+
+- **Left (`dp[i][j-1]`)** → Insert a character into `word1`
+- **Up (`dp[i-1][j]`)** → Delete a character from `word1`
+- **Diagonal (`dp[i-1][j-1]`)** → Replace the current character (or Match if they're equal)
