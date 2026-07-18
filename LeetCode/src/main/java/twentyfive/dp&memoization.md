@@ -897,6 +897,72 @@ Total Runtime
 (Work Per State)
 ```
 
+# Word Break Solution: Complexity Analysis
+
+The total time complexity of your solution is **$O(N^3 + M)$**, where **$N$** is the length of the string `s`, and **$M$** is the total number of characters across all words in `wordDict`.
+
+
+## Detailed Breakdown
+
+### 1. Initial Setup: $O(M)$
+Before triggering the recursive method, your code converts the dictionary into a `HashSet`.
+* Adding a word to a `HashSet` requires hashing its characters, taking time proportional to the word's length.
+* Iterating through all words in `wordDict` and processing them takes **$O(M)$** time.
+
+### 2. Number of Memoized States: $O(N)$
+Your `dp` array tracking cache states has a maximum size of `s.length() + 1`.
+* The state is entirely defined by the index pointer `i`.
+* Because of the guard check `if(dp[i]!=null) return dp[i];`, the code block inside the function runs **at most once** for each unique index `i` from `0` to `N`.
+* Any duplicate future call to an index `i` that has already been solved instantly short-circuits and runs in **$O(1)$** time.
+
+### 3. Work Done Inside Each State: $O(N^2)$
+For every unique index `i` that hasn't been cached yet, the code runs a `for` loop:
+* **The Loop Steps**: The pointer `j` scans from `i` to `s.length()`. In the worst-case scenario, this loop runs up to **$N$** times.
+* **The Substring Operation**: Inside the loop, `s.substring(i, j+1)` creates a brand-new string slice. Creating and allocating a substring in Java takes time proportional to the substring's length, which takes up to **$O(N)$** time.
+* **The HashSet Lookup**: `hset.contains(...)` computes the hash code of the newly generated slice. Hashing a string requires iterating over its characters, which also takes up to **$O(N)$** time.
+
+Combining the loop bounds and the inner string mechanics: 
+$$\text{N iterations} \times O(N) \text{ string work} = O(N^2) \text{ total work per state}$$
+
+### 4. Total Calculation
+* **Recursion Engine**: $\text{Total Unique States } O(N) \times \text{Work Per State } O(N^2) = O(N^3)$
+* **Combined with HashSet Setup**: **$O(N^3 + M)$**
+
+
+# Word Break Solution: Space Complexity Analysis
+
+Yes, you are **exactly right**. The total space complexity of your code is **$O(M + N)$**. 
+
+---
+
+## Detailed Breakdown
+
+### 1. HashSet Storage: $O(M)$
+* Your `hset` stores every unique word from `wordDict`.
+* The memory usage scales directly with **$M$** (the total number of characters across all words in the dictionary).
+
+### 2. Memoization Array: $O(N)$
+* The `dp` array is initialized with a size of `s.length() + 1`.
+* This requires **$O(N)$** space to store the cached `Boolean` results for each index.
+
+### 3. Recursive Call Stack: $O(N)$
+* In the worst-case scenario (e.g., `s = "aaaa"` and `wordDict = ["a"]`), the recursion moves forward one character at a time.
+* This creates a maximum recursive call stack depth of **$N$**.
+
+---
+
+## Total Space Calculation
+
+Combining all allocated memory:
+
+$$\text{HashSet } O(M) + \text{Memo Array } O(N) + \text{Call Stack } O(N) = O(M + 2N)$$
+
+In Big-O notation, we drop the constant multiplier ($2$), which simplifies perfectly to:
+
+$$\mathbf{O(M + N)}$$
+
+
+
 This simple three-step approach works for many DP interview problems such as:
 
 - Word Break
@@ -908,3 +974,202 @@ This simple three-step approach works for many DP interview problems such as:
 - Partition Equal Subset Sum
 - Target Sum
 - Unique Paths
+
+
+
+# House Robber (LeetCode 198)
+
+## Variants
+
+1. **Pure Recursion**
+   - Time: `O(2^n)`
+   - Space: `O(n)` (Recursion Stack)
+
+2. **Recursion + Memoization (Top-Down DP)**
+   - Time: `O(n)`
+   - Space: `O(n)`
+
+3. **Bottom-Up DP (DP Array)**
+   - Time: `O(n)`
+   - Space: `O(n)`
+
+4. **Bottom-Up DP (Space Optimized)** ✅
+   - Time: `O(n)`
+   - Space: `O(1)`
+
+---
+
+# DP Recurrence
+
+At every house, we have two choices:
+
+- **Rob current house**
+  - `nums[i] + dp[i+2]`
+- **Skip current house**
+  - `dp[i+1]`
+
+So,
+
+```text
+dp[i] = max(nums[i] + dp[i+2], dp[i+1])
+```
+
+The answer is always `dp[0]`.
+
+---
+
+# Space Optimized DP
+
+Instead of storing the entire DP array, we only keep the last two DP states.
+
+During every iteration:
+
+```text
+robNextPlusOne = dp[i+2]
+
+robNext = dp[i+1]
+
+current = dp[i]
+```
+
+After computing `current`, we shift the variables:
+
+```java
+robNextPlusOne = robNext;
+robNext = current;
+```
+
+Now they represent
+
+```text
+robNextPlusOne = dp[i+1]
+
+robNext = dp[i]
+```
+
+The variables keep sliding left until we reach `dp[0]`.
+
+---
+
+# Why return `robNext` and not `current`?
+
+At each iteration:
+
+- `current` computes `dp[i]`.
+- After computing it, we shift the variables so that `robNext` now represents `dp[i]`.
+
+When the loop finishes (`i = 0`),
+
+```text
+robNext = dp[0]
+```
+
+which is the final answer.
+
+`current` happens to contain the same value at the end, but it is only a temporary variable. `robNext` consistently represents the latest DP state, so returning it makes the intent clearer.
+
+---
+
+# Interview Flow
+
+Most interviewers like seeing the progression:
+
+```
+Recursion
+      ↓
+Memoization (Top-Down DP)
+      ↓
+Bottom-Up DP
+      ↓
+Bottom-Up DP (Space Optimized)
+```
+
+---
+
+# Code
+
+```java
+class Solution {
+
+    /*"At each iteration, current computes dp[i]. After computing it, I shift my variables so that robNext now represents dp[i] for the next iteration. When the loop finishes at i = 0, robNext has become dp[0], which is the answer. current happens to have the same value at the end, but it's just a temporary variable, whereas robNext consistently represents the latest DP state."*/
+    public int rob(int[] nums) {
+    //improve further no need to store all
+    //4 variants.. recursion, recursion with memoization, bottom up DP, bottom UP DP without memory
+        int n= nums.length;
+        //Integer[] dp= new Integer[n+1];
+        int robNextPlusOne=0; //last value =0
+        int robNext= nums[n-1]; //second last value is last element.. if we have one element we only get
+        //one option
+        int current=0;
+        for(int i=n-2;i>=0;i--){
+            current= Math.max(robNextPlusOne+nums[i],robNext);
+            robNextPlusOne=robNext;
+            robNext=current;
+        }
+
+        return robNext;
+    }
+
+    //now improve further
+
+
+    /*public int rob(int[] nums) {
+    //math.max
+    //so DP is bottom up in this case...
+    //many times problems become O(2^n) to O(n)
+        int n= nums.length;
+        Integer[] dp= new Integer[n+1];
+        dp[n]=0; //last value =0
+        dp[n-1]=nums[n-1]; //second last value is last element.. if we have one element we only get
+        //one option
+        for(int i=n-2;i>=0;i--){
+            dp[i]= Math.max(dp[i+2]+nums[i],dp[i+1]);
+        }
+
+        return dp[0];
+    }*/
+
+
+    /* Recursion with memoization
+    public int rob(int[] nums) {
+     //math.max
+        Integer[] dp= new Integer[nums.length+1];
+        return rob(nums,0,dp);
+
+    }
+
+    public int rob(int [] nums, int i, Integer[] dp){
+        if(i>=nums.length)
+            return 0;
+        if(dp[i]!=null)
+            return dp[i];
+        dp[i]= Math.max(nums[i]+rob(nums,i+2,dp),rob(nums,i+1,dp));
+        return dp[i];
+    }*/
+
+
+    //Recursion pure
+    /*public int rob(int[] nums) {
+     //math.max
+
+        return rob(nums,0);
+
+    }
+
+    public int rob(int [] nums, int i){
+        if(i>=nums.length)
+            return 0;
+
+        return Math.max(nums[i]+rob(nums,i+2),rob(nums,i+1));
+
+    }*/
+
+}
+```
+
+## Key Interview Takeaways
+
+- Start with **Pure Recursion** to derive the recurrence.
+- Add **Memoization** to avoid recomputing overlapping subproblems.
+- Convert it to **Bottom-Up DP** by filling from right to left.
+- Observe that each state only depends on the next **two** states, allowing **O(1)** space optimization.
