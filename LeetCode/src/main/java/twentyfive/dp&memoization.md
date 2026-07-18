@@ -1503,3 +1503,303 @@ class Solution {
     }
 }
 ```
+
+# Edit Distance (LeetCode 72)
+
+## Approach: Bottom-Up Dynamic Programming
+
+### State Definition
+
+`dp[i][j]` represents the **minimum number of operations** required to convert:
+
+- First `i` characters of `word1`
+- Into the first `j` characters of `word2`
+
+```text
+dp[i][j] = Min operations to convert
+
+           word1[0...i-1]
+
+           into
+
+           word2[0...j-1]
+```
+
+We build a DP table of size `(m+1) x (n+1)`.
+
+---
+
+# Base Cases
+
+Unlike **Longest Common Subsequence**, the first row and first column are **not zero**.
+
+### First Row
+
+Convert an empty string to `"ros"`.
+
+```text
+"" → "ros"
+
+Insert r
+Insert o
+Insert s
+
+Cost = 3
+```
+
+Therefore,
+
+```text
+dp[0][j] = j
+```
+
+---
+
+### First Column
+
+Convert `"horse"` to an empty string.
+
+```text
+horse → ""
+
+Delete h
+Delete o
+Delete r
+Delete s
+Delete e
+
+Cost = 5
+```
+
+Therefore,
+
+```text
+dp[i][0] = i
+```
+
+This is why we initialize
+
+```java
+if(i==0 || j==0)
+    dp[i][j] = i + j;
+```
+
+---
+
+# DP Transition
+
+## Case 1 : Characters Match
+
+If
+
+```java
+word1.charAt(i-1) == word2.charAt(j-1)
+```
+
+No operation is required.
+
+```text
+dp[i][j] = dp[i-1][j-1]
+```
+
+Move diagonally.
+
+---
+
+## Case 2 : Characters Don't Match
+
+We have **three choices**.
+
+### Insert
+
+Insert a character into `word1`.
+
+```text
+dp[i][j-1] + 1
+```
+
+Move left.
+
+---
+
+### Delete
+
+Delete the current character from `word1`.
+
+```text
+dp[i-1][j] + 1
+```
+
+Move up.
+
+---
+
+### Replace
+
+Replace the current character.
+
+```text
+dp[i-1][j-1] + 1
+```
+
+Move diagonally.
+
+---
+
+Take the minimum.
+
+```text
+dp[i][j] =
+1 + min(
+    dp[i-1][j],      // Delete
+    dp[i][j-1],      // Insert
+    dp[i-1][j-1]     // Replace
+)
+```
+
+---
+
+# DP Matrix Example
+
+```text
+word1 = "horse"
+word2 = "ros"
+```
+
+|      | "" | r | o | s |
+|------|---:|---:|---:|---:|
+| **""** | 0 | 1 | 2 | 3 |
+| **h**  | 1 | 1 | 2 | 3 |
+| **ho** | 2 | 2 | 1 | 2 |
+| **hor**| 3 | 2 | 2 | 2 |
+| **hors**|4 | 3 | 3 | 2 |
+| **horse**|5|4|4|3|
+
+Final Answer:
+
+```text
+dp[5][3] = 3
+```
+
+One optimal sequence is
+
+```text
+horse
+↓ Replace h → r
+
+rorse
+↓ Delete r
+
+rose
+↓ Delete e
+
+ros
+```
+
+Total operations = **3**
+
+---
+
+# Complexity
+
+### Time Complexity
+
+There are
+
+```text
+(m+1) × (n+1)
+```
+
+states.
+
+Each state takes **O(1)** time.
+
+```text
+Time = O(m × n)
+```
+
+---
+
+### Space Complexity
+
+The DP table contains
+
+```text
+(m+1) × (n+1)
+```
+
+cells.
+
+```text
+Space = O(m × n)
+```
+
+---
+
+# Interview Explanation
+
+> "`dp[i][j]` represents the minimum number of operations needed to convert the first `i` characters of `word1` into the first `j` characters of `word2`. If the current characters match, no operation is needed, so I copy the diagonal value. Otherwise, I consider the three possible operations: insert, delete, and replace. Each operation costs one, so I take the minimum of the left, top, and diagonal neighbors plus one. The first row and first column represent converting to or from an empty string, so they are initialized with the number of insertions or deletions required."
+
+---
+
+# Visual Mnemonic
+
+```text
+                word2
+             ""  r  o  s
+
+          ↖ Match / Replace
+
+word1    ↑ Delete
+
+          ← Insert
+```
+
+- **Left (`dp[i][j-1]`)** → Insert
+- **Up (`dp[i-1][j]`)** → Delete
+- **Diagonal (`dp[i-1][j-1]`)** → Replace (or Match)
+
+---
+
+# Code
+
+```java
+class Solution {
+
+    //the word you want to convert to put in top right
+    //the word to be converted put in top left
+    //everywhere you have 3 choices
+    ///insert replace or delete
+    //horizontal insert
+    //vertical delete
+    //diagonal replace
+    //take minimum
+    //if character same take diagonal value
+    //unlike LCS here 0th row and 0th col have values
+
+    public int minDistance(String word1, String word2) {
+
+        int m= word1.length();
+        int n= word2.length();
+        int[][] dp = new int[m+1][n+1];
+
+        for(int i=0;i<=m;i++){
+            for(int j=0;j<=n;j++){
+                if(i==0||j==0)
+                    dp[i][j]=i+j;
+                else
+                    dp[i][j] =word1.charAt(i-1)==word2.charAt(j-1)
+                        ? dp[i-1][j-1]
+                        : Math.min(
+                            Math.min(dp[i-1][j], dp[i][j-1]),
+                            dp[i-1][j-1]
+                          )+1;
+
+            }
+        }
+
+        return dp[m][n];
+    }
+
+}
+```
