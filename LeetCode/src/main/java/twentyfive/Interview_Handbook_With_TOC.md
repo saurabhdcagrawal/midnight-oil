@@ -19855,3 +19855,204 @@ Match    → Diagonal (↖)
 
 No Match → 1 + min(Up (↑), Left (←), Diagonal (↖))
 ```
+
+# DP Array Size - When to use `m x n` vs `(m+1) x (n+1)`
+
+## Use `m x n`
+
+When each DP cell directly represents a cell in the input.
+
+**Examples**
+
+- Unique Paths
+- Minimum Path Sum
+- Maximal Square
+
+```text
+dp[i][j] = Answer for grid cell (i, j)
+```
+
+---
+
+## Use `(m+1) x (n+1)`
+
+When the DP state needs an extra row/column to represent **empty prefixes** or **base cases**.
+
+**Examples**
+
+- Longest Common Subsequence (LCS)
+- Edit Distance
+- Distinct Subsequences
+
+```text
+dp[i][j] = Answer using first i characters and first j characters
+```
+
+Here,
+
+```text
+Row 0  → Empty first string
+
+Column 0 → Empty second string
+```
+
+---
+
+# Interview Rule of Thumb
+
+- **Grid DP** → Usually `m x n`
+- **String DP** → Usually `(m+1) x (n+1)`
+```
+
+# LeetCode 63 - Unique Paths II
+
+## DP State
+
+```text
+dp[i][j] = Number of unique paths to reach cell (i, j)
+```
+
+---
+
+## Base Cases
+
+### If start or destination is blocked
+
+```java
+if (obstacleGrid[0][0] == 1 || obstacleGrid[m - 1][n - 1] == 1)
+    return 0;
+```
+
+---
+
+### Start Cell
+
+```java
+dp[0][0] = 1;
+```
+
+---
+
+### Obstacle
+
+```java
+dp[i][j] = 0;
+```
+
+No path can pass through an obstacle.
+
+---
+
+### First Row
+
+```java
+dp[i][j] = dp[i][j - 1];
+```
+
+Only one way to reach cells in the first row (move right).
+
+If an obstacle appears, all cells after it naturally become `0`.
+
+---
+
+### First Column
+
+```java
+dp[i][j] = dp[i - 1][j];
+```
+
+Only one way to reach cells in the first column (move down).
+
+If an obstacle appears, all cells below it naturally become `0`.
+
+---
+
+## Transition
+
+```java
+dp[i][j] = dp[i - 1][j] + dp[i][j - 1];
+```
+
+A cell can be reached from:
+
+- Top
+- Left
+
+So the total number of paths is the sum of both.
+
+---
+
+## Time Complexity
+
+```text
+O(m × n)
+```
+
+---
+
+## Space Complexity
+
+```text
+O(m × n)
+```
+
+---
+
+## Interview Explanation
+
+> I define `dp[i][j]` as the number of unique paths to reach cell `(i, j)`.
+>
+> If the current cell is an obstacle, there are zero ways to reach it.
+>
+> Otherwise, I can reach it either from the top or from the left, so I add those two values.
+>
+> The first row and first column are initialized separately because they have only one possible direction of movement. If an obstacle blocks the path, all subsequent cells naturally become zero.
+
+---
+
+## Code
+
+```java
+class Solution {
+
+    public int uniquePathsWithObstacles(int[][] obstacleGrid) {
+
+        int m = obstacleGrid.length;
+        int n = obstacleGrid[0].length;
+
+        // No path exists if start or destination is blocked
+        if (obstacleGrid[0][0] == 1 || obstacleGrid[m - 1][n - 1] == 1)
+            return 0;
+
+        int[][] dp = new int[m][n];
+
+        for (int i = 0; i < m; i++) {
+
+            for (int j = 0; j < n; j++) {
+
+                // Start cell
+                if (i == 0 && j == 0)
+                    dp[i][j] = 1;
+
+                // Obstacle
+                else if (obstacleGrid[i][j] == 1)
+                    dp[i][j] = 0;
+
+                // First row
+                else if (i == 0)
+                    dp[i][j] = dp[i][j - 1];
+
+                // First column
+                else if (j == 0)
+                    dp[i][j] = dp[i - 1][j];
+
+                // General case
+                else
+                    dp[i][j] = dp[i - 1][j] + dp[i][j - 1];
+            }
+        }
+
+        return dp[m - 1][n - 1];
+    }
+}
+```
