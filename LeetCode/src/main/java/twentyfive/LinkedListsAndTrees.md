@@ -2358,6 +2358,116 @@ This avoids comparing `current` with itself while checking every remaining node.
 - After deleting a duplicate, **do not move** the pointer that performed the deletion.
 - The runner technique is a common interview pattern for linked list problems where additional memory is not allowed.
 
+# Remove Duplicates from Sorted Linked List (LeetCode 83)
+
+## Idea
+
+Since the list is **sorted**, duplicate values are adjacent.
+
+Compare the current node with the next node:
+
+- If values are equal → remove the next node.
+- Otherwise → move forward.
+
+---
+
+## Code
+
+```java
+class Solution {
+    public ListNode deleteDuplicates(ListNode head) {
+        if (head == null)
+            return null;
+
+        ListNode temp = head;
+
+        while (temp.next != null) {
+            if (temp.val == temp.next.val) {
+                temp.next = temp.next.next;
+            } else {
+                temp = temp.next;
+            }
+        }
+
+        return head;
+    }
+}
+```
+
+---
+
+## Complexity
+
+- **Time:** `O(n)`
+- **Space:** `O(1)`
+
+# Remove Duplicates from Unsorted Linked List (LeetCode 1836)
+
+## Idea
+
+- First pass: Count the frequency of every value using a `HashMap`.
+- Second pass: Remove every node whose frequency is greater than `1`.
+- Use a **dummy node** to simplify deleting the head node.
+
+---
+
+## Code
+
+```java
+class Solution {
+    public ListNode deleteDuplicatesUnsorted(ListNode head) {
+
+        if (head == null)
+            return head;
+
+        Map<Integer, Integer> hmap = new HashMap<>();
+
+        ListNode temp = head;
+
+        // Count frequency
+        while (temp != null) {
+            hmap.put(temp.val, hmap.getOrDefault(temp.val, 0) + 1);
+            temp = temp.next;
+        }
+
+        // Dummy node
+        ListNode dummy = new ListNode(0);
+        dummy.next = head;
+
+        temp = dummy;
+
+        // Remove duplicate nodes
+        while (temp.next != null) {
+
+            if (hmap.get(temp.next.val) > 1) {
+                temp.next = temp.next.next;
+            } else {
+                temp = temp.next;
+            }
+        }
+
+        return dummy.next;
+    }
+}
+```
+
+---
+
+## Why Dummy Node?
+
+A dummy node ensures **every node has a previous node**, including the original head.
+
+This avoids writing special logic for deleting the head.
+
+> **Note:** The value stored in the dummy node does **not** matter. We never compare or process `dummy.val`; we only use `dummy.next`.
+
+---
+
+## Complexity
+
+- **Time:** `O(n)`
+- **Space:** `O(n)`
+
 ## Utility Methods
 
 ### Print Linked List

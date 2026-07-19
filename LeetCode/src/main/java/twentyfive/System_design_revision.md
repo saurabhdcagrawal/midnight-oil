@@ -309,3 +309,77 @@ Retry with backoff.
 DLQ after retries exhausted.
 Monthly partitioning and archival.
 Sharding with coordinator for failover.
+
+
+# Requirement Clarification
+
+### 1. What type of clicks are we aggregating?
+- Advertisement clicks?
+- Product clicks?
+- Link clicks?
+- Website page clicks?
+
+**Assumption:** Advertisement clicks.
+
+---
+
+### 2. What scale are we designing for?
+- Clicks per second?
+- Daily active users?
+- Daily click volume?
+
+**Assumption:**
+- ~1 Million clicks/second
+- ~500 Million daily active users
+
+---
+
+### 3. What metrics do we need to aggregate?
+- Total clicks?
+- Clicks per advertisement?
+- Clicks per campaign?
+- Clicks per minute/hour/day?
+- Unique users?
+
+**Assumption:**
+- Total clicks
+- Clicks per advertisement
+- Minute, hour, and daily aggregates
+- Unique users are out of scope.
+
+---
+
+### 4. How real-time does the system need to be?
+- Is eventual consistency acceptable?
+- How fresh should the dashboard be?
+
+**Assumption:** Dashboard updates within **2–5 seconds**.
+
+---
+
+### 5. How long should we retain click data?
+- Do we need raw click events?
+- How long should historical data be stored?
+
+**Assumption:**
+- Store raw click events for **30 days**.
+- Store aggregated metrics for long-term analytics.
+
+---
+
+### 6. How should duplicate click events be handled?
+- Can duplicate events occur?
+- Do we need deduplication?
+
+**Assumption:** At-least-once ingestion; duplicate events are possible and should be handled.
+
+---
+
+## Assumptions
+
+- Aggregate advertisement clicks.
+- Support approximately **1 Million clicks/second**.
+- Dashboard updates within **2–5 seconds**.
+- Aggregate clicks by **minute, hour, and day**.
+- Store raw click events for **30 days**.
+- Support at-least-once ingestion with duplicate handling.
