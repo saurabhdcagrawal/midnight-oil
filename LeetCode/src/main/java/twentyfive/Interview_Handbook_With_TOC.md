@@ -19836,3 +19836,22 @@ class Solution {
     }
 }
 ```
+
+
+## LCS (Maximize what you keep)
+
+```text
+Match    → 1 + Diagonal (↖)
+
+No Match → max(Up (↑), Left (←))
+```
+
+---
+
+## Edit Distance (Minimize what you change)
+
+```text
+Match    → Diagonal (↖)
+
+No Match → 1 + min(Up (↑), Left (←), Diagonal (↖))
+```
