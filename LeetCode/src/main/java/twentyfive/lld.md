@@ -13616,3 +13616,49 @@ This answer demonstrates:
 - Scalability
 - Distributed systems knowledge
 - Practical engineering trade-offs
+
+```java
+class BorrowService {
+
+    private final ConcurrentHashMap<String, ReentrantLock> locks =
+            new ConcurrentHashMap<>();
+
+    public BorrowRecord borrowBook(String userId, String bookId) {
+
+        ReentrantLock lock =
+                locks.computeIfAbsent(
+                        bookId,
+                        id -> new ReentrantLock());
+
+        lock.lock();
+
+        try {
+
+            // validate user
+
+            // validate book
+
+            // check copies
+
+            // create borrow record
+
+            // decrease inventory
+
+        } finally {
+            lock.unlock();
+        }
+    }
+}
+
+```
+
+Because only BorrowService needs to coordinate concurrent borrowing.
+
+Neither:
+
+Book
+Library
+User
+BorrowRecord
+
+should know anything about locks. Locking is an infrastructure concern, not part of the domain model.
