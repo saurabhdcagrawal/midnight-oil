@@ -11267,3 +11267,2258 @@ Scaling
 ```
 
 This same approach can be reused for almost every LLD interview problem (Parking Lot, Library Management, Amazon Locker, Splitwise, Vending Machine, etc.).
+
+
+Amazon Locker LLD – Final Design Notes
+Requirements
+Multiple locker locations
+Small, Medium, Large lockers
+One package per locker
+One package per locker
+Auto locker assignment
+OTP-based pickup
+Package expiration
+Exception if no suitable locker is available
+---
+Entities
+LockerLocation
+```java
+class LockerLocation {
+
+    String lockerLocationId;
+    Address address;
+    List<Locker> lockers;
+
+    Locker findAvailableLocker(LockerSize size);
+
+    void addLocker(Locker locker);
+    void removeLocker(Locker locker);
+}
+```
+Locker
+```java
+class Locker {
+
+    String lockerId;
+    LockerSize size;
+    LockerStatus status;
+    Package currentPackage;
+
+    boolean canFit(Package pkg);
+    void assignPackage(Package pkg);
+    void removePackage();
+}
+```
+Package
+```java
+class Package {
+
+    String packageId;
+    User user;
+    String otp;
+    LocalDateTime pickupStartTime;
+    LocalDateTime pickupExpireTime;
+    PackageStatus status;
+}
+```
+```java
+enum PackageStatus {
+    READY_FOR_PICKUP,
+    PICKED_UP,
+    EXPIRED
+}
+```
+Relationship
+Preferred:
+```
+Locker
+   |
+   v
+Package
+```
+Reason:
+Avoid duplicate state
+Simpler object model
+PickupService can fetch Locker using the repository
+---
+Services
+LockerService
+Responsibilities
+Assign locker
+Generate OTP
+Set pickup window
+Release locker
+```java
+assignLocker(Package pkg);
+
+releaseLocker(Locker locker);
+```
+PickupService
+Responsibilities
+Validate OTP
+Validate package status
+Validate expiration
+Find locker
+Release locker
+Mark package picked up
+```java
+pickupPackage(String otp);
+```
+---
+Package Assignment Workflow
+```
+Driver arrives
+
+↓
+
+LockerService.assignLocker(package)
+
+↓
+
+LockerLocation.findAvailableLocker(size)
+
+↓
+
+No Locker?
+
+↓
+
+Throw LockerNotAvailableException
+
+↓
+
+locker.assignPackage(package)
+
+↓
+
+Generate OTP
+
+↓
+
+package.setOtp()
+
+↓
+
+package.setPickupStartTime()
+
+↓
+
+package.setPickupExpireTime()
+
+↓
+
+package.setStatus(READY_FOR_PICKUP)
+
+↓
+
+Notify User
+```
+---
+Package Pickup Workflow
+```
+Customer enters OTP
+
+↓
+
+PickupService.pickupPackage(otp)
+
+↓
+
+Find Package by OTP
+
+↓
+
+Validate OTP
+
+↓
+
+Validate READY_FOR_PICKUP
+
+↓
+
+Validate not expired
+
+↓
+
+Find Locker (Repository)
+
+↓
+
+LockerService.releaseLocker(locker)
+
+↓
+
+locker.removePackage()
+
+↓
+
+locker.status = AVAILABLE
+
+↓
+
+package.status = PICKED_UP
+```
+---
+Concurrency
+Single JVM
+synchronized
+ReentrantLock
+Distributed
+Redis Distributed Lock
+OR Database Transaction + SELECT FOR UPDATE
+---
+Design Decisions
+Keep the model unidirectional.
+Services orchestrate workflows.
+Entities manage their own state.
+Use repository lookup instead of maintaining duplicate references.
+Introduce bidirectional relationships only if future requirements justify them.
+
+# Amazon Locker LLD - Entities
+
+## Entity Relationship
+
+```
+LockerLocation
+      |
+      | 1
+      |
+      | *
+   Locker
+      |
+      | 1
+      |
+      | 0..1
+   Package
+
+User
+ |
+ | 1
+ |
+ | *
+Package
+```
+
+---
+
+# LockerLocation
+
+Represents a physical Amazon Locker location.
+
+## Responsibilities
+
+- Maintains all lockers at this location.
+- Finds an available locker based on package size.
+- Adds and removes lockers.
+
+```java
+class LockerLocation {
+
+    String lockerLocationId;
+
+    Address address;
+
+    List<Locker> lockers;
+
+    Locker findAvailableLocker(LockerSize size);
+
+    void addLocker(Locker locker);
+
+    void removeLocker(Locker locker);
+}
+```
+
+### Why does LockerLocation choose the locker?
+
+This follows the **Information Expert** principle.
+
+Since LockerLocation already owns all lockers, it is the right place to determine which locker is available.
+
+---
+
+# Locker
+
+Represents an individual locker.
+
+## Responsibilities
+
+- Stores exactly one package.
+- Knows its size.
+- Knows whether it is available.
+- Assigns and removes packages.
+
+```java
+class Locker {
+
+    String lockerId;
+
+    LockerSize size;
+
+    LockerStatus status;
+
+    Package currentPackage;
+
+    boolean canFit(Package pkg);
+
+    void assignPackage(Package pkg);
+
+    void removePackage();
+}
+```
+
+---
+
+## LockerStatus
+
+```java
+enum LockerStatus {
+
+    AVAILABLE,
+
+    OCCUPIED
+}
+```
+
+---
+
+# Package
+
+Represents a package waiting for pickup.
+
+## Responsibilities
+
+- Stores package information.
+- Stores OTP.
+- Stores pickup window.
+- Tracks package lifecycle.
+
+```java
+class Package {
+
+    String packageId;
+
+    User user;
+
+    String otp;
+
+    LocalDateTime pickupStartTime;
+
+    LocalDateTime pickupExpireTime;
+
+    PackageStatus status;
+}
+```
+
+---
+
+## PackageStatus
+
+```java
+enum PackageStatus {
+
+    READY_FOR_PICKUP,
+
+    PICKED_UP,
+
+    EXPIRED
+}
+```
+
+---
+
+# User
+
+Represents the customer.
+
+```java
+class User {
+
+    String userId;
+
+    String name;
+
+    String email;
+
+    String phoneNumber;
+}
+```
+
+---
+
+# Relationship Choice
+
+Preferred relationship:
+
+```
+Locker
+   |
+   ▼
+Package
+```
+
+Package does **not** contain:
+
+```java
+Locker locker;
+```
+
+### Why?
+
+Keeping the relationship unidirectional:
+
+- Avoids duplicate state.
+- Makes the object model simpler.
+- Reduces the chance of inconsistent references.
+
+During pickup, the locker can be retrieved using the repository.
+
+Example:
+
+```java
+Locker locker =
+    lockerRepository.findByPackage(package);
+```
+
+---
+
+# Why not Bidirectional?
+
+Alternative:
+
+```
+Locker  -----------> Package
+   ▲                   |
+   |                   |
+   +-------------------+
+```
+
+Advantages
+
+- Easy navigation from Package → Locker.
+
+Disadvantages
+
+- Must update both references.
+
+Example:
+
+```java
+locker.setCurrentPackage(package);
+
+package.setLocker(locker);
+```
+
+On release:
+
+```java
+locker.setCurrentPackage(null);
+
+package.setLocker(null);
+```
+
+If one update is forgotten, the object model becomes inconsistent.
+
+For the given requirements, the unidirectional relationship is simpler and preferred.
+
+# Amazon Locker LLD - Services
+
+Services are responsible for orchestrating workflows.
+
+They coordinate multiple entities but do not own business state.
+
+---
+
+# LockerService
+
+## Responsibilities
+
+- Assign a locker to a package.
+- Generate OTP.
+- Set pickup window.
+- Release a locker after pickup.
+
+```java
+class LockerService {
+
+    Locker assignLocker(Package pkg);
+
+    void releaseLocker(Locker locker);
+}
+```
+
+---
+
+## assignLocker()
+
+### Responsibility
+
+Assigns a suitable locker for the package.
+
+### Workflow
+
+```
+Receive Package
+
+↓
+
+Find Locker Location
+
+↓
+
+LockerLocation.findAvailableLocker(size)
+
+↓
+
+No Locker?
+
+↓
+
+Throw LockerNotAvailableException
+
+↓
+
+locker.assignPackage(package)
+
+↓
+
+Generate OTP
+
+↓
+
+Set OTP
+
+↓
+
+Set Pickup Start Time
+
+↓
+
+Set Pickup Expiry Time
+
+↓
+
+Set Package Status
+
+↓
+
+Notify User
+
+↓
+
+Return Locker
+```
+
+---
+
+### Why does LockerService generate the OTP?
+
+Generating the OTP is part of the locker assignment workflow.
+
+It does **not** belong inside the Package entity because:
+
+- OTP generation is business logic.
+- Package simply stores the generated OTP.
+
+This follows the **Single Responsibility Principle (SRP)**.
+
+---
+
+## releaseLocker()
+
+### Responsibility
+
+Makes the locker available again.
+
+```java
+releaseLocker(Locker locker)
+```
+
+Example implementation:
+
+```java
+locker.removePackage();
+
+locker.setStatus(AVAILABLE);
+```
+
+Notice that LockerService is responsible only for the locker lifecycle.
+
+Updating the Package status is handled by PickupService.
+
+---
+
+# PickupService
+
+## Responsibilities
+
+- Validate OTP.
+- Validate package status.
+- Validate package has not expired.
+- Retrieve the assigned locker.
+- Release the locker.
+- Mark package as picked up.
+
+```java
+class PickupService {
+
+    void pickupPackage(String otp);
+}
+```
+
+---
+
+## Why does pickupPackage() accept an OTP?
+
+The customer arrives with an OTP.
+
+They do **not** arrive with a Package object.
+
+Therefore:
+
+Preferred
+
+```java
+pickupPackage(String otp)
+```
+
+Instead of
+
+```java
+pickupPackage(Package package)
+```
+
+This models the real-world workflow more accurately.
+
+---
+
+## Pickup Workflow
+
+```
+Customer enters OTP
+
+↓
+
+Find Package using OTP
+
+↓
+
+Validate OTP
+
+↓
+
+Validate READY_FOR_PICKUP
+
+↓
+
+Validate package not expired
+
+↓
+
+Find Locker using Repository
+
+↓
+
+LockerService.releaseLocker(locker)
+
+↓
+
+package.setStatus(PICKED_UP)
+```
+
+---
+
+# Why not let Locker release itself?
+
+Instead of calling
+
+```java
+locker.removePackage();
+```
+
+directly from PickupService,
+
+we delegate to
+
+```java
+LockerService.releaseLocker(locker);
+```
+
+Reason:
+
+Locker lifecycle is owned by LockerService.
+
+PickupService should orchestrate the pickup process, not manage locker operations.
+
+This follows the **Single Responsibility Principle**.
+
+---
+
+# Repository Lookup
+
+Since Package does not store a Locker reference, PickupService retrieves it through the repository.
+
+Example:
+
+```java
+Locker locker =
+    lockerRepository.findByPackage(package);
+```
+
+This avoids introducing a bidirectional relationship solely for easier navigation.
+
+---
+
+# Design Principles Used
+
+## Single Responsibility Principle (SRP)
+
+- LockerService manages locker operations.
+- PickupService manages pickup workflow.
+
+---
+
+## Information Expert
+
+LockerLocation knows all lockers.
+
+Therefore,
+
+```java
+LockerLocation.findAvailableLocker(size)
+```
+
+belongs inside LockerLocation.
+
+---
+
+## Orchestration
+
+Services coordinate multiple entities.
+
+Entities manage their own state.
+
+Examples:
+
+Service:
+
+```java
+LockerService.assignLocker(package);
+```
+
+Entity:
+
+```java
+locker.assignPackage(package);
+```
+
+Service:
+
+```java
+PickupService.pickupPackage(otp);
+```
+
+Entity:
+
+```java
+package.setStatus(PICKED_UP);
+```
+
+This separation keeps the design clean, maintainable, and easy to extend.
+
+# Amazon Locker LLD - Services
+
+Services are responsible for orchestrating workflows.
+
+They coordinate multiple entities but do not own business state.
+
+---
+
+# LockerService
+
+## Responsibilities
+
+- Assign a locker to a package.
+- Generate OTP.
+- Set pickup window.
+- Release a locker after pickup.
+
+```java
+class LockerService {
+
+    Locker assignLocker(Package pkg);
+
+    void releaseLocker(Locker locker);
+}
+```
+
+---
+
+## assignLocker()
+
+### Responsibility
+
+Assigns a suitable locker for the package.
+
+### Workflow
+
+```
+Receive Package
+
+↓
+
+Find Locker Location
+
+↓
+
+LockerLocation.findAvailableLocker(size)
+
+↓
+
+No Locker?
+
+↓
+
+Throw LockerNotAvailableException
+
+↓
+
+locker.assignPackage(package)
+
+↓
+
+Generate OTP
+
+↓
+
+Set OTP
+
+↓
+
+Set Pickup Start Time
+
+↓
+
+Set Pickup Expiry Time
+
+↓
+
+Set Package Status
+
+↓
+
+Notify User
+
+↓
+
+Return Locker
+```
+
+---
+
+### Why does LockerService generate the OTP?
+
+Generating the OTP is part of the locker assignment workflow.
+
+It does **not** belong inside the Package entity because:
+
+- OTP generation is business logic.
+- Package simply stores the generated OTP.
+
+This follows the **Single Responsibility Principle (SRP)**.
+
+---
+
+## releaseLocker()
+
+### Responsibility
+
+Makes the locker available again.
+
+```java
+releaseLocker(Locker locker)
+```
+
+Example implementation:
+
+```java
+locker.removePackage();
+
+locker.setStatus(AVAILABLE);
+```
+
+Notice that LockerService is responsible only for the locker lifecycle.
+
+Updating the Package status is handled by PickupService.
+
+---
+
+# PickupService
+
+## Responsibilities
+
+- Validate OTP.
+- Validate package status.
+- Validate package has not expired.
+- Retrieve the assigned locker.
+- Release the locker.
+- Mark package as picked up.
+
+```java
+class PickupService {
+
+    void pickupPackage(String otp);
+}
+```
+
+---
+
+## Why does pickupPackage() accept an OTP?
+
+The customer arrives with an OTP.
+
+They do **not** arrive with a Package object.
+
+Therefore:
+
+Preferred
+
+```java
+pickupPackage(String otp)
+```
+
+Instead of
+
+```java
+pickupPackage(Package package)
+```
+
+This models the real-world workflow more accurately.
+
+---
+
+## Pickup Workflow
+
+```
+Customer enters OTP
+
+↓
+
+Find Package using OTP
+
+↓
+
+Validate OTP
+
+↓
+
+Validate READY_FOR_PICKUP
+
+↓
+
+Validate package not expired
+
+↓
+
+Find Locker using Repository
+
+↓
+
+LockerService.releaseLocker(locker)
+
+↓
+
+package.setStatus(PICKED_UP)
+```
+
+---
+
+# Why not let Locker release itself?
+
+Instead of calling
+
+```java
+locker.removePackage();
+```
+
+directly from PickupService,
+
+we delegate to
+
+```java
+LockerService.releaseLocker(locker);
+```
+
+Reason:
+
+Locker lifecycle is owned by LockerService.
+
+PickupService should orchestrate the pickup process, not manage locker operations.
+
+This follows the **Single Responsibility Principle**.
+
+---
+
+# Repository Lookup
+
+Since Package does not store a Locker reference, PickupService retrieves it through the repository.
+
+Example:
+
+```java
+Locker locker =
+    lockerRepository.findByPackage(package);
+```
+
+This avoids introducing a bidirectional relationship solely for easier navigation.
+
+---
+
+# Design Principles Used
+
+## Single Responsibility Principle (SRP)
+
+- LockerService manages locker operations.
+- PickupService manages pickup workflow.
+
+---
+
+## Information Expert
+
+LockerLocation knows all lockers.
+
+Therefore,
+
+```java
+LockerLocation.findAvailableLocker(size)
+```
+
+belongs inside LockerLocation.
+
+---
+
+## Orchestration
+
+Services coordinate multiple entities.
+
+Entities manage their own state.
+
+Examples:
+
+Service:
+
+```java
+LockerService.assignLocker(package);
+```
+
+Entity:
+
+```java
+locker.assignPackage(package);
+```
+
+Service:
+
+```java
+PickupService.pickupPackage(otp);
+```
+
+Entity:
+
+```java
+package.setStatus(PICKED_UP);
+```
+
+This separation keeps the design clean, maintainable, and easy to extend.
+
+# Online Library LLD - Requirements
+
+## Functional Requirements
+
+- Users can search books.
+- Users can borrow books.
+- Users can return books.
+- Users can view their borrowed books.
+
+---
+
+## Requirement Clarification Questions
+
+### 1. Are there limited e-book copies?
+
+**Yes**
+
+The library owns a fixed number of licenses for every book.
+
+Example:
+
+Harry Potter
+
+- Total Copies = 10
+- Available Copies = 3
+
+Only 3 more users can borrow the book.
+
+---
+
+### 2. Should we track reading progress?
+
+**No**
+
+Out of scope.
+
+---
+
+### 3. What is the borrowing period?
+
+**14 days**
+
+Every borrowed book is due after 14 days.
+
+---
+
+### 4. What happens after the due date?
+
+The system automatically returns the book.
+
+Meaning:
+
+- BorrowRecord is updated.
+- Available copies are increased.
+- The user no longer owns the book.
+
+---
+
+### 5. Is there a borrowing limit?
+
+Yes.
+
+A user can borrow at most **5 books** simultaneously.
+
+---
+
+### 6. Different user types?
+
+No.
+
+Assume all users have the same borrowing privileges.
+
+---
+
+### 7. Subscription / Payment?
+
+Out of scope.
+
+Assume users already have access to the library.
+
+---
+
+## Out of Scope
+
+- Reservations / Waitlist
+- Reviews
+- Ratings
+- Recommendations
+- Notifications
+- Payments
+- Fine calculation
+- Reading progress
+
+---
+
+## Assumptions
+
+- One online library.
+- Books may have multiple authors.
+- Every borrow is independent.
+- The system keeps borrowing history.
+
+# Online Library LLD - Requirements
+
+## Functional Requirements
+
+- Users can search books.
+- Users can borrow books.
+- Users can return books.
+- Users can view their borrowed books.
+
+---
+
+## Requirement Clarification Questions
+
+### 1. Are there limited e-book copies?
+
+**Yes**
+
+The library owns a fixed number of licenses for every book.
+
+Example:
+
+Harry Potter
+
+- Total Copies = 10
+- Available Copies = 3
+
+Only 3 more users can borrow the book.
+
+---
+
+### 2. Should we track reading progress?
+
+**No**
+
+Out of scope.
+
+---
+
+### 3. What is the borrowing period?
+
+**14 days**
+
+Every borrowed book is due after 14 days.
+
+---
+
+### 4. What happens after the due date?
+
+The system automatically returns the book.
+
+Meaning:
+
+- BorrowRecord is updated.
+- Available copies are increased.
+- The user no longer owns the book.
+
+---
+
+### 5. Is there a borrowing limit?
+
+Yes.
+
+A user can borrow at most **5 books** simultaneously.
+
+---
+
+### 6. Different user types?
+
+No.
+
+Assume all users have the same borrowing privileges.
+
+---
+
+### 7. Subscription / Payment?
+
+Out of scope.
+
+Assume users already have access to the library.
+
+---
+
+## Out of Scope
+
+- Reservations / Waitlist
+- Reviews
+- Ratings
+- Recommendations
+- Notifications
+- Payments
+- Fine calculation
+- Reading progress
+
+---
+
+## Assumptions
+
+- One online library.
+- Books may have multiple authors.
+- Every borrow is independent.
+- The system keeps borrowing history.
+
+# 02_Entities.md
+
+# Entities
+
+We identify the following entities from the requirements:
+
+- Library
+- Book
+- Author
+- User
+- BorrowRecord
+
+---
+
+# Relationship Diagram
+
+```text
+               Library
+              /       \
+             /         \
+            /           \
+       List<Book>    List<User>
+
+Book -----------------> List<Author>
+
+BorrowRecord
+     |
+     +------ User
+     |
+     +------ Book
+```
+
+---
+
+# Library
+
+The Library acts as the root object of the system.
+
+It owns:
+
+- Books
+- Users
+
+```java
+class Library {
+
+    Map<String, Book> books;
+
+    Map<String, User> users;
+
+    void addBook(Book book);
+
+    void addUser(User user);
+}
+```
+
+### Why Map instead of List?
+
+Book IDs and User IDs are unique.
+
+Using a Map provides O(1) lookup by ID.
+
+Using a List is also acceptable in an interview unless performance is discussed.
+
+---
+
+# Book
+
+```java
+class Book {
+
+    String bookId;
+
+    String title;
+
+    Genre genre;
+
+    List<Author> authors;
+
+    int totalCopies;
+
+    int availableCopies;
+}
+```
+
+### Why both totalCopies and availableCopies?
+
+Example:
+
+Harry Potter
+
+Total Copies = 10
+
+Available Copies = 3
+
+This tells us:
+
+- 10 licenses exist
+- 7 are currently borrowed
+
+---
+
+# Author
+
+```java
+class Author {
+
+    String authorId;
+
+    String name;
+}
+```
+
+One author can write many books.
+
+One book may have multiple authors.
+
+---
+
+# User
+
+```java
+class User {
+
+    String userId;
+
+    String name;
+
+    String email;
+}
+```
+
+Notice that we intentionally do NOT keep:
+
+```java
+List<BorrowRecord> borrowRecords;
+```
+
+inside User.
+
+---
+
+# BorrowRecord
+
+BorrowRecord represents one borrowing transaction.
+
+```java
+class BorrowRecord {
+
+    String borrowId;
+
+    User user;
+
+    Book book;
+
+    LocalDate borrowDate;
+
+    LocalDate dueDate;
+
+    LocalDate returnDate;
+
+    BorrowStatus status;
+}
+```
+
+---
+
+# BorrowStatus
+
+```java
+enum BorrowStatus {
+
+    ACTIVE,
+
+    RETURNED
+}
+```
+
+Since books are automatically returned after the due date, we don't need an ACTIVE + OVERDUE + RETURNED lifecycle unless the business explicitly wants to distinguish overdue records.
+
+---
+
+# Why BorrowRecord is a Separate Entity
+
+A common interview question:
+
+> Why not simply keep List<Book> inside User?
+
+Because borrowing is **not just a relationship**.
+
+It has its own business information:
+
+- Borrow Date
+- Due Date
+- Return Date
+- Status
+
+Therefore it becomes a **first-class domain entity**.
+
+It is similar to:
+
+- Booking (BookMyShow)
+- Ticket (Parking Lot)
+- Order (Amazon)
+- Rental (Car Rental)
+
+---
+
+# Why NOT List<BorrowRecord> inside User?
+
+There are two possible designs.
+
+## Option 1
+
+```java
+class User {
+
+    List<BorrowRecord> borrowRecords;
+}
+```
+
+Advantages
+
+- Easy navigation
+- Pure object-oriented design
+
+Disadvantages
+
+- Bidirectional relationship
+- More synchronization
+- Duplicate references
+
+---
+
+## Option 2 (Chosen)
+
+BorrowRecord remains an independent entity.
+
+```text
+BorrowRecord
+
+↓
+
+User
+
+↓
+
+Book
+```
+
+Borrow records are retrieved through the service/repository when needed.
+
+Advantages
+
+- Single source of truth
+- Cleaner domain model
+- Scales better as the application grows
+
+---
+
+# Interview Answer
+
+If the interviewer asks:
+
+> Why did you create BorrowRecord?
+
+A good answer is:
+
+> "BorrowRecord is a first-class transaction entity rather than just a relationship because it has its own lifecycle and business attributes such as borrow date, due date, return date, and status."
+
+This is much stronger than saying:
+
+> "That's how repositories work."
+
+# 04_Workflows.md
+
+# Borrow Book Workflow
+
+API
+
+```java
+BorrowRecord borrowBook(String userId, String bookId);
+```
+
+---
+
+## Workflow
+
+```text
+borrowBook(userId, bookId)
+
+↓
+
+Validate User
+
+↓
+
+Validate Book
+
+↓
+
+Check Borrow Limit
+
+↓
+
+Check Book Availability
+
+↓
+
+Create BorrowRecord
+
+↓
+
+Decrease Available Copies
+
+↓
+
+Persist Changes
+
+↓
+
+Return BorrowRecord
+```
+
+---
+
+## Step-by-Step Algorithm
+
+### Step 1
+
+Validate the user.
+
+If the user does not exist:
+
+```java
+throw new UserNotFoundException();
+```
+
+---
+
+### Step 2
+
+Validate the book.
+
+If the book does not exist:
+
+```java
+throw new BookNotFoundException();
+```
+
+---
+
+### Step 3
+
+Check borrowing limit.
+
+A user can borrow at most **5 books**.
+
+Example:
+
+```java
+activeBorrows =
+    borrowRecordRepository.findActiveBorrows(userId);
+
+if(activeBorrows.size() >= 5)
+    throw new UserBorrowLimitExceededException();
+```
+
+---
+
+### Step 4
+
+Check inventory.
+
+```java
+if(book.getAvailableCopies()==0)
+    throw new BookNotAvailableException();
+```
+
+---
+
+### Step 5
+
+Create BorrowRecord.
+
+```java
+BorrowRecord record = new BorrowRecord();
+```
+
+Populate:
+
+- borrowId
+- user
+- book
+- borrowDate
+- dueDate
+- status = ACTIVE
+
+---
+
+### Step 6
+
+Decrease inventory.
+
+```java
+book.availableCopies--;
+```
+
+---
+
+### Step 7
+
+Persist.
+
+Save:
+
+- BorrowRecord
+- Book
+
+These updates should happen inside **one database transaction**.
+
+---
+
+### Step 8
+
+Return BorrowRecord.
+
+---
+
+# Exceptions
+
+Possible exceptions:
+
+```java
+UserNotFoundException
+
+BookNotFoundException
+
+BookNotAvailableException
+
+UserBorrowLimitExceededException
+```
+
+---
+
+# Return Book Workflow
+
+API
+
+```java
+void returnBook(String borrowId);
+```
+
+---
+
+## Workflow
+
+```text
+returnBook(borrowId)
+
+↓
+
+Fetch BorrowRecord
+
+↓
+
+Validate BorrowRecord
+
+↓
+
+Already Returned?
+
+↓
+
+Update Return Date
+
+↓
+
+Update Status
+
+↓
+
+Increase Available Copies
+
+↓
+
+Persist Changes
+```
+
+---
+
+## Step-by-Step Algorithm
+
+### Step 1
+
+Fetch BorrowRecord.
+
+If it doesn't exist:
+
+```java
+throw new BorrowRecordNotFoundException();
+```
+
+---
+
+### Step 2
+
+Check current status.
+
+If already returned:
+
+Either
+
+```java
+throw new InvalidOperationException();
+```
+
+or
+
+Return success (idempotent API).
+
+Both are acceptable if justified.
+
+---
+
+### Step 3
+
+Update return date.
+
+```java
+returnDate = today;
+```
+
+---
+
+### Step 4
+
+Update status.
+
+```java
+status = RETURNED;
+```
+
+---
+
+### Step 5
+
+Increase inventory.
+
+```java
+book.availableCopies++;
+```
+
+---
+
+### Step 6
+
+Persist.
+
+Update:
+
+- BorrowRecord
+- Book
+
+Inside one database transaction.
+
+---
+
+# Why One Transaction?
+
+Suppose:
+
+BorrowRecord updated
+
+↓
+
+Application crashes
+
+↓
+
+Book inventory NOT updated
+
+Now the system becomes inconsistent.
+
+To avoid this:
+
+- update BorrowRecord
+- update Book
+
+inside one transaction.
+
+---
+
+# Interview Questions
+
+## Why return using borrowId?
+
+BorrowRecord uniquely identifies one borrowing transaction.
+
+A book can be borrowed many times over its lifetime.
+
+Using borrowId uniquely identifies the exact transaction.
+
+---
+
+## Why not return using bookId?
+
+Because:
+
+One book
+
+↓
+
+Borrowed many times
+
+↓
+
+Many BorrowRecords
+
+borrowId avoids ambiguity.
+
+---
+
+# Interview Tip
+
+Whenever an operation updates multiple entities, mention:
+
+> "I would perform these updates inside a single database transaction to maintain consistency."
+
+Interviewers like hearing this because it shows you understand transactional integrity.	
+
+
+# 04_Workflows.md
+
+# Borrow Book Workflow
+
+API
+
+```java
+BorrowRecord borrowBook(String userId, String bookId);
+```
+
+---
+
+## Workflow
+
+```text
+borrowBook(userId, bookId)
+
+↓
+
+Validate User
+
+↓
+
+Validate Book
+
+↓
+
+Check Borrow Limit
+
+↓
+
+Check Book Availability
+
+↓
+
+Create BorrowRecord
+
+↓
+
+Decrease Available Copies
+
+↓
+
+Persist Changes
+
+↓
+
+Return BorrowRecord
+```
+
+---
+
+## Step-by-Step Algorithm
+
+### Step 1
+
+Validate the user.
+
+If the user does not exist:
+
+```java
+throw new UserNotFoundException();
+```
+
+---
+
+### Step 2
+
+Validate the book.
+
+If the book does not exist:
+
+```java
+throw new BookNotFoundException();
+```
+
+---
+
+### Step 3
+
+Check borrowing limit.
+
+A user can borrow at most **5 books**.
+
+Example:
+
+```java
+activeBorrows =
+    borrowRecordRepository.findActiveBorrows(userId);
+
+if(activeBorrows.size() >= 5)
+    throw new UserBorrowLimitExceededException();
+```
+
+---
+
+### Step 4
+
+Check inventory.
+
+```java
+if(book.getAvailableCopies()==0)
+    throw new BookNotAvailableException();
+```
+
+---
+
+### Step 5
+
+Create BorrowRecord.
+
+```java
+BorrowRecord record = new BorrowRecord();
+```
+
+Populate:
+
+- borrowId
+- user
+- book
+- borrowDate
+- dueDate
+- status = ACTIVE
+
+---
+
+### Step 6
+
+Decrease inventory.
+
+```java
+book.availableCopies--;
+```
+
+---
+
+### Step 7
+
+Persist.
+
+Save:
+
+- BorrowRecord
+- Book
+
+These updates should happen inside **one database transaction**.
+
+---
+
+### Step 8
+
+Return BorrowRecord.
+
+---
+
+# Exceptions
+
+Possible exceptions:
+
+```java
+UserNotFoundException
+
+BookNotFoundException
+
+BookNotAvailableException
+
+UserBorrowLimitExceededException
+```
+
+---
+
+# Return Book Workflow
+
+API
+
+```java
+void returnBook(String borrowId);
+```
+
+---
+
+## Workflow
+
+```text
+returnBook(borrowId)
+
+↓
+
+Fetch BorrowRecord
+
+↓
+
+Validate BorrowRecord
+
+↓
+
+Already Returned?
+
+↓
+
+Update Return Date
+
+↓
+
+Update Status
+
+↓
+
+Increase Available Copies
+
+↓
+
+Persist Changes
+```
+
+---
+
+## Step-by-Step Algorithm
+
+### Step 1
+
+Fetch BorrowRecord.
+
+If it doesn't exist:
+
+```java
+throw new BorrowRecordNotFoundException();
+```
+
+---
+
+### Step 2
+
+Check current status.
+
+If already returned:
+
+Either
+
+```java
+throw new InvalidOperationException();
+```
+
+or
+
+Return success (idempotent API).
+
+Both are acceptable if justified.
+
+---
+
+### Step 3
+
+Update return date.
+
+```java
+returnDate = today;
+```
+
+---
+
+### Step 4
+
+Update status.
+
+```java
+status = RETURNED;
+```
+
+---
+
+### Step 5
+
+Increase inventory.
+
+```java
+book.availableCopies++;
+```
+
+---
+
+### Step 6
+
+Persist.
+
+Update:
+
+- BorrowRecord
+- Book
+
+Inside one database transaction.
+
+---
+
+# Why One Transaction?
+
+Suppose:
+
+BorrowRecord updated
+
+↓
+
+Application crashes
+
+↓
+
+Book inventory NOT updated
+
+Now the system becomes inconsistent.
+
+To avoid this:
+
+- update BorrowRecord
+- update Book
+
+inside one transaction.
+
+---
+
+# Interview Questions
+
+## Why return using borrowId?
+
+BorrowRecord uniquely identifies one borrowing transaction.
+
+A book can be borrowed many times over its lifetime.
+
+Using borrowId uniquely identifies the exact transaction.
+
+---
+
+## Why not return using bookId?
+
+Because:
+
+One book
+
+↓
+
+Borrowed many times
+
+↓
+
+Many BorrowRecords
+
+borrowId avoids ambiguity.
+
+---
+
+# Interview Tip
+
+Whenever an operation updates multiple entities, mention:
+
+> "I would perform these updates inside a single database transaction to maintain consistency."
+
+Interviewers like hearing this because it shows you understand transactional integrity.
