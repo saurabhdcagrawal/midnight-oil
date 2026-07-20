@@ -13166,3 +13166,453 @@ Whenever an operation updates multiple entities, mention:
 Interviewers like hearing this because it shows you understand transactional integrity.	
 
 
+# 05_Concurrency_and_Interview_Deep_Dive.md
+
+# Concurrency
+
+## Problem
+
+Suppose only **one copy** of a book is available.
+
+Two users click **Borrow** at exactly the same time.
+
+```text
+Harry Potter
+
+Available Copies = 1
+```
+
+Request 1
+
+↓
+
+Borrow Book
+
+Request 2
+
+↓
+
+Borrow Book
+
+Without synchronization:
+
+Both requests read:
+
+```text
+availableCopies = 1
+```
+
+Both decrease it.
+
+Both borrow successfully.
+
+Inventory becomes inconsistent.
+
+---
+
+# Solution 1 — Single JVM
+
+Use an in-memory lock.
+
+```java
+ConcurrentHashMap<String, ReentrantLock> locks;
+```
+
+Each Book gets its own lock.
+
+Example:
+
+```text
+Book101
+
+↓
+
+ReentrantLock
+```
+
+Book102
+
+↓
+
+Different ReentrantLock
+
+---
+
+## Borrow Flow
+
+```java
+ReentrantLock lock =
+    locks.computeIfAbsent(
+        bookId,
+        id -> new ReentrantLock());
+
+lock.lock();
+
+try {
+
+    // Validate book
+
+    // Validate user
+
+    // Check available copies
+
+    // Create BorrowRecord
+
+    // availableCopies--
+
+}
+finally {
+
+    lock.unlock();
+
+}
+```
+
+---
+
+## Why computeIfAbsent()?
+
+Suppose the map is empty.
+
+```text
+{}
+```
+
+First request:
+
+```java
+locks.computeIfAbsent(
+        "101",
+        id -> new ReentrantLock());
+```
+
+Now:
+
+```text
+101
+
+↓
+
+Lock
+```
+
+Second request:
+
+```java
+locks.computeIfAbsent(
+        "101",
+        id -> new ReentrantLock());
+```
+
+The lock already exists.
+
+Both threads receive the SAME lock.
+
+Only one thread executes at a time.
+
+---
+
+# Why not synchronize the entire method?
+
+Bad:
+
+```java
+public synchronized BorrowRecord borrowBook(...)
+```
+
+Problem:
+
+Borrowing Book A
+
+blocks
+
+Borrowing Book B
+
+Even though they are unrelated.
+
+This unnecessarily reduces throughput.
+
+Instead,
+
+lock only the shared resource.
+
+```text
+Book A
+
+↓
+
+Lock A
+```
+
+```text
+Book B
+
+↓
+
+Lock B
+```
+
+Now
+
+Borrow(Book A)
+
+and
+
+Borrow(Book B)
+
+can execute simultaneously.
+
+---
+
+# Why not synchronize(bookId)?
+
+Avoid this:
+
+```java
+synchronized(bookId)
+```
+
+Reason:
+
+Two String objects can contain the same value but still be different objects.
+
+```java
+String a = new String("101");
+
+String b = new String("101");
+```
+
+```java
+a.equals(b)
+```
+
+returns
+
+```text
+true
+```
+
+but
+
+```java
+a == b
+```
+
+returns
+
+```text
+false
+```
+
+They are different monitors.
+
+Synchronization becomes unreliable.
+
+---
+
+# Does ReentrantLock work across multiple JVMs?
+
+No.
+
+ReentrantLock lives inside application memory.
+
+Suppose we have:
+
+```text
+             Load Balancer
+
+            /            \
+
+       Server A       Server B
+
+         JVM             JVM
+```
+
+Server A
+
+```text
+Book101
+
+↓
+
+Lock A
+```
+
+Server B
+
+```text
+Book101
+
+↓
+
+Lock B
+```
+
+These are different lock objects.
+
+Both servers can borrow the same last copy.
+
+Therefore,
+
+ReentrantLock only works for a single JVM.
+
+---
+
+# Multi-JVM Solution
+
+The lock must exist in a shared system.
+
+Three common approaches:
+
+---
+
+## Option 1 — Database Pessimistic Locking (Preferred)
+
+```sql
+SELECT *
+FROM BOOK
+WHERE BOOK_ID = ?
+FOR UPDATE;
+```
+
+Flow:
+
+Transaction A
+
+↓
+
+Locks row
+
+↓
+
+Updates inventory
+
+↓
+
+Commits
+
+↓
+
+Transaction B proceeds
+
+Advantages:
+
+- Very reliable
+- Simple
+- Database is already the source of truth
+
+This is my preferred solution for this problem.
+
+---
+
+## Option 2 — Optimistic Locking
+
+Add:
+
+```java
+class Book {
+
+    int availableCopies;
+
+    long version;
+}
+```
+
+If another transaction updates first,
+
+the version check fails.
+
+Retry or return an error.
+
+Best when write conflicts are rare.
+
+---
+
+## Option 3 — Redis Distributed Lock
+
+Acquire:
+
+```text
+lock:book:101
+```
+
+Only one JVM can obtain the lock.
+
+Other JVMs wait or fail.
+
+Useful when:
+
+- Multiple services participate
+- Lock spans multiple resources
+- Coordination is outside the database
+
+---
+
+# Which One Should I Recommend?
+
+For this Online Library system:
+
+Use
+
+**Database Pessimistic Locking**
+
+Reason:
+
+The Book table is already the source of truth.
+
+Inventory updates naturally belong inside a database transaction.
+
+---
+
+# Interview Questions
+
+## Why not synchronize the whole method?
+
+Because it serializes every borrow request.
+
+Borrowing Book A should not block borrowing Book B.
+
+Instead,
+
+lock the individual shared resource.
+
+---
+
+## Why doesn't ReentrantLock work across servers?
+
+Because each JVM has its own memory.
+
+Each server creates its own lock.
+
+No coordination exists between servers.
+
+---
+
+## Why prefer DB locking over Redis?
+
+The database already owns the inventory.
+
+Using database row locks keeps locking close to the data.
+
+It is simpler and avoids maintaining another distributed component.
+
+Redis is useful when coordination spans multiple services or resources.
+
+---
+
+# Senior Interview Answer
+
+If asked:
+
+"How would you handle concurrent borrowing?"
+
+A good answer is:
+
+> "For a single JVM I'd use a per-book ReentrantLock. In a distributed deployment that wouldn't be sufficient because locks are local to each JVM. Since inventory is stored in a relational database, I'd use pessimistic row locking with SELECT ... FOR UPDATE. If the workflow were distributed across multiple services, I'd consider a Redis distributed lock instead."
+
+This answer demonstrates:
+
+- Concurrency
+- Scalability
+- Distributed systems knowledge
+- Practical engineering trade-offs
