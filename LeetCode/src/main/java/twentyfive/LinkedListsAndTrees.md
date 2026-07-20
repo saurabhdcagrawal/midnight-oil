@@ -3121,6 +3121,10 @@ K = number of tweets requested
 (K = 10 for this problem.)
 
 ---
+## Approach Naive
+Isnt this same as storing all tweets and doing a reverse sort and then getting top 10... the space here is O(T), 	there it is O(K)
+Time is O(TlogT)
+
 
 ## Approach 1
 
@@ -3150,8 +3154,7 @@ Space
 
 ```
 O(T)
-```
-
+``` 
 ---
 
 ## Approach 2
