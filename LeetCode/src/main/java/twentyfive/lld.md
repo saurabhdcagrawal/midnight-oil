@@ -8679,3 +8679,2591 @@ Then discuss the three approaches:
 * A `DiscountOptimizer` is useful when only the best promotion should be applied.
 * A `PromotionEngine` is useful when complex stacking rules exist.
 * Applying multiple strategies sequentially naturally forms a processing pipeline similar to the **Chain of Responsibility** pattern.
+
+
+Notice how I go from broad to detailed:
+
+Is it a single parking lot or multiple?
+What vehicle types are supported?
+Multiple floors?
+How are parking spots assigned (system vs user)?
+Do we generate tickets?
+What is the pricing model?
+Do we need to support concurrent entry/exit?
+Is nearest spot allocation required?
+Any special spots (VIP, handicapped, EV)?
+What happens when the lot is full?
+
+
+
+# BookMyShow LLD — Part 1
+# Requirements Clarification & Identifying Entities
+
+---
+
+# Step 1 — Clarify the Requirements
+
+Before writing any classes, spend a few minutes understanding the problem.
+
+## Questions to Ask
+
+1. Is the system for a single theater or multiple theaters?
+2. Can a theater have multiple screens?
+3. Can a screen have multiple shows throughout the day?
+4. Is booking cancellation supported?
+5. Is pricing fixed or based on seat type/time/day?
+6. Should we support concurrent bookings?
+
+---
+
+## Final Assumptions
+
+- Multiple theaters
+- Each theater has multiple screens
+- Each screen can host multiple shows
+- Booking cancellation is supported
+- Pricing depends on seat type (can evolve later)
+- Multiple users may try to book the same seat simultaneously
+
+> **Interview Tip**
+>
+> Never assume the requirements. Spend the first 2–3 minutes clarifying them with the interviewer.
+
+---
+
+# Step 2 — Identify the Domain Entities
+
+Now ask yourself:
+
+> **What are the main nouns in the problem statement?**
+
+Initial entities:
+
+- Movie
+- Theater
+- Screen
+- Seat
+- Show
+- Booking
+- User
+- Payment
+
+At this stage, don't worry about services or design patterns.
+
+---
+
+# Important Design Discussion
+
+Initially, it looks like a seat should contain:
+
+```java
+boolean booked;
+```
+
+But let's think about it.
+
+Suppose we have:
+
+```
+Seat A1
+
+10:00 AM Show → BOOKED
+
+7:00 PM Show → AVAILABLE
+```
+
+The physical seat is the same.
+
+Its availability changes depending on **which show** we're talking about.
+
+So the booking state **does not belong to Seat**.
+
+---
+
+# Introducing ShowSeat
+
+Instead of storing booking information inside `Seat`, introduce another entity.
+
+```
+Show
+   |
+   +------ ShowSeat ------ Seat
+```
+
+`ShowSeat` represents:
+
+> **Seat A1 for a particular show**
+
+Now the booking status belongs to `ShowSeat`, not `Seat`.
+
+---
+
+# Final Entity List
+
+- Movie
+- Theater
+- Screen
+- Seat
+- Show
+- ShowSeat
+- Booking
+- User
+- Payment
+
+At this point, we have completed the domain model.
+
+We intentionally do **not** design services yet.
+
+---
+
+# LLD Approach Used
+
+```
+Requirements
+      ↓
+Entities
+      ↓
+Relationships
+      ↓
+Services
+      ↓
+Workflow
+      ↓
+Design Patterns (only if required)
+      ↓
+Concurrency
+```
+
+This structured approach keeps the design clean and avoids introducing unnecessary complexity too early.
+
+---
+
+# Key Takeaways
+
+- Always clarify requirements before writing classes.
+- Identify entities before thinking about services.
+- Ask whether a piece of state belongs to an object or to the relationship between two objects.
+- `ShowSeat` exists because seat availability depends on the **show**, not the physical seat itself.
+- Build the domain model first. Services and workflows come afterward.
+
+# BookMyShow LLD — Part 2
+# Designing the Domain Classes
+
+Now that we've identified the entities, we'll model each class one by one.
+
+For every class, ask yourself:
+
+1. What fields should it have?
+2. What is its responsibility?
+3. What methods belong here?
+4. Am I duplicating relationships?
+
+---
+
+# 1. Movie
+
+## Initial Thoughts
+
+A movie should contain:
+
+- movieId
+- title
+- language
+- duration
+- genre
+
+One suggestion was to add:
+
+```java
+boolean isRunning;
+```
+
+### Improvement
+
+Avoid adding `isRunning`.
+
+Whether a movie is currently running depends on whether it has active shows.
+
+That information already exists elsewhere.
+
+---
+
+## Final Class
+
+```java
+public class Movie {
+
+    private String movieId;
+
+    private String title;
+
+    private Duration duration;
+
+    private Language language;
+
+    private Genre genre;
+}
+```
+
+### Responsibility
+
+Represents movie information only.
+
+---
+
+# 2. Theater
+
+A theater contains multiple screens.
+
+---
+
+## Final Class
+
+```java
+public class Theater {
+
+    private String theaterId;
+
+    private String name;
+
+    private String address;
+
+    private List<Screen> screens;
+
+    public void addScreen(Screen screen) {
+        screens.add(screen);
+    }
+
+    public void removeScreen(Screen screen) {
+        screens.remove(screen);
+    }
+}
+```
+
+---
+
+### Discussion
+
+Initially it seemed reasonable to store:
+
+```java
+List<Show> shows;
+```
+
+inside Theater.
+
+### Improvement
+
+Avoid it.
+
+The relationship already exists.
+
+```
+Theater
+    ↓
+Screen
+    ↓
+Show
+```
+
+Duplicating relationships creates unnecessary maintenance.
+
+---
+
+### Responsibility
+
+Manage screens.
+
+---
+
+# 3. Screen
+
+A screen has:
+
+- Seats
+- Shows
+
+---
+
+## Final Class
+
+```java
+public class Screen {
+
+    private String screenId;
+
+    private List<Seat> seats;
+
+    private List<Show> shows;
+
+    public void addSeat(Seat seat) {
+        seats.add(seat);
+    }
+
+    public void removeSeat(Seat seat) {
+        seats.remove(seat);
+    }
+
+    public void addShow(Show show) {
+        shows.add(show);
+    }
+
+    public void removeShow(Show show) {
+        shows.remove(show);
+    }
+}
+```
+
+---
+
+### Responsibility
+
+Represents one physical screen inside a theater.
+
+---
+
+# 4. Seat
+
+Initially, we considered:
+
+```java
+boolean booked;
+```
+
+### Improvement
+
+Booking status depends on the show.
+
+So Seat only represents the physical seat.
+
+---
+
+## Final Class
+
+```java
+public class Seat {
+
+    private String seatNumber;
+
+    private SeatType seatType;
+}
+```
+
+---
+
+### Responsibility
+
+Represents a physical seat.
+
+No booking information belongs here.
+
+---
+
+# 5. Show
+
+A show represents one screening of a movie.
+
+---
+
+## Final Class
+
+```java
+public class Show {
+
+    private String showId;
+
+    private Movie movie;
+
+    private Screen screen;
+
+    private LocalDateTime startTime;
+
+    private LocalDateTime endTime;
+
+    private List<ShowSeat> showSeats;
+
+    public List<ShowSeat> getAvailableSeats() {
+
+        return showSeats.stream()
+                .filter(seat -> seat.getStatus() == SeatStatus.AVAILABLE)
+                .toList();
+    }
+}
+```
+
+---
+
+### Discussion
+
+Initially it looked like Show should contain Theater.
+
+Instead:
+
+```
+Show
+   ↓
+Screen
+   ↓
+Theater
+```
+
+Avoid storing duplicate references.
+
+---
+
+### Responsibility
+
+Represents one movie screening.
+
+---
+
+# 6. ShowSeat
+
+This class solves the booking problem.
+
+Instead of storing booking information inside Seat, we create:
+
+```
+ShowSeat
+```
+
+which represents:
+
+> Seat for a particular show.
+
+---
+
+## Final Class
+
+```java
+public class ShowSeat {
+
+    private Show show;
+
+    private Seat seat;
+
+    private SeatStatus status;
+
+    public void lock() {
+        status = SeatStatus.LOCKED;
+    }
+
+    public void markBooked() {
+        status = SeatStatus.BOOKED;
+    }
+
+    public void release() {
+        status = SeatStatus.AVAILABLE;
+    }
+}
+```
+
+---
+
+### Seat Lifecycle
+
+```
+AVAILABLE
+      ↓
+LOCKED
+      ↓
+BOOKED
+```
+
+If payment fails:
+
+```
+LOCKED
+      ↓
+AVAILABLE
+```
+
+---
+
+### Responsibility
+
+Maintain seat state for a specific show.
+
+---
+
+# 7. Booking
+
+A booking ties everything together.
+
+---
+
+## Final Class
+
+```java
+public class Booking {
+
+    private String bookingId;
+
+    private User user;
+
+    private Show show;
+
+    private List<ShowSeat> bookedSeats;
+
+    private BigDecimal totalAmount;
+
+    private BookingStatus status;
+}
+```
+
+---
+
+### Discussion
+
+Should Booking store the amount?
+
+Yes.
+
+Pricing is calculated by `PricingService`, but once calculated, the final amount should be stored inside Booking.
+
+This preserves historical accuracy if pricing changes later.
+
+---
+
+### Responsibility
+
+Represents one booking made by a user.
+
+---
+
+# 8. User
+
+```java
+public class User {
+
+    private String userId;
+
+    private String name;
+
+    private String email;
+}
+```
+
+---
+
+### Responsibility
+
+Represents the customer using the system.
+
+---
+
+# 9. Payment
+
+```java
+public class Payment {
+
+    private String paymentId;
+
+    private BigDecimal amount;
+
+    private PaymentMethod paymentMethod;
+
+    private PaymentStatus status;
+}
+```
+
+---
+
+### Responsibility
+
+Represents one payment transaction.
+
+---
+
+# Enums
+
+```java
+enum SeatStatus {
+    AVAILABLE,
+    LOCKED,
+    BOOKED
+}
+```
+
+```java
+enum BookingStatus {
+    CREATED,
+    CONFIRMED,
+    CANCELLED
+}
+```
+
+```java
+enum PaymentStatus {
+    PENDING,
+    SUCCESS,
+    FAILED
+}
+```
+
+```java
+enum SeatType {
+    REGULAR,
+    PREMIUM,
+    RECLINER
+}
+```
+
+---
+
+# Class Relationships
+
+```
+                 Movie
+                   ▲
+                   │
+                 Show
+                /    \
+               /      \
+          Screen    ShowSeat
+             ▲          │
+             │          ▼
+         Theater      Seat
+
+Booking
+   │
+   ├── User
+   ├── Show
+   └── List<ShowSeat>
+
+Payment
+```
+
+---
+
+# Key Takeaways
+
+- Each class should have a single responsibility.
+- Avoid duplicate relationships (e.g., don't store both Theater → Show and Theater → Screen → Show).
+- Store booking state in `ShowSeat`, not `Seat`.
+- Store the final amount in `Booking`, but let `PricingService` calculate it.
+- Model the domain completely before introducing services.
+
+# BookMyShow LLD — Part 3
+# Designing the Services
+
+Now that our domain model is complete, we can design the services.
+
+A common mistake is to create a service for every entity:
+
+- MovieService
+- TheaterService
+- ScreenService
+- SeatService
+
+Most of these are just CRUD services and don't represent business operations.
+
+Instead, identify the **business use cases**.
+
+---
+
+# Business Use Cases
+
+The user wants to:
+
+- Search for movies
+- View available shows
+- Book tickets
+- Cancel bookings
+- Make payments
+
+From these use cases, we derive the services.
+
+---
+
+# Final Services
+
+- SearchService
+- BookingService
+- PricingService
+- PaymentService
+
+---
+
+# 1. SearchService
+
+### Responsibility
+
+Search for movies and shows.
+
+---
+
+```java
+public class SearchService {
+
+    List<Movie> searchMovie(String movieName);
+
+    List<Show> getShows(Movie movie);
+
+    List<Show> getShows(Movie movie, Theater theater);
+}
+```
+
+---
+
+### Why not Booking logic here?
+
+Searching and booking are completely different responsibilities.
+
+Keep searching read-only.
+
+---
+
+# 2. BookingService
+
+This is the heart of the application.
+
+It coordinates the booking process.
+
+It does **not**
+
+- calculate prices
+- process payments
+- implement pricing rules
+
+It delegates those responsibilities.
+
+---
+
+## Dependencies
+
+```java
+private PricingService pricingService;
+
+private PaymentService paymentService;
+```
+
+---
+
+## Final Class
+
+```java
+public class BookingService {
+
+    private PricingService pricingService;
+
+    private PaymentService paymentService;
+
+    public Booking createBooking(
+            User user,
+            Show show,
+            List<ShowSeat> seats) {
+
+        // implementation later
+    }
+
+    public void cancelBooking(String bookingId) {
+
+        // implementation later
+    }
+}
+```
+
+---
+
+### Discussion
+
+Initially, it looked like this:
+
+```java
+bookShow(User user,
+         Show show,
+         int tickets)
+```
+
+### Improvement
+
+The user doesn't book "3 tickets".
+
+The user selects:
+
+```
+A1
+
+A2
+
+A3
+```
+
+So the service should receive the selected seats.
+
+```java
+List<ShowSeat>
+```
+
+---
+
+### Responsibility
+
+Coordinate the booking workflow.
+
+---
+
+# 3. PricingService
+
+Initially pricing is simple.
+
+```java
+public class PricingService {
+
+    public BigDecimal calculatePrice(Booking booking);
+
+    public BigDecimal calculateRefund(Booking booking);
+}
+```
+
+Notice that the input is:
+
+```java
+Booking
+```
+
+instead of
+
+```java
+List<ShowSeat>
+```
+
+---
+
+### Why?
+
+Pricing may depend on:
+
+- Seat type
+- User membership
+- Coupons
+- Show timing
+- Weekend pricing
+- Taxes
+
+All of this is reachable through Booking.
+
+---
+
+### Responsibility
+
+Calculate prices and refunds.
+
+It does **not** process payments.
+
+---
+
+# 4. PaymentService
+
+Very small.
+
+```java
+public class PaymentService {
+
+    public Payment processPayment(Booking booking);
+
+    public Payment refund(Booking booking);
+}
+```
+
+---
+
+### Responsibility
+
+Only process payments.
+
+It should not know:
+
+- pricing rules
+- booking logic
+- seat locking
+
+It simply charges or refunds the final amount.
+
+---
+
+# Service Relationships
+
+```
+             BookingService
+             /            \
+            /              \
+           ▼                ▼
+PricingService      PaymentService
+
+SearchService
+```
+
+Notice:
+
+BookingService coordinates everything.
+
+PricingService and PaymentService don't communicate directly.
+
+---
+
+# Why doesn't PaymentService use PricingService?
+
+A common question is:
+
+> Should PaymentService calculate the price?
+
+No.
+
+The flow should be:
+
+```
+BookingService
+      |
+      ▼
+PricingService.calculatePrice()
+
+      |
+
+booking.setTotalAmount()
+
+      |
+
+PaymentService.processPayment()
+```
+
+PaymentService simply charges:
+
+```
+booking.getTotalAmount()
+```
+
+It should never know:
+
+- weekend pricing
+- discounts
+- surge pricing
+
+Those belong to PricingService.
+
+---
+
+# If Pricing Becomes Complex
+
+Suppose the interviewer adds:
+
+- Weekend pricing
+- Holiday pricing
+- Dynamic pricing
+- Premium member discounts
+
+Instead of writing:
+
+```java
+if (...)
+
+else if (...)
+
+else if (...)
+```
+
+inside PricingService,
+
+introduce the Strategy Pattern.
+
+---
+
+## PricingStrategy
+
+```java
+public interface PricingStrategy {
+
+    BigDecimal calculate(Booking booking);
+}
+```
+
+Implementations:
+
+```java
+WeekendPricingStrategy
+
+FestivalPricingStrategy
+
+DynamicPricingStrategy
+
+DefaultPricingStrategy
+```
+
+PricingService becomes:
+
+```java
+public class PricingService {
+
+    private PricingStrategy pricingStrategy;
+
+    public BigDecimal calculatePrice(Booking booking) {
+
+        return pricingStrategy.calculate(booking);
+    }
+}
+```
+
+BookingService remains unchanged.
+
+PaymentService remains unchanged.
+
+Only PricingService evolves.
+
+---
+
+# Design Principle
+
+> Services orchestrate.
+
+> Entities store state.
+
+Examples:
+
+- BookingService → coordinates booking.
+- PricingService → calculates prices.
+- PaymentService → processes payments.
+- Booking → stores the final amount.
+- ShowSeat → stores seat state.
+
+---
+
+# Key Takeaways
+
+- Create services from business use cases, not entities.
+- Keep public APIs small.
+- BookingService coordinates the workflow.
+- PricingService calculates.
+- PaymentService charges.
+- Introduce Strategy only when requirements justify it.
+- Avoid adding design patterns too early.
+
+
+# BookMyShow LLD — Part 4
+# Booking & Cancellation Workflow
+
+Now that we have our domain model and services, let's connect everything together.
+
+The goal of `BookingService` is **not** to perform every operation itself.
+
+Its responsibility is to **orchestrate** the workflow by coordinating the domain objects and other services.
+
+---
+
+# Booking Workflow
+
+Suppose a user selects:
+
+```
+Movie : Avengers
+
+Show : 7 PM
+
+Seats :
+
+A1
+
+A2
+```
+
+The high-level flow becomes:
+
+```
+Validate Seats
+
+        ↓
+
+Lock Seats
+
+        ↓
+
+Create Booking
+
+        ↓
+
+Calculate Price
+
+        ↓
+
+Process Payment
+
+        ↓
+
+Payment Successful?
+
+     YES        NO
+      ↓          ↓
+ Book Seats   Release Seats
+      ↓          ↓
+Confirm      Cancel Booking
+Booking
+```
+
+---
+
+# BookingService
+
+High-level implementation:
+
+```java
+public Booking createBooking(
+        User user,
+        Show show,
+        List<ShowSeat> seats) {
+
+    // 1. Validate seats
+
+    // 2. Lock seats
+
+    // 3. Create Booking
+
+    // 4. Calculate price
+
+    // 5. Store total amount
+
+    // 6. Process payment
+
+    // 7. If success
+    //      mark seats booked
+    //      confirm booking
+
+    // 8. Else
+    //      release seats
+    //      cancel booking
+
+    return booking;
+}
+```
+
+Notice that this is orchestration code.
+
+Most of the work is delegated elsewhere.
+
+---
+
+# Step 1 — Validate Seats
+
+Before doing anything, verify that every selected seat is still available.
+
+```java
+for (ShowSeat seat : seats) {
+
+    if (seat.getStatus() != SeatStatus.AVAILABLE) {
+
+        throw new SeatUnavailableException();
+    }
+}
+```
+
+---
+
+# Step 2 — Lock Seats
+
+Once validation succeeds:
+
+```java
+for (ShowSeat seat : seats) {
+
+    seat.lock();
+}
+```
+
+Seat lifecycle:
+
+```
+AVAILABLE
+
+      ↓
+
+LOCKED
+```
+
+This prevents another user from booking the same seat while payment is in progress.
+
+---
+
+# Step 3 — Create Booking
+
+```java
+Booking booking = new Booking(
+        user,
+        show,
+        seats
+);
+```
+
+Booking status becomes:
+
+```
+CREATED
+```
+
+---
+
+# Step 4 — Calculate Price
+
+Delegate pricing.
+
+```java
+BigDecimal amount =
+        pricingService.calculatePrice(booking);
+```
+
+Notice:
+
+BookingService does **not** calculate prices.
+
+---
+
+# Step 5 — Store Final Amount
+
+```java
+booking.setTotalAmount(amount);
+```
+
+Why store it?
+
+Suppose ticket prices increase tomorrow.
+
+Old bookings should still display the amount originally paid.
+
+Booking stores the historical amount.
+
+PricingService computes it.
+
+---
+
+# Step 6 — Process Payment
+
+Delegate payment.
+
+```java
+Payment payment =
+        paymentService.processPayment(booking);
+```
+
+BookingService never knows:
+
+- Card details
+- Payment gateway
+- UPI
+- Credit card APIs
+
+That belongs to PaymentService.
+
+---
+
+# Step 7 — Payment Success
+
+If payment succeeds:
+
+```java
+for (ShowSeat seat : seats) {
+
+    seat.markBooked();
+}
+```
+
+Booking becomes:
+
+```
+CONFIRMED
+```
+
+Seat lifecycle:
+
+```
+AVAILABLE
+
+      ↓
+
+LOCKED
+
+      ↓
+
+BOOKED
+```
+
+---
+
+# Step 8 — Payment Failure
+
+If payment fails:
+
+```java
+for (ShowSeat seat : seats) {
+
+    seat.release();
+}
+```
+
+Booking becomes:
+
+```
+CANCELLED
+```
+
+Seat lifecycle:
+
+```
+LOCKED
+
+      ↓
+
+AVAILABLE
+```
+
+Now another user can book those seats.
+
+---
+
+# Cancellation Workflow
+
+User decides to cancel a booking.
+
+High-level flow:
+
+```
+Load Booking
+
+       ↓
+
+Calculate Refund
+
+       ↓
+
+Refund Payment
+
+       ↓
+
+Release Seats
+
+       ↓
+
+Cancel Booking
+```
+
+---
+
+# BookingService
+
+High-level implementation:
+
+```java
+public void cancelBooking(String bookingId) {
+
+    // 1. Load booking
+
+    // 2. Calculate refund
+
+    // 3. Process refund
+
+    // 4. Release seats
+
+    // 5. Cancel booking
+}
+```
+
+---
+
+# Step 1
+
+Retrieve booking.
+
+---
+
+# Step 2
+
+Delegate refund calculation.
+
+```java
+BigDecimal refund =
+        pricingService.calculateRefund(booking);
+```
+
+---
+
+# Step 3
+
+Delegate refund.
+
+```java
+paymentService.refund(booking);
+```
+
+---
+
+# Step 4
+
+Release every booked seat.
+
+```java
+for (ShowSeat seat : booking.getBookedSeats()) {
+
+    seat.release();
+}
+```
+
+Seat becomes:
+
+```
+AVAILABLE
+```
+
+---
+
+# Step 5
+
+Booking status becomes:
+
+```
+CANCELLED
+```
+
+---
+
+# Responsibilities
+
+BookingService coordinates.
+
+PricingService calculates.
+
+PaymentService charges/refunds.
+
+ShowSeat manages seat state.
+
+Booking stores booking information.
+
+Every class has one clear responsibility.
+
+---
+
+# Complete Booking Flow
+
+```
+User
+
+   │
+
+   ▼
+
+BookingService
+
+   │
+
+Validate Seats
+
+   │
+
+Lock Seats
+
+   │
+
+Create Booking
+
+   │
+
+PricingService
+
+   │
+
+PaymentService
+
+   │
+
+Payment Success?
+
+   │
+
+YES ─────────────► Mark Seats Booked
+
+NO ──────────────► Release Seats
+
+   │
+
+Return Booking
+```
+
+---
+
+# Key Takeaways
+
+- Services should orchestrate, not implement every business rule.
+- Delegate pricing to PricingService.
+- Delegate payment to PaymentService.
+- Keep BookingService thin.
+- Lock seats before payment.
+- Confirm booking only after successful payment.
+- Release seats if payment fails.
+- Store the final amount in Booking for historical accuracy.
+
+# BookMyShow LLD — Part 5
+# Design Improvements & Evolving the Design
+
+At this point, we have a working design.
+
+Now imagine the interviewer starts changing the requirements.
+
+This is where senior-level design begins.
+
+The important principle is:
+
+> **Don't introduce design patterns until the requirements justify them.**
+
+---
+
+# Improvement 1 — Pricing Strategy
+
+## Initial Requirement
+
+Pricing is simple.
+
+```
+Regular Seat = $10
+
+Premium Seat = $20
+```
+
+A simple `PricingService` is enough.
+
+```java
+public class PricingService {
+
+    public BigDecimal calculatePrice(Booking booking) {
+
+        // calculate price
+    }
+}
+```
+
+No design pattern is required.
+
+---
+
+## New Requirement
+
+Now the interviewer says:
+
+- Weekend pricing
+- Holiday pricing
+- Dynamic pricing
+- Premium member discounts
+- Coupons
+
+A large if-else chain starts appearing.
+
+```java
+if (weekend) {
+
+}
+
+else if (festival) {
+
+}
+
+else if (member) {
+
+}
+
+else if (coupon) {
+
+}
+```
+
+Not a good design.
+
+---
+
+## Introduce Strategy Pattern
+
+```java
+public interface PricingStrategy {
+
+    BigDecimal calculate(Booking booking);
+}
+```
+
+Implementations:
+
+```java
+DefaultPricingStrategy
+
+WeekendPricingStrategy
+
+FestivalPricingStrategy
+
+DynamicPricingStrategy
+```
+
+PricingService becomes:
+
+```java
+public class PricingService {
+
+    private PricingStrategy pricingStrategy;
+
+    public BigDecimal calculatePrice(
+            Booking booking) {
+
+        return pricingStrategy.calculate(booking);
+    }
+}
+```
+
+---
+
+### Important Observation
+
+Nothing changes in BookingService.
+
+```java
+pricingService.calculatePrice(booking);
+```
+
+still works.
+
+Only PricingService evolves.
+
+---
+
+# Improvement 2 — Should PaymentService Know Pricing?
+
+A common interview question:
+
+> Should PaymentService use PricingStrategy?
+
+No.
+
+PaymentService should never know:
+
+- Weekend pricing
+- Discounts
+- Coupons
+- Seat types
+
+Its responsibility is only:
+
+```
+Charge
+
+Refund
+```
+
+Flow remains:
+
+```
+BookingService
+
+        ↓
+
+PricingService
+
+        ↓
+
+booking.setTotalAmount()
+
+        ↓
+
+PaymentService
+```
+
+PaymentService simply reads:
+
+```java
+booking.getTotalAmount();
+```
+
+---
+
+# Improvement 3 — Store Final Amount
+
+Another common discussion.
+
+Should Booking contain:
+
+```java
+BigDecimal totalAmount;
+```
+
+Yes.
+
+PricingService calculates.
+
+Booking stores.
+
+Reason:
+
+Suppose:
+
+```
+Today
+
+Premium Seat = $20
+```
+
+Tomorrow
+
+```
+Premium Seat = $30
+```
+
+Old bookings should still show:
+
+```
+$20
+```
+
+not
+
+```
+$30
+```
+
+Booking stores the historical value.
+
+---
+
+# Improvement 4 — Seat Lock Service
+
+Initially we wrote:
+
+```java
+seat.lock();
+```
+
+inside BookingService.
+
+That's perfectly acceptable.
+
+---
+
+## New Requirement
+
+The interviewer says:
+
+> Locks should expire after 5 minutes.
+
+or
+
+> Multiple servers are running.
+
+Now seat locking becomes its own responsibility.
+
+Introduce:
+
+```java
+public class SeatLockService {
+
+    boolean lockSeats(List<ShowSeat> seats);
+
+    void releaseSeats(List<ShowSeat> seats);
+}
+```
+
+BookingService becomes cleaner.
+
+```
+BookingService
+
+      │
+
+SeatLockService
+
+      │
+
+PricingService
+
+      │
+
+PaymentService
+```
+
+---
+
+### Why separate it?
+
+Tomorrow SeatLockService can handle:
+
+- Lock timeout
+- Lock ownership
+- Redis
+- Distributed locking
+
+without modifying BookingService.
+
+---
+
+# Improvement 5 — Keep Services Small
+
+Bad design:
+
+```
+BookingService
+
+book()
+
+cancel()
+
+refund()
+
+calculatePrice()
+
+searchMovie()
+
+addMovie()
+
+addTheater()
+```
+
+One service doing everything.
+
+---
+
+Good design:
+
+```
+SearchService
+
+BookingService
+
+PricingService
+
+PaymentService
+```
+
+Each service has one responsibility.
+
+---
+
+# Improvement 6 — Avoid Duplicate Relationships
+
+Bad:
+
+```
+Theater
+
+↓
+
+Screen
+
+↓
+
+Show
+
+AND
+
+Theater
+
+↓
+
+Show
+```
+
+Good:
+
+```
+Theater
+
+↓
+
+Screen
+
+↓
+
+Show
+```
+
+Only maintain one relationship.
+
+Avoid duplicate state.
+
+---
+
+# Improvement 7 — ShowSeat
+
+Initially it looks like:
+
+```java
+Seat {
+
+    boolean booked;
+}
+```
+
+But ask:
+
+> Booked for which show?
+
+Instead:
+
+```
+Seat
+
+Physical object
+
+↓
+
+ShowSeat
+
+Booking state
+```
+
+This is one of the most important modeling decisions in the design.
+
+---
+
+# Design Principles Used
+
+## Single Responsibility Principle
+
+Every class has one clear job.
+
+Examples:
+
+BookingService
+
+↓
+
+Coordinate booking
+
+PricingService
+
+↓
+
+Calculate price
+
+PaymentService
+
+↓
+
+Process payment
+
+ShowSeat
+
+↓
+
+Maintain seat state
+
+---
+
+## Information Expert (GRASP)
+
+Pass the object that already contains the required information.
+
+Instead of:
+
+```java
+calculatePrice(
+    seats,
+    user,
+    show,
+    coupon
+)
+```
+
+prefer:
+
+```java
+calculatePrice(Booking booking)
+```
+
+Booking already knows:
+
+- User
+- Show
+- Seats
+
+---
+
+## Open Closed Principle
+
+PricingService remains unchanged.
+
+Adding:
+
+```
+WeekendPricingStrategy
+```
+
+does not require modifying BookingService.
+
+We extend the behavior without changing existing clients.
+
+---
+
+# Final Architecture
+
+```
+                 BookingService
+                        │
+        ┌───────────────┴───────────────┐
+        │                               │
+        ▼                               ▼
+PricingService                 PaymentService
+        │
+        ▼
+PricingStrategy
+        │
+  ┌─────┼───────────┐
+  │     │           │
+Default Weekend  Festival
+```
+
+---
+
+# Key Takeaways
+
+- Start simple.
+- Add design patterns only when new requirements demand them.
+- BookingService should not calculate prices.
+- PaymentService should not know pricing rules.
+- Booking stores the final amount.
+- Introduce Strategy only when pricing becomes variable.
+- Introduce SeatLockService only when locking becomes complex.
+- Keep every class and service focused on a single responsibility.
+
+# BookMyShow LLD — Part 6
+# Concurrency & Scaling Discussion
+
+Once the basic LLD is complete, interviewers often ask:
+
+> **"What happens if two users try to book the same seat at exactly the same time?"**
+
+At this point, the discussion shifts from object-oriented design to concurrency and distributed systems.
+
+---
+
+# The Problem
+
+Suppose seat A1 is available.
+
+```
+Seat A1
+
+Status = AVAILABLE
+```
+
+Now two users try to book it simultaneously.
+
+```
+            User A                   User B
+
+               │                        │
+
+       Check AVAILABLE         Check AVAILABLE
+
+               │                        │
+
+          Both see AVAILABLE
+
+               │                        │
+
+           Lock Seat               Lock Seat
+
+               │                        │
+
+          Double Booking ❌
+```
+
+Both users successfully book the same seat.
+
+This is called a **Race Condition**.
+
+---
+
+# Why Does This Happen?
+
+Imagine this code:
+
+```java
+if(seat.getStatus() == AVAILABLE){
+
+    seat.lock();
+}
+```
+
+User A executes:
+
+```
+AVAILABLE
+```
+
+Before User A locks it,
+
+User B also executes:
+
+```
+AVAILABLE
+```
+
+Both continue.
+
+Checking and locking are **not atomic**.
+
+---
+
+# Solution 1 — Pessimistic Locking
+
+Lock the database row before checking availability.
+
+Example:
+
+```sql
+SELECT *
+FROM SHOW_SEAT
+WHERE ID = ?
+FOR UPDATE;
+```
+
+Now:
+
+```
+User A
+
+gets lock
+
+↓
+
+User B
+
+waits
+```
+
+Only one transaction proceeds.
+
+---
+
+## Pros
+
+- Prevents double booking.
+- Simple to understand.
+
+---
+
+## Cons
+
+- Database locks reduce scalability.
+- Other users must wait.
+
+---
+
+# Solution 2 — Optimistic Locking
+
+Instead of locking first,
+
+allow both users to read.
+
+Maintain a version number.
+
+```
+Seat
+
+Version = 5
+```
+
+Both users read:
+
+```
+Version = 5
+```
+
+User A updates.
+
+Database changes:
+
+```
+Version = 6
+```
+
+User B tries updating Version 5.
+
+Database rejects the update.
+
+Booking fails.
+
+---
+
+## Pros
+
+- High throughput.
+- Better scalability.
+
+---
+
+## Cons
+
+- Failed updates need retries.
+
+---
+
+# Solution 3 — Redis Distributed Lock
+
+Suppose there are multiple application servers.
+
+```
+App Server 1
+
+App Server 2
+
+App Server 3
+```
+
+A Java synchronized block only works inside one JVM.
+
+It cannot coordinate multiple servers.
+
+Instead,
+
+acquire a distributed lock.
+
+```
+Redis
+
+↓
+
+Seat:A1
+
+↓
+
+LOCKED
+```
+
+Only one application server obtains the lock.
+
+Others fail immediately.
+
+---
+
+## Typical Flow
+
+```
+Acquire Redis Lock
+
+        ↓
+
+Lock successful?
+
+YES
+
+↓
+
+Book Seat
+
+↓
+
+Release Lock
+```
+
+---
+
+# Seat Lock Timeout
+
+Suppose:
+
+```
+User locks seat
+
+↓
+
+Never pays
+
+↓
+
+Leaves website
+```
+
+The seat remains locked forever.
+
+Bad user experience.
+
+---
+
+## Solution
+
+Every lock has an expiration.
+
+Example:
+
+```
+Seat Locked
+
+↓
+
+5 Minutes
+
+↓
+
+Automatically Released
+```
+
+Then another customer can book it.
+
+---
+
+# Updated Workflow
+
+```
+Validate Seat
+
+        ↓
+
+Acquire Lock
+
+        ↓
+
+Create Booking
+
+        ↓
+
+Calculate Price
+
+        ↓
+
+Process Payment
+
+        ↓
+
+Payment Success?
+
+YES                     NO
+
+↓                       ↓
+
+Book Seat         Release Lock
+
+↓                       ↓
+
+Confirm Booking   Cancel Booking
+```
+
+---
+
+# Why Introduce SeatLockService?
+
+Initially we simply wrote:
+
+```java
+seat.lock();
+```
+
+inside BookingService.
+
+That is perfectly acceptable.
+
+When lock management becomes complex:
+
+- Timeout
+- Redis
+- Distributed locks
+- Lock ownership
+
+extract it.
+
+```java
+public class SeatLockService {
+
+    boolean lockSeats(
+            List<ShowSeat> seats);
+
+    void releaseSeats(
+            List<ShowSeat> seats);
+}
+```
+
+BookingService becomes:
+
+```
+BookingService
+
+↓
+
+SeatLockService
+
+↓
+
+PricingService
+
+↓
+
+PaymentService
+```
+
+Cleaner responsibilities.
+
+---
+
+# Failure Scenarios
+
+## Payment Fails
+
+```
+Seats Locked
+
+↓
+
+Payment Failed
+
+↓
+
+Release Seats
+
+↓
+
+Booking Cancelled
+```
+
+---
+
+## Server Crashes After Locking
+
+Suppose:
+
+```
+Lock Seats
+
+↓
+
+Server Crash
+```
+
+Without expiration,
+
+the seat remains locked forever.
+
+Redis TTL (Time To Live) automatically releases it.
+
+---
+
+## Payment Succeeds But Booking Update Fails
+
+Example:
+
+```
+Payment Success
+
+↓
+
+Database Crash
+
+↓
+
+Booking Not Confirmed
+```
+
+Possible solutions:
+
+- Retry
+- Transaction
+- Event-driven recovery
+- Compensation logic
+
+Interviewers usually appreciate hearing that you've considered failure scenarios, even if you don't implement them.
+
+---
+
+# Scaling Considerations
+
+Suppose BookMyShow serves millions of users.
+
+Possible improvements:
+
+- Cache movie and show searches using Redis.
+- Cache theater information.
+- Database indexing on `showId`, `movieId`, and `seatStatus`.
+- Partition bookings by `showId`.
+- Read replicas for search APIs.
+- Separate read and write workloads.
+
+---
+
+# Summary of Concurrency Options
+
+| Solution | Best For | Pros | Cons |
+|-----------|----------|------|------|
+| Pessimistic Locking | High contention | Prevents conflicts | Lower scalability |
+| Optimistic Locking | Low contention | High throughput | Retry on conflicts |
+| Redis Distributed Lock | Multiple application servers | Distributed coordination | Extra infrastructure |
+
+---
+
+# Interview Tips
+
+### Version 1
+
+Keep it simple.
+
+```
+BookingService
+
+↓
+
+seat.lock()
+```
+
+No need to over-engineer.
+
+---
+
+### Version 2
+
+When interviewer asks:
+
+> "Thousands of users are booking simultaneously."
+
+Introduce:
+
+```
+SeatLockService
+```
+
+Discuss:
+
+- Optimistic locking
+- Pessimistic locking
+- Redis distributed locks
+- Lock expiration
+
+---
+
+### Most Important Lesson
+
+A good LLD interview is **iterative**.
+
+Start with a clean, simple design.
+
+As new requirements arrive:
+
+- Introduce new services.
+- Introduce design patterns.
+- Discuss concurrency.
+- Discuss scaling.
+
+Avoid designing the most complex system from the beginning.
+
+That's exactly what interviewers want to see.
+
+---
+
+# Final Learning
+
+The progression we followed was:
+
+```
+Requirements
+        ↓
+Entities
+        ↓
+Relationships
+        ↓
+Services
+        ↓
+Workflow
+        ↓
+Design Improvements
+        ↓
+Concurrency
+        ↓
+Scaling
+```
+
+This same approach can be reused for almost every LLD interview problem (Parking Lot, Library Management, Amazon Locker, Splitwise, Vending Machine, etc.).
