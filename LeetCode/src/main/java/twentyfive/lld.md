@@ -13662,3 +13662,1752 @@ User
 BorrowRecord
 
 should know anything about locks. Locking is an infrastructure concern, not part of the domain model.
+
+
+
+
+
+
+
+
+# Employee Skill Search - Iteration 1
+
+## Problem
+
+Given employee records in the format:
+
+John#Doe#Java,AWS#
+Jane#Smith#Python#
+
+Parse the records and support searching employees by skill.
+
+---
+
+# Classes
+
+## Employee
+
+```java
+public class Employee {
+
+    private String firstName;
+    private String lastName;
+    private Set<String> skills;
+
+    public Employee(String firstName,
+                    String lastName,
+                    Set<String> skills) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.skills = skills;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public Set<String> getSkills() {
+        return skills;
+    }
+}
+```
+
+---
+
+## EmployeeParser
+
+```java
+public class EmployeeParser {
+
+    public List<Employee> parse(List<String> records,
+                                String delimiter) {
+
+        List<Employee> employees = new ArrayList<>();
+
+        // parsing logic
+
+        return employees;
+    }
+}
+```
+
+---
+
+## EmployeeSkillSearchService
+
+```java
+public class EmployeeSkillSearchService {
+
+    private List<Employee> employees;
+
+    public EmployeeSkillSearchService(List<Employee> employees) {
+        this.employees = employees;
+    }
+
+    public List<Employee> findBySkill(String skill) {
+        return new ArrayList<>();
+    }
+
+    public List<Employee> findBySkills(Set<String> skills) {
+        return new ArrayList<>();
+    }
+}
+```
+
+---
+
+# Flow
+
+```
+List<String> records
+        |
+        v
+EmployeeParser
+        |
+        v
+List<Employee>
+        |
+        v
+EmployeeSkillSearchService
+        |
+        v
+Search Results
+```
+
+---
+
+# Responsibility
+
+Employee
+- Stores employee data.
+
+EmployeeParser
+- Converts raw records into Employee objects.
+
+EmployeeSkillSearchService
+- Searches Employee objects.
+
+
+# Employee Skill Search - Iteration 2
+
+# EmployeeParser
+
+```java
+public class EmployeeParser {
+
+    public List<Employee> parse(List<String> records,
+                                String delimiter) {
+
+        List<Employee> employees = new ArrayList<>();
+
+        for (String record : records) {
+
+            String[] recordArr = record.split(delimiter);
+
+            String firstName = recordArr[0];
+            String lastName = recordArr[1];
+
+            String[] skillArr = recordArr[2].split(",");
+
+            Set<String> skills = new HashSet<>();
+
+            for (String skill : skillArr) {
+                skills.add(skill.trim());
+            }
+
+            Employee employee =
+                    new Employee(firstName, lastName, skills);
+
+            employees.add(employee);
+        }
+
+        return employees;
+    }
+}
+```
+
+---
+
+# How the parser works
+
+Input
+
+```
+John#Doe#Java,AWS#
+Jane#Smith#Python#
+```
+
+↓
+
+Split using delimiter
+
+```
+John
+Doe
+Java,AWS
+```
+
+↓
+
+Split skills
+
+```
+Java
+AWS
+```
+
+↓
+
+Create
+
+```java
+Set<String> skills = new HashSet<>();
+```
+
+↓
+
+Populate the Set
+
+↓
+
+Create Employee
+
+```java
+Employee employee =
+    new Employee(firstName,
+                 lastName,
+                 skills);
+```
+
+↓
+
+Add to List<Employee>
+
+↓
+
+Return List<Employee>
+
+---
+
+# Why create the Set in the parser?
+
+The parser is responsible for transforming the raw input into domain objects.
+
+It already knows:
+
+- first name
+- last name
+- skills
+
+Therefore it creates the `Set<String>` and passes it into the Employee constructor.
+
+The Employee object is fully initialized when created.
+
+---
+
+# Assumptions
+
+For the initial implementation:
+
+- Input format is valid.
+- Every record has:
+    - first name
+    - last name
+    - skills
+
+Validation can be added later if required.
+
+---
+
+# Time Complexity
+
+Let
+
+- N = number of employee records
+- S = average number of skills per employee
+
+Time
+
+```
+O(N × S)
+```
+
+Space
+
+```
+O(N × S)
+```
+
+because we create Employee objects and store all skills.
+
+
+# Employee Skill Search - Iteration 3
+
+# Search by Single Skill
+
+## Requirement
+
+Given a skill, return all employees who have that skill.
+
+---
+
+## Implementation
+
+```java
+public List<Employee> findBySkill(String skill) {
+
+    List<Employee> result = new ArrayList<>();
+
+    for (Employee employee : employees) {
+
+        if (employee.getSkills().contains(skill)) {
+            result.add(employee);
+        }
+    }
+
+    return result;
+}
+```
+
+---
+
+# Approach
+
+1. Iterate through every employee.
+2. Get the employee's skills.
+3. Check whether the skill exists.
+4. If yes, add the employee to the result.
+5. Return the result.
+
+---
+
+# Why Set<String>?
+
+Employee stores skills as a `Set<String>`.
+
+```java
+private Set<String> skills;
+```
+
+Checking
+
+```java
+employee.getSkills().contains(skill)
+```
+
+is **O(1)** on average.
+
+If skills were stored in a `List<String>`, `contains()` would be **O(S)**.
+
+---
+
+# Complexity
+
+Let
+
+- N = number of employees
+
+Time
+
+```
+O(N)
+```
+
+Reason:
+
+- Iterate through N employees.
+- `Set.contains()` is O(1) on average.
+
+Space
+
+```
+O(K)
+```
+
+where K is the number of matching employees.
+
+---
+
+# Interview Explanation
+
+"I'll iterate through every employee. Since each employee stores their skills in a Set, checking whether a skill exists is O(1) on average. Therefore the overall search complexity is O(N)."
+
+---
+
+# Example
+
+Employees
+
+```
+John -> Java, AWS
+Jane -> Python
+Bob  -> Java
+```
+
+Search
+
+```
+Java
+```
+
+Result
+
+```
+John
+Bob
+```
+
+---
+
+# Follow-up
+
+After implementing the basic search, pause and wait for additional requirements instead of implementing future optimizations.
+
+# Employee Skill Search - Iteration 4
+
+# Search by Multiple Skills
+
+## Clarification
+
+Before implementing, ask:
+
+> Should an employee match **all** the required skills (AND), or **any** of the required skills (OR)?
+
+Do not assume.
+
+---
+
+# AND Search
+
+Employee must have every required skill.
+
+```java
+public List<Employee> findBySkills(Set<String> requiredSkills) {
+
+    List<Employee> result = new ArrayList<>();
+
+    for (Employee employee : employees) {
+
+        if (employee.getSkills().containsAll(requiredSkills)) {
+            result.add(employee);
+        }
+    }
+
+    return result;
+}
+```
+
+---
+
+## Why containsAll()?
+
+`containsAll()` accepts any `Collection`, so it works whether
+`requiredSkills` is a `List<String>` or a `Set<String>`.
+
+Internally it checks whether every required skill exists in the employee's
+`Set<String>`.
+
+---
+
+## Complexity
+
+Let
+
+- N = number of employees
+- R = number of required skills
+
+Time
+
+```
+O(N × R)
+```
+
+Reason:
+
+- Iterate through every employee.
+- `containsAll()` checks each required skill.
+- Each `Set.contains()` is O(1) on average.
+
+---
+
+# OR Search
+
+Employee must have at least one required skill.
+
+```java
+public List<Employee> findBySkills(Set<String> requiredSkills) {
+
+    List<Employee> result = new ArrayList<>();
+
+    for (Employee employee : employees) {
+
+        Set<String> employeeSkills = employee.getSkills();
+
+        boolean hasAnySkill = false;
+
+        for (String skill : requiredSkills) {
+
+            if (employeeSkills.contains(skill)) {
+                hasAnySkill = true;
+                break;
+            }
+        }
+
+        if (hasAnySkill) {
+            result.add(employee);
+        }
+    }
+
+    return result;
+}
+```
+
+---
+
+## Complexity
+
+Time
+
+```
+O(N × R)
+```
+
+Space
+
+```
+O(K)
+```
+
+where K is the number of matching employees.
+
+---
+
+# Example
+
+Employees
+
+```
+John -> Java, AWS
+Jane -> Java
+Bob  -> AWS
+```
+
+Required Skills
+
+```
+Java
+AWS
+```
+
+### AND
+
+Result
+
+```
+John
+```
+
+### OR
+
+Result
+
+```
+John
+Jane
+Bob
+```
+
+---
+
+# Interview Explanation
+
+"I'd first clarify whether the requirement is AND or OR because both are valid interpretations. I don't want to make assumptions about the business requirement."
+
+# Employee Skill Search - Iteration 5
+
+# Common Follow-up Questions
+
+---
+
+# 1. Case-Insensitive Search
+
+## Interviewer
+
+> Search should be case-insensitive.
+
+---
+
+## Clarification
+
+Before coding, ask:
+
+> Should I normalize the data while parsing, or perform a case-insensitive comparison during every search?
+
+---
+
+## Preferred Solution
+
+Normalize during parsing.
+
+```java
+skills.add(skill.trim().toLowerCase());
+```
+
+Normalize the search input.
+
+```java
+skill = skill.toLowerCase();
+```
+
+No other code changes are required.
+
+---
+
+## Why?
+
+- Normalize once.
+- Faster searches.
+- Cleaner implementation.
+- Every Employee stores skills in a consistent format.
+
+---
+
+## Interview Explanation
+
+"I'd normalize during parsing because the parser is responsible for converting raw input into a canonical representation. Then every consumer benefits from consistent data."
+
+---
+
+# 2. Duplicate Employees
+
+## Example
+
+```
+John#Doe#Java
+John#Doe#Java
+```
+
+---
+
+## First Question
+
+Ask:
+
+> What defines a duplicate employee?
+
+Do not assume.
+
+Two employees may legitimately have the same name.
+
+---
+
+## If interviewer says
+
+"They are different employees."
+
+Keep
+
+```java
+List<Employee>
+```
+
+Preserve both records.
+
+---
+
+## If interviewer says
+
+"They are duplicate records."
+
+Then discuss using
+
+```java
+Set<Employee>
+```
+
+or
+
+```java
+Map<EmployeeId, Employee>
+```
+
+if a unique employee identifier exists.
+
+---
+
+## Interview Explanation
+
+"I wouldn't deduplicate until the business defines what a duplicate employee means."
+
+---
+
+# 3. Malformed Records
+
+## Example
+
+```
+John#Doe
+```
+
+Skills are missing.
+
+---
+
+## First Question
+
+Ask:
+
+> What should happen with malformed records?
+
+- Skip?
+- Log?
+- Throw an exception?
+
+---
+
+## Preferred Behaviour
+
+For independent employee records:
+
+- Log
+- Skip
+- Continue processing
+
+Example
+
+```java
+if (record == null) {
+    continue;
+}
+
+String[] recordArr = record.split(delimiter);
+
+if (recordArr.length < 3) {
+    // log malformed record
+    continue;
+}
+```
+
+---
+
+## Do NOT
+
+```java
+throw ...
+catch ...
+```
+
+just to continue.
+
+Expected bad data should not use exceptions as normal control flow.
+
+---
+
+## Throw Exceptions For
+
+Unexpected situations such as
+
+- null input parameter
+- null delimiter
+- unable to read input
+- invalid API usage
+
+---
+
+## Interview Explanation
+
+"Malformed records are expected data quality issues. I'd validate, log, and continue processing. I'd reserve exceptions for unrecoverable errors or invalid API usage."
+
+---
+
+# 4. Delimiter Changes
+
+## Interviewer
+
+Delimiter changes from
+
+```
+#
+```
+
+to
+
+```
+|
+```
+
+No code changes outside the parser.
+
+Simply call
+
+```java
+parse(records, "|");
+```
+
+---
+
+## Interview Explanation
+
+"Since the delimiter is already passed into the parser, only the parser is affected. The search service and Employee model remain unchanged."
+
+---
+
+# Key Principle
+
+For every follow-up, avoid making assumptions.
+
+Ask a clarifying question first.
+
+Examples:
+
+- Should search be AND or OR?
+- What defines a duplicate?
+- What should happen with malformed records?
+- Is case-insensitive search required?
+- Should an employee with no skills be considered valid?
+
+# Employee Skill Search - Iteration 6
+
+# Performance & Scalability
+
+---
+
+# Current Solution
+
+Search by skill
+
+```java
+public List<Employee> findBySkill(String skill)
+```
+
+Current implementation scans every employee.
+
+Time Complexity
+
+```
+O(N)
+```
+
+where
+
+- N = number of employees
+
+---
+
+# Interviewer
+
+> We now have 50 million employees.
+>
+> Searching has become slow.
+>
+> How would you improve it?
+
+---
+
+# Discussion Before Coding
+
+Current design is optimized for simplicity.
+
+If searches become frequent, we can build an index.
+
+Trade-off:
+
+- More memory
+- Faster search
+
+---
+
+# Build an Index
+
+```java
+Map<String, List<Employee>> skillIndex;
+```
+
+Example
+
+```
+Java
+   |
+   +------> John
+   |
+   +------> Bob
+
+AWS
+   |
+   +------> John
+
+Python
+   |
+   +------> Jane
+```
+
+---
+
+# Where should the index be built?
+
+Do NOT build it in the parser.
+
+Parser responsibility:
+
+```
+Raw Records
+      |
+      v
+Employee Objects
+```
+
+Nothing more.
+
+---
+
+# Build the index in the Search Service
+
+```java
+public class EmployeeSkillSearchService {
+
+    private List<Employee> employees;
+
+    private Map<String, List<Employee>> skillIndex;
+
+    public EmployeeSkillSearchService(List<Employee> employees) {
+
+        this.employees = employees;
+
+        buildIndex();
+    }
+}
+```
+
+---
+
+# Why not build it during parsing?
+
+Although it is technically easy to build while parsing, the parser should remain responsible only for converting raw input into Employee objects.
+
+The search index is an optimization for searching.
+
+Keeping indexing inside the Search Service maintains separation of responsibilities.
+
+---
+
+# Updated Flow
+
+```
+Raw Records
+      |
+      v
+EmployeeParser
+      |
+      v
+List<Employee>
+      |
+      v
+EmployeeSkillSearchService
+      |
+      v
+Build Skill Index
+      |
+      v
+Map<String, List<Employee>>
+```
+
+---
+
+# Search Complexity
+
+Without index
+
+```
+O(N)
+```
+
+With index
+
+```
+Average O(1)
+```
+
+Simply return
+
+```java
+skillIndex.get(skill);
+```
+
+---
+
+# Follow-up
+
+## When should the index be built?
+
+Answer
+
+During initialization of the Search Service.
+
+Not on every search.
+
+---
+
+## New Employee Added
+
+Update
+
+- employees list
+- skill index
+
+Do not rebuild the entire index.
+
+---
+
+## Employee Learns New Skill
+
+Update
+
+- Employee object
+- skill index
+
+Keep both structures synchronized.
+
+---
+
+# Trade-offs
+
+Advantages
+
+- Faster reads
+- Efficient repeated searches
+
+Disadvantages
+
+- Additional memory
+- More complex updates
+- Index maintenance required
+
+---
+
+# Interview Explanation
+
+"I'd only introduce the index if searching becomes a performance bottleneck. If reads are frequent and updates are relatively rare, the additional memory is a worthwhile trade-off. Otherwise, I'd keep the simpler linear scan."
+
+
+# Employee Skill Search - Iteration 7
+
+# Design Discussion (SDE III Level)
+
+At this point, the interviewer is no longer testing coding ability—they're testing your ability to evolve the design as requirements grow. Focus on explaining trade-offs, extensibility, and maintainability.
+
+---
+
+# Requirement 1: Add Employees Dynamically
+
+## Interviewer
+
+> Employees are no longer loaded only once.
+>
+> We should be able to add employees at runtime.
+
+---
+
+## New API
+
+```java
+public void addEmployee(Employee employee)
+```
+
+Implementation
+
+```java
+public void addEmployee(Employee employee) {
+
+    employees.add(employee);
+
+    for (String skill : employee.getSkills()) {
+
+        skillIndex
+            .computeIfAbsent(skill, k -> new ArrayList<>())
+            .add(employee);
+    }
+}
+```
+
+---
+
+## Complexity
+
+Let S = number of skills for the employee.
+
+Time
+
+```
+O(S)
+```
+
+No need to rebuild the entire index.
+
+---
+
+# Requirement 2: Remove Employee
+
+## API
+
+```java
+public void removeEmployee(Employee employee)
+```
+
+Implementation
+
+```java
+public void removeEmployee(Employee employee) {
+
+    employees.remove(employee);
+
+    for (String skill : employee.getSkills()) {
+
+        List<Employee> list = skillIndex.get(skill);
+
+        if (list != null) {
+            list.remove(employee);
+
+            if (list.isEmpty()) {
+                skillIndex.remove(skill);
+            }
+        }
+    }
+}
+```
+
+---
+
+## Complexity
+
+```
+O(S)
+```
+
+assuming efficient removal from the underlying collections (or different structures if removals become frequent).
+
+---
+
+# Requirement 3: Employee Gains a New Skill
+
+Example
+
+```
+John
+
+Before
+
+Java
+
+After
+
+Java
+AWS
+```
+
+Update both
+
+- Employee object
+- Skill index
+
+```java
+employee.getSkills().add("AWS");
+
+skillIndex
+    .computeIfAbsent("AWS", k -> new ArrayList<>())
+    .add(employee);
+```
+
+---
+
+# Requirement 4: Search by Last Name
+
+Current search service already owns all employees.
+
+Simply build another index.
+
+```java
+Map<String, List<Employee>> lastNameIndex;
+```
+
+No parser changes.
+
+No Employee changes.
+
+Only Search Service evolves.
+
+---
+
+# Requirement 5: Search by Multiple Fields
+
+Examples
+
+```
+Java
+
+Java + AWS
+
+Last Name
+
+First Name
+
+Department
+
+Experience
+
+Location
+```
+
+Instead of a single index, maintain dedicated indexes as needed.
+
+```java
+skillIndex
+
+lastNameIndex
+
+departmentIndex
+
+locationIndex
+```
+
+Each index has one responsibility.
+
+---
+
+# Why is this a Good Design?
+
+Each class has a clear responsibility.
+
+### Employee
+
+Represents employee data.
+
+---
+
+### EmployeeParser
+
+Converts raw input into Employee objects.
+
+---
+
+### EmployeeSkillSearchService
+
+Provides search functionality.
+
+Owns search indexes.
+
+Optimizes lookups.
+
+---
+
+New requirements affect only one class whenever possible.
+
+This follows the **Single Responsibility Principle (SRP)** and makes the code easier to extend and test.
+
+---
+
+# Interview Discussion
+
+If the interviewer asks:
+
+> Why didn't you build every possible index from the beginning?
+
+A strong answer is:
+
+> "I prefer to keep the initial solution simple and optimize only when there's a demonstrated requirement. Building and maintaining indexes has a memory and update cost, so I introduce them only when the access patterns justify them."
+
+---
+
+# Final Takeaway
+
+A strong SDE III candidate doesn't jump straight to the most complex solution. They:
+
+1. Build a simple, correct implementation.
+2. Clarify ambiguous requirements.
+3. Measure or identify bottlenecks.
+4. Introduce targeted optimizations.
+5. Keep responsibilities separated so new requirements can be added with minimal changes.
+
+
+# Employee Skill Search – Senior-Level Follow-ups
+
+---
+
+# 1. Thread Safety
+
+## Interviewer
+
+> Multiple threads can search and update employees simultaneously.
+
+## Discussion
+
+The current implementation is **not thread-safe** because:
+
+- `HashMap` is not thread-safe.
+- `ArrayList` is not thread-safe.
+- Concurrent reads and writes can lead to inconsistent data or race conditions.
+
+### Possible Approaches
+
+- Use `ConcurrentHashMap`
+- Synchronize updates
+- Use `ReadWriteLock` when reads greatly outnumber writes
+
+### Example
+
+```java
+ConcurrentHashMap<String, List<Employee>> skillIndex;
+```
+
+> **Interview Explanation**
+>
+> "My current implementation assumes a single-threaded environment. If multiple threads can update and search simultaneously, I'd introduce concurrent data structures or synchronization depending on the read/write workload."
+
+---
+
+# 2. Persistence
+
+## Interviewer
+
+> Employees are now stored in a database instead of a file.
+
+Instead of parsing records, introduce a Repository layer.
+
+```
+              Controller
+                   |
+                   ▼
+      EmployeeSkillSearchService
+                   |
+                   ▼
+         EmployeeRepository
+                   |
+                   ▼
+               Database
+```
+
+The repository now returns `Employee` objects directly.
+
+The parser is no longer needed.
+
+The Search Service remains exactly the same.
+
+> **Interview Explanation**
+>
+> "Since the Search Service depends on Employee objects rather than raw strings, replacing the parser with a repository doesn't affect the search logic."
+
+---
+
+# 3. Testing
+
+A Senior Engineer should always discuss testing.
+
+## EmployeeParser Tests
+
+- Valid record
+- Empty skills
+- Malformed record
+- Null record
+- Different delimiters
+- Extra delimiters
+- Missing fields
+
+---
+
+## SearchService Tests
+
+### Single Skill
+
+- One match
+- Multiple matches
+- No match
+
+### Multiple Skills
+
+- AND search
+- OR search
+
+### Edge Cases
+
+- Case-insensitive search
+- Duplicate employees
+- Employee with no skills
+- Empty employee list
+
+---
+
+## Performance Tests
+
+Large dataset
+
+```
+1,000,000 Employees
+```
+
+Compare:
+
+- Linear Search
+- Indexed Search
+
+Verify indexing significantly improves repeated search performance.
+
+> **Interview Explanation**
+>
+> "Beyond unit tests, I'd also include performance tests to validate that the indexing optimization actually delivers measurable improvements."
+
+---
+
+# 4. Design Patterns
+
+## Strategy Pattern
+
+Support multiple search algorithms.
+
+```
+                 SearchStrategy
+                        |
+      -----------------------------------
+      |                |               |
+      ▼                ▼               ▼
+ LinearSearch    IndexedSearch   DatabaseSearch
+```
+
+The Search Service depends on the interface instead of a concrete implementation.
+
+Example
+
+```java
+interface SearchStrategy {
+    List<Employee> search(String skill);
+}
+```
+
+Benefits
+
+- Easy to switch search implementations
+- Open for extension
+- Easier testing
+
+---
+
+## Builder Pattern
+
+Useful when Employee has many optional fields.
+
+Example
+
+```java
+Employee employee =
+    Employee.builder()
+            .firstName("John")
+            .lastName("Doe")
+            .department("Engineering")
+            .experience(8)
+            .skills(skills)
+            .build();
+```
+
+Benefits
+
+- Cleaner object creation
+- Avoids large constructors
+- Easier readability
+
+---
+
+## Factory Pattern
+
+Suppose Employees can come from multiple sources.
+
+```
+CSV
+
+JSON
+
+Database
+
+XML
+
+      │
+      ▼
+
+EmployeeFactory
+
+      │
+      ▼
+
+Employee
+```
+
+The Factory hides object creation logic.
+
+> **Interview Explanation**
+>
+> "Today we're parsing CSV, but tomorrow the data could come from JSON or a database. A Factory centralizes object creation."
+
+---
+
+# 5. Open/Closed Principle (OCP)
+
+Suppose the interviewer says:
+
+> Search by Department.
+
+Instead of modifying existing search logic,
+
+Create
+
+```
+DepartmentIndex
+
+DepartmentSearch
+```
+
+Similarly,
+
+```
+LocationSearch
+
+ExperienceSearch
+
+ManagerSearch
+```
+
+Extend the system instead of modifying existing behavior.
+
+Benefits
+
+- Existing code remains stable
+- Lower regression risk
+- Easier future enhancements
+
+> **Interview Explanation**
+>
+> "I'd rather extend the system by adding new search implementations than modify working code."
+
+---
+
+# 6. Caching
+
+Suppose users repeatedly search for
+
+```
+Java
+```
+
+Instead of searching repeatedly,
+
+Store the result.
+
+```
+             Cache
+
+        Java
+          │
+          ▼
+[John, Bob, Alice]
+```
+
+Subsequent requests
+
+```
+Java
+```
+
+↓
+
+Return cached result.
+
+---
+
+### Things to Discuss
+
+- Cache invalidation
+- Time-to-Live (TTL)
+- Refresh cache when employee data changes
+- Memory usage
+- Cache eviction policies (LRU, LFU if needed)
+
+> **Interview Explanation**
+>
+> "Caching is beneficial only when the same queries are executed frequently. Otherwise, maintaining the cache may not justify the added complexity."
+
+---
+
+# 7. Distributed Scalability
+
+Suppose there are
+
+```
+500 Million Employees
+```
+
+Linear search is no longer practical.
+
+Discussion points
+
+### Sharding
+
+Partition employees across multiple machines.
+
+Example
+
+```
+Employee ID
+
+0–99M
+
+100M–199M
+
+200M–299M
+```
+
+---
+
+### Skill-Based Partitioning
+
+```
+Java
+
+Python
+
+AWS
+
+C++
+```
+
+Each partition owns a subset of skills.
+
+---
+
+### Search Engine
+
+Use
+
+- Elasticsearch
+- OpenSearch
+
+Benefits
+
+- Inverted indexes
+- Fast text search
+- Ranking
+- Fuzzy matching
+- Scalability
+
+---
+
+### Replication
+
+Maintain multiple copies of indexes for
+
+- High Availability
+- Fault Tolerance
+
+---
+
+### Trade-offs
+
+Discuss
+
+- Consistency
+- Availability
+- Search latency
+- Memory
+- Index update cost
+
+> **Interview Explanation**
+>
+> "At this scale, I wouldn't build a custom search engine. I'd leverage technologies like Elasticsearch/OpenSearch that are designed for distributed indexing and search."
+
+---
+
+# What Amazon Is Evaluating
+
+The coding problem itself is intentionally straightforward.
+
+The interviewer is evaluating whether you:
+
+- Clarify ambiguous requirements
+- Build the simplest correct solution first
+- Analyze time and space complexity
+- Identify bottlenecks
+- Introduce optimizations only when justified
+- Explain trade-offs
+- Keep responsibilities separated
+- Write maintainable and extensible code
+- Communicate your reasoning clearly
+
+---
+
+# Complete Interview Progression
+
+```
+Clarify Requirements
+        │
+        ▼
+Design Classes
+        │
+        ▼
+Employee Parser
+        │
+        ▼
+Single Skill Search
+        │
+        ▼
+Multiple Skill Search
+        │
+        ▼
+Edge Cases
+(case-insensitive, malformed data, duplicates)
+        │
+        ▼
+Performance Optimization
+(Indexing)
+        │
+        ▼
+Dynamic Updates
+(Add / Remove / Update Employee)
+        │
+        ▼
+Thread Safety
+        │
+        ▼
+Testing
+        │
+        ▼
+Persistence
+(Database Repository)
+        │
+        ▼
+Design Patterns
+        │
+        ▼
+Caching
+        │
+        ▼
+Scalability Discussion
+(Distributed Systems)
+```
+
+---
+
+# Final Takeaway
+
+A strong **SDE III** solution evolves incrementally.
+
+1. Start with a simple, correct implementation.
+2. Clarify assumptions before writing code.
+3. Build clean, maintainable classes with clear responsibilities.
+4. Analyze time and space complexity.
+5. Handle edge cases thoughtfully.
+6. Optimize only when the requirements justify it.
+7. Discuss trade-offs for memory, performance, concurrency, and scalability.
+8. Keep the design extensible so new requirements require minimal changes.
+
+> **Senior Engineer Mindset**
+>
+> "Don't over-engineer the first solution. Deliver a correct, maintainable design first, then evolve it incrementally as new requirements emerge. That's exactly how production systems grow."
