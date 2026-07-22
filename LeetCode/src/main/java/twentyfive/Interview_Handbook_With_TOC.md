@@ -11881,6 +11881,1470 @@ This combination solves a large class of analytics and telemetry interview probl
 
 ---
 
+# Top 20 Audiobooks Design
+
+## Problem Statement
+
+We receive a continuous stream of events.
+
+Each event contains:
+
+- `titleId`
+- `eventType`
+
+Scoring:
+
+- Purchase = +3
+- Read = +1
+
+Example:
+
+```
+Purchase(Book10)
+Read(Book25)
+Purchase(Book7)
+Purchase(Book10)
+```
+
+We need to support:
+
+1. Update the score of a book.
+2. Maintain the Top 20 highest-scoring audiobooks.
+3. Return the Top 20 quickly.
+
+---
+
+# Observations
+
+- Scores **only increase**.
+- K = 20 (very small and fixed).
+- We do **NOT** need a global ordering of every book.
+- We only need the Top 20.
+
+---
+
+# Primary Data Structure
+
+Regardless of the ranking approach, we should maintain:
+
+```java
+class Book {
+    int titleId;
+    int score;
+}
+```
+
+and
+
+```java
+HashMap<Integer, Book> allBooks;
+```
+
+The HashMap is the **source of truth**.
+
+It stores:
+
+```
+titleId -> Book
+```
+
+Example
+
+```
+Book1 -> score=120
+Book2 -> score=95
+Book3 -> score=81
+```
+
+Purpose:
+
+- O(1) lookup
+- O(1) score updates
+
+The second data structure is only used to maintain the ranking.
+
+---
+
+# Three Possible Ranking Approaches
+
+1. Sorted List (Recommended)
+2. TreeSet
+3. Priority Queue (Heap)
+
+---
+
+# Common Event Processing
+
+Every event follows the same flow.
+
+Event arrives
+
+```
+Purchase(Book10)
+```
+
+Step 1
+
+Lookup in HashMap.
+
+```
+Book book = map.get(titleId);
+```
+
+If not found
+
+```
+create Book(titleId,0)
+put into HashMap
+```
+
+Step 2
+
+Update score.
+
+```
+Purchase
+
+score += 3
+```
+
+or
+
+```
+Read
+
+score += 1
+```
+
+Now update the ranking.
+
+The ranking logic differs depending on the data structure.
+
+---
+
+# Three Use Cases
+
+There are only three possible scenarios.
+
+## Case 1
+
+New book.
+
+Example
+
+```
+Book500
+
+0 -> 3
+```
+
+Book does not exist in ranking.
+
+Need to determine whether it belongs in Top 20.
+
+---
+
+## Case 2
+
+Existing Top 20 book receives another event.
+
+Example
+
+```
+80 -> 83
+```
+
+Need to reposition inside Top 20.
+
+---
+
+## Case 3
+
+Existing non-Top20 book receives another event.
+
+Example
+
+```
+40 -> 50
+```
+
+Need to determine whether it should enter Top 20.
+
+---
+
+# Approach 1 - Sorted List (Recommended)
+
+Maintain
+
+```
+HashMap<Integer, Book>
+
+List<Book> top20
+```
+
+The list is always sorted.
+
+```
+100
+98
+95
+90
+87
+...
+45
+```
+
+Largest at the top.
+
+Smallest at the end.
+
+---
+
+## Case 1
+
+Top20 contains fewer than 20 books.
+
+Simply insert.
+
+Binary search insertion point.
+
+Insert.
+
+Done.
+
+---
+
+If Top20 already has 20 books.
+
+Compare
+
+```
+newScore
+
+vs
+
+last element
+```
+
+Example
+
+```
+Top20
+
+100
+95
+90
+...
+45
+```
+
+New score
+
+```
+50
+```
+
+Since
+
+```
+50 > 45
+```
+
+Remove
+
+```
+45
+```
+
+Binary search insertion point.
+
+Insert.
+
+---
+
+## Case 2
+
+Book already inside Top20.
+
+Example
+
+```
+80 -> 83
+```
+
+Remove from list.
+
+```
+100
+95
+90
+80
+75
+```
+
+becomes
+
+```
+100
+95
+90
+75
+```
+
+Binary search new position.
+
+Insert
+
+```
+100
+95
+90
+83
+75
+```
+
+Done.
+
+---
+
+## Case 3
+
+Book outside Top20.
+
+Example
+
+```
+40 -> 50
+```
+
+Compare against last element.
+
+```
+45
+```
+
+If
+
+```
+50 > 45
+```
+
+Remove last.
+
+Insert new book.
+
+Otherwise
+
+Do nothing.
+
+---
+
+## Complexity
+
+HashMap lookup
+
+```
+O(1)
+```
+
+Find/remove/shift
+
+```
+O(20)
+```
+
+Binary search
+
+```
+O(log20)
+```
+
+Overall
+
+```
+O(20)
+```
+
+Since
+
+```
+20 is constant
+```
+
+Effectively
+
+```
+O(1)
+```
+
+---
+
+## Advantages
+
+Very easy implementation.
+
+Excellent cache locality.
+
+Very small memory.
+
+Simple interview explanation.
+
+No complicated data structures.
+
+---
+
+## Disadvantages
+
+Not suitable if K becomes very large.
+
+---
+
+# Approach 2 - TreeSet
+
+Maintain
+
+```
+HashMap<Integer, Book>
+
+TreeSet<Book>
+```
+
+Comparator
+
+```
+Score descending
+
+Tie breaker
+
+TitleId
+```
+
+Book object stored
+
+```
+Book
+
+titleId
+
+score
+```
+
+The TreeSet stores only Top20.
+
+---
+
+Current
+
+```
+100
+95
+90
+...
+45
+```
+
+---
+
+## Case 1
+
+New book.
+
+Top20 size < 20
+
+Simply add.
+
+Else
+
+Compare with smallest.
+
+If larger
+
+Remove smallest.
+
+Insert new book.
+
+---
+
+## Case 2
+
+Book already inside TreeSet.
+
+Very important.
+
+Never modify score while inside TreeSet.
+
+Wrong
+
+```
+book.score += 3;
+```
+
+Correct
+
+```
+remove(book)
+
+update score
+
+add(book)
+```
+
+Because TreeSet ordering depends on score.
+
+---
+
+## Case 3
+
+Book outside Top20.
+
+Update score.
+
+Compare with smallest.
+
+If qualifies
+
+Remove smallest.
+
+Insert.
+
+Else
+
+Ignore.
+
+---
+
+## Complexity
+
+Lookup
+
+```
+HashMap
+
+O(1)
+```
+
+Remove
+
+```
+TreeSet
+
+O(log20)
+```
+
+Insert
+
+```
+TreeSet
+
+O(log20)
+```
+
+Overall
+
+```
+O(log20)
+```
+
+Effectively
+
+```
+O(1)
+```
+
+---
+
+## Advantages
+
+Automatic ordering.
+
+Very efficient insert/remove.
+
+No shifting elements.
+
+---
+
+## Disadvantages
+
+Slightly more complex.
+
+Need remove-update-add pattern.
+
+Comparator required.
+
+---
+
+# Approach 3 - Priority Queue (Min Heap)
+
+Maintain
+
+```
+HashMap<Integer, Book>
+
+PriorityQueue<Book>
+```
+
+Heap size
+
+```
+20
+```
+
+Root
+
+```
+Smallest score
+```
+
+Example
+
+```
+45
+50
+60
+80
+...
+```
+
+---
+
+## Case 1
+
+New book.
+
+Compare with root.
+
+If larger
+
+Poll root.
+
+Insert.
+
+Done.
+
+---
+
+## Case 2
+
+Book already inside heap.
+
+Problem.
+
+Java PriorityQueue is NOT indexed.
+
+Need
+
+```
+pq.remove(book)
+```
+
+Java performs
+
+Linear search
+
+```
+O(K)
+```
+
+Then
+
+Heapify
+
+```
+O(logK)
+```
+
+Overall
+
+```
+O(K + logK)
+```
+
+---
+
+## Case 3
+
+Book outside heap.
+
+Update score.
+
+Compare against root.
+
+If qualifies
+
+Poll
+
+Insert
+
+Done.
+
+---
+
+## Complexity
+
+Lookup
+
+```
+O(1)
+```
+
+Remove
+
+```
+O(K)
+```
+
+Insert
+
+```
+O(logK)
+```
+
+Overall
+
+```
+O(K + logK)
+```
+
+For K=20
+
+Still effectively constant.
+
+---
+
+## Advantages
+
+Simple Top-K insertion.
+
+Natural fit for Top-K problems.
+
+---
+
+## Disadvantages
+
+Java PriorityQueue remove(Object) is linear.
+
+Frequent updates become inefficient.
+
+Not ideal for mutable priorities.
+
+---
+
+# Comparison
+
+| Feature | Sorted List | TreeSet | PriorityQueue |
+|----------|------------|---------|---------------|
+| Lookup | O(1) | O(1) | O(1) |
+| Insert | O(20) | O(log20) | O(log20) |
+| Remove Existing | O(20) | O(log20) | O(20) |
+| Reorder After Update | Easy | Remove + Add | Remove + Add |
+| Implementation | Easiest | Moderate | Moderate |
+| Java Friendly | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ |
+| Interview Simplicity | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ |
+
+---
+
+# Which One Would I Recommend?
+
+Because
+
+- K is fixed (20)
+- Scores only increase
+- Frequent updates
+- Need simple implementation
+
+I would recommend the **Sorted List**.
+
+Reason:
+
+The maximum work is shifting at most 20 elements.
+
+That's effectively constant time.
+
+It is simpler than a TreeSet and avoids the `PriorityQueue.remove(Object)` issue in Java.
+
+If K were much larger (e.g., Top 10,000), I would choose a TreeSet or another indexed ordered structure instead.
+
+# Top K Ranking System Design
+
+## Problem Statement
+
+A system receives a continuous stream of events for books.
+
+Each event contains:
+
+- `titleId`
+- `eventType`
+
+Scoring Rules:
+
+- Purchase → +3
+- Read → +1
+
+### Requirements
+
+1. Update the score of a book.
+2. Maintain the Top K books (K = 20).
+3. Return the Top K efficiently.
+
+---
+
+# Observation
+
+There are two different problems here.
+
+1. Maintain the score of every book.
+2. Maintain only the Top K ranking.
+
+These are best solved using two different data structures.
+
+---
+
+# Common Data Model
+
+Every approach uses the same Book object.
+
+```java
+class Book {
+    int titleId;
+    int score;
+
+    Book(int titleId, int score){
+        this.titleId = titleId;
+        this.score = score;
+    }
+}
+```
+
+Every approach also maintains a HashMap.
+
+```java
+HashMap<Integer, Book> books = new HashMap<>();
+```
+
+The HashMap is the **source of truth**.
+
+Purpose:
+
+- O(1) lookup
+- O(1) score updates
+
+The ranking data structure stores only the Top K books.
+
+---
+
+# Processing an Event
+
+Every event follows the same high-level flow.
+
+```
+Event arrives
+
+↓
+
+Lookup Book
+
+↓
+
+Create if needed
+
+↓
+
+Update Score
+
+↓
+
+Update Ranking
+```
+
+Only the last step differs depending on the chosen data structure.
+
+---
+
+# Three Possible Scenarios
+
+## Case 1 - New Book
+
+Book does not exist.
+
+```
+Book200
+
+0 → 3
+```
+
+Need to determine whether it belongs in Top K.
+
+---
+
+## Case 2 - Existing Top-K Book Updated
+
+Example
+
+```
+80 → 83
+```
+
+The book is already inside the ranking.
+
+Its position may change.
+
+Need to update the ranking.
+
+---
+
+## Case 3 - Existing Non-Top-K Book Updated
+
+Example
+
+```
+40 → 50
+```
+
+The book was not previously in the Top K.
+
+Need to determine whether it now qualifies.
+
+---
+
+# Approach 1 — Sorted List (Recommended)
+
+## Data Structures
+
+```java
+HashMap<Integer, Book> books = new HashMap<>();
+
+List<Book> topK = new ArrayList<>();
+```
+
+The list is always sorted in descending order.
+
+Example
+
+```
+100
+95
+90
+85
+80
+...
+45
+```
+
+---
+
+## Helper Method
+
+```java
+private void insertSorted(Book book){
+
+    int index = binarySearch(book.score);
+
+    topK.add(index, book);
+}
+```
+
+---
+
+## Case 1 - New Book
+
+```java
+Book book = books.get(titleId);
+
+if(book == null){
+    book = new Book(titleId, 0);
+    books.put(titleId, book);
+}
+
+book.score += eventScore;
+
+if(topK.size() < 20){
+
+    insertSorted(book);
+
+}else{
+
+    Book smallest = topK.get(topK.size()-1);
+
+    if(book.score > smallest.score){
+
+        topK.remove(topK.size()-1);
+
+        insertSorted(book);
+    }
+}
+```
+
+---
+
+## Case 2 - Existing Top-K Book Updated
+
+```java
+Book book = books.get(titleId);
+
+book.score += eventScore;
+
+topK.remove(book);
+
+insertSorted(book);
+```
+
+Example
+
+Before
+
+```
+100
+95
+90
+80
+75
+```
+
+Book
+
+```
+80 → 83
+```
+
+After
+
+```
+100
+95
+90
+83
+75
+```
+
+---
+
+## Case 3 - Existing Non-Top-K Book Updated
+
+```java
+Book book = books.get(titleId);
+
+book.score += eventScore;
+
+Book smallest = topK.get(topK.size()-1);
+
+if(book.score > smallest.score){
+
+    topK.remove(topK.size()-1);
+
+    insertSorted(book);
+}
+```
+
+Example
+
+```
+40 → 50
+```
+
+TopK
+
+```
+100
+95
+90
+...
+45
+```
+
+Since
+
+```
+50 > 45
+```
+
+Remove 45
+
+Insert 50
+
+---
+
+## Complexity
+
+Lookup
+
+```
+O(1)
+```
+
+Remove
+
+```
+O(K)
+```
+
+Insert
+
+```
+O(K)
+```
+
+Overall
+
+```
+O(K)
+```
+
+Since
+
+```
+K = 20
+```
+
+Effectively
+
+```
+O(1)
+```
+
+---
+
+## Advantages
+
+- Very simple
+- Easy to explain
+- Small memory footprint
+- Excellent for small fixed K
+
+---
+
+## Disadvantages
+
+Not ideal when K becomes very large.
+
+---
+
+# Approach 2 — TreeSet
+
+## Data Structures
+
+```java
+HashMap<Integer, Book> books = new HashMap<>();
+
+TreeSet<Book> topK =
+    new TreeSet<>((a,b)->{
+
+        if(a.score != b.score)
+            return Integer.compare(b.score, a.score);
+
+        return Integer.compare(a.titleId, b.titleId);
+    });
+```
+
+The TreeSet stores only the Top K books.
+
+Example
+
+```
+100
+95
+90
+...
+45
+```
+
+---
+
+## Case 1 - New Book
+
+```java
+Book book = books.get(titleId);
+
+if(book == null){
+
+    book = new Book(titleId,0);
+
+    books.put(titleId,book);
+}
+
+book.score += eventScore;
+
+if(topK.size() < 20){
+
+    topK.add(book);
+
+}else{
+
+    Book smallest = topK.last();
+
+    if(book.score > smallest.score){
+
+        topK.remove(smallest);
+
+        topK.add(book);
+    }
+}
+```
+
+---
+
+## Case 2 - Existing Top-K Book Updated
+
+Never modify the score while the object is inside the TreeSet.
+
+Incorrect
+
+```java
+book.score += eventScore;
+```
+
+Correct
+
+```java
+Book book = books.get(titleId);
+
+topK.remove(book);
+
+book.score += eventScore;
+
+topK.add(book);
+```
+
+Reason
+
+TreeSet ordering depends on score.
+
+Changing score without removing breaks the tree ordering.
+
+---
+
+## Case 3 - Existing Non-Top-K Book Updated
+
+```java
+Book book = books.get(titleId);
+
+book.score += eventScore;
+
+Book smallest = topK.last();
+
+if(book.score > smallest.score){
+
+    topK.remove(smallest);
+
+    topK.add(book);
+}
+```
+
+---
+
+## Complexity
+
+Lookup
+
+```
+O(1)
+```
+
+Remove
+
+```
+O(log K)
+```
+
+Insert
+
+```
+O(log K)
+```
+
+Overall
+
+```
+O(log K)
+```
+
+---
+
+## Advantages
+
+- Automatic ordering
+- Efficient updates
+- Efficient insert/remove
+
+---
+
+## Disadvantages
+
+- More complex
+- Comparator required
+- Must remove → update → add
+
+---
+
+# Approach 3 — Priority Queue (Min Heap)
+
+## Data Structures
+
+```java
+HashMap<Integer, Book> books = new HashMap<>();
+
+PriorityQueue<Book> topK =
+    new PriorityQueue<>(
+        (a,b)->Integer.compare(a.score,b.score)
+    );
+```
+
+The root always stores the smallest score.
+
+Example
+
+```
+45
+50
+60
+70
+...
+```
+
+---
+
+## Case 1 - New Book
+
+```java
+Book book = books.get(titleId);
+
+if(book == null){
+
+    book = new Book(titleId,0);
+
+    books.put(titleId,book);
+}
+
+book.score += eventScore;
+
+if(topK.size() < 20){
+
+    topK.offer(book);
+
+}else{
+
+    Book smallest = topK.peek();
+
+    if(book.score > smallest.score){
+
+        topK.poll();
+
+        topK.offer(book);
+    }
+}
+```
+
+---
+
+## Case 2 - Existing Top-K Book Updated
+
+```java
+Book book = books.get(titleId);
+
+topK.remove(book);
+
+book.score += eventScore;
+
+topK.offer(book);
+```
+
+Java internally performs a linear search for `remove(Object)`.
+
+Complexity
+
+```
+O(K)
+
++
+
+O(log K)
+```
+
+---
+
+## Case 3 - Existing Non-Top-K Book Updated
+
+```java
+Book book = books.get(titleId);
+
+book.score += eventScore;
+
+Book smallest = topK.peek();
+
+if(book.score > smallest.score){
+
+    topK.poll();
+
+    topK.offer(book);
+}
+```
+
+---
+
+## Complexity
+
+Lookup
+
+```
+O(1)
+```
+
+Remove Existing
+
+```
+O(K)
+```
+
+Insert
+
+```
+O(log K)
+```
+
+Overall
+
+```
+O(K + log K)
+```
+
+---
+
+## Advantages
+
+- Classic Top-K solution
+- Easy insertion logic
+
+---
+
+## Disadvantages
+
+- Java `PriorityQueue.remove(Object)` is O(K)
+- Not ideal when priorities frequently change
+
+---
+
+# Comparison
+
+| Feature | Sorted List | TreeSet | Priority Queue |
+|----------|------------|----------|----------------|
+| Stores | Top K Books | Top K Books | Top K Books |
+| Source of Truth | HashMap | HashMap | HashMap |
+| Lookup | O(1) | O(1) | O(1) |
+| Existing Top-K Update | O(K) | O(log K) | O(K + log K) |
+| Existing Non-Top-K Update | O(K) | O(log K) | O(log K) |
+| New Book | O(K) | O(log K) | O(log K) |
+| Ordering | Manual | Automatic | Heap |
+| Implementation Complexity | Low | Medium | Medium |
+| Best Use Case | Small fixed K | Large K with frequent updates | Top-K insertions with few updates |
+
+---
+
+# Summary
+
+| Approach | When to Use |
+|-----------|-------------|
+| **Sorted List** | Best when K is very small (e.g., 20). Simpler implementation and effectively constant time. |
+| **TreeSet** | Best when K is larger and frequent updates require efficient reordering. |
+| **Priority Queue** | Good for classic Top-K insertion problems, but less suitable in Java when priorities change frequently because `remove(Object)` is O(K). |
 
 # LeetCode 635 - Design Log Storage System
 
@@ -19838,3 +21302,10 @@ class Solution {
 ```
 
 
+//Add max SubArraySum
+//pacific atlantic
+//wordladder
+//wordbreak
+//word SEARCH
+//minimum word Substring
+//palindromes.. max length
