@@ -483,6 +483,75 @@ Higher scores indicate higher fraud risk.
 
 ---
 
+# Example: Unusual Spending Pattern
+
+## Rule-Based Detection
+
+Rule:
+
+```text
+IF transaction_amount > $10,000
+THEN Flag as Fraud
+```
+
+### Problem
+
+A fraudster knows the threshold and performs transactions like:
+
+```text
+$9,900
+$9,800
+$9,700
+```
+
+None of these violate the rule, so they are not flagged.
+
+---
+
+## Machine Learning Detection
+
+Instead of looking at only the transaction amount, an ML model considers multiple features together, such as:
+
+- Historical spending behavior
+- Merchant category
+- Time of day
+- Device used
+- Location
+- Transaction frequency (velocity)
+
+Example:
+
+```text
+Customer's Normal Behavior
+--------------------------
+Amount: $20 - $50
+Merchant: Grocery Stores
+Time: 6 PM - 8 PM
+Device: iPhone
+Location: New York
+
+Current Transaction
+-------------------
+Amount: $9,900
+Merchant: Electronics Store
+Time: 2:00 AM
+Device: New Android Phone
+Location: Different State
+```
+
+Although **no single rule is violated**, the combination of features is highly unusual for this customer.
+
+The ML model recognizes this as a pattern commonly associated with fraud and assigns a high fraud probability.
+
+---
+
+## Key Takeaway
+
+- **Rules** evaluate one or a few predefined conditions.
+- **Machine Learning** evaluates many features simultaneously and detects behavioral anomalies that are difficult to express as static rules.
+
+This is why ML can identify sophisticated fraud patterns that deterministic rules often miss.
+
 ## Decision Layer
 
 The Decision Layer combines the outputs from the Rules Engine and the ML Model to produce the final fraud decision.
@@ -2201,6 +2270,7 @@ Separating these workloads prevents expensive analytical queries from impacting 
 ## Interview Summary
 
 > The Storage Consumer writes transaction events to the OLTP database, which serves as the operational system of record for the application. In parallel, the Analytics Consumer writes the same Kafka events to the Offline Feature Store, where they are used for feature engineering, model training, analytics, and historical reporting. Although both contain transaction data, they are optimized for completely different workloads.
+
 
 
 
