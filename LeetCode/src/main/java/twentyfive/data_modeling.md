@@ -16502,3 +16502,740 @@ For this interview, after the clarification questions revealed that:
 A **Role-Based Model** becomes the better choice.
 
 A senior-level answer is to explain **both approaches**, then justify why the role-based design better matches the business requirements.
+
+
+# Data Modeling Interview Notes: Recursive (Self-Referencing) Relationships
+
+## Problem Statement
+
+Design an Employee database.
+
+Requirements:
+
+- Every employee reports to **at most one manager**.
+- A manager can manage **many employees**.
+- The CEO has **no manager**.
+- We only need the current reporting hierarchy.
+- No reporting history is required.
+
+---
+
+# Clarification Questions
+
+Before designing, ask:
+
+1. Can an employee have multiple managers?
+2. Can an employee have multiple business roles (Manager, CEO, HR)?
+3. Do we need to store reporting history?
+4. Are matrix organizations supported?
+
+### Interview Answers
+
+- Employees may have multiple business roles (not relevant to reporting hierarchy).
+- Ignore role history.
+- Every employee reports to at most one manager.
+- CEO has no manager.
+- No matrix organization.
+
+---
+
+# Solution 1: Recursive One-to-Many Relationship
+
+Since every employee has only one manager, we use a self-referencing foreign key.
+
+```text
+Employee
+------------------------
+employeeId (PK)
+name
+email
+managerId (FK -> Employee.employeeId)
+```
+
+Relationship:
+
+```
+Employee
+   1
+   |
+   | manages
+   |
+   N
+Employee
+```
+
+Example Data
+
+| employeeId | name  | managerId |
+|------------|-------|-----------|
+|1|Alice|NULL|
+|2|Bob|1|
+|3|Carol|1|
+|4|David|2|
+|5|Emma|2|
+
+Hierarchy
+
+```
+Alice (CEO)
+│
+├── Bob
+│   ├── David
+│   └── Emma
+│
+└── Carol
+```
+
+---
+
+# Why This Works
+
+- Every employee stores only one manager.
+- A manager naturally manages many employees.
+- CEO simply has managerId = NULL.
+- No additional tables are required.
+
+---
+
+# Common Mistake
+
+Some candidates create:
+
+```
+Employee
+
+Manager
+```
+
+or
+
+```
+EmployeeManager
+```
+
+These are unnecessary because:
+
+> A manager is also an employee.
+
+This is simply a recursive relationship.
+
+---
+
+# Follow-up Requirement
+
+The interviewer changes the requirement:
+
+> Employees can now report to multiple managers.
+
+Example:
+
+```
+Alice
+
+Bob
+
+     ↑
+   David
+```
+
+David reports to both Alice and Bob.
+
+The previous design no longer works because managerId can store only one value.
+
+---
+
+# Solution 2: Recursive Many-to-Many Relationship
+
+Remove managerId from Employee.
+
+Create a junction table.
+
+## Employee
+
+```text
+Employee
+------------------------
+employeeId (PK)
+name
+email
+```
+
+## EmployeeManager
+
+```text
+EmployeeManager
+------------------------
+employeeId (FK)
+managerId (FK)
+
+PK(employeeId, managerId)
+```
+
+Both foreign keys reference Employee.
+
+Relationship
+
+```
+Employee
+   |
+   | N
+EmployeeManager
+   | N
+   |
+Employee
+```
+
+Example
+
+| employeeId | managerId |
+|------------|-----------|
+|David|Alice|
+|David|Bob|
+|Carol|Alice|
+
+Now David reports to two managers.
+
+---
+
+# Follow-up Requirement
+
+Business now asks:
+
+Store:
+
+- Reporting Type
+- Effective From
+- Effective To
+
+Example:
+
+- Functional Manager
+- Project Manager
+
+Question:
+
+Where should these attributes go?
+
+Answer:
+
+They belong in the junction table because they describe the relationship.
+
+---
+
+# Final Design
+
+```text
+Employee
+------------------------
+employeeId (PK)
+name
+email
+```
+
+```text
+EmployeeManager
+------------------------
+employeeId (FK)
+managerId (FK)
+
+reportingType
+effectiveFrom
+effectiveTo
+
+PK(employeeId, managerId)
+```
+
+Example
+
+| employeeId | managerId | reportingType | effectiveFrom | effectiveTo |
+|------------|-----------|---------------|---------------|-------------|
+|David|Alice|Functional|2025-01-01|NULL|
+|David|Bob|Project|2025-03-15|NULL|
+
+---
+
+# Key Data Modeling Rule
+
+Whenever you identify a **many-to-many relationship**, ask:
+
+> **Does the relationship itself have attributes?**
+
+If yes, those attributes belong in the junction table.
+
+Examples:
+
+## User ↔ Favorite Team
+
+```
+UserFavorite
+-------------
+userId
+teamId
+favoritedAt
+```
+
+---
+
+## Match ↔ Seat
+
+```
+MatchSeat
+-------------
+matchId
+seatId
+price
+status
+holdExpiresAt
+```
+
+---
+
+## User ↔ Role
+
+```
+UserRole
+-------------
+userId
+roleId
+assignedAt
+assignedBy
+expiresAt
+```
+
+---
+
+## Employee ↔ Manager
+
+```
+EmployeeManager
+----------------
+employeeId
+managerId
+reportingType
+effectiveFrom
+effectiveTo
+```
+
+---
+
+# Interview Takeaways
+
+## One Manager Per Employee
+
+Use a recursive foreign key.
+
+```
+Employee
+managerId -> Employee.employeeId
+```
+
+---
+
+## Multiple Managers Per Employee
+
+Convert the recursive relationship into a recursive many-to-many relationship.
+
+```
+Employee
+      |
+      |
+EmployeeManager
+      |
+      |
+Employee
+```
+
+---
+
+## Golden Rule
+
+**If an attribute describes the relationship rather than either entity, it belongs in the relationship (junction) table.**
+
+This is one of the most important principles in relational data modeling and appears frequently in senior backend interviews.
+
+# Data Modeling Interview Notes: Composition vs. Aggregation
+
+## Problem Statement
+
+Design an e-commerce ordering system.
+
+Requirements:
+
+- Customers place orders.
+- Each order contains one or more products.
+- A product can appear in many orders.
+- Every Order Item stores:
+  - quantity
+  - priceAtPurchase
+  - discount
+- If an order is deleted, its Order Items should also be deleted.
+- Products should remain even if orders are deleted.
+
+---
+
+# Clarification Questions
+
+Before designing, ask:
+
+1. Can an Order contain multiple products?
+   - Yes.
+
+2. Can the same Product appear in multiple Orders?
+   - Yes.
+
+3. Can an OrderItem exist without an Order?
+   - No.
+
+4. Can a Product exist without any Orders?
+   - Yes.
+
+5. Should historical purchase prices be preserved even if product prices change?
+   - Yes.
+
+---
+
+# Database Design
+
+## Product
+
+```text
+Product
+------------------------
+productId (PK)
+name
+currentPrice
+description
+...
+```
+
+---
+
+## Order
+
+```text
+Order
+------------------------
+orderId (PK)
+customerId (FK)
+orderDate
+status
+totalPrice
+```
+
+---
+
+## OrderItem
+
+```text
+OrderItem
+------------------------
+orderId (FK)
+productId (FK)
+
+quantity
+priceAtPurchase
+discount
+
+PK(orderId, productId)
+```
+
+Relationship
+
+```
+Customer
+    |
+    | 1
+    |
+    N
+Order
+    |
+    | 1
+    |
+    N
+OrderItem
+    |
+    | N
+    |
+    1
+Product
+```
+
+---
+
+# Why Store priceAtPurchase?
+
+Suppose today:
+
+```
+Laptop = $1000
+```
+
+Tomorrow:
+
+```
+Laptop = $1200
+```
+
+If OrderItem only stores:
+
+```
+orderId
+productId
+quantity
+```
+
+then joining with Product later would incorrectly display:
+
+```
+Laptop
+$1200
+```
+
+for an old order.
+
+Instead, OrderItem stores:
+
+```
+priceAtPurchase
+```
+
+Example:
+
+| orderId | productId | quantity | priceAtPurchase |
+|----------|-----------|----------|-----------------|
+|101|Laptop|1|1000|
+
+Even if Product.currentPrice becomes $1200, the historical order still correctly shows $1000.
+
+---
+
+# Why Not Use Product.currentPrice?
+
+Product stores the **current catalog price**.
+
+OrderItem stores the **historical purchase price**.
+
+These represent different business concepts.
+
+---
+
+# Composition vs Aggregation
+
+This is a common senior interview discussion.
+
+There are two important relationships.
+
+---
+
+# 1. Order → OrderItem = Composition
+
+Question:
+
+Can an OrderItem exist without an Order?
+
+Answer:
+
+No.
+
+If the Order is deleted, its OrderItems should also be deleted.
+
+Lifecycle:
+
+```
+Delete Order
+        ↓
+Delete OrderItems
+```
+
+Diagram
+
+```
+Order
+   ♦
+   |
+   |
+OrderItem
+```
+
+The filled diamond (♦) represents **Composition**.
+
+Composition means:
+
+- Strong ownership
+- Shared lifecycle
+- Child cannot exist without parent
+
+Examples:
+
+- Order → OrderItem
+- Invoice → InvoiceLine
+- House → Room
+
+---
+
+# 2. Product → OrderItem = Aggregation
+
+Question:
+
+Can a Product exist without any OrderItems?
+
+Answer:
+
+Yes.
+
+Products exist independently in the catalog.
+
+Deleting all orders should not delete Products.
+
+Similarly, deleting or deactivating a Product should not erase historical OrderItems.
+
+Diagram
+
+```
+Product
+   ◇
+   |
+   |
+OrderItem
+```
+
+The hollow diamond (◇) represents **Aggregation**.
+
+Aggregation means:
+
+- Weak ownership
+- Independent lifecycle
+- Parent and child can exist independently
+
+Examples:
+
+- Product → OrderItem
+- Company → Employee
+- Team → Player
+
+---
+
+# Interview Heuristic
+
+Ask yourself:
+
+> **Can the child exist without the parent?**
+
+If the answer is:
+
+**No**
+
+→ Composition
+
+```
+Order
+   |
+OrderItem
+```
+
+Deleting the Order also deletes the OrderItems.
+
+---
+
+If the answer is:
+
+**Yes**
+
+→ Aggregation
+
+```
+Product
+   |
+OrderItem
+```
+
+The Product exists independently of Orders.
+
+---
+
+# Composition vs Aggregation Summary
+
+| Relationship | Type | Reason |
+|--------------|------|--------|
+| Order → OrderItem | Composition | OrderItem cannot exist without an Order |
+| Invoice → InvoiceLine | Composition | Invoice owns its lines |
+| House → Room | Composition | Room belongs to a specific house |
+| Product → OrderItem | Aggregation | Product exists independently |
+| Company → Employee | Aggregation | Employee has an independent lifecycle |
+| Team → Player | Aggregation | Players can move between teams |
+
+---
+
+# Key Interview Takeaways
+
+## Composition
+
+- Strong ownership
+- Shared lifecycle
+- Child cannot exist independently
+- Parent deletion usually cascades to child
+
+Examples:
+
+- Order → OrderItem
+- Invoice → InvoiceLine
+- House → Room
+
+---
+
+## Aggregation
+
+- Weak ownership
+- Independent lifecycle
+- Parent and child exist independently
+
+Examples:
+
+- Product → OrderItem
+- Company → Employee
+- Team → Player
+
+---
+
+# Golden Rule
+
+**Composition is about ownership and lifecycle.**
+
+**Aggregation is about association without ownership.**
+
+Although both are implemented using foreign keys in a relational database, understanding the business semantics behind them is an important skill in senior backend and system design interviews.
+
+
+Start
+│
+├── Many-to-Many?
+│      └── Junction Table
+│
+├── Relationship has attributes?
+│      └── Store them on Junction Table
+│
+├── Same table references itself?
+│      └── Recursive Relationship
+│
+├── Child dies with Parent?
+│      ├── Yes → Composition
+│      └── No → Aggregation
+│
+├── Multiple Types?
+│      ├── "Is-a" → Inheritance
+│      └── "Can-do" → Role Model
+│
+├── Shared Comments/Attachments?
+│      └── Polymorphism
+│
+├── Need History?
+│      ├── Audit
+│      ├── Versioning
+│      └── Effective Dating
+│
+├── Multi-tenant?
+│      └── Propagate tenantId
+│
+└── Expensive or Historical Value?
+       ├── No → Normalize
+       └── Yes → Denormalize
