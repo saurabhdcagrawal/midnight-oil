@@ -17239,3 +17239,794 @@ Start
 └── Expensive or Historical Value?
        ├── No → Normalize
        └── Yes → Denormalize
+	   
+# Apple Schema Design Practice
+# Extras
+# 1. Live Sports System
+
+## Requirements
+
+- Support multiple sports.
+- A league contains multiple matches.
+- A match always has exactly two teams.
+- Display the current score.
+- Preserve complete event history.
+- Display team statistics.
+
+---
+
+## Schema
+
+```text
+Sport
+-----
+sportId (PK)
+sportName
+
+
+League
+------
+leagueId (PK)
+sportId (FK)
+leagueName
+
+
+Team
+----
+teamId (PK)
+leagueId (FK)
+teamName
+
+
+Player
+------
+playerId (PK)
+teamId (FK)
+playerName
+position
+
+
+Match
+-----
+matchId (PK)
+leagueId (FK)
+
+homeTeamId (FK -> Team)
+awayTeamId (FK -> Team)
+
+homeScore
+awayScore
+
+status
+startTime
+
+
+MatchTeamStatistics
+-------------------
+matchId (FK)
+teamId (FK)
+
+possession
+shots
+shotsOnTarget
+corners
+yellowCards
+redCards
+fouls
+
+PK(matchId, teamId)
+
+
+MatchEvent
+----------
+eventId (PK)
+
+matchId (FK)
+teamId (FK)
+playerId (FK)
+
+minute
+eventType
+description
+createdAt
+```
+
+---
+
+## Relationships
+
+```text
+Sport (1)
+   │
+   └──────────< League (N)
+                     │
+                     ├──────────< Team (N)
+                     │
+                     └──────────< Match (N)
+
+Team (1)
+   │
+   └──────────< Player (N)
+
+Match (1)
+   │
+   ├──────────< MatchEvent (N)
+   │
+   └──────────< MatchTeamStatistics (N)
+                        │
+                        ▼
+                      Team
+```
+
+---
+
+## Design Decisions
+
+### Why store score in Match?
+
+```text
+Match
+------
+homeScore
+awayScore
+```
+
+The application can immediately render:
+
+```
+Arsenal 2 - 1 Chelsea
+```
+
+without replaying every event.
+
+---
+
+### Why MatchEvent?
+
+Stores the immutable history.
+
+Example:
+
+```
+12' Goal
+35' Yellow Card
+48' Goal
+81' Goal
+```
+
+Useful for:
+
+- Timeline
+- Replay
+- Analytics
+- Auditing
+
+---
+
+### Why MatchTeamStatistics?
+
+Instead of
+
+```
+homeShots
+awayShots
+
+homeCorners
+awayCorners
+```
+
+use
+
+```text
+MatchTeamStatistics
+-------------------
+matchId
+teamId
+shots
+corners
+possession
+...
+```
+
+Advantages:
+
+- Statistics belong to a team.
+- Easier analytics.
+- Simpler aggregation.
+- Easier to extend.
+
+---
+
+### Why Player belongs to Team?
+
+Current requirements don't mention transfers.
+
+```text
+Team (1)
+    |
+    +------< Player (N)
+```
+
+If transfer history is required later:
+
+```text
+Player
+
+PlayerTeam
+----------
+playerId
+teamId
+effectiveFrom
+effectiveTo
+```
+
+---
+
+# 2. Fantasy Sports
+
+## Requirements
+
+Users can:
+
+- Create fantasy teams.
+- Join a fantasy league.
+- Select multiple real players.
+- Players may belong to many fantasy teams.
+- Display leaderboards.
+
+Ignore:
+
+- Transfers
+- Budget
+- Captain
+- Vice Captain
+- Trades
+
+---
+
+## Schema
+
+```text
+User
+----
+userId (PK)
+email
+name
+
+
+Sport
+-----
+sportId (PK)
+sportName
+
+
+League                 // Real League
+------
+leagueId (PK)
+sportId (FK)
+leagueName
+
+
+Team
+----
+teamId (PK)
+leagueId (FK)
+teamName
+
+
+Player
+------
+playerId (PK)
+teamId (FK)
+playerName
+position
+
+
+Match
+-----
+matchId (PK)
+leagueId (FK)
+
+homeTeamId
+awayTeamId
+
+homeScore
+awayScore
+
+status
+
+
+FantasyLeague
+-------------
+fantasyLeagueId (PK)
+leagueId (FK)
+
+name
+
+
+FantasyTeam
+-----------
+fantasyTeamId (PK)
+fantasyLeagueId (FK)
+userId (FK)
+
+teamName
+
+weeklyPoints
+totalPoints
+rank
+
+
+FantasyTeamPlayer
+-----------------
+fantasyTeamId (FK)
+playerId (FK)
+
+PK(fantasyTeamId, playerId)
+```
+
+---
+
+## Relationships
+
+```text
+                   User
+                    |
+                  (1)
+                    |
+                  (N)
+              FantasyTeam
+                    |
+                  (N)
+                    |
+                  (1)
+             FantasyLeague
+                    |
+                  (N)
+                    |
+                  (1)
+                 League
+                /      \
+              (N)      (N)
+              /          \
+           Team         Match
+             |
+           (1)
+             |
+           (N)
+          Player
+
+FantasyTeam (M)
+      |
+      | via FantasyTeamPlayer
+      |
+Player (N)
+```
+
+---
+
+## Design Decisions
+
+### Why FantasyTeamPlayer?
+
+A fantasy team contains multiple players.
+
+A player belongs to many fantasy teams.
+
+Therefore:
+
+```text
+FantasyTeam (M) ---- (N) Player
+```
+
+implemented as
+
+```text
+FantasyTeamPlayer
+-----------------
+fantasyTeamId
+playerId
+```
+
+This table can later store:
+
+- Captain
+- Vice Captain
+- SelectedAt
+- Draft Position
+
+---
+
+### Why keep FantasyLeague?
+
+This is **different** from the real sports league.
+
+Example:
+
+```
+Premier League
+```
+
+↓
+
+```
+Office Fantasy League
+```
+
+↓
+
+```
+Saurabh FC
+John FC
+Alice FC
+```
+
+Many fantasy leagues can be created for the same real league.
+
+---
+
+### Why store weeklyPoints, totalPoints and rank?
+
+These values can be derived.
+
+However, leaderboard queries are extremely read-heavy.
+
+Instead of recalculating every request, store:
+
+```text
+FantasyTeam
+-----------
+weeklyPoints
+totalPoints
+rank
+```
+
+and update them asynchronously whenever player points change.
+
+---
+
+## Future Enhancements
+
+If requirements evolve, we can add:
+
+- Season
+- Contest
+- Captain / Vice Captain
+- Budget
+- Transfers
+- Trades
+- PlayerSeasonStatistics
+- Prize Distribution
+
+Only introduce these when the requirements justify them.	   
+
+# Sports Notifications
+
+## Requirements
+
+Users should be able to:
+
+- Follow one or more teams.
+- Receive notifications for:
+  - Match Start
+  - Goal
+  - Half Time
+  - Full Time
+- Configure notification preferences per team.
+- View notification history.
+- Mark notifications as read.
+
+Ignore:
+
+- APNs
+- Multiple devices
+- Retry mechanism
+- Push delivery failures
+
+---
+
+# Entities
+
+- User
+- Team
+- Match
+- MatchEvent
+- Notification
+- NotificationType
+- UserFollow
+- UserNotificationPreference
+
+---
+
+# Relationships
+
+```text
+User (M) ---------------- (N) Team
+             |
+             |
+         UserFollow
+
+
+Match (1) ---------------- (N) MatchEvent
+
+
+Match
+ ├── homeTeamId
+ └── awayTeamId
+
+
+MatchEvent (1) ------------ (N) Notification
+
+
+NotificationType (1) ------ (N) Notification
+
+
+User (1) ------------------ (N) Notification
+
+
+User (1) ------------------ (N) UserNotificationPreference
+
+
+NotificationType (1) ------ (N) UserNotificationPreference
+
+
+Team (1) ------------------ (N) UserNotificationPreference
+```
+
+---
+
+# Schema
+
+## User
+
+```text
+userId (PK)
+email
+name
+```
+
+---
+
+## Team
+
+```text
+teamId (PK)
+teamName
+```
+
+---
+
+## UserFollow
+
+```text
+userId (FK)
+teamId (FK)
+
+PK(userId, teamId)
+```
+
+---
+
+## Match
+
+```text
+matchId (PK)
+
+matchName
+
+homeTeamId (FK)
+awayTeamId (FK)
+
+homeScore
+awayScore
+
+status
+```
+
+---
+
+## MatchEvent
+
+```text
+eventId (PK)
+
+matchId (FK)
+teamId (FK)
+playerId (FK)
+
+eventType
+eventDescription
+eventTimestamp
+```
+
+---
+
+## NotificationType
+
+```text
+notificationTypeId (PK)
+
+notificationTypeDescription
+```
+
+Example values:
+
+- Goal
+- Match Start
+- Half Time
+- Full Time
+
+---
+
+## UserNotificationPreference
+
+```text
+userId (FK)
+
+teamId (FK)
+
+notificationTypeId (FK)
+
+allowNotification
+
+PK(userId, teamId, notificationTypeId)
+```
+
+This allows users to enable or disable specific notification types for each followed team.
+
+Example:
+
+| User | Team | Notification Type | Enabled |
+|------|------|-------------------|---------|
+| Saurabh | Arsenal | Goal | ✅ |
+| Saurabh | Arsenal | Half Time | ❌ |
+| Saurabh | Chelsea | Goal | ✅ |
+
+---
+
+## Notification
+
+```text
+notificationId (PK)
+
+userId (FK)
+
+eventId (FK)
+
+notificationTypeId (FK)
+
+title
+message
+
+createdAt
+
+isRead
+readAt
+```
+
+---
+
+# Design Decisions
+
+## Why UserFollow?
+
+A user can follow multiple teams, and a team can be followed by many users.
+
+```text
+User (M) -------- (N) Team
+```
+
+This is implemented using the `UserFollow` junction table.
+
+---
+
+## Why NotificationType?
+
+Notification types may change over time.
+
+Instead of hardcoding:
+
+- Goal
+- Half Time
+- Match Start
+
+store them in a lookup table:
+
+```text
+NotificationType
+----------------
+notificationTypeId
+notificationTypeDescription
+```
+
+This makes the design extensible.
+
+---
+
+## Why UserNotificationPreference?
+
+Users may want different preferences for different teams.
+
+Example:
+
+- Notify me about Arsenal goals.
+- Don't notify me about Arsenal half-time.
+- Notify me about Chelsea full-time.
+
+This is modeled using:
+
+```text
+(userId, teamId, notificationTypeId)
+```
+
+---
+
+## Why Notification references MatchEvent?
+
+Every notification is triggered by an event.
+
+Example:
+
+```text
+Goal
+
+↓
+
+MatchEvent
+
+↓
+
+Notification
+```
+
+Instead of storing:
+
+- teamId
+- playerId
+- matchId
+
+inside the Notification table, we simply reference the `eventId`.
+
+This avoids data duplication and maintains normalization.
+
+---
+
+## Why Notification stores userId?
+
+Each notification belongs to a specific user.
+
+Different users may receive different notifications for the same match event depending on:
+
+- Teams they follow
+- Notification preferences
+
+---
+
+## Why store title and message?
+
+Notifications represent what the user actually saw.
+
+Example:
+
+```text
+⚽ Goal!
+
+Arsenal 2 - 1 Chelsea
+
+Bukayo Saka scored in the 78th minute.
+```
+
+Storing the rendered notification preserves history even if match or player data changes later.
+
+---
+
+## Why store isRead?
+
+Users can view notification history and mark notifications as read.
+
+```text
+isRead
+readAt
+```
+
+These fields support unread notification badges and inbox functionality.
