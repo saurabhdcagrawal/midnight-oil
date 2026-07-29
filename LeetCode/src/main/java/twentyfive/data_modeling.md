@@ -18029,4 +18029,290 @@ isRead
 readAt
 ```
 
-These fields support unread notification badges and inbox functionality.
+These fields support unread notification badges and inbox functionality.	
+
+# Favorites System
+
+## Requirements
+
+Users can:
+
+- Favorite Teams
+- Favorite Players
+- Favorite Matches
+- Remove favorites
+- View all favorites
+
+The app should display favorites in the order they were added.
+
+Future versions may support additional entity types such as:
+
+- League
+- Tournament
+
+Ignore:
+
+- Folders
+- Tags
+- Recommendations
+- Sharing
+- Audit history
+
+---
+
+# Clarification Questions
+
+### 1. Can users favorite only Teams, Players, and Matches, or should the design support additional entity types in the future?
+
+**Answer:** The design should be extensible for future entity types.
+
+### 2. Should we retain history when a favorite is removed?
+
+**Answer:** No. A hard delete is sufficient.
+
+---
+
+# Design Decision
+
+Since new entity types may be introduced in the future, a **single polymorphic Favorites table** is preferred over multiple junction tables.
+
+Instead of creating:
+
+- UserFavoriteTeam
+- UserFavoritePlayer
+- UserFavoriteMatch
+
+we create one generic table:
+
+```
+UserFavorites
+```
+
+This avoids schema changes whenever a new favorite entity type is introduced.
+
+---
+
+# Entities
+
+- User
+- Team
+- Player
+- Match
+- UserFavorites
+
+---
+
+# Relationships
+
+```text
+User (1)
+   |
+   |
+   +------< UserFavorites (N)
+
+Player (N)
+   |
+   +------ Team (1)
+
+Match
+ ├── homeTeamId
+ └── awayTeamId
+
+UserFavorites references one of:
+- Team
+- Player
+- Match
+```
+
+---
+
+# Schema
+
+## User
+
+```text
+userId (PK)
+
+email
+
+name
+```
+
+---
+
+## Team
+
+```text
+teamId (PK)
+
+teamName
+```
+
+---
+
+## Player
+
+```text
+playerId (PK)
+
+playerName
+
+teamId (FK)
+```
+
+---
+
+## Match
+
+```text
+matchId (PK)
+
+homeTeamId (FK)
+
+awayTeamId (FK)
+```
+
+---
+
+## UserFavorites
+
+```text
+userId (FK)
+
+entityType
+
+entityId
+
+favoritedAt
+
+PK(userId, entityType, entityId)
+```
+
+Example:
+
+| userId | entityType | entityId |
+|---------|------------|----------|
+| 1 | TEAM | 25 |
+| 1 | PLAYER | 107 |
+| 1 | MATCH | 500 |
+
+---
+
+# Why use a single Favorites table?
+
+Future requirements mention supporting new entities such as:
+
+- League
+- Tournament
+
+With a generic table, supporting a new entity only requires introducing a new `entityType`.
+
+No schema changes are needed.
+
+---
+
+# Ordering Favorites
+
+The requirements state that favorites should appear in the order they were added.
+
+Instead of storing an explicit order column, we can simply use:
+
+```text
+favoritedAt
+```
+
+and retrieve favorites using:
+
+```sql
+ORDER BY favoritedAt
+```
+
+---
+
+# Why not use separate tables?
+
+An alternative design would be:
+
+```text
+UserFavoriteTeam
+
+UserFavoritePlayer
+
+UserFavoriteMatch
+```
+
+While this provides stronger referential integrity, every new entity type requires:
+
+- Creating a new table
+- Updating APIs
+- Adding new business logic
+
+The generic Favorites table is more extensible.
+
+---
+
+# Tradeoff
+
+A polymorphic table has one important limitation.
+
+Since `entityId` can refer to different tables, the database **cannot enforce referential integrity**.
+
+Example:
+
+```text
+entityType = TEAM
+entityId = 25
+```
+
+The application must determine that `25` refers to a Team and validate that it exists.
+
+Therefore, validation is handled in the application layer instead of through foreign key constraints.
+
+---
+
+# Interview Discussion
+
+### Advantages
+
+- Extensible
+- Simple schema
+- Easy to support new entity types
+- One table for all favorites
+
+### Disadvantages
+
+- No foreign key constraint on `entityId`
+- Application is responsible for validating references
+- Queries require checking `entityType` before loading the referenced entity
+
+---
+
+# Overall Design
+
+```text
+User
+Team
+Player
+Match
+
+          User
+            |
+            |
+            ▼
+      UserFavorites
+      -------------
+      userId
+      entityType
+      entityId
+      favoritedAt
+
+entityType
+    |
+    +--> TEAM
+    +--> PLAYER
+    +--> MATCH
+    +--> LEAGUE (future)
+    +--> TOURNAMENT (future)
+```
+
+**Key Takeaway:** Choose a polymorphic `UserFavorites` table when the design needs to support additional favorite entity types in the future. It provides flexibility at the cost of database-enforced referential integrity.
