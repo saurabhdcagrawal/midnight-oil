@@ -1,3 +1,4 @@
+
 # Apple Data Modeling Interview Guide
 # Part 1 - Thinking Like a Data Modeler
 
@@ -29,6 +30,203 @@ I should ask
 This document captures that way of thinking.
 
 ---
+
+
+# Database Normalization (1NF, 2NF, 3NF)
+
+Normalization is the process of organizing a relational database to reduce redundancy and improve data integrity.
+
+---
+
+# First Normal Form (1NF)
+
+## Rule
+
+- Every column must contain **atomic (indivisible) values**.
+- No arrays, lists, or repeating groups in a single column.
+- Each row should be uniquely identifiable.
+
+### ❌ Bad Example
+
+| StudentId | Name | Subjects |
+|-----------|------|----------|
+| 1 | John | Math, Physics |
+
+The `Subjects` column contains multiple values.
+
+### ✅ Good Example
+
+| StudentId | Name | Subject |
+|-----------|------|---------|
+| 1 | John | Math |
+| 1 | John | Physics |
+
+Each cell contains exactly one value.
+
+---
+
+# Second Normal Form (2NF)
+
+## Rule
+
+- Must already be in **1NF**.
+- Every non-key attribute must depend on the **entire primary key**, not just part of it.
+- Applies only when there is a **composite primary key**.
+
+### ❌ Bad Example
+
+```
+Enrollment
+-----------
+StudentId
+CourseId
+StudentName
+CourseName
+Grade
+
+PK(StudentId, CourseId)
+```
+
+Dependencies:
+
+```
+StudentName -> StudentId only ❌
+
+CourseName -> CourseId only ❌
+
+Grade -> (StudentId, CourseId) ✅
+```
+
+`StudentName` and `CourseName` depend on only part of the composite key.
+
+### ✅ Good Example
+
+```
+Student
+-------
+StudentId
+StudentName
+
+Course
+------
+CourseId
+CourseName
+
+Enrollment
+----------
+StudentId
+CourseId
+Grade
+```
+
+Now every non-key attribute depends on the full primary key.
+
+---
+
+# Third Normal Form (3NF)
+
+## Rule
+
+- Must already be in **2NF**.
+- No transitive dependencies.
+- Non-key attributes should depend only on the primary key.
+
+### ❌ Bad Example
+
+```
+Employee
+---------
+employeeId
+employeeName
+departmentId
+departmentName
+```
+
+Dependency:
+
+```
+employeeId
+      ↓
+departmentId
+      ↓
+departmentName
+```
+
+`departmentName` depends on `departmentId`, not directly on `employeeId`.
+
+### ✅ Good Example
+
+```
+Employee
+---------
+employeeId
+employeeName
+departmentId
+
+Department
+----------
+departmentId
+departmentName
+```
+
+Now:
+
+```
+employeeId
+      ↓
+departmentId
+
+departmentId
+      ↓
+departmentName
+```
+
+No transitive dependency exists.
+
+---
+
+# Quick Comparison
+
+| Normal Form | Rule | What It Prevents |
+|--------------|------|------------------|
+| **1NF** | Atomic values (one value per cell) | Repeating groups and arrays |
+| **2NF** | Full dependency on the entire primary key | Partial dependencies |
+| **3NF** | Non-key attributes depend only on the primary key | Transitive dependencies |
+
+---
+
+# Memory Trick
+
+## 1NF
+
+**One value per cell.**
+
+---
+
+## 2NF
+
+**Every non-key attribute depends on the whole primary key.**
+
+---
+
+## 3NF
+
+**Non-key attributes depend only on the primary key and not on other non-key attributes.**
+
+---
+
+# Interview One-Liner
+
+A classic interview phrase to remember:
+
+> **"Every non-key attribute should depend on the key, the whole key, and nothing but the key."**
+
+- **The key** → 1NF
+- **The whole key** → 2NF
+- **Nothing but the key** → 3NF
+
+This is one of the most common ways interviewers expect candidates to explain normalization.
+
 
 # Problem Statement
 
