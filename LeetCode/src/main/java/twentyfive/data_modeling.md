@@ -18316,3 +18316,717 @@ entityType
 ```
 
 **Key Takeaway:** Choose a polymorphic `UserFavorites` table when the design needs to support additional favorite entity types in the future. It provides flexibility at the cost of database-enforced referential integrity.
+
+
+# Apple Calendar - Data Modeling
+
+## Requirements
+
+Users should be able to:
+
+- Create multiple calendars.
+- Create events.
+- Invite multiple users to an event.
+- Accept, Decline or Tentatively accept invitations.
+- View all events in their calendars.
+
+Ignore:
+
+- Recurring events
+- Notifications
+- Reminders
+- Time zones
+- Attachments
+- Shared calendars
+
+---
+
+# Clarification Questions
+
+### 1. Can an event have multiple owners?
+
+**Answer:** No.
+
+Every event has exactly one owner.
+
+Other users are attendees.
+
+---
+
+### 2. Can a user have multiple calendars?
+
+**Answer:** Yes.
+
+Examples:
+
+- Personal
+- Work
+- Family
+
+---
+
+### 3. Can one event belong to multiple calendars?
+
+**Answer:** No.
+
+Every event belongs to exactly one calendar.
+
+---
+
+### 4. Should past events be deleted?
+
+**Answer:** No.
+
+Past events are retained.
+
+---
+
+## Entities
+
+- User
+- Calendar
+- Event
+- UserEvent (Invitation / Attendance)
+
+---
+
+# Relationships
+
+```text
+User (1)
+   |
+   |
+   +--------< Calendar (N)
+                    |
+                    |
+                    +--------< Event (N)
+
+User (M)
+     \
+      \
+       UserEvent
+      /
+     /
+Event (N)
+```
+
+`UserEvent` represents attendees invited to an event.
+
+---
+
+# Schema
+
+## User
+
+```text
+userId (PK)
+
+email
+
+name
+```
+
+---
+
+## Calendar
+
+```text
+calendarId (PK)
+
+userId (FK)
+
+title
+```
+
+A user can own multiple calendars.
+
+---
+
+## Event
+
+```text
+eventId (PK)
+
+calendarId (FK)
+
+title
+
+location
+
+startTime
+
+endTime
+```
+
+Each event belongs to exactly one calendar.
+
+Since each calendar belongs to one user, the event owner can be derived.
+
+---
+
+## UserEvent
+
+```text
+userId (FK)
+
+eventId (FK)
+
+responseStatus
+
+respondedAt
+
+PK(userId, eventId)
+```
+
+Possible responseStatus values:
+
+- INVITED
+- ACCEPTED
+- DECLINED
+- TENTATIVE
+
+This models the many-to-many relationship between Users and Events.
+
+---
+
+# Design Decisions
+
+## Why Calendar?
+
+A user may own multiple calendars.
+
+Example:
+
+```text
+Saurabh
+   |
+   +---- Personal
+   |
+   +---- Work
+   |
+   +---- Family
+```
+
+Therefore,
+
+```text
+User (1) ---- (N) Calendar
+```
+
+---
+
+## Why Event belongs to Calendar?
+
+An event exists inside exactly one calendar.
+
+```text
+Calendar (1) ---- (N) Event
+```
+
+No junction table is required.
+
+---
+
+## Why UserEvent?
+
+An event may invite many users.
+
+A user may attend many events.
+
+Therefore,
+
+```text
+User (M) ---- (N) Event
+```
+
+is implemented as
+
+```text
+UserEvent
+```
+
+This table also stores invitation-specific attributes such as:
+
+- responseStatus
+- respondedAt
+
+These attributes belong to the relationship, not the User or Event.
+
+---
+
+## Why no ownerUserId in Event?
+
+The event owner can already be determined.
+
+```text
+Event
+   │
+   ▼
+Calendar
+   │
+   ▼
+User
+```
+
+Adding `ownerUserId` would duplicate data.
+
+---
+
+# Example Query
+
+### Find the owner of an event
+
+```sql
+SELECT u.userName
+FROM User u
+JOIN Calendar c
+    ON u.userId = c.userId
+JOIN Event e
+    ON c.calendarId = e.calendarId
+WHERE e.eventId = ?;
+```
+
+Execution:
+
+```text
+Event
+   │
+calendarId
+   │
+   ▼
+Calendar
+   │
+userId
+   │
+   ▼
+User
+```
+
+---
+
+# Overall Schema
+
+```text
+User
+----
+userId (PK)
+email
+name
+
+
+Calendar
+--------
+calendarId (PK)
+userId (FK)
+title
+
+
+Event
+-----
+eventId (PK)
+calendarId (FK)
+title
+location
+startTime
+endTime
+
+
+UserEvent
+---------
+userId (FK)
+eventId (FK)
+responseStatus
+respondedAt
+
+PK(userId, eventId)
+```
+
+---
+
+# Key Takeaways
+
+- Users can own multiple calendars.
+- Every event belongs to exactly one calendar.
+- Event ownership is derived through the calendar.
+- Invitations are modeled using a many-to-many junction table (`UserEvent`).
+- The attendee's response (`ACCEPTED`, `DECLINED`, `TENTATIVE`) is an attribute of the relationship between a User and an Event.
+```	
+
+
+# Apple Data Modeling Interview - Photos & Albums
+
+## Problem Statement
+
+Design the data model for Apple Photos with the following requirements.
+
+### Functional Requirements
+
+- Users can upload photos.
+- Users can create multiple albums.
+- Users can add/remove photos from albums.
+- A photo can belong to multiple albums.
+- Users can view all photos within an album.
+
+Each photo contains:
+
+- Owner
+- Upload timestamp
+- File name
+
+### Out of Scope
+
+- Sharing (initial version)
+- Face recognition
+- AI tagging
+- Videos
+- Comments
+- Likes
+- Trash
+- Version history
+
+---
+
+# Clarification Questions
+
+### 1. Can a photo belong to multiple albums?
+
+**Answer:** Yes.
+
+---
+
+### 2. Can a user create multiple albums?
+
+**Answer:** Yes.
+
+---
+
+### 3. Can albums contain photos from multiple users?
+
+**Answer:** No.
+
+Albums are owned by a single user and only contain photos owned by that user.
+
+---
+
+### 4. Should delete be soft delete or hard delete?
+
+**Answer:** Hard delete.
+
+---
+
+### 5. Can albums be nested?
+
+**Answer:** No.
+
+---
+
+# Entity Relationship
+
+```
+User (1)
+   │
+   ├────────────< Album (N)
+   │
+   └────────────< Photo (N)
+
+Album (M)
+      │
+      │ PhotoAlbum
+      │
+Photo (N)
+```
+
+---
+
+# Database Schema
+
+## User
+
+| Column | Type |
+|---------|------|
+| userId (PK) | UUID |
+| email | String |
+| name | String |
+
+---
+
+## Album
+
+| Column | Type |
+|---------|------|
+| albumId (PK) | UUID |
+| userId (FK) | UUID |
+| albumName | String |
+
+---
+
+## Photo
+
+| Column | Type |
+|---------|------|
+| photoId (PK) | UUID |
+| userId (FK) | UUID |
+| fileName | String |
+| photoURL | String |
+| uploadedAt | Timestamp |
+
+---
+
+## PhotoAlbum
+
+| Column | Type |
+|---------|------|
+| photoId (FK) | UUID |
+| albumId (FK) | UUID |
+
+Primary Key
+
+```
+(photoId, albumId)
+```
+
+---
+
+# Why do we need PhotoAlbum?
+
+Since one photo can appear in multiple albums:
+
+```
+Beach.jpg
+
+↓
+
+Vacation
+
+Favorites
+
+Family
+```
+
+Storing `albumId` inside the `Photo` table would only allow one album.
+
+Instead we model a Many-to-Many relationship.
+
+```
+Album (M) -------- PhotoAlbum -------- (N) Photo
+```
+
+---
+
+# Why store userId in Photo?
+
+Although we could infer ownership by traversing:
+
+```
+Photo
+   ↓
+PhotoAlbum
+   ↓
+Album
+   ↓
+User
+```
+
+this is not recommended because:
+
+- Ownership is a property of the photo itself.
+- A photo may exist before it is added to any album.
+- Future shared albums would make ownership ambiguous.
+- It requires unnecessary joins.
+
+Instead:
+
+```
+Photo
+------
+photoId
+userId
+```
+
+Ownership is explicit and independent of albums.
+
+---
+
+# Time Complexity
+
+### Add Photo
+
+O(1)
+
+---
+
+### Create Album
+
+O(1)
+
+---
+
+### Add Photo to Album
+
+Insert into PhotoAlbum
+
+O(1)
+
+---
+
+### Remove Photo from Album
+
+Delete from PhotoAlbum
+
+O(1)
+
+---
+
+### Get Photos in Album
+
+```
+Album
+   ↓
+PhotoAlbum
+   ↓
+Photo
+```
+
+O(number of photos in album)
+
+---
+
+# Follow-up: Shared / Collaborative Albums
+
+If Apple later introduces shared albums, the schema evolves.
+
+## Album
+
+| Column | Type |
+|---------|------|
+| albumId (PK) | UUID |
+| ownerUserId (FK) | UUID |
+| albumName | String |
+
+---
+
+## AlbumUser
+
+| Column | Type |
+|---------|------|
+| albumId (FK) | UUID |
+| userId (FK) | UUID |
+| role | OWNER / EDITOR / VIEWER |
+
+Primary Key
+
+```
+(albumId, userId)
+```
+
+---
+
+## Photo
+
+| Column | Type |
+|---------|------|
+| photoId (PK) | UUID |
+| ownerUserId (FK) | UUID |
+| fileName | String |
+| photoURL | String |
+| uploadedAt | Timestamp |
+
+---
+
+## PhotoAlbum
+
+| Column | Type |
+|---------|------|
+| photoId (FK) | UUID |
+| albumId (FK) | UUID |
+
+Primary Key
+
+```
+(photoId, albumId)
+```
+
+---
+
+# Why keep ownerUserId in Album?
+
+Although the owner also appears in `AlbumUser` with role `OWNER`, keeping `ownerUserId` has several advantages:
+
+- Ownership is explicit.
+- Fetching the owner requires no join.
+- Simpler business logic.
+- Easier to enforce exactly one owner.
+
+`AlbumUser` represents **membership and permissions**, while `ownerUserId` represents **ownership**.
+
+Both model different concepts and are not redundant.
+
+---
+
+# Final Design
+
+```
+User
+----
+userId
+email
+name
+
+Album
+-----
+albumId
+userId
+albumName
+
+Photo
+-----
+photoId
+userId
+fileName
+photoURL
+uploadedAt
+
+PhotoAlbum
+----------
+photoId
+albumId
+
+PK(photoId, albumId)
+```
+
+For collaborative albums:
+
+```
+User
+----
+userId
+
+Album
+-----
+albumId
+ownerUserId
+albumName
+
+AlbumUser
+---------
+albumId
+userId
+role
+
+PK(albumId, userId)
+
+Photo
+-----
+photoId
+ownerUserId
+fileName
+photoURL
+uploadedAt
+
+PhotoAlbum
+----------
+photoId
+albumId
+
+PK(photoId, albumId)
+```
