@@ -4208,3 +4208,779 @@ A strong answer:
 - The MemTable groups rows belonging to the same partition together.
 - Flushing does not reorganize the data; it simply serializes the sorted MemTable into an immutable SSTable.
 - SSTables preserve the organization established by the MemTable.
+
+# Partition Summary vs Partition Index
+
+One of the most common Cassandra interview questions is:
+
+> **What is the difference between the Partition Summary and the Partition Index?**
+
+Both help Cassandra locate a partition efficiently, but they serve different purposes.
+
+---
+
+# Read Path
+
+```
+Client
+
+↓
+
+Bloom Filter
+
+↓
+
+Partition Summary
+
+↓
+
+Partition Index
+
+↓
+
+SSTable Data
+
+↓
+
+Return Rows
+```
+
+Each step narrows the search.
+
+---
+
+# Partition Index
+
+Every SSTable contains a **Partition Index**.
+
+The Partition Index has **one entry for every partition** in that SSTable.
+
+Example:
+
+```
+Partition Index
+
+Match0001  ---> Byte Offset 100
+
+Match0002  ---> Byte Offset 450
+
+Match0003  ---> Byte Offset 820
+
+...
+
+Match0999  ---> Byte Offset 412100
+
+Match1000  ---> Byte Offset 412950
+
+Match1001  ---> Byte Offset 413600
+
+...
+
+Match10000 ---> Byte Offset 4320000
+```
+
+Notice:
+
+Every partition has an index entry.
+
+The index tells Cassandra exactly where the partition begins inside the SSTable.
+
+---
+
+# Why Not Search the Entire Partition Index?
+
+Suppose an SSTable contains:
+
+```
+50 Million Partitions
+```
+
+The Partition Index itself becomes very large.
+
+Searching the entire index for every read would be inefficient.
+
+---
+
+# Partition Summary
+
+The Partition Summary is a **sampled version of the Partition Index**.
+
+Instead of storing every partition, it stores periodic entries.
+
+Example:
+
+```
+Partition Summary
+
+Match0001  ---> Partition Index Offset A
+
+Match1000  ---> Partition Index Offset B
+
+Match2000  ---> Partition Index Offset C
+
+Match3000  ---> Partition Index Offset D
+
+...
+
+Match10000 ---> Partition Index Offset J
+```
+
+Notice:
+
+The Partition Summary **does not point to the SSTable data**.
+
+It points into the **Partition Index**.
+
+Its purpose is to quickly narrow down where to search in the Partition Index.
+
+---
+
+# Read Example
+
+Suppose the application requests:
+
+```
+Match1450
+```
+
+### Step 1
+
+Bloom Filter:
+
+```
+Probably YES
+```
+
+Proceed.
+
+---
+
+### Step 2
+
+Partition Summary
+
+Search:
+
+```
+Match1450
+```
+
+Closest sampled entry:
+
+```
+Match1000
+
+↓
+
+Partition Index Offset B
+```
+
+Now Cassandra knows approximately where to begin searching in the Partition Index.
+
+---
+
+### Step 3
+
+Partition Index
+
+Instead of searching from the beginning:
+
+```
+Match0001
+
+↓
+
+Match0002
+
+↓
+
+Match0003
+
+↓
+
+...
+```
+
+Cassandra begins near:
+
+```
+Match1000
+
+↓
+
+Match1001
+
+↓
+
+Match1002
+
+↓
+
+...
+
+↓
+
+Match1450
+```
+
+Eventually it finds:
+
+```
+Match1450
+
+↓
+
+Byte Offset 598220
+```
+
+---
+
+### Step 4
+
+SSTable Data
+
+Jump directly to:
+
+```
+Byte Offset 598220
+```
+
+Read:
+
+```
+Partition Match1450
+
+10'
+
+22'
+
+45'
+
+67'
+
+90'
+```
+
+Return the rows.
+
+---
+
+# Memory vs Disk
+
+| Component | Stored In | Purpose |
+|-----------|-----------|---------|
+| Bloom Filter | Memory | Skip SSTables that definitely don't contain the partition |
+| Partition Summary | Memory | Quickly locate the relevant region of the Partition Index |
+| Partition Index | Disk (frequently cached) | Find the exact byte offset of the partition in the SSTable |
+| SSTable Data | Disk | Store the actual partition rows |
+
+---
+
+# Why Keep the Summary in Memory?
+
+Suppose:
+
+```
+100 SSTables
+```
+
+Each has:
+
+```
+20 Million Partitions
+```
+
+Loading every Partition Index completely into memory would consume enormous RAM.
+
+Instead Cassandra keeps:
+
+```
+Memory
+
+Bloom Filter
+
+✓
+
+Partition Summary
+
+✓
+```
+
+The much larger Partition Index remains on disk, although frequently accessed portions are often cached by the operating system.
+
+---
+
+# Phone Book Analogy
+
+Imagine searching for "Messi" in a huge phone book.
+
+## Partition Summary
+
+```
+A → Page 1
+
+B → Page 60
+
+C → Page 120
+
+...
+
+M → Page 520
+
+N → Page 610
+```
+
+This tells you where to begin searching.
+
+---
+
+## Partition Index
+
+Starting near page 520:
+
+```
+Martinez
+
+Marshall
+
+Mason
+
+Messi
+
+Meyer
+```
+
+Now you find the exact entry.
+
+---
+
+## SSTable
+
+Finally, you jump to the exact location in the data file and read the partition.
+
+---
+
+# Responsibilities
+
+## Bloom Filter
+
+Answers:
+
+> Should I even open this SSTable?
+
+Responses:
+
+- Probably YES
+- Definitely NO
+
+---
+
+## Partition Summary
+
+Answers:
+
+> Where should I begin searching inside the Partition Index?
+
+---
+
+## Partition Index
+
+Answers:
+
+> What is the exact byte offset of this partition inside the SSTable?
+
+---
+
+## SSTable
+
+Contains the actual partition rows.
+
+---
+
+# Interview Question
+
+**Q: What is the difference between the Partition Summary and the Partition Index?**
+
+A strong answer:
+
+> The Partition Index contains one entry for every partition and maps each partition key to its byte offset within the SSTable. The Partition Summary is a sampled version of the Partition Index that is kept in memory. It allows Cassandra to quickly narrow the search to a small portion of the Partition Index, reducing lookup time and memory usage. The Partition Index then provides the exact byte offset of the partition in the SSTable.
+
+---
+
+# Key Takeaways
+
+- Every SSTable has its own Bloom Filter, Partition Summary, and Partition Index.
+- The Partition Index stores one entry for every partition.
+- The Partition Summary stores periodic samples of the Partition Index.
+- The Partition Summary points into the Partition Index, **not** directly to the SSTable data.
+- The Partition Index points to the exact byte offset of the partition within the SSTable.
+- Bloom Filters and Partition Summaries are memory-resident for fast lookups.
+- Partition Indexes are stored on disk but are frequently cached by the operating system.
+- Cassandra touches the SSTable data only after locating the exact partition offset.
+
+# Cassandra Read Path
+
+```text
+Client
+   │
+   ▼
+Coordinator Node
+   │
+   ▼
+Bloom Filter
+   │
+   ├── Definitely NO → Skip SSTable
+   │
+   └── Probably YES
+           │
+           ▼
+   Partition Summary
+           │
+           ▼
+   Partition Index
+           │
+           ▼
+   Byte Offset in SSTable
+           │
+           ▼
+   SSTable Data
+           │
+           ▼
+Merge Results (if partition exists in multiple SSTables)
+           │
+           ▼
+Return Response
+```
+
+# Cassandra Replication & Consistency
+
+## Why Replication?
+
+Suppose we have a Cassandra cluster:
+
+```
+        Cassandra Cluster
+
+      ┌────────┐
+      │ Node A │
+      └────────┘
+
+      ┌────────┐
+      │ Node B │
+      └────────┘
+
+      ┌────────┐
+      │ Node C │
+      └────────┘
+
+      ┌────────┐
+      │ Node D │
+      └────────┘
+```
+
+Suppose:
+
+```
+Match123
+
+↓
+
+Hash()
+
+↓
+
+Node B
+```
+
+Should Cassandra store the data only on Node B?
+
+No.
+
+If Node B fails, the partition becomes unavailable.
+
+Instead, Cassandra replicates the partition across multiple nodes.
+
+```
+Node A
+
+Match123
+
+----------------
+
+Node B
+
+Match123
+
+----------------
+
+Node C
+
+Match123
+```
+
+This provides:
+
+- High Availability
+- Fault Tolerance
+- Better Read Scalability
+
+---
+
+# Replication Factor (RF)
+
+The **Replication Factor (RF)** specifies how many copies of each partition Cassandra stores.
+
+Example:
+
+```
+RF = 3
+```
+
+means:
+
+```
+Match123
+
+↓
+
+Node A
+
+Node B
+
+Node C
+```
+
+Three copies of the same partition exist.
+
+Example:
+
+```
+RF = 1
+```
+
+```
+Match123
+
+↓
+
+Node B
+```
+
+Only one copy exists.
+
+If Node B fails, the data becomes unavailable.
+
+---
+
+# Trade-offs
+
+Higher Replication Factor provides:
+
+- Better Availability
+- Better Fault Tolerance
+
+But also increases:
+
+- Storage Usage
+- Network Traffic
+- Write Latency
+
+Choosing RF is a trade-off between resilience and cost.
+
+---
+
+# Consistency Levels
+
+Once data is replicated, Cassandra must decide:
+
+> **How many replicas must acknowledge a write before returning success?**
+
+This is controlled by the **Consistency Level**.
+
+---
+
+# Consistency Level = ONE
+
+```
+Client
+
+↓
+
+Coordinator
+
+↓
+
+Node A ✓
+
+↓
+
+Return Success
+```
+
+Characteristics:
+
+- Lowest latency
+- Highest availability
+
+Trade-off:
+
+Other replicas may not yet have the latest data.
+
+---
+
+# Consistency Level = ALL
+
+```
+Client
+
+↓
+
+Coordinator
+
+↓
+
+Node A ✓
+
+Node B ✓
+
+Node C ✓
+
+↓
+
+Return Success
+```
+
+Characteristics:
+
+- Strongest consistency
+
+Trade-offs:
+
+- Highest latency
+- If one replica is unavailable, the write fails
+
+---
+
+# Consistency Level = QUORUM
+
+For:
+
+```
+RF = 3
+```
+
+Quorum is calculated as:
+
+```
+⌊ RF / 2 ⌋ + 1
+
+⌊3/2⌋ + 1
+
+= 2
+```
+
+Therefore Cassandra waits for:
+
+```
+Node A ✓
+
+Node B ✓
+
+↓
+
+Return Success
+```
+
+The third replica can respond later.
+
+---
+
+# Why QUORUM?
+
+QUORUM provides a balance between:
+
+- Consistency
+- Availability
+- Latency
+
+It is one of the most commonly used consistency levels.
+
+---
+
+# Read and Write Quorums
+
+Suppose:
+
+```
+RF = 3
+
+Write Consistency = QUORUM (2)
+
+Read Consistency = QUORUM (2)
+```
+
+Then:
+
+```
+R + W > RF
+
+2 + 2 > 3
+```
+
+Because the read quorum and write quorum overlap by at least one replica, at least one replica participating in the read has acknowledged the latest successful write. This greatly reduces the chance of stale reads.
+
+---
+
+# Consistency Level Comparison
+
+| Consistency Level | Replicas Required | Advantages | Trade-offs |
+|-------------------|-------------------|------------|------------|
+| ONE | 1 | Lowest latency, highest availability | Possible stale reads |
+| QUORUM | Majority of replicas | Good balance of consistency and latency | Slightly higher latency than ONE |
+| ALL | All replicas | Strongest consistency | Highest latency, lowest availability |
+
+---
+
+# Apple Sports Example
+
+Suppose a goal is scored.
+
+Millions of users immediately refresh the score.
+
+Possible choices:
+
+- **ONE** → Fastest, but some users may briefly see stale data.
+- **ALL** → Strong consistency, but slower and vulnerable to replica failures.
+- **QUORUM / LOCAL_QUORUM** → Typically the best balance for live sports applications.
+
+---
+
+# Interview Question
+
+**Q: Why not always use Consistency Level = ALL?**
+
+A strong answer:
+
+> ALL provides the strongest consistency but increases write latency and reduces availability because every replica must respond. If even one replica is unavailable, the write fails. For most production workloads, QUORUM provides a better balance between consistency, latency, and fault tolerance.
+
+---
+
+# Interview Question
+
+**Q: Why choose QUORUM over ONE?**
+
+A strong answer:
+
+> ONE offers the lowest latency but can return stale data because only one replica acknowledges the write. QUORUM requires a majority of replicas to participate, providing much stronger consistency while still maintaining good availability and reasonable latency.
+
+---
+
+# Key Takeaways
+
+- Cassandra replicates partitions across multiple nodes for high availability.
+- Replication Factor (RF) defines how many copies of each partition are stored.
+- Consistency Levels determine how many replicas must acknowledge a read or write.
+- **ONE** favors latency and availability.
+- **ALL** favors consistency but increases latency and reduces availability.
+- **QUORUM** provides a practical balance between consistency, latency, and fault tolerance.
+- Using **Read QUORUM** and **Write QUORUM** with **R + W > RF** ensures that read and write operations overlap on at least one replica, significantly reducing stale reads.
