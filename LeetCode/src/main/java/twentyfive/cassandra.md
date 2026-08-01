@@ -4984,3 +4984,1202 @@ A strong answer:
 - **ALL** favors consistency but increases latency and reduces availability.
 - **QUORUM** provides a practical balance between consistency, latency, and fault tolerance.
 - Using **Read QUORUM** and **Write QUORUM** with **R + W > RF** ensures that read and write operations overlap on at least one replica, significantly reducing stale reads.
+
+# Cassandra Replication & Consistency
+
+## Why Replication?
+
+Suppose we have a Cassandra cluster:
+
+```
+        Cassandra Cluster
+
+      ┌────────┐
+      │ Node A │
+      └────────┘
+
+      ┌────────┐
+      │ Node B │
+      └────────┘
+
+      ┌────────┐
+      │ Node C │
+      └────────┘
+
+      ┌────────┐
+      │ Node D │
+      └────────┘
+```
+
+Suppose:
+
+```
+Match123
+
+↓
+
+Hash()
+
+↓
+
+Node B
+```
+
+Should Cassandra store the data only on Node B?
+
+No.
+
+If Node B fails, the partition becomes unavailable.
+
+Instead, Cassandra replicates the partition across multiple nodes.
+
+```
+Node A
+
+Match123
+
+----------------
+
+Node B
+
+Match123
+
+----------------
+
+Node C
+
+Match123
+```
+
+This provides:
+
+- High Availability
+- Fault Tolerance
+- Better Read Scalability
+
+---
+
+# Replication Factor (RF)
+
+The **Replication Factor (RF)** specifies how many copies of each partition Cassandra stores.
+
+Example:
+
+```
+RF = 3
+```
+
+means:
+
+```
+Match123
+
+↓
+
+Node A
+
+Node B
+
+Node C
+```
+
+Three copies of the same partition exist.
+
+Example:
+
+```
+RF = 1
+```
+
+```
+Match123
+
+↓
+
+Node B
+```
+
+Only one copy exists.
+
+If Node B fails, the data becomes unavailable.
+
+---
+
+# Trade-offs
+
+Higher Replication Factor provides:
+
+- Better Availability
+- Better Fault Tolerance
+
+But also increases:
+
+- Storage Usage
+- Network Traffic
+- Write Latency
+
+Choosing RF is a trade-off between resilience and cost.
+
+---
+
+# Consistency Levels
+
+Once data is replicated, Cassandra must decide:
+
+> **How many replicas must acknowledge a write before returning success?**
+
+This is controlled by the **Consistency Level**.
+
+---
+
+# Consistency Level = ONE
+
+```
+Client
+
+↓
+
+Coordinator
+
+↓
+
+Node A ✓
+
+↓
+
+Return Success
+```
+
+Characteristics:
+
+- Lowest latency
+- Highest availability
+
+Trade-off:
+
+Other replicas may not yet have the latest data.
+
+---
+
+# Consistency Level = ALL
+
+```
+Client
+
+↓
+
+Coordinator
+
+↓
+
+Node A ✓
+
+Node B ✓
+
+Node C ✓
+
+↓
+
+Return Success
+```
+
+Characteristics:
+
+- Strongest consistency
+
+Trade-offs:
+
+- Highest latency
+- If one replica is unavailable, the write fails
+
+---
+
+# Consistency Level = QUORUM
+
+For:
+
+```
+RF = 3
+```
+
+Quorum is calculated as:
+
+```
+⌊ RF / 2 ⌋ + 1
+
+⌊3/2⌋ + 1
+
+= 2
+```
+
+Therefore Cassandra waits for:
+
+```
+Node A ✓
+
+Node B ✓
+
+↓
+
+Return Success
+```
+
+The third replica can respond later.
+
+---
+
+# Why QUORUM?
+
+QUORUM provides a balance between:
+
+- Consistency
+- Availability
+- Latency
+
+It is one of the most commonly used consistency levels.
+
+---
+
+# Read and Write Quorums
+
+Suppose:
+
+```
+RF = 3
+
+Write Consistency = QUORUM (2)
+
+Read Consistency = QUORUM (2)
+```
+
+Then:
+
+```
+R + W > RF
+
+2 + 2 > 3
+```
+
+Because the read quorum and write quorum overlap by at least one replica, at least one replica participating in the read has acknowledged the latest successful write. This greatly reduces the chance of stale reads.
+
+---
+
+# Consistency Level Comparison
+
+| Consistency Level | Replicas Required | Advantages | Trade-offs |
+|-------------------|-------------------|------------|------------|
+| ONE | 1 | Lowest latency, highest availability | Possible stale reads |
+| QUORUM | Majority of replicas | Good balance of consistency and latency | Slightly higher latency than ONE |
+| ALL | All replicas | Strongest consistency | Highest latency, lowest availability |
+
+---
+
+# Apple Sports Example
+
+Suppose a goal is scored.
+
+Millions of users immediately refresh the score.
+
+Possible choices:
+
+- **ONE** → Fastest, but some users may briefly see stale data.
+- **ALL** → Strong consistency, but slower and vulnerable to replica failures.
+- **QUORUM / LOCAL_QUORUM** → Typically the best balance for live sports applications.
+
+---
+
+# Interview Question
+
+**Q: Why not always use Consistency Level = ALL?**
+
+A strong answer:
+
+> ALL provides the strongest consistency but increases write latency and reduces availability because every replica must respond. If even one replica is unavailable, the write fails. For most production workloads, QUORUM provides a better balance between consistency, latency, and fault tolerance.
+
+---
+
+# Interview Question
+
+**Q: Why choose QUORUM over ONE?**
+
+A strong answer:
+
+> ONE offers the lowest latency but can return stale data because only one replica acknowledges the write. QUORUM requires a majority of replicas to participate, providing much stronger consistency while still maintaining good availability and reasonable latency.
+
+---
+
+# Key Takeaways
+
+- Cassandra replicates partitions across multiple nodes for high availability.
+- Replication Factor (RF) defines how many copies of each partition are stored.
+- Consistency Levels determine how many replicas must acknowledge a read or write.
+- **ONE** favors latency and availability.
+- **ALL** favors consistency but increases latency and reduces availability.
+- **QUORUM** provides a practical balance between consistency, latency, and fault tolerance.
+- Using **Read QUORUM** and **Write QUORUM** with **R + W > RF** ensures that read and write operations overlap on at least one replica, significantly reducing stale reads.
+
+# Cassandra Replication & Consistency - Q&A
+
+## What is Replication Factor (RF)?
+
+Replication Factor (RF) defines **how many copies of each partition Cassandra stores**.
+
+Example:
+
+```
+RF = 3
+```
+
+Suppose:
+
+```
+Match123
+```
+
+Cassandra stores it on three replica nodes.
+
+```
+Node A
+
+Match123
+
+----------------
+
+Node B
+
+Match123
+
+----------------
+
+Node C
+
+Match123
+```
+
+Every partition has three copies.
+
+---
+
+## Is RF the same as the number of nodes?
+
+No.
+
+These are completely different concepts.
+
+Example:
+
+```
+Cluster Size = 10 Nodes
+
+RF = 3
+```
+
+The cluster has ten nodes, but every partition is stored on only three of them.
+
+Example:
+
+```
+Match123
+
+↓
+
+Node3
+
+Node4
+
+Node5
+```
+
+Another partition:
+
+```
+Match456
+
+↓
+
+Node8
+
+Node9
+
+Node10
+```
+
+Another partition:
+
+```
+Match789
+
+↓
+
+Node10
+
+Node1
+
+Node2
+```
+
+Different partitions are distributed across different nodes.
+
+---
+
+## Rule
+
+```
+Cluster Size
+
+↓
+
+How many Cassandra nodes exist.
+```
+
+```
+Replication Factor
+
+↓
+
+How many copies of EACH partition exist.
+```
+
+---
+
+## Who Configures RF?
+
+RF is configured when the Keyspace is created.
+
+Example:
+
+```sql
+CREATE KEYSPACE sports
+WITH replication = {
+'class':'NetworkTopologyStrategy',
+'DC1':3
+};
+```
+
+Normally the DBA or infrastructure team configures this.
+
+Applications usually do not change RF.
+
+---
+
+# What is QUORUM?
+
+QUORUM is a **Consistency Level**.
+
+It is **not manually configured as a number**.
+
+Cassandra calculates it using:
+
+```
+QUORUM = floor(RF / 2) + 1
+```
+
+Examples:
+
+| RF | QUORUM |
+|----|---------|
+| 1 | 1 |
+| 2 | 2 |
+| 3 | 2 |
+| 4 | 3 |
+| 5 | 3 |
+| 6 | 4 |
+
+Example:
+
+```
+RF = 5
+
+↓
+
+QUORUM
+
+↓
+
+floor(5/2)+1
+
+↓
+
+3
+```
+
+Applications specify:
+
+```java
+ConsistencyLevel.QUORUM
+```
+
+Cassandra converts that into the required number of replicas.
+
+---
+
+# What are R and W?
+
+R and W are **not Cassandra configuration parameters.**
+
+They simply represent the consistency level used for:
+
+```
+R
+
+↓
+
+Read Operations
+```
+
+```
+W
+
+↓
+
+Write Operations
+```
+
+Examples:
+
+```
+Write
+
+↓
+
+ConsistencyLevel.ONE
+
+↓
+
+W = 1
+```
+
+```
+Read
+
+↓
+
+ConsistencyLevel.QUORUM
+
+↓
+
+R = 2
+```
+
+---
+
+# Why are R and W Separate?
+
+Because reads and writes often have different business requirements.
+
+Example:
+
+```
+POST /goal
+```
+
+A write operation.
+
+Only **Write Consistency** matters.
+
+Example:
+
+```
+W = QUORUM
+```
+
+---
+
+```
+GET /liveScore
+```
+
+A read operation.
+
+Only **Read Consistency** matters.
+
+Example:
+
+```
+R = ONE
+```
+
+The same application may choose different consistency levels for different APIs.
+
+---
+
+# Does a POST use both R and W?
+
+No.
+
+Example:
+
+```
+POST /goal
+
+↓
+
+Write
+
+↓
+
+W = QUORUM
+```
+
+Only Write Consistency is used.
+
+---
+
+```
+GET /score
+
+↓
+
+Read
+
+↓
+
+R = ONE
+```
+
+Only Read Consistency is used.
+
+---
+
+# What does ConsistencyLevel.QUORUM actually mean?
+
+Suppose:
+
+```
+RF = 3
+```
+
+Application executes:
+
+```java
+statement.setConsistencyLevel(ConsistencyLevel.QUORUM);
+```
+
+Cassandra computes:
+
+```
+QUORUM = floor(3/2)+1
+
+↓
+
+2
+```
+
+Coordinator waits for two replicas.
+
+For a write:
+
+```
+Coordinator
+
+↓
+
+Node A ✓
+
+Node B ✓
+
+↓
+
+Return Success
+```
+
+For a read:
+
+```
+Coordinator
+
+↓
+
+Read Node A
+
+Read Node B
+
+↓
+
+Return Result
+```
+
+The same consistency level applies differently depending on whether the operation is a read or write.
+
+---
+
+# What is R + W > RF?
+
+This is **not a Cassandra configuration.**
+
+It is a design rule.
+
+Suppose:
+
+```
+RF = 3
+
+Write = QUORUM
+
+Read = QUORUM
+```
+
+Then
+
+```
+W = 2
+
+R = 2
+```
+
+Therefore
+
+```
+R + W > RF
+
+2 + 2 > 3
+```
+
+The read quorum and write quorum overlap on at least one replica.
+
+This greatly reduces the chance of stale reads.
+
+---
+
+Suppose instead:
+
+```
+Write = QUORUM
+
+↓
+
+2
+
+Read = ONE
+
+↓
+
+1
+```
+
+Now:
+
+```
+R + W = 3
+
+NOT > RF
+```
+
+No overlap is guaranteed.
+
+A stale read becomes possible.
+
+---
+
+# Can any node be the Coordinator?
+
+Yes.
+
+Every Cassandra node is equal.
+
+Whichever node receives the client request becomes the Coordinator.
+
+Example:
+
+```
+Application
+
+↓
+
+Node7
+
+↓
+
+Coordinator
+```
+
+Tomorrow:
+
+```
+Application
+
+↓
+
+Node2
+
+↓
+
+Coordinator
+```
+
+There is no master node.
+
+Cassandra uses a peer-to-peer architecture.
+
+---
+
+# Responsibilities
+
+| Component | Responsibility |
+|------------|----------------|
+| Replication Factor (RF) | Number of copies of each partition |
+| Consistency Level | Number of replicas participating in a read or write |
+| QUORUM | Majority of replicas (calculated from RF) |
+| Coordinator | Node that receives the client request and coordinates the operation |
+
+# Cassandra Consistency Levels in Production
+
+## Who Configures Read and Write Consistency?
+
+The application configures the consistency level.
+
+Typically this is done through the Cassandra Java Driver.
+
+Example:
+
+```java
+statement.setConsistencyLevel(DefaultConsistencyLevel.QUORUM);
+```
+
+Consistency Level is configured **per operation (per query)**.
+
+It is **not** a cluster-wide setting.
+
+---
+
+# Is There a Default?
+
+Yes.
+
+Most applications configure a default consistency level.
+
+Example (Driver Configuration):
+
+```yaml
+datastax-java-driver:
+  basic:
+    request:
+      consistency: LOCAL_QUORUM
+```
+
+Now every query automatically uses:
+
+```
+LOCAL_QUORUM
+```
+
+unless overridden.
+
+---
+
+# Default Behavior
+
+Suppose the application has:
+
+```
+Default Consistency = LOCAL_QUORUM
+```
+
+Then
+
+```
+POST /goal
+
+↓
+
+LOCAL_QUORUM
+```
+
+```
+GET /score
+
+↓
+
+LOCAL_QUORUM
+```
+
+No extra code is required.
+
+---
+
+# Overriding a Write
+
+Suppose analytics events are less critical.
+
+Default:
+
+```
+LOCAL_QUORUM
+```
+
+Only this write overrides the consistency level.
+
+```java
+SimpleStatement stmt =
+    SimpleStatement.builder(
+        "INSERT INTO analytics (...) VALUES (...)")
+        .setConsistencyLevel(DefaultConsistencyLevel.ONE)
+        .build();
+
+session.execute(stmt);
+```
+
+Result:
+
+```
+Analytics Write
+
+↓
+
+Consistency = ONE
+```
+
+Everything else continues using the default.
+
+---
+
+# Overriding a Read
+
+Suppose live score latency is critical.
+
+```java
+SimpleStatement stmt =
+    SimpleStatement.builder(
+        "SELECT * FROM scores WHERE match_id=?")
+        .addPositionalValue(matchId)
+        .setConsistencyLevel(DefaultConsistencyLevel.ONE)
+        .build();
+
+session.execute(stmt);
+```
+
+Now only this API becomes:
+
+```
+GET /liveScore
+
+↓
+
+Consistency = ONE
+```
+
+Other APIs continue using the default.
+
+---
+
+# Another Read Example
+
+Official match result.
+
+```java
+SimpleStatement stmt =
+    SimpleStatement.builder(
+        "SELECT * FROM scores WHERE match_id=?")
+        .addPositionalValue(matchId)
+        .setConsistencyLevel(DefaultConsistencyLevel.QUORUM)
+        .build();
+
+session.execute(stmt);
+```
+
+Now:
+
+```
+GET /officialScore
+
+↓
+
+Consistency = QUORUM
+```
+
+---
+
+# Production Example
+
+Suppose:
+
+```
+Default Consistency
+
+↓
+
+LOCAL_QUORUM
+```
+
+Application:
+
+```
+POST /goal
+
+↓
+
+LOCAL_QUORUM
+
+(Default)
+```
+
+```
+GET /match
+
+↓
+
+LOCAL_QUORUM
+
+(Default)
+```
+
+```
+POST /analytics
+
+↓
+
+ONE
+
+(Override)
+```
+
+```
+GET /liveScore
+
+↓
+
+ONE
+
+(Override)
+```
+
+```
+GET /officialScore
+
+↓
+
+QUORUM
+
+(Override)
+```
+
+---
+
+# Why Override?
+
+Different APIs have different business requirements.
+
+Example:
+
+| API | Consistency | Reason |
+|------|------------|--------|
+| POST /goal | QUORUM or LOCAL_QUORUM | Important write |
+| GET /liveScore | ONE | Lowest latency |
+| GET /officialScore | QUORUM | Strong consistency |
+| POST /analytics | ONE | Throughput more important than consistency |
+
+---
+
+# Important Clarification
+
+A request uses **only one consistency level**.
+
+Example:
+
+```
+POST /goal
+
+↓
+
+Write
+
+↓
+
+Write Consistency Only
+```
+
+There is no read consistency involved.
+
+---
+
+Similarly:
+
+```
+GET /score
+
+↓
+
+Read
+
+↓
+
+Read Consistency Only
+```
+
+There is no write consistency involved.
+
+---
+
+# Then Why Do We Talk About R + W > RF?
+
+Because architects choose consistency levels for both operations.
+
+Example:
+
+```
+POST /goal
+
+↓
+
+QUORUM
+
+(W = 2)
+```
+
+```
+GET /officialScore
+
+↓
+
+QUORUM
+
+(R = 2)
+```
+
+Now
+
+```
+R + W > RF
+
+2 + 2 > 3
+```
+
+The read quorum overlaps the write quorum, greatly reducing the chance of stale reads.
+
+Notice:
+
+These are **two separate API calls**, not one request.
+
+---
+
+# Responsibilities
+
+| Who? | Responsibility |
+|------|----------------|
+| DBA / Infrastructure | Configure Replication Factor (RF) |
+| Cassandra | Calculates QUORUM using `floor(RF/2)+1` |
+| Application | Chooses consistency level (ONE, QUORUM, ALL, etc.) for each query |
+| Coordinator | Waits for the required number of replicas before returning the response |
+
+---
+
+# Interview Answer
+
+**Q: How is consistency level configured in production?**
+
+A strong answer:
+
+> Replication Factor is configured at the keyspace level by the infrastructure team. The application typically configures a default consistency level through the Cassandra driver (for example, LOCAL_QUORUM). Most queries use that default, while specific APIs override it when they have different consistency or latency requirements. Each read or write request carries its own consistency level, and the coordinator calculates the required number of replicas based on the configured Replication Factor.
+
+---
+
+# Key Takeaways
+
+- Replication Factor (RF) is configured once for the keyspace.
+- QUORUM is calculated as `floor(RF/2)+1`.
+- Applications choose the consistency level for each query.
+- Most applications configure a default consistency level.
+- Individual queries can override the default.
+- POST requests use only **Write Consistency**.
+- GET requests use only **Read Consistency**.
+- `R + W > RF` is a design principle that ensures read and write quorums overlap, reducing stale reads.
