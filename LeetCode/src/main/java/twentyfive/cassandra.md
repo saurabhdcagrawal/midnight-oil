@@ -6183,3 +6183,930 @@ A strong answer:
 - POST requests use only **Write Consistency**.
 - GET requests use only **Read Consistency**.
 - `R + W > RF` is a design principle that ensures read and write quorums overlap, reducing stale reads.
+
+# What Happens if One Replica Has Stale Data?
+
+Suppose:
+
+```
+RF = 3
+
+Read Consistency = QUORUM
+```
+
+Replica state:
+
+```
+Node A
+
+Score = 2
+
+Timestamp = 10:15:32
+
+--------------------
+
+Node B
+
+Score = 2
+
+Timestamp = 10:15:32
+
+--------------------
+
+Node C
+
+Score = 1
+
+Timestamp = 10:15:20   ← Stale
+```
+
+---
+
+## Coordinator Sends Read Requests
+
+```
+Coordinator
+
+↓
+
+Node A
+
+Node B
+
+Node C
+```
+
+For QUORUM, Cassandra needs responses from **2 replicas**.
+
+---
+
+## Scenario 1
+
+Suppose Node A and Node B respond first.
+
+```
+Node A
+
+Score = 2
+
+✓
+
+----------------
+
+Node B
+
+Score = 2
+
+✓
+```
+
+The coordinator immediately returns:
+
+```
+Score = 2
+```
+
+Node C being stale does not affect the response.
+
+---
+
+## Scenario 2
+
+Suppose Node A and Node C respond first.
+
+```
+Node A
+
+Score = 2
+
+Timestamp = 10:15:32
+
+----------------
+
+Node C
+
+Score = 1
+
+Timestamp = 10:15:20
+```
+
+The coordinator compares the timestamps.
+
+```
+10:15:32
+
+>
+
+10:15:20
+```
+
+Node A contains the latest version.
+
+The coordinator returns:
+
+```
+Score = 2
+```
+
+to the client.
+
+---
+
+## How Does Cassandra Know Which Value Is Correct?
+
+Every write in Cassandra carries a **write timestamp**.
+
+During a read, if replicas return different versions of the same data, the coordinator compares the timestamps and selects the latest version.
+
+This is known as **Last Write Wins**.
+
+---
+
+## What Happens to the Stale Replica?
+
+If Cassandra detects that a replica is stale, it may perform a **Read Repair**, updating the stale replica with the latest value in the background.
+
+Example:
+
+Before Read Repair:
+
+```
+Node A
+
+Score = 2
+
+----------------
+
+Node C
+
+Score = 1
+```
+
+After Read Repair:
+
+```
+Node A
+
+Score = 2
+
+----------------
+
+Node C
+
+Score = 2
+```
+
+Future reads become consistent.
+
+---
+
+# Why QUORUM Helps
+
+Suppose:
+
+```
+RF = 3
+
+Write Consistency = QUORUM
+
+Read Consistency = QUORUM
+```
+
+The write succeeds on:
+
+```
+Node A ✓
+
+Node B ✓
+
+Node C ✗
+```
+
+Later a read uses QUORUM.
+
+Possible read combinations:
+
+```
+A + B
+
+A + C
+
+B + C
+```
+
+Every possible read overlaps with at least one replica that acknowledged the latest write.
+
+This is why:
+
+```
+R + W > RF
+```
+
+provides strong consistency.
+
+---
+
+# Interview Question
+
+**Q: What happens if one replica returns stale data during a QUORUM read?**
+
+A strong answer:
+
+> The coordinator compares the versions returned by the replicas using write timestamps. It returns the latest version to the client (Last Write Wins). If it detects that another replica is stale, Cassandra may perform a Read Repair to synchronize the stale replica in the background.
+
+# Cassandra Replica Synchronization
+
+Cassandra uses three mechanisms to keep replicas synchronized.
+
+| Mechanism | Trigger | Purpose |
+|-----------|---------|---------|
+| **Hinted Handoff** | Replica is down during a write | Replay missed writes when the replica comes back |
+| **Read Repair** | Replica is stale during a read | Return the latest value and repair stale replicas |
+| **Anti-Entropy Repair** | Scheduled background process | Compare replicas and repair inconsistencies even if no reads occur |
+
+---
+
+# 1. Hinted Handoff
+
+## Problem
+
+Suppose:
+
+```
+RF = 3
+
+Write = QUORUM
+```
+
+Replicas:
+
+```
+Node A
+
+Node B
+
+Node C
+```
+
+Node C crashes.
+
+```
+Node C
+
+↓
+
+DOWN
+```
+
+A client sends:
+
+```
+POST /goal
+```
+
+The coordinator writes to:
+
+```
+Node A ✓
+
+Node B ✓
+
+Node C ✗
+```
+
+Since QUORUM is satisfied:
+
+```
+W = 2
+```
+
+the write succeeds.
+
+The client immediately receives:
+
+```
+200 OK
+```
+
+---
+
+## What About Node C?
+
+Node C missed the write.
+
+Current state:
+
+```
+Node A
+
+Goal = 2
+
+----------------
+
+Node B
+
+Goal = 2
+
+----------------
+
+Node C
+
+Goal = 1
+```
+
+Instead of failing the write, the coordinator stores a **Hint**.
+
+Think of it as:
+
+```
+Hint
+
+↓
+
+"Node C missed:
+
+Goal = 2"
+```
+
+Later, when Node C comes back online:
+
+```
+Coordinator
+
+↓
+
+Replay Hint
+
+↓
+
+Node C
+
+Goal = 2
+```
+
+Now all replicas are synchronized again.
+
+---
+
+## Timeline
+
+```
+Replica Down
+
+↓
+
+Write Arrives
+
+↓
+
+Coordinator Writes Available Replicas
+
+↓
+
+Store Hint
+
+↓
+
+Client Gets Success
+
+↓
+
+Replica Recovers
+
+↓
+
+Replay Hint
+
+↓
+
+Replica Updated
+```
+
+---
+
+# Interview Question
+
+**Q: What happens if one replica is unavailable during a write?**
+
+A strong answer:
+
+> If the requested consistency level can still be satisfied (for example, QUORUM with RF=3), the coordinator writes to the available replicas, returns success to the client, and stores a Hint for the unavailable replica. When that replica comes back online, the coordinator replays the missed writes using Hinted Handoff.
+
+---
+
+# 2. Read Repair
+
+Suppose:
+
+```
+RF = 3
+
+Read = QUORUM
+```
+
+Replica state:
+
+```
+Node A
+
+Score = 2
+
+Timestamp = 10:15:32
+
+--------------------
+
+Node B
+
+Score = 2
+
+Timestamp = 10:15:32
+
+--------------------
+
+Node C
+
+Score = 1
+
+Timestamp = 10:15:20   ← Stale
+```
+
+---
+
+## Coordinator Sends Read Requests
+
+```
+Coordinator
+
+↓
+
+Node A
+
+Node B
+
+Node C
+```
+
+Suppose Node A and Node C respond first.
+
+```
+Node A
+
+Score = 2
+
+Timestamp = 10:15:32
+
+----------------
+
+Node C
+
+Score = 1
+
+Timestamp = 10:15:20
+```
+
+The coordinator compares timestamps.
+
+```
+10:15:32
+
+>
+
+10:15:20
+```
+
+The latest version is returned to the client.
+
+```
+Score = 2
+```
+
+---
+
+## How Does Cassandra Know Which Version Is Latest?
+
+Every write carries a **write timestamp**.
+
+If replicas return different versions, Cassandra uses **Last Write Wins**.
+
+The version with the newest timestamp is returned.
+
+---
+
+## What Happens to the Stale Replica?
+
+Cassandra may initiate a **Read Repair**.
+
+```
+Before
+
+Node C
+
+Score = 1
+
+↓
+
+Read Repair
+
+↓
+
+After
+
+Node C
+
+Score = 2
+```
+
+The repair occurs after the latest value has been determined.
+
+The goal is to synchronize replicas for future reads.
+
+---
+
+## Critical Path
+
+The client should not wait for replica repair.
+
+Critical path:
+
+```
+Client
+
+↓
+
+Coordinator
+
+↓
+
+Read Replicas
+
+↓
+
+Choose Latest Version
+
+↓
+
+Return Response
+```
+
+After the response:
+
+```
+Repair Stale Replica
+
+↓
+
+Background
+```
+
+Keeping repair outside the critical path minimizes read latency.
+
+---
+
+# Interview Question
+
+**Q: What happens if one replica returns stale data during a QUORUM read?**
+
+A strong answer:
+
+> The coordinator compares the versions returned by the replicas using write timestamps. It returns the latest version to the client (Last Write Wins). If another replica is stale, Cassandra may initiate a Read Repair to synchronize that replica without delaying the client response.
+
+---
+
+# 3. Anti-Entropy Repair
+
+## Problem
+
+Suppose:
+
+```
+Node A
+
+Score = 2
+
+----------------
+
+Node B
+
+Score = 2
+
+----------------
+
+Node C
+
+Score = 1
+```
+
+Nobody reads this partition.
+
+Read Repair never occurs.
+
+Node C remains stale forever.
+
+---
+
+## Solution
+
+Cassandra periodically runs **Anti-Entropy Repair**.
+
+Its job is to compare replicas and synchronize differences.
+
+---
+
+# Does Cassandra Compare Entire Nodes?
+
+No.
+
+Different nodes store different partitions.
+
+Only replicas responsible for the **same token range** are compared.
+
+---
+
+## Example
+
+Cluster:
+
+```
+10 Nodes
+
+RF = 3
+```
+
+Suppose token range:
+
+```
+250 - 500
+```
+
+is replicated on:
+
+```
+Node2
+
+Node3
+
+Node4
+```
+
+These three replicas should contain identical data for that token range.
+
+Node8 is not involved because it stores different token ranges.
+
+---
+
+## Token Range
+
+A token range contains many partitions.
+
+Example:
+
+```
+Token Range
+
+250 - 500
+
+↓
+
+Match123
+
+Match124
+
+Match125
+
+...
+
+Match80000
+```
+
+Notice:
+
+- Larger than a partition
+- Smaller than an entire node
+
+This is the unit Cassandra compares.
+
+---
+
+# Merkle Trees
+
+Each replica builds a Merkle Tree for its token range.
+
+```
+Node2
+
+Token Range 250-500
+
+↓
+
+Merkle Tree
+```
+
+```
+Node3
+
+Token Range 250-500
+
+↓
+
+Merkle Tree
+```
+
+If root hashes match:
+
+```
+ABCD123
+
+=
+
+ABCD123
+```
+
+No repair is required.
+
+---
+
+If hashes differ:
+
+```
+ABCD123
+
+≠
+
+XYZ789
+```
+
+Cassandra recursively compares the Merkle Tree branches until it identifies the specific partitions that differ.
+
+Only those partitions are synchronized.
+
+---
+
+# Why Merkle Trees?
+
+Without Merkle Trees:
+
+```
+Compare
+
+Millions of Partitions
+```
+
+With Merkle Trees:
+
+```
+Compare
+
+One Root Hash
+
+↓
+
+Equal?
+
+Done.
+
+↓
+
+Different?
+
+Compare Child Hashes
+
+↓
+
+Eventually Find Only the Differing Partitions
+```
+
+This makes Anti-Entropy Repair efficient.
+
+---
+
+# Timeline
+
+```
+Replica Becomes Stale
+
+↓
+
+No Reads Occur
+
+↓
+
+Read Repair Never Runs
+
+↓
+
+Scheduled Anti-Entropy Repair
+
+↓
+
+Build Merkle Trees
+
+↓
+
+Compare Token Ranges
+
+↓
+
+Identify Differences
+
+↓
+
+Synchronize Replicas
+```
+
+---
+
+# Comparison
+
+| Mechanism | Trigger | Repairs |
+|-----------|---------|----------|
+| Hinted Handoff | Replica unavailable during write | Missed writes |
+| Read Repair | Replica stale during read | Replica participating in the read |
+| Anti-Entropy Repair | Scheduled maintenance | Any inconsistent replica, even if never read |
+
+---
+
+# Important Distinction
+
+Hinted Handoff:
+
+```
+Replica Missed A Write
+
+↓
+
+Replay Missed Writes
+```
+
+Read Repair:
+
+```
+Replica Returned Stale Data
+
+↓
+
+Repair During/After Read
+```
+
+Anti-Entropy Repair:
+
+```
+Replica Drifted Over Time
+
+↓
+
+Background Comparison
+
+↓
+
+Synchronize Replicas
+```
+
+---
+
+# Mental Model
+
+```
+Cluster
+    │
+    ▼
+Node
+    │
+    ▼
+Replicated Token Range   ← Anti-Entropy compares here
+    │
+    ▼
+Partitions
+    │
+    ▼
+Rows
+```
+
+A **replicated token range** is:
+
+- Smaller than an entire node's data
+- Larger than a single partition
+- Expected to be identical across all replicas for that range
+
+This is the unit Cassandra compares using Merkle Trees.
+
+---
+
+# Interview Question
+
+**Q: Do Merkle Trees compare entire Cassandra nodes?**
+
+A strong answer:
+
+> No. Cassandra builds Merkle Trees for replicated token ranges, not entire nodes. Only replicas responsible for the same token range compare their Merkle Trees. If the hashes differ, Cassandra recursively narrows the comparison to identify and synchronize only the partitions that are inconsistent.
+
+---
+
+# Key Takeaways
+
+- Hinted Handoff repairs replicas that were unavailable during writes.
+- Read Repair fixes stale replicas detected during reads.
+- Anti-Entropy Repair repairs replicas even if the data is never read.
+- Cassandra compares **replicated token ranges**, not entire nodes.
+- A replicated token range is larger than a partition but smaller than an entire node's data.
+- Merkle Trees allow Cassandra to efficiently detect differences without comparing every partition.
+- Only partitions that actually differ are synchronized.
