@@ -10686,3 +10686,4735 @@ Message Removed
 ### Q: What is the biggest difference between Kafka and RabbitMQ?
 
 > Kafka is a distributed append-only log where messages are retained independently of consumption and consumers track their progress using offsets. RabbitMQ is a message queue where messages are typically removed after they are successfully acknowledged by a consumer. Kafka is optimized for event streaming and replay, while RabbitMQ is optimized for reliable work distribution and task processing.
+
+# Kafka Consumer Groups
+
+A **Consumer Group** is a logical application composed of one or more consumer instances that cooperate to consume messages from a Kafka topic.
+
+Example:
+
+```
+Consumer Group
+
+Live Score Service
+```
+
+A consumer group may have multiple instances.
+
+```
+Live Score Instance 1
+
+Live Score Instance 2
+
+Live Score Instance 3
+```
+
+---
+
+# Fan-Out Across Consumer Groups
+
+Suppose we have one topic:
+
+```
+match-events
+```
+
+Three consumer groups subscribe to it.
+
+```
+Live Score Group
+
+Notification Group
+
+Analytics Group
+```
+
+When a Goal Event is published:
+
+```
+Goal Event
+       │
+       ├────────► Live Score Group
+       │
+       ├────────► Notification Group
+       │
+       └────────► Analytics Group
+```
+
+Every consumer group receives the event independently.
+
+Each group:
+
+- Maintains its own offsets
+- Processes messages at its own speed
+- Implements its own business logic
+- Can scale independently
+
+This enables **fan-out**.
+
+---
+
+# Consumer Groups Enable Independent Services
+
+Example:
+
+```
+match-events Topic
+
+↓
+
+Live Score Service
+
+↓
+
+Update Redis
+
+-------------------------
+
+match-events Topic
+
+↓
+
+Notification Service
+
+↓
+
+Send Push Notification
+
+-------------------------
+
+match-events Topic
+
+↓
+
+Analytics Service
+
+↓
+
+Update Metrics
+```
+
+The same Kafka event is processed independently by multiple services.
+
+---
+
+# Inside a Consumer Group
+
+Suppose the topic has:
+
+```
+Partition 0
+
+Partition 1
+
+Partition 2
+```
+
+The Live Score Consumer Group has three instances.
+
+```
+Instance 1
+
+Instance 2
+
+Instance 3
+```
+
+Kafka assigns partitions as follows:
+
+```
+Partition 0
+
+↓
+
+Instance 1
+
+----------------
+
+Partition 1
+
+↓
+
+Instance 2
+
+----------------
+
+Partition 2
+
+↓
+
+Instance 3
+```
+
+Each partition is consumed by exactly one consumer within the group.
+
+---
+
+# Golden Rule
+
+> **Within a Consumer Group, one partition is assigned to exactly one consumer instance.**
+
+This prevents duplicate processing.
+
+Across different consumer groups, the same event can be processed independently.
+
+---
+
+# Why Not Let Every Consumer Process Every Message?
+
+If every instance processed the same Goal Event:
+
+```
+Goal Event
+
+↓
+
+Instance 1
+
+↓
+
+Update Redis
+
+------------------
+
+Goal Event
+
+↓
+
+Instance 2
+
+↓
+
+Update Redis
+
+------------------
+
+Goal Event
+
+↓
+
+Instance 3
+
+↓
+
+Update Redis
+```
+
+The same event would be processed multiple times.
+
+Consumer Groups prevent this duplication.
+
+---
+
+# More Consumers Than Partitions
+
+Example:
+
+Topic:
+
+```
+Partition 0
+
+Partition 1
+
+Partition 2
+```
+
+Consumer Group:
+
+```
+Instance 1
+
+Instance 2
+
+Instance 3
+
+Instance 4
+
+Instance 5
+```
+
+Assignment:
+
+```
+Partition 0 → Instance 1
+
+Partition 1 → Instance 2
+
+Partition 2 → Instance 3
+
+Instance 4 → Idle
+
+Instance 5 → Idle
+```
+
+The extra consumers remain idle.
+
+---
+
+# Why?
+
+Kafka's rule:
+
+> **One partition can be assigned to only one consumer within a consumer group.**
+
+If there are more consumers than partitions, the additional consumers have no partitions to consume.
+
+---
+
+# Consumer Failure
+
+Current assignment:
+
+```
+Partition 0 → Instance 1
+
+Partition 1 → Instance 2
+
+Partition 2 → Instance 3
+```
+
+Suppose Instance 2 crashes.
+
+Kafka performs a **rebalance**.
+
+New assignment:
+
+```
+Partition 0 → Instance 1
+
+Partition 1 → Instance 4
+
+Partition 2 → Instance 3
+```
+
+The previously idle consumer immediately begins processing Partition 1.
+
+---
+
+# Scaling Rule
+
+Within a Consumer Group:
+
+```
+Maximum Active Consumers
+
+=
+
+Number of Partitions
+```
+
+Example:
+
+```
+128 Partitions
+
+↓
+
+Up to 128 Active Consumers
+```
+
+Additional consumers remain idle until partitions become available.
+
+---
+
+# Apple Sports Example
+
+```
+                 match-events Topic
+
+        Partition0  Partition1  Partition2
+
+              │          │           │
+              ▼          ▼           ▼
+
+      Consumer Group: Live Score
+
+        Inst1      Inst2      Inst3
+
+--------------------------------------------
+
+      Consumer Group: Analytics
+
+        Inst1      Inst2      Inst3
+
+--------------------------------------------
+
+    Consumer Group: Notifications
+
+        Inst1      Inst2      Inst3
+```
+
+Each consumer group independently consumes all events.
+
+Within each group, every partition is assigned to only one consumer instance.
+
+---
+
+# Interview Questions
+
+### Q: What is a Consumer Group?
+
+> A Consumer Group is a logical application consisting of one or more consumer instances that cooperate to consume messages from a topic. Each consumer group maintains its own offsets, allowing multiple applications to independently consume the same events.
+
+---
+
+### Q: Can multiple Consumer Groups read the same topic?
+
+> Yes. Every consumer group independently consumes the topic and maintains its own offsets.
+
+---
+
+### Q: Can multiple consumers in the same Consumer Group consume the same partition?
+
+> No. Within a consumer group, each partition is assigned to exactly one consumer instance to avoid duplicate processing.
+
+---
+
+### Q: What happens if there are more consumers than partitions?
+
+> The extra consumers remain idle because Kafka assigns each partition to only one consumer within the consumer group.
+
+---
+
+### Q: What happens if a consumer crashes?
+
+> Kafka detects the failure and performs a rebalance, assigning the failed consumer's partitions to other active (or previously idle) consumers in the same consumer group.
+
+---
+
+# Key Takeaways
+
+- Consumer Groups enable **fan-out** across different services.
+- Each consumer group maintains its own offsets.
+- Within a consumer group, each partition is assigned to exactly one consumer.
+- Maximum parallelism within a consumer group equals the number of partitions.
+- Extra consumers remain idle until partitions become available.
+- Consumer Groups provide both scalability and fault tolerance through partition reassignment.
+
+# Kafka Rebalancing
+
+A **rebalance** occurs when Kafka redistributes partitions among consumers within the same consumer group.
+
+Common triggers:
+
+- A consumer crashes
+- A new consumer joins the group
+- A consumer leaves the group
+- The number of partitions changes
+
+---
+
+# Example
+
+Current assignment:
+
+```
+Partition 0 → Instance 1
+
+Partition 1 → Instance 2
+
+Partition 2 → Instance 3
+```
+
+Suppose Instance 2 crashes.
+
+Kafka performs a rebalance.
+
+New assignment:
+
+```
+Partition 0 → Instance 1
+
+Partition 1 → Instance 3
+
+Partition 2 → Instance 1
+```
+
+(or to another available/idle consumer)
+
+---
+
+# How Does Kafka Detect a Failed Consumer?
+
+Consumers periodically send **heartbeats**.
+
+```
+Consumer
+
+↓
+
+Heartbeat
+
+"I'm alive"
+
+↓
+
+Group Coordinator
+```
+
+If Kafka stops receiving heartbeats for longer than the configured session timeout, it considers the consumer dead.
+
+---
+
+# session.timeout.ms
+
+Purpose:
+
+> **Detect whether a consumer is alive.**
+
+Example:
+
+```
+Heartbeat
+
+Heartbeat
+
+Heartbeat
+
+...
+
+No Heartbeats
+
+↓
+
+session.timeout.ms Expires
+
+↓
+
+Consumer Declared Dead
+
+↓
+
+Rebalance
+```
+
+---
+
+# Group Coordinator
+
+Each Consumer Group has one broker acting as the **Group Coordinator**.
+
+Responsibilities:
+
+- Track consumer membership
+- Receive heartbeats
+- Detect failed consumers
+- Trigger rebalances
+- Store committed offsets
+
+---
+
+# Why Are Rebalances Expensive?
+
+During a rebalance:
+
+```
+Consumers
+
+↓
+
+Pause Consumption
+
+↓
+
+Partitions Reassigned
+
+↓
+
+Resume Consumption
+```
+
+Message processing temporarily pauses.
+
+Frequent rebalances reduce throughput and increase latency.
+
+---
+
+# max.poll.interval.ms
+
+Purpose:
+
+> **Detect whether a consumer is making progress.**
+
+Unlike `session.timeout.ms`, this is **not** about heartbeats.
+
+It measures the maximum time between two consecutive `poll()` calls.
+
+---
+
+# Example
+
+Suppose:
+
+```properties
+max.poll.records = 1000
+```
+
+Consumer:
+
+```
+poll()
+
+↓
+
+1000 messages returned
+
+↓
+
+Process 1000 messages
+
+↓
+
+poll() again
+```
+
+If processing takes:
+
+```
+10 minutes
+```
+
+but
+
+```properties
+max.poll.interval.ms = 5 minutes
+```
+
+Kafka assumes the consumer is stuck.
+
+Result:
+
+```
+Consumer Removed
+
+↓
+
+Rebalance
+```
+
+Even though heartbeats may still be arriving.
+
+---
+
+# Why?
+
+Heartbeats answer:
+
+> "Is the consumer alive?"
+
+`max.poll.interval.ms` answers:
+
+> "Is the consumer continuing to fetch and process work?"
+
+A consumer may be alive but stuck processing one large batch forever.
+
+Kafka protects against this situation.
+
+---
+
+# max.poll.records
+
+Purpose:
+
+> **Maximum number of records returned by one `poll()` call.**
+
+Example:
+
+```properties
+max.poll.records = 500
+```
+
+```
+poll()
+
+↓
+
+Returns up to 500 messages
+```
+
+The application processes those messages before calling `poll()` again.
+
+---
+
+# Relationship Between max.poll.records and max.poll.interval.ms
+
+Suppose:
+
+```
+max.poll.records = 1000
+```
+
+Processing:
+
+```
+1000 messages
+
+↓
+
+1000 seconds
+```
+
+No new `poll()` occurs during processing.
+
+Kafka eventually exceeds:
+
+```
+max.poll.interval.ms
+```
+
+and triggers a rebalance.
+
+---
+
+## Reduce max.poll.records
+
+Instead of:
+
+```properties
+max.poll.records = 1000
+```
+
+Use:
+
+```properties
+max.poll.records = 100
+```
+
+Now:
+
+```
+poll()
+
+↓
+
+100 messages
+
+↓
+
+Process
+
+↓
+
+poll()
+
+↓
+
+100 messages
+```
+
+The consumer calls `poll()` much more frequently.
+
+This greatly reduces the chance of exceeding `max.poll.interval.ms`.
+
+---
+
+## Increase max.poll.interval.ms
+
+If processing legitimately takes longer:
+
+```properties
+max.poll.interval.ms = 900000
+```
+
+(15 minutes)
+
+Kafka waits longer before declaring the consumer stuck.
+
+Use this only when long-running processing is unavoidable.
+
+---
+
+# Best Practice
+
+Rather than increasing timeouts, keep the Kafka consumer lightweight.
+
+Preferred architecture:
+
+```
+Kafka Consumer
+
+↓
+
+poll()
+
+↓
+
+Submit Work
+
+↓
+
+Worker Thread Pool
+
+↓
+
+poll() again
+```
+
+The Kafka consumer continues polling while worker threads perform expensive work.
+
+This avoids unnecessary rebalances.
+
+---
+
+# Default Consumer Configuration
+
+| Configuration | Default | Purpose |
+|--------------|---------|---------|
+| `heartbeat.interval.ms` | 3000 ms (3 sec) | Frequency of heartbeats sent to the Group Coordinator |
+| `session.timeout.ms` | 45000 ms (45 sec) | Maximum time without heartbeats before the consumer is considered dead |
+| `max.poll.records` | 500 | Maximum number of records returned by one `poll()` |
+| `max.poll.interval.ms` | 300000 ms (5 min) | Maximum time allowed between consecutive `poll()` calls |
+
+---
+
+# Easy Memory Trick
+
+| Setting | Question It Answers |
+|----------|---------------------|
+| `heartbeat.interval.ms` | **How often do I say I'm alive?** |
+| `session.timeout.ms` | **How long before Kafka considers me dead?** |
+| `max.poll.records` | **How much work do I pick up in one poll?** |
+| `max.poll.interval.ms` | **How long can I take before coming back for more work?** |
+
+---
+
+# Interview Questions
+
+### Q: How does Kafka detect a failed consumer?
+
+> Consumers periodically send heartbeats to the Group Coordinator. If no heartbeat is received within `session.timeout.ms`, Kafka considers the consumer dead and triggers a rebalance.
+
+---
+
+### Q: What is the difference between `session.timeout.ms` and `max.poll.interval.ms`?
+
+> `session.timeout.ms` determines whether the consumer is alive using heartbeats. `max.poll.interval.ms` determines whether the consumer is making progress by ensuring it calls `poll()` within the configured interval.
+
+---
+
+### Q: What does `max.poll.records` control?
+
+> It limits the maximum number of records returned by a single `poll()` call. Smaller values result in shorter processing batches and more frequent polling.
+
+---
+
+### Q: Why reduce `max.poll.records`?
+
+> Smaller batches complete faster, allowing the consumer to call `poll()` more frequently and reducing the likelihood of exceeding `max.poll.interval.ms`.
+
+---
+
+### Q: Why increase `max.poll.interval.ms`?
+
+> Only when processing legitimately requires more time than the default interval. Otherwise, prefer smaller batches or offloading work to worker threads.
+
+---
+
+# Key Takeaways
+
+- Heartbeats determine whether a consumer is alive.
+- `session.timeout.ms` detects failed consumers.
+- `max.poll.interval.ms` detects consumers that stop polling.
+- `max.poll.records` controls batch size.
+- Smaller batches lead to more frequent polling and fewer unnecessary rebalances.
+- Keep Kafka consumers lightweight and offload expensive work to worker threads whenever possible.	
+
+# Kafka Replication
+
+Kafka replicates partitions across multiple brokers to provide fault tolerance.
+
+Example:
+
+```
+Replication Factor (RF) = 3
+```
+
+Partition 0 has three replicas:
+
+```
+Leader
+
+Follower
+
+Follower
+```
+
+Example across brokers:
+
+```
+Broker 1
+
+Leader
+
+----------------
+
+Broker 2
+
+Follower
+
+----------------
+
+Broker 3
+
+Follower
+```
+
+Unlike Cassandra, Kafka has **one Leader replica** and one or more **Follower replicas**.
+
+---
+
+# Leader and Followers
+
+## Leader
+
+- Accepts all producer writes
+- Serves consumer reads (by default)
+- Replicates data to followers
+
+## Followers
+
+- Receive replication from the Leader
+- Do not accept writes from producers
+- Can become Leader if the current Leader fails
+
+---
+
+# Write Flow
+
+```
+Producer
+
+↓
+
+Leader
+
+↓
+
+Append Message
+
+↓
+
+Replicate to Followers
+```
+
+Followers never receive writes directly from producers.
+
+---
+
+# Read Flow
+
+```
+Consumer
+
+↓
+
+Leader
+```
+
+Consumers normally read only from the Leader replica.
+
+Followers are primarily used for replication and failover.
+
+---
+
+# Broker Failure
+
+Current state:
+
+```
+Broker 1
+
+Leader
+
+----------------
+
+Broker 2
+
+Follower
+
+----------------
+
+Broker 3
+
+Follower
+```
+
+Suppose Broker 1 crashes.
+
+Kafka promotes one of the Followers.
+
+```
+Broker 2
+
+New Leader
+```
+
+Producers and consumers continue using the new Leader.
+
+---
+
+# In-Sync Replicas (ISR)
+
+Not every follower is necessarily up to date.
+
+Example:
+
+```
+Leader
+
+Offset 100
+
+✓ ISR
+
+----------------
+
+Follower A
+
+Offset 100
+
+✓ ISR
+
+----------------
+
+Follower B
+
+Offset 95
+
+✗ Not ISR
+```
+
+Follower B is behind and is **not** part of the ISR.
+
+---
+
+# Why ISR Matters
+
+Suppose the Leader crashes.
+
+Follower A:
+
+```
+Offset 100
+```
+
+Follower B:
+
+```
+Offset 95
+```
+
+If Kafka elected Follower B:
+
+Messages:
+
+```
+Offset 96
+
+Offset 97
+
+Offset 98
+
+Offset 99
+
+Offset 100
+```
+
+would be lost.
+
+Instead, Kafka elects a new Leader **only from the ISR**.
+
+---
+
+# What is ISR?
+
+ISR (In-Sync Replicas) is the set of replicas that are sufficiently caught up with the Leader.
+
+Example:
+
+```
+ISR =
+
+{
+
+Leader,
+
+Follower A
+
+}
+```
+
+Follower B is excluded until it catches up.
+
+---
+
+# Follower Catch-Up
+
+Current state:
+
+```
+Leader
+
+100
+
+Follower
+
+95
+```
+
+Follower replicates:
+
+```
+96
+
+97
+
+98
+
+99
+
+100
+```
+
+Now both replicas are synchronized.
+
+Kafka adds the follower back into the ISR.
+
+---
+
+# Producer Acknowledgements (acks)
+
+Kafka supports three acknowledgement modes.
+
+---
+
+## acks = 0
+
+```
+Producer
+
+↓
+
+Leader
+```
+
+Producer does not wait for any acknowledgement.
+
+Fastest.
+
+Least reliable.
+
+---
+
+## acks = 1
+
+```
+Producer
+
+↓
+
+Leader
+
+↓
+
+ACK
+
+↓
+
+Replicate to Followers
+```
+
+Producer waits only for the Leader.
+
+If the Leader crashes before followers replicate the message, data may be lost.
+
+---
+
+## acks = all
+
+```
+Producer
+
+↓
+
+Leader
+
+↓
+
+Replicate to All ISR Replicas
+
+↓
+
+ACK
+```
+
+Producer waits until every replica in the ISR acknowledges the write.
+
+Strongest durability.
+
+---
+
+# Important Note
+
+`acks=all` waits for **all ISR replicas**, **not necessarily all replicas defined by the Replication Factor**.
+
+Example:
+
+```
+RF = 3
+
+ISR =
+
+Leader
+
+Follower A
+```
+
+Follower B is behind.
+
+Producer waits only for:
+
+```
+Leader
+
+Follower A
+```
+
+---
+
+# Why Isn't acks=all Enough?
+
+Suppose:
+
+```
+RF = 3
+```
+
+Initially:
+
+```
+Leader
+
+Follower A
+
+Follower B
+```
+
+Later:
+
+```
+Follower A crashes
+
+Follower B crashes
+```
+
+ISR becomes:
+
+```
+Leader
+```
+
+Now:
+
+```
+acks=all
+```
+
+means:
+
+```
+Leader only
+```
+
+If the Leader crashes immediately afterwards,
+
+the acknowledged message is lost.
+
+---
+
+# min.insync.replicas
+
+This setting prevents the above scenario.
+
+Example:
+
+```properties
+min.insync.replicas=2
+```
+
+Kafka requires at least **2 ISR replicas** before accepting writes.
+
+---
+
+## Healthy Cluster
+
+ISR:
+
+```
+Leader
+
+Follower A
+```
+
+ISR size:
+
+```
+2
+```
+
+Write succeeds.
+
+---
+
+## Only Leader Remaining
+
+ISR:
+
+```
+Leader
+```
+
+ISR size:
+
+```
+1
+```
+
+Producer sends:
+
+```
+Goal Event
+```
+
+Kafka responds:
+
+```
+ERROR
+
+NotEnoughReplicas
+```
+
+The write is rejected.
+
+Kafka prefers rejecting writes over acknowledging data that is no longer durable.
+
+---
+
+# Recommended Production Configuration
+
+```
+Replication Factor = 3
+
+acks = all
+
+min.insync.replicas = 2
+```
+
+Behavior:
+
+Healthy:
+
+```
+Leader
+
+Follower A
+
+Follower B
+
+↓
+
+ACK
+```
+
+One broker fails:
+
+```
+Leader
+
+Follower A
+
+↓
+
+ACK
+```
+
+Two brokers fail:
+
+```
+Leader
+
+↓
+
+Reject Writes
+```
+
+---
+
+# Relationship Between Reliability Settings
+
+| Setting | Purpose |
+|----------|---------|
+| Replication Factor (RF) | Number of replicas for each partition |
+| ISR | Replicas that are fully synchronized with the Leader |
+| `acks=all` | Producer waits for acknowledgements from all ISR replicas |
+| `min.insync.replicas` | Minimum number of ISR replicas required to accept writes |
+
+---
+
+# Interview Questions
+
+### Q: Why can't an out-of-sync replica become the Leader?
+
+> Because it may not contain the latest committed messages. Electing it could result in data loss. Kafka therefore elects Leaders only from the ISR.
+
+---
+
+### Q: What is ISR?
+
+> ISR (In-Sync Replicas) is the set of replicas that are sufficiently caught up with the Leader and are eligible to become the next Leader.
+
+---
+
+### Q: What is the difference between `acks=1` and `acks=all`?
+
+> `acks=1` waits only for the Leader to persist the message. `acks=all` waits until all replicas currently in the ISR have replicated the message before acknowledging success.
+
+---
+
+### Q: Why isn't `acks=all` sufficient by itself?
+
+> If the ISR shrinks to only the Leader, `acks=all` effectively waits for a single replica. This does not provide strong durability. `min.insync.replicas` ensures there are enough synchronized replicas before Kafka accepts writes.
+
+---
+
+### Q: Why use `RF=3`, `acks=all`, and `min.insync.replicas=2`?
+
+> This configuration provides a strong balance of durability and availability. Kafka can tolerate one broker failure while continuing to accept writes. If only one replica remains, Kafka rejects new writes rather than acknowledge data that could be lost.
+
+
+# Kafka Controller and Leader Election
+
+Leader election ensures Kafka remains available when a broker hosting a partition leader fails.
+
+---
+
+# Kafka Components
+
+Kafka has three different coordination concepts that are commonly confused.
+
+## 1. Leader
+
+**Scope:** Per Partition
+
+Every partition has exactly one Leader.
+
+Example:
+
+```
+match-events
+
+Partition 0
+
+Leader → Broker 1
+
+Follower → Broker 2
+
+Follower → Broker 3
+
+------------------------
+
+Partition 1
+
+Leader → Broker 3
+
+Follower → Broker 1
+
+Follower → Broker 2
+```
+
+Responsibilities:
+
+- Accept producer writes
+- Serve consumer reads (by default)
+- Replicate data to followers
+
+---
+
+## 2. Group Coordinator
+
+**Scope:** Per Consumer Group
+
+Each Consumer Group has one Group Coordinator.
+
+Example:
+
+```
+Consumer Group
+
+Live Score
+
+↓
+
+Group Coordinator
+
+↓
+
+Broker 2
+```
+
+Another Consumer Group:
+
+```
+Consumer Group
+
+Analytics
+
+↓
+
+Group Coordinator
+
+↓
+
+Broker 5
+```
+
+Responsibilities:
+
+- Track consumer membership
+- Receive heartbeats
+- Detect failed consumers
+- Trigger consumer group rebalances
+- Store committed offsets
+
+Group Coordinators manage **consumer groups**, not partitions.
+
+---
+
+## 3. Controller
+
+**Scope:** Entire Kafka Cluster
+
+There is only **one active Controller** in the entire Kafka cluster.
+
+Example:
+
+```
+Kafka Cluster
+
+Broker 1
+
+Broker 2
+
+Broker 3
+
+Broker 4
+
+Broker 5
+
+↓
+
+Controller = Broker 4
+```
+
+Responsibilities:
+
+- Detect broker failures
+- Elect new partition leaders
+- Assign partitions
+- Update cluster metadata
+- Notify brokers of leadership changes
+
+The Controller **does not** manage consumer groups.
+
+---
+
+# Leader Election
+
+Suppose:
+
+```
+Partition 0
+
+Leader → Broker 1
+
+Follower → Broker 2
+
+Follower → Broker 3
+```
+
+Broker 1 crashes.
+
+```
+Broker 1
+
+↓
+
+Crash
+```
+
+The Controller detects the broker failure.
+
+It examines the ISR.
+
+```
+ISR
+
+Broker 2
+
+Broker 3
+```
+
+The Controller elects one ISR replica.
+
+Example:
+
+```
+Broker 2
+
+↓
+
+New Leader
+```
+
+Cluster metadata is updated.
+
+New assignment:
+
+```
+Partition 0
+
+Leader → Broker 2
+
+Follower → Broker 3
+```
+
+Producers refresh metadata and begin sending writes to the new Leader.
+
+Consumers also start reading from the new Leader.
+
+---
+
+# Why Only ISR?
+
+Suppose:
+
+```
+Leader
+
+Offset 100
+
+✓ ISR
+
+----------------
+
+Follower A
+
+Offset 100
+
+✓ ISR
+
+----------------
+
+Follower B
+
+Offset 95
+
+✗ Not ISR
+```
+
+If Kafka elected Follower B:
+
+```
+Offset 96
+
+Offset 97
+
+Offset 98
+
+Offset 99
+
+Offset 100
+```
+
+would be lost.
+
+Therefore Kafka elects a new Leader only from the ISR.
+
+---
+
+# Is Leader Election Automatic?
+
+Yes.
+
+The Controller performs leader election automatically.
+
+The interruption is typically very short (milliseconds to a few seconds).
+
+No manual intervention is required.
+
+---
+
+# Visualizing the Three Roles
+
+```
+                    Kafka Cluster
+
+         Broker1   Broker2   Broker3   Broker4
+
+            │         │         │         │
+            └─────────┴─────────┴─────────┘
+
+              Controller = Broker4
+```
+
+Partition:
+
+```
+match-events
+
+Partition 0
+
+Leader → Broker1
+
+Followers → Broker2, Broker3
+```
+
+Consumer Group:
+
+```
+Live Score
+
+↓
+
+Group Coordinator
+
+↓
+
+Broker2
+```
+
+Notice:
+
+- Leader manages one partition.
+- Group Coordinator manages one consumer group.
+- Controller manages the entire Kafka cluster.
+
+---
+
+# Easy Memory Trick
+
+| Component | Scope | Responsibility |
+|------------|------|----------------|
+| Leader | One Partition | Handles reads, writes, and replication for that partition |
+| Group Coordinator | One Consumer Group | Manages heartbeats, offsets, and consumer rebalancing |
+| Controller | Entire Kafka Cluster | Detects broker failures and elects new partition leaders |
+
+---
+
+# Kafka Leader Election
+
+Leader election occurs when the current Leader for a partition becomes unavailable.
+
+Example:
+
+```
+Partition 0
+
+Leader → Broker 1
+
+Follower → Broker 2
+
+Follower → Broker 3
+```
+
+Suppose Broker 1 crashes.
+
+Kafka must elect a new Leader.
+
+---
+
+# Who Elects the New Leader?
+
+The **Kafka Controller** performs leader election.
+
+It is **not** performed by:
+
+- Producers
+- Consumers
+- Followers
+- Group Coordinator
+
+The Controller is responsible for managing partition leadership across the entire Kafka cluster.
+
+---
+
+# Is Leader Election Quorum-Based?
+
+**No.**
+
+This is a very common misconception.
+
+Kafka does **not** ask partition replicas to vote.
+
+Example:
+
+```
+Broker 2
+
+Vote?
+
+Broker 3
+
+Vote?
+```
+
+This never happens.
+
+There is **no quorum voting among partition replicas**.
+
+---
+
+# How Leader Election Works
+
+Suppose:
+
+```
+RF = 3
+
+Partition 0
+
+Broker 1 → Leader
+
+Broker 2 → Follower
+
+Broker 3 → Follower
+```
+
+ISR:
+
+```
+Broker 1
+
+Broker 2
+
+Broker 3
+```
+
+Broker 1 crashes.
+
+The Controller:
+
+1. Detects the broker failure.
+2. Examines the ISR.
+3. Selects one eligible ISR replica.
+4. Promotes it to Leader.
+5. Updates cluster metadata.
+6. Notifies brokers, producers, and consumers.
+
+Result:
+
+```
+Broker 2
+
+↓
+
+New Leader
+```
+
+---
+
+# Why Only ISR?
+
+Suppose:
+
+```
+Leader
+
+Offset 100
+
+✓ ISR
+
+----------------
+
+Follower A
+
+Offset 100
+
+✓ ISR
+
+----------------
+
+Follower B
+
+Offset 95
+
+✗ Not ISR
+```
+
+If Kafka elected Follower B:
+
+```
+Offset 96
+
+Offset 97
+
+Offset 98
+
+Offset 99
+
+Offset 100
+```
+
+would be lost.
+
+Therefore only ISR replicas are eligible to become Leader.
+
+---
+
+# Does Kafka Use Quorum?
+
+Not for partition leader election.
+
+Instead:
+
+```
+Controller
+
+↓
+
+Checks ISR
+
+↓
+
+Selects Eligible Replica
+
+↓
+
+New Leader
+```
+
+No voting occurs between replicas.
+
+---
+
+# ZooKeeper vs KRaft
+
+## ZooKeeper-Based Kafka (Older)
+
+The Controller is elected using ZooKeeper.
+
+Once elected, the Controller performs partition leader elections.
+
+---
+
+## KRaft (Modern Kafka)
+
+Kafka no longer depends on ZooKeeper.
+
+Instead:
+
+- A **Controller Quorum** (using the Raft consensus algorithm) elects the active Controller.
+- The active Controller then performs partition leader elections.
+
+Important distinction:
+
+The **Controller election** uses consensus (Raft).
+
+The **partition leader election** does **not** use quorum voting among partition replicas.
+
+---
+
+# Kafka vs Cassandra
+
+## Cassandra
+
+Coordinator sends requests to replicas.
+
+Example:
+
+```
+Replica A
+
+Replica B
+
+Replica C
+```
+
+Quorum:
+
+```
+RF = 3
+
+↓
+
+Need 2 Responses
+```
+
+Reads and writes are quorum-based.
+
+---
+
+## Kafka
+
+```
+Leader crashes
+
+↓
+
+Controller checks ISR
+
+↓
+
+Promotes one ISR replica
+```
+
+There is **no quorum calculation** for partition leader election.
+
+---
+
+# Responsibilities
+
+| Component | Responsibility |
+|------------|----------------|
+| Leader | Handles reads, writes, and replication for a partition |
+| Group Coordinator | Manages consumer groups, heartbeats, offsets, and rebalancing |
+| Controller | Detects broker failures and elects new partition leaders |
+
+---
+
+# Interview Questions
+
+### Q: Who elects a new Leader?
+
+> The Kafka Controller detects broker failures and elects a new Leader from the partition's ISR.
+
+---
+
+### Q: Does Kafka use quorum voting for partition leader election?
+
+> No. Kafka does not perform quorum voting among partition replicas. The Controller simply selects an eligible replica from the ISR and promotes it to Leader.
+
+---
+
+### Q: Why are only ISR replicas eligible?
+
+> ISR replicas are guaranteed to have the latest replicated data. Electing an out-of-sync replica could result in data loss.
+
+---
+
+### Q: What is the difference between KRaft and partition leader election?
+
+> In modern Kafka, the Controller Quorum uses the Raft consensus algorithm to elect the active Controller. Once elected, the Controller performs partition leader elections. The partition replicas themselves do not vote.
+
+---
+
+# Key Takeaways
+
+- Leader election is performed by the **Kafka Controller**.
+- There is one active Controller for the Kafka cluster.
+- Partition replicas do **not** vote.
+- Kafka does **not** use quorum-based leader election for partitions.
+- Only replicas in the **ISR** are eligible to become the new Leader.
+- Modern Kafka (KRaft) uses **Raft** only to elect the active Controller, not partition leaders.
+
+
+# Interview Questions
+
+### Q: Who performs consumer group rebalancing?
+
+> The **Group Coordinator** manages consumer group membership, receives heartbeats, detects failed consumers, and triggers consumer group rebalancing.
+
+---
+
+### Q: Who elects a new Leader when a broker crashes?
+
+> The **Controller** detects the broker failure and elects a new Leader from the partition's In-Sync Replica (ISR).
+
+---
+
+### Q: Why does Kafka elect Leaders only from the ISR?
+
+> Only replicas in the ISR are guaranteed to contain the latest replicated data. Electing an out-of-sync replica could result in data loss.
+
+---
+
+# Key Takeaways
+
+- Every partition has exactly **one Leader**.
+- Every Consumer Group has exactly **one Group Coordinator**.
+- Every Kafka Cluster has exactly **one active Controller**.
+- Leader election is performed by the Controller.
+- Consumer rebalancing is managed by the Group Coordinator.
+- New Leaders are elected only from the ISR to prevent data loss.
+
+
+# Kafka Exactly Once Semantics (EOS)
+
+Exactly Once Semantics (EOS) ensures that retries from a producer do not result in duplicate messages.
+
+This is achieved using **idempotent producers**.
+
+---
+
+# The Problem
+
+Suppose a producer sends a message.
+
+```
+Producer
+
+↓
+
+Goal Event
+
+↓
+
+Leader Broker
+
+✓ Message Written
+
+↓
+
+ACK
+
+✗ ACK Lost
+```
+
+The producer never receives the ACK.
+
+It assumes the write failed and retries.
+
+Without idempotence:
+
+```
+Offset 100 → Goal
+
+Offset 101 → Goal
+```
+
+Duplicate message.
+
+---
+
+# Idempotent Producer
+
+Enable:
+
+```properties
+enable.idempotence=true
+acks=all
+```
+
+Kafka guarantees that producer retries do not create duplicate messages.
+
+---
+
+# Producer ID (PID)
+
+When idempotence is enabled, Kafka assigns every producer a unique:
+
+```
+Producer ID (PID)
+```
+
+Example:
+
+```
+Producer A
+
+PID = 100
+```
+
+---
+
+# Sequence Numbers
+
+The **Producer Client** (not the broker) maintains an incrementing sequence number **for each partition**.
+
+Example:
+
+```
+Producer
+
+PID = 100
+
+Partition 2
+
+Seq 0
+
+Seq 1
+
+Seq 2
+
+Seq 3
+```
+
+Every new message sent to the same partition receives the next sequence number.
+
+---
+
+# Retry Scenario
+
+Producer sends:
+
+```
+PID = 100
+
+Partition = 2
+
+Seq = 5
+
+Goal Event
+```
+
+Leader successfully writes the message.
+
+The ACK is lost.
+
+Producer retries the same message.
+
+```
+PID = 100
+
+Partition = 2
+
+Seq = 5
+```
+
+again.
+
+---
+
+# Duplicate Detection
+
+The Leader remembers the last accepted sequence number for every producer-partition pair.
+
+Conceptually:
+
+```
+(PID, Partition)
+
+↓
+
+Last Accepted Sequence Number
+```
+
+Example:
+
+```
+(PID=100, Partition=2)
+
+↓
+
+Last Seq = 5
+```
+
+When the retry arrives:
+
+```
+PID=100
+
+Partition=2
+
+Seq=5
+```
+
+The Leader recognizes it has already processed that sequence number and discards the duplicate.
+
+No second message is written.
+
+---
+
+# Multiple Producers
+
+Suppose:
+
+```
+Producer A
+
+PID = 100
+
+----------------
+
+Producer B
+
+PID = 200
+```
+
+Both write to:
+
+```
+Partition 2
+```
+
+Each producer maintains its own sequence numbers.
+
+```
+Producer A
+
+Seq 0
+
+Seq 1
+
+Seq 2
+
+----------------
+
+Producer B
+
+Seq 0
+
+Seq 1
+
+Seq 2
+```
+
+There is no conflict because the Producer IDs are different.
+
+---
+
+# Why Track (Producer ID, Partition)?
+
+Kafka guarantees ordering **per partition**.
+
+The Leader tracks sequence numbers separately for every:
+
+```
+(Producer ID, Partition)
+```
+
+Conceptually:
+
+| Producer ID | Partition | Last Accepted Sequence |
+|--------------|-----------|------------------------|
+| 100 | 0 | 42 |
+| 100 | 1 | 15 |
+| 100 | 2 | 8 |
+| 200 | 0 | 31 |
+| 200 | 2 | 19 |
+
+Each producer has an independent sequence for every partition.
+
+---
+
+# Why Not Track Only Sequence Numbers?
+
+Suppose two producers both send:
+
+```
+Seq = 5
+```
+
+Without Producer IDs, Kafka could not distinguish:
+
+- A retry from Producer A
+- A legitimate message from Producer B
+
+Using the combination:
+
+```
+Producer ID + Partition + Sequence Number
+```
+
+allows Kafka to detect duplicates correctly.
+
+---
+
+# Out-of-Order Protection
+
+Suppose Producer A sends:
+
+```
+Seq 5
+
+Seq 6
+```
+
+Due to a retry or network issue, the broker receives:
+
+```
+Seq 6
+
+↓
+
+Seq 5
+```
+
+The Leader expects:
+
+```
+Seq 5
+```
+
+first.
+
+It rejects or defers out-of-order messages, preserving ordering guarantees.
+
+---
+
+# How Idempotence Works
+
+```
+Producer
+
+↓
+
+Producer ID (PID)
+
+↓
+
+Assign Sequence Number
+
+↓
+
+Leader Broker
+
+↓
+
+Lookup (PID, Partition)
+
+↓
+
+Compare Sequence Number
+
+↓
+
+Duplicate?
+
+├── Yes → Discard
+└── No  → Append Message
+```
+
+---
+
+# Interview Questions
+
+### Q: What problem does idempotence solve?
+
+> Idempotence prevents duplicate messages caused by producer retries. If a producer retries because an acknowledgement is lost, Kafka detects the duplicate using Producer IDs and sequence numbers and does not write the message again.
+
+---
+
+### Q: Who generates the sequence numbers?
+
+> The **Kafka Producer Client** generates monotonically increasing sequence numbers for each partition. Kafka assigns the Producer ID (PID).
+
+---
+
+### Q: What does the Leader Broker track?
+
+> The Leader tracks the last accepted sequence number for every `(Producer ID, Partition)` pair.
+
+---
+
+### Q: Can multiple producers write to the same partition?
+
+> Yes. Each producer has a unique Producer ID and maintains its own sequence numbers for each partition. The Leader tracks sequence numbers independently for every `(Producer ID, Partition)` combination.
+
+---
+
+### Q: Why is the Producer ID required?
+
+> Different producers can generate identical sequence numbers. The Producer ID uniquely identifies the producer, allowing Kafka to distinguish a legitimate message from a duplicate retry.
+
+---
+
+# Key Takeaways
+
+- `enable.idempotence=true` prevents duplicate writes caused by producer retries.
+- Kafka assigns each producer a unique **Producer ID (PID)**.
+- The Producer Client generates **monotonically increasing sequence numbers per partition**.
+- The Leader Broker tracks the latest sequence number for every `(Producer ID, Partition)` pair.
+- Duplicate retries are discarded automatically.
+- Idempotence also helps preserve message ordering during retries.	
+
+# Kafka Transactions & Exactly Once Semantics (EOS)
+
+Kafka transactions provide **atomicity across Kafka resources**.
+
+They guarantee that either:
+
+- All Kafka writes succeed.
+- All Kafka writes fail.
+
+Kafka transactions **do not** provide atomicity with external systems like PostgreSQL.
+
+---
+
+# What Problem Do Transactions Solve?
+
+Suppose a service consumes from one topic and publishes to another.
+
+```
+match-events
+
+↓
+
+Score Processor
+
+↓
+
+live-score-updates
+```
+
+Application logic:
+
+```
+Read Goal Event
+
+↓
+
+Process
+
+↓
+
+Publish Live Score Event
+
+↓
+
+Commit Consumer Offset
+```
+
+Without transactions, these are separate operations.
+
+Failures can create duplicates or lose events.
+
+---
+
+# Failure Without Transactions
+
+Consumer reads:
+
+```
+Offset 100
+```
+
+Application publishes:
+
+```
+Live Score Event
+```
+
+Crash occurs before:
+
+```
+commitSync()
+```
+
+Restart:
+
+```
+Consumer starts again from Offset 100
+```
+
+Same event is processed again.
+
+Duplicate event is published.
+
+---
+
+# Traditional Offset Commit
+
+Normally, consumers commit offsets using:
+
+```java
+consumer.commitSync();
+```
+
+This writes the latest processed offset to Kafka's internal topic:
+
+```
+__consumer_offsets
+```
+
+Conceptually:
+
+```
+Consumer Group
+
+↓
+
+Partition 0
+
+↓
+
+Committed Offset = 101
+```
+
+After a restart, the consumer resumes from:
+
+```
+Offset 102
+```
+
+---
+
+# Why commitSync() Is Not Enough
+
+Suppose the application performs:
+
+```
+Read Event
+
+↓
+
+Publish Kafka Event
+
+↓
+
+commitSync()
+```
+
+Failure:
+
+```
+Publish ✓
+
+↓
+
+Crash
+
+↓
+
+Offset Not Committed
+```
+
+Restart:
+
+```
+Read Same Event Again
+
+↓
+
+Publish Again
+```
+
+Duplicate event.
+
+---
+
+Reverse order:
+
+```
+Read Event
+
+↓
+
+commitSync()
+
+↓
+
+Publish Event
+```
+
+Failure:
+
+```
+Offset Committed ✓
+
+↓
+
+Crash
+
+↓
+
+Publish Never Happens
+```
+
+The event is permanently lost.
+
+---
+
+# Kafka Transactions
+
+Instead of treating publishing and offset commits as separate operations, Kafka allows both to participate in the same transaction.
+
+Example:
+
+```java
+producer.beginTransaction();
+
+producer.send(...);
+
+producer.sendOffsetsToTransaction(...);
+
+producer.commitTransaction();
+```
+
+Now Kafka commits:
+
+- Produced messages
+- Consumer offsets
+
+together.
+
+---
+
+# sendOffsetsToTransaction()
+
+Unlike:
+
+```java
+consumer.commitSync();
+```
+
+which immediately commits the offset,
+
+```java
+producer.sendOffsetsToTransaction(...);
+```
+
+adds the consumer offset commit to the current Kafka transaction.
+
+The offset is not committed immediately.
+
+It becomes visible only when:
+
+```java
+producer.commitTransaction();
+```
+
+executes successfully.
+
+---
+
+# What Happens During a Transaction?
+
+Example:
+
+```java
+producer.beginTransaction();
+
+producer.send(score);
+
+producer.send(stats);
+
+producer.sendOffsetsToTransaction(...);
+
+producer.commitTransaction();
+```
+
+Kafka performs:
+
+```
+Write Score Event
+
+↓
+
+Write Statistics Event
+
+↓
+
+Prepare Consumer Offset
+
+↓
+
+Commit Transaction
+```
+
+Everything succeeds together.
+
+If the transaction aborts, none of the writes become visible.
+
+---
+
+# Are Messages Sent Immediately?
+
+This is the most confusing part.
+
+When the application calls:
+
+```java
+producer.send(...)
+```
+
+Kafka immediately appends the record to the partition log.
+
+However, the record is marked as belonging to an **uncommitted transaction**.
+
+Example:
+
+```
+Offset 100
+
+Goal Event
+
+Transaction = ABC
+
+Status = Pending
+```
+
+Consumers using:
+
+```properties
+isolation.level=read_committed
+```
+
+cannot see these records.
+
+---
+
+# commitTransaction()
+
+When:
+
+```java
+producer.commitTransaction();
+```
+
+is executed,
+
+Kafka writes a special **Commit Marker**.
+
+Conceptually:
+
+```
+Offset 100
+
+Goal Event
+
+Pending
+
+----------------
+
+Offset 101
+
+Statistics Event
+
+Pending
+
+----------------
+
+Commit Marker
+```
+
+After the Commit Marker appears,
+
+all records belonging to that transaction become visible.
+
+---
+
+# abortTransaction()
+
+If the application fails:
+
+```java
+producer.abortTransaction();
+```
+
+Kafka writes an **Abort Marker**.
+
+Consumers using:
+
+```
+read_committed
+```
+
+permanently ignore all records from the aborted transaction.
+
+The records remain in the Kafka log but are never delivered.
+
+---
+
+# read_committed vs read_uncommitted
+
+## read_committed
+
+Consumers only receive messages from committed transactions.
+
+Pending or aborted transaction records are skipped.
+
+This is the production configuration used with Exactly Once Semantics.
+
+---
+
+## read_uncommitted
+
+Consumers receive all records, including uncommitted and aborted transaction records.
+
+Mostly used for debugging or specialized use cases.
+
+---
+
+# Why Kafka Can Provide Exactly Once
+
+Kafka controls all of the following resources:
+
+```
+Input Topic
+
+↓
+
+Output Topic
+
+↓
+
+__consumer_offsets
+```
+
+Since all of them are Kafka resources,
+
+Kafka can commit them atomically.
+
+---
+
+# Why PostgreSQL Breaks Exactly Once
+
+Suppose the application performs:
+
+```
+Read Kafka
+
+↓
+
+Update PostgreSQL
+
+↓
+
+Publish Kafka Event
+
+↓
+
+Commit Offset
+```
+
+Kafka has no control over PostgreSQL transactions.
+
+Therefore it cannot atomically commit:
+
+```
+Kafka
+
++
+
+PostgreSQL
+```
+
+This is why Kafka transactions alone cannot provide exactly-once guarantees across external databases.
+
+---
+
+# Transactional Outbox Pattern
+
+To guarantee consistency with PostgreSQL:
+
+```
+BEGIN TRANSACTION
+
+↓
+
+Update Business Table
+
+↓
+
+Insert Outbox Row
+
+↓
+
+COMMIT
+```
+
+Both operations are committed atomically by PostgreSQL.
+
+After commit:
+
+```
+Outbox Publisher
+
+↓
+
+Kafka
+```
+
+The publisher can use:
+
+- Polling
+- Debezium (CDC)
+
+to publish the event.
+
+---
+
+# Debezium (CDC)
+
+Instead of polling the Outbox table,
+
+Debezium monitors PostgreSQL's:
+
+```
+Write-Ahead Log (WAL)
+```
+
+Architecture:
+
+```
+Business Service
+
+↓
+
+Business Table
+
+↓
+
+Outbox Table
+
+↓
+
+COMMIT
+
+↓
+
+WAL
+
+↓
+
+Debezium
+
+↓
+
+Kafka
+```
+
+Advantages:
+
+- Near real-time event publication
+- No repeated polling queries
+- Lower database overhead
+- Preferred for large production systems
+
+Debezium **does not replace the Outbox pattern**.
+
+It replaces the polling-based Outbox Publisher.
+
+---
+
+# commitSync() vs sendOffsetsToTransaction()
+
+| commitSync() | sendOffsetsToTransaction() |
+|---------------|---------------------------|
+| Traditional consumer offset commit | Adds offset commit to Kafka transaction |
+| Commits immediately | Commits only when the Kafka transaction commits |
+| Independent from producer writes | Atomic with produced Kafka records |
+| Can lead to duplicates or lost events | Enables Exactly Once Semantics within Kafka |
+
+---
+
+# End-to-End Kafka Transaction Flow
+
+```
+poll()
+
+↓
+
+Process Event
+
+↓
+
+beginTransaction()
+
+↓
+
+send(Output Topic)
+
+↓
+
+send(Statistics Topic)
+
+↓
+
+sendOffsetsToTransaction()
+
+↓
+
+commitTransaction()
+
+↓
+
+Output Messages Visible
+
+↓
+
+Consumer Offset Committed
+```
+
+Either everything commits or nothing commits.
+
+---
+
+# Interview Questions
+
+### Q: What problem do Kafka transactions solve?
+
+> Kafka transactions provide atomicity across Kafka resources. They ensure that produced records and consumer offset commits either succeed together or fail together, preventing duplicate processing and lost events.
+
+---
+
+### Q: Does producer.send() immediately publish the event?
+
+> No. The record is appended to the Kafka log immediately but is marked as part of an uncommitted transaction. Consumers using `read_committed` cannot see it until `commitTransaction()` succeeds.
+
+---
+
+### Q: What does commitSync() do?
+
+> `commitSync()` synchronously commits the consumer's processed offsets to the `__consumer_offsets` topic. It is independent of producer writes and therefore cannot guarantee exactly-once processing.
+
+---
+
+### Q: Why use sendOffsetsToTransaction() instead of commitSync()?
+
+> `sendOffsetsToTransaction()` makes the consumer offset commit part of the Kafka transaction. Kafka atomically commits both the produced records and the consumer offsets, enabling exactly-once processing within Kafka.
+
+---
+
+### Q: Why can't Kafka transactions include PostgreSQL?
+
+> PostgreSQL is an external system outside Kafka's transaction manager. Kafka cannot atomically commit database updates together with Kafka records. The Transactional Outbox pattern solves this problem.
+
+---
+
+### Q: What is the Transactional Outbox Pattern?
+
+> The business update and the Outbox insert occur in the same database transaction. After the transaction commits, an Outbox Publisher (Polling or Debezium) publishes the event to Kafka, ensuring that no committed database change is ever lost as an event.
+
+---
+
+### Q: What is Debezium?
+
+> Debezium is a Change Data Capture (CDC) platform that monitors PostgreSQL's Write-Ahead Log (WAL) and streams committed database changes to Kafka. It replaces polling-based Outbox Publishers with a low-latency, event-driven approach.
+
+---
+
+# Key Takeaways
+
+- Kafka transactions provide atomicity **only within Kafka**.
+- `producer.send()` writes records immediately but keeps them invisible until the transaction commits.
+- `commitSync()` performs an independent consumer offset commit.
+- `sendOffsetsToTransaction()` includes the consumer offset commit in the Kafka transaction.
+- `read_committed` consumers only see committed transactions.
+- Kafka cannot coordinate transactions with PostgreSQL.
+- Use the **Transactional Outbox Pattern** for database + Kafka consistency.
+- Debezium streams committed Outbox changes from the PostgreSQL WAL to Kafka without polling.
+
+# Kafka Exactly Once Semantics (EOS) vs Transactional Outbox
+
+One of the most common interview questions is understanding the difference between Kafka's Exactly Once Semantics (EOS) and the Transactional Outbox pattern.
+
+These solve **different problems**.
+
+---
+
+# Kafka Exactly Once Semantics (EOS)
+
+Kafka EOS guarantees atomicity **within Kafka**.
+
+Example:
+
+```
+Input Topic
+
+↓
+
+Consumer
+
+↓
+
+Business Logic
+
+↓
+
+Output Topic
+
+↓
+
+Consumer Offset
+```
+
+Kafka guarantees that:
+
+- Output records are committed.
+- Consumer offsets are committed.
+
+together.
+
+Or neither is committed.
+
+---
+
+# Why Is This Possible?
+
+Consumer offsets are stored in Kafka itself.
+
+```
+__consumer_offsets
+```
+
+Since Kafka controls:
+
+- Input Topic
+- Output Topics
+- Consumer Offsets
+
+it can atomically commit all of them.
+
+---
+
+# Typical Kafka Transaction
+
+```java
+producer.beginTransaction();
+
+producer.send(...);
+
+producer.sendOffsetsToTransaction(...);
+
+producer.commitTransaction();
+```
+
+If the application crashes before:
+
+```java
+commitTransaction();
+```
+
+Neither:
+
+- Output messages
+- Consumer offsets
+
+become visible.
+
+After restart:
+
+```
+Consumer reprocesses the same input record.
+```
+
+No duplicate output is visible.
+
+---
+
+# Multiple Topic Writes
+
+Kafka transactions are also useful when a producer publishes to multiple topics.
+
+Example:
+
+```
+Goal Event
+
+↓
+
+Live Score Topic
+
+↓
+
+Statistics Topic
+
+↓
+
+Notification Topic
+```
+
+Without transactions:
+
+```
+Live Score ✓
+
+Statistics ✓
+
+Notification ✗
+```
+
+Partial updates create inconsistent downstream state.
+
+With Kafka transactions:
+
+```
+BEGIN
+
+↓
+
+Send Live Score
+
+↓
+
+Send Statistics
+
+↓
+
+Send Notification
+
+↓
+
+COMMIT
+```
+
+Either:
+
+```
+All Topics Updated
+```
+
+or
+
+```
+None Updated
+```
+
+---
+
+# producer.send()
+
+A common misconception is that:
+
+```
+producer.send()
+```
+
+immediately publishes the message.
+
+It does not.
+
+The Leader immediately appends the record to the Kafka log.
+
+However, the record is marked as belonging to an **uncommitted transaction**.
+
+Example:
+
+```
+Offset 100
+
+Goal Event
+
+Transaction = ABC
+
+Status = Pending
+```
+
+Consumers using:
+
+```properties
+isolation.level=read_committed
+```
+
+cannot see pending records.
+
+Only after:
+
+```java
+producer.commitTransaction();
+```
+
+does Kafka write a Commit Marker and make all transaction records visible.
+
+---
+
+# commitSync()
+
+Traditional consumers commit offsets using:
+
+```java
+consumer.commitSync();
+```
+
+This immediately commits offsets to:
+
+```
+__consumer_offsets
+```
+
+Problem:
+
+```
+Publish Event ✓
+
+↓
+
+Crash
+
+↓
+
+Offset Not Committed
+```
+
+Restart:
+
+```
+Read Same Message Again
+
+↓
+
+Duplicate Event
+```
+
+---
+
+# sendOffsetsToTransaction()
+
+Instead of:
+
+```java
+consumer.commitSync();
+```
+
+Kafka transactions use:
+
+```java
+producer.sendOffsetsToTransaction(...);
+```
+
+The offset commit becomes part of the Kafka transaction.
+
+Now Kafka commits:
+
+- Output records
+- Consumer offsets
+
+together.
+
+This enables Exactly Once Semantics within Kafka.
+
+---
+
+# Kafka EOS Scope
+
+Kafka transactions provide atomicity only for Kafka resources.
+
+```
+Kafka Topic
+
+↓
+
+Kafka Topic
+
+↓
+
+Consumer Offset
+```
+
+Kafka **cannot** include:
+
+- PostgreSQL
+- Redis
+- REST APIs
+- Email
+- Payment Services
+
+inside its transaction.
+
+---
+
+# Transactional Outbox
+
+Suppose the application performs:
+
+```
+Update PostgreSQL
+
+↓
+
+Publish Kafka Event
+```
+
+These are different systems.
+
+Kafka cannot atomically commit both.
+
+Instead:
+
+```
+BEGIN DATABASE TRANSACTION
+
+↓
+
+Update Business Table
+
+↓
+
+Insert Outbox Row
+
+↓
+
+COMMIT
+```
+
+Now both database operations succeed or fail together.
+
+---
+
+# Outbox Publisher
+
+After the database transaction commits:
+
+```
+Outbox Table
+
+↓
+
+Publisher
+
+↓
+
+Kafka
+```
+
+The publisher may be implemented using:
+
+- Polling
+- Debezium (CDC)
+
+---
+
+# Debezium
+
+Instead of polling:
+
+```sql
+SELECT *
+FROM outbox
+WHERE status='NEW';
+```
+
+Debezium monitors PostgreSQL's:
+
+```
+Write-Ahead Log (WAL)
+```
+
+Architecture:
+
+```
+Business Service
+
+↓
+
+Business Table
+
+↓
+
+Outbox Table
+
+↓
+
+COMMIT
+
+↓
+
+WAL
+
+↓
+
+Debezium
+
+↓
+
+Kafka
+```
+
+Advantages:
+
+- Near real-time publication
+- No polling
+- Lower database overhead
+
+Debezium replaces the polling publisher, **not** the Outbox pattern.
+
+---
+
+# Does Transactional Outbox Provide Exactly Once?
+
+No.
+
+Transactional Outbox guarantees:
+
+```
+Committed Database Change
+
+↓
+
+Corresponding Outbox Event
+```
+
+No committed business event is lost.
+
+However, duplicate publication is still possible.
+
+Example:
+
+```
+Publish Kafka ✓
+
+↓
+
+Crash
+
+↓
+
+Mark Published ✗
+```
+
+Restart:
+
+```
+Publisher retries
+
+↓
+
+Duplicate Kafka Event
+```
+
+---
+
+# How Are Duplicates Handled?
+
+Typically:
+
+```
+Transactional Outbox
+
++
+
+Idempotent Consumers
+```
+
+Consumers process events using a unique business identifier.
+
+Example:
+
+```
+GoalId = 12345
+```
+
+If GoalId has already been processed:
+
+```
+Ignore Duplicate
+```
+
+This provides **effectively-once** business processing.
+
+---
+
+# Kafka EOS vs Transactional Outbox
+
+| Kafka Exactly Once Semantics | Transactional Outbox |
+|------------------------------|----------------------|
+| Works entirely within Kafka | Works across Database + Kafka |
+| Atomic writes across Kafka topics | Atomic database update + Outbox insert |
+| Atomically commits consumer offsets | Guarantees committed DB changes always generate an event |
+| Uses `sendOffsetsToTransaction()` | Uses Outbox Publisher (Polling or Debezium) |
+| Prevents duplicate Kafka processing | Prevents lost database events |
+| Does not include external databases | Does not eliminate duplicate event publication |
+
+---
+
+# Interview Questions
+
+### Q: Why use Kafka transactions?
+
+> Kafka transactions provide atomic writes across multiple Kafka topics and allow produced records and consumer offset commits to be committed together. This enables Exactly Once Semantics within Kafka.
+
+---
+
+### Q: Does `producer.send()` immediately publish the message?
+
+> No. The Leader appends the record immediately, but if it belongs to an active transaction it remains invisible to `read_committed` consumers until `commitTransaction()` writes the transaction commit marker.
+
+---
+
+### Q: What is the difference between `commitSync()` and `sendOffsetsToTransaction()`?
+
+> `commitSync()` immediately commits consumer offsets independently. `sendOffsetsToTransaction()` includes the offset commit inside the Kafka transaction so that offsets and produced records are committed atomically.
+
+---
+
+### Q: Can Kafka transactions include PostgreSQL?
+
+> No. Kafka transactions only coordinate Kafka resources. External systems such as PostgreSQL require patterns like the Transactional Outbox.
+
+---
+
+### Q: Does the Transactional Outbox provide Exactly Once Semantics?
+
+> No. The Transactional Outbox guarantees that committed database changes are never lost as events by atomically writing both the business data and an Outbox record in the same database transaction. However, the Outbox Publisher may retry after failures, so duplicate Kafka events are possible. Downstream consumers should therefore be idempotent.
+
+---
+
+# Key Takeaways
+
+- Kafka transactions provide atomicity **within Kafka**.
+- `producer.send()` appends records immediately but keeps them invisible until the transaction commits.
+- `sendOffsetsToTransaction()` enables atomic producer writes and consumer offset commits.
+- Kafka transactions are ideal for:
+  - Atomic writes across multiple Kafka topics.
+  - Consume → Process → Produce pipelines.
+- Kafka cannot coordinate transactions with PostgreSQL.
+- Use the **Transactional Outbox** pattern to reliably publish database changes as Kafka events.
+- Debezium streams committed Outbox changes from PostgreSQL's WAL to Kafka.
+- The Transactional Outbox guarantees **no lost events**, but not true exactly-once delivery.
+- Combine **Transactional Outbox + Idempotent Consumers** for effectively-once business processing.
+
+# Do We Still Need Idempotent Consumers?
+
+A common interview question is:
+
+> If Kafka provides Exactly Once Semantics (EOS), do we still need idempotent consumers?
+
+The answer is:
+
+> **It depends on whether the consumer interacts only with Kafka or also with external systems.**
+
+---
+
+# Case 1: Kafka → Kafka Only
+
+Architecture:
+
+```
+Input Topic
+
+↓
+
+Consumer
+
+↓
+
+Business Logic
+
+↓
+
+Output Topic
+```
+
+Application:
+
+```java
+poll();
+
+process();
+
+producer.send(...);
+
+producer.sendOffsetsToTransaction(...);
+
+producer.commitTransaction();
+```
+
+Everything involved is a Kafka resource:
+
+- Input Topic
+- Output Topic
+- Consumer Offset
+
+Kafka transactions guarantee that:
+
+- Output messages become visible.
+- Consumer offsets are committed.
+
+together.
+
+If the application crashes before:
+
+```java
+commitTransaction();
+```
+
+Neither the output messages nor the consumer offsets become visible.
+
+After restart:
+
+```
+Read Same Input Again
+
+↓
+
+Process Again
+
+↓
+
+One Committed Output Event
+```
+
+No duplicate output is observed.
+
+### In this scenario:
+
+Additional idempotent consumer logic is generally **not required**, because Kafka's Exactly Once Semantics already provide exactly-once processing within Kafka.
+
+---
+
+# Case 2: Consumer Performs External Side Effects
+
+Example:
+
+```
+Kafka
+
+↓
+
+Consumer
+
+↓
+
+Charge Credit Card
+
+↓
+
+Publish Kafka Event
+```
+
+Suppose:
+
+```
+Charge Card ✓
+
+↓
+
+Application Crashes
+
+↓
+
+Kafka Transaction Never Commits
+```
+
+Restart:
+
+```
+Read Same Event Again
+
+↓
+
+Charge Card Again
+```
+
+Customer is charged twice.
+
+Kafka cannot roll back external systems.
+
+---
+
+Another example:
+
+```
+Kafka
+
+↓
+
+Send Email
+
+↓
+
+Publish Kafka
+```
+
+Crash after:
+
+```
+Email Sent ✓
+
+↓
+
+Crash
+```
+
+Restart:
+
+```
+Email Sent Again
+```
+
+Duplicate email.
+
+---
+
+# PostgreSQL Example
+
+```
+Kafka
+
+↓
+
+Update PostgreSQL
+
+↓
+
+Publish Kafka
+```
+
+Kafka transactions cannot include PostgreSQL.
+
+This is why we use the **Transactional Outbox Pattern**.
+
+---
+
+# Redis Example
+
+Suppose:
+
+```
+Kafka
+
+↓
+
+Redis
+```
+
+Operation:
+
+```
+SET match:123 score = "3-2"
+```
+
+This operation is naturally idempotent.
+
+Running it twice produces the same final state.
+
+However:
+
+```
+INCR homeGoals
+```
+
+is **not** idempotent.
+
+Running it twice increments the score twice.
+
+Whether idempotency is required depends on the business operation, not on Redis itself.
+
+---
+
+# Transactional Outbox
+
+The Transactional Outbox guarantees:
+
+```
+Database Update
+
++
+
+Outbox Insert
+```
+
+are committed atomically.
+
+However, the Outbox Publisher may publish the same Kafka event more than once after retries.
+
+Therefore downstream consumers should still be idempotent.
+
+---
+
+# Summary
+
+| Consumer Action | Need Idempotent Consumer? | Reason |
+|-----------------|---------------------------|--------|
+| Kafka → Kafka | Usually No | Kafka EOS atomically commits output records and consumer offsets. |
+| Kafka → PostgreSQL | Yes | PostgreSQL is outside Kafka's transaction boundary. |
+| Kafka → REST API | Yes | Kafka cannot roll back external services. |
+| Kafka → Email/SMS | Yes | External side effects may be repeated after retries. |
+| Kafka → Payment Service | Yes | Duplicate business operations are unacceptable. |
+| Kafka → Redis (`SET`) | Usually No | Setting the same value twice results in the same state. |
+| Kafka → Redis (`INCR`, `APPEND`, etc.) | Yes | Repeating the operation changes the state multiple times. |
+| Transactional Outbox → Kafka | Yes | The Outbox Publisher may retry and publish duplicate events. |
+
+---
+
+# Interview Questions
+
+### Q: Do Kafka transactions eliminate the need for idempotent consumers?
+
+> Not completely. Kafka transactions provide Exactly Once Semantics only for Kafka resources, such as Kafka topics and consumer offsets. If the consumer performs external side effects like updating a database, sending emails, charging payments, or calling REST services, those operations remain outside Kafka's transaction boundary and should be idempotent or use appropriate reliability patterns such as the Transactional Outbox.
+
+---
+
+# Key Takeaways
+
+- Kafka EOS guarantees exactly-once processing **within Kafka**.
+- Kafka EOS does **not** extend to external systems.
+- External side effects should be idempotent.
+- The Transactional Outbox prevents lost events but may still produce duplicate Kafka events after retries.
+- Transactional Outbox + Idempotent Consumers provides **effectively-once** business processing across a database and Kafka.
+
+# Kafka Delivery Guarantees
+
+Kafka provides different guarantees at different stages of the message flow.
+
+| Stage | Guarantee |
+|--------|-----------|
+| **Producer → Kafka** | **`acks=0` → At-most-once** (fire-and-forget; messages may be lost). **`acks=1` → At-least-once** (producer retries if an ACK is not received, but an acknowledged message can still be lost if the leader fails before replication). **`acks=all` + `enable.idempotence=true` → Exactly-once producer delivery**, preventing duplicate writes caused by producer retries while ensuring durable replication to the ISR. |
+| **Kafka → Consumer** | **At-least-once**. Kafka may redeliver a message if the consumer crashes before committing its offset. |
+| **Consume → Process → Produce (Kafka → Kafka Pipeline)** | **Exactly-once processing (EOS)** using **Kafka Transactions** (`transactional.id`), an **idempotent producer**, and `sendOffsetsToTransaction()`. Kafka atomically commits the produced records and the consumer offsets so that either both succeed or neither does. This guarantee applies only when all transactional resources are Kafka resources (Kafka topics and `__consumer_offsets`). |	
+---
+
+## Key Points
+
+### Producer → Kafka
+
+Configuration:
+
+```properties
+acks=all
+enable.idempotence=true
+```
+
+Guarantees:
+
+- Prevents duplicate messages caused by producer retries.
+- Preserves message ordering.
+- Ensures durable writes when using `acks=all`.
+
+---
+
+### Kafka → Consumer
+
+Kafka guarantees **at-least-once delivery**.
+
+If a consumer crashes before committing its offset, Kafka will redeliver the message after restart to avoid message loss.
+
+---
+
+### Consume → Process → Produce (EOS)
+
+Configuration:
+
+```properties
+enable.idempotence=true
+transactional.id=...
+```
+
+Application flow:
+
+```java
+producer.beginTransaction();
+
+producer.send(...);
+
+producer.sendOffsetsToTransaction(...);
+
+producer.commitTransaction();
+```
+
+Kafka atomically commits:
+
+- Writes to one or more Kafka topics.
+- Consumer offset commits (`__consumer_offsets`).
+
+This guarantees that:
+
+- Either all output messages become visible **and** the consumer offset is committed.
+- Or none of them are committed.
+
+This is Kafka's **Exactly Once Semantics (EOS)**.
+
+**Note:** EOS only applies when all transactional resources are inside Kafka. It does **not** include external systems such as PostgreSQL, Redis, REST APIs, email services, or payment gateways. Those require patterns such as the **Transactional Outbox** and **idempotent consumers**.
+
+# Exactly Once vs Effectively Once Processing
+
+One of the most important concepts in distributed systems is understanding the difference between **Exactly Once Semantics (EOS)** and **Effectively Once Processing**.
+
+---
+
+# Exactly Once Processing
+
+Exactly Once means the infrastructure guarantees that an operation is processed exactly one time.
+
+Kafka can provide this guarantee only when all transactional resources are Kafka resources.
+
+Example:
+
+```
+Input Topic
+
+↓
+
+Consumer
+
+↓
+
+Business Logic
+
+↓
+
+Output Topic(s)
+
+↓
+
+Consumer Offset
+```
+
+Using:
+
+- `enable.idempotence=true`
+- `transactional.id`
+- `sendOffsetsToTransaction()`
+
+Kafka atomically commits:
+
+- Output topic writes
+- Consumer offset commits
+
+Either all succeed or none do.
+
+---
+
+# Why Doesn't This Work With External Systems?
+
+Suppose the application performs:
+
+```
+Kafka
+
+↓
+
+Consumer
+
+↓
+
+PostgreSQL
+
+↓
+
+Redis
+
+↓
+
+REST API
+
+↓
+
+Kafka
+```
+
+Now multiple independent systems participate.
+
+Each system has its own transaction manager.
+
+Kafka cannot coordinate commits across all of them.
+
+Therefore true distributed Exactly Once Semantics are generally not possible.
+
+---
+
+# Design for Idempotency
+
+Once external systems are involved, retries become inevitable.
+
+Instead of trying to eliminate retries, we make every external side effect safe to execute multiple times.
+
+Examples:
+
+### PostgreSQL
+
+Prefer:
+
+- UPSERT
+- Unique business keys
+
+instead of blindly inserting duplicate rows.
+
+---
+
+### Redis
+
+Good:
+
+```
+SET score = "3-2"
+```
+
+Running it twice produces the same final state.
+
+Not idempotent:
+
+```
+INCR homeGoals
+```
+
+Running it twice increments the score twice.
+
+---
+
+### REST APIs / Payment Services
+
+Use business identifiers or idempotency keys.
+
+Example:
+
+```
+PaymentId = PAY-12345
+```
+
+If the same request is received again:
+
+```
+Already Processed
+
+↓
+
+Return Previous Result
+```
+
+No duplicate charge occurs.
+
+---
+
+# Transactional Outbox
+
+The Transactional Outbox guarantees:
+
+```
+Business Update
+
++
+
+Outbox Insert
+```
+
+commit atomically.
+
+However, duplicate event publication is still possible.
+
+Example:
+
+```
+Read Outbox Row
+
+↓
+
+Publish Kafka ✓
+
+↓
+
+Crash
+
+↓
+
+Mark Published ✗
+```
+
+Restart:
+
+```
+Read Same Outbox Row
+
+↓
+
+Publish Again
+```
+
+Duplicate Kafka event.
+
+Therefore downstream consumers should still be idempotent.
+
+---
+
+# Effectively Once Processing
+
+Effectively Once Processing means:
+
+> The infrastructure may retry operations or deliver duplicate messages, but the application is designed so that duplicate executions do not change the final business outcome.
+
+Examples:
+
+### Payment
+
+Infrastructure:
+
+```
+Charge Request
+
+↓
+
+Retry
+
+↓
+
+Retry
+```
+
+Application:
+
+```
+PaymentId = PAY-123
+
+↓
+
+Already Processed?
+
+↓
+
+Yes
+
+↓
+
+Return Previous Result
+```
+
+Customer is charged only once.
+
+---
+
+### Transactional Outbox
+
+Publisher:
+
+```
+Goal Event
+
+↓
+
+Publish Kafka
+
+↓
+
+Crash
+
+↓
+
+Publish Again
+```
+
+Consumer:
+
+```
+GoalId = 987
+
+↓
+
+Already Processed?
+
+↓
+
+Yes
+
+↓
+
+Ignore
+```
+
+Business outcome:
+
+```
+Goal Processed Once
+```
+
+even though Kafka received duplicate events.
+
+---
+
+# Exactly Once vs Effectively Once
+
+| Exactly Once | Effectively Once |
+|---------------|------------------|
+| Infrastructure guarantees one execution. | Infrastructure may retry or deliver duplicates. |
+| No duplicate processing occurs. | Duplicate processing may occur internally. |
+| Supported by Kafka only when all transactional resources are Kafka resources. | Achieved by designing idempotent business operations. |
+| Difficult across multiple distributed systems. | Practical approach used in modern microservice architectures. |
+
+---
+
+# Mental Model
+
+```
+Kafka Only
+
+↓
+
+Exactly Once Processing
+
+------------------------------------
+
+Kafka + PostgreSQL + Redis + REST API
+
+↓
+
+Retries Are Inevitable
+
+↓
+
+Design Every Side Effect To Be Idempotent
+
+↓
+
+Effectively Once Business Processing
+```
+
+---
+
+# Interview Questions
+
+### Q: Can we guarantee Exactly Once Semantics across Kafka and external systems?
+
+> Generally no. Kafka provides Exactly Once Semantics only for Kafka resources. Once external systems such as PostgreSQL, Redis, REST APIs, or payment services participate, there is no single transaction manager coordinating all resources. Modern systems therefore rely on idempotent operations and reliability patterns such as the Transactional Outbox.
+
+---
+
+### Q: What is Effectively Once Processing?
+
+> Effectively Once Processing means the underlying infrastructure may retry operations or deliver duplicate messages, but the application is designed so that duplicate executions do not change the final business outcome. This is typically achieved using idempotent business operations, unique business identifiers, Transactional Outbox, and idempotent consumers.
+
+---
+
+# Key Takeaways
+
+- Kafka provides true **Exactly Once Processing** only when all transactional resources remain inside Kafka.
+- Once external systems participate, true distributed Exactly Once Semantics are generally not achievable without distributed transactions.
+- Modern distributed systems embrace retries and design external side effects to be idempotent.
+- The Transactional Outbox prevents lost events but may still produce duplicate events.(If poller crashes before updating the poll table as published)
+- **Idempotent operations + Transactional Outbox = Effectively Once Business Processing.**
+
+
+# Exactly Once vs Effectively Once Processing
+
+One of the most important concepts in distributed systems is understanding the difference between **Exactly Once Semantics (EOS)** and **Effectively Once Processing**.
+
+---
+
+# Exactly Once Processing
+
+Exactly Once means the infrastructure guarantees that an operation is processed exactly one time.
+
+Kafka can provide this guarantee only when all transactional resources are Kafka resources.
+
+Example:
+
+```
+Input Topic
+
+↓
+
+Consumer
+
+↓
+
+Business Logic
+
+↓
+
+Output Topic(s)
+
+↓
+
+Consumer Offset
+```
+
+Using:
+
+- `enable.idempotence=true`
+- `transactional.id`
+- `sendOffsetsToTransaction()`
+
+Kafka atomically commits:
+
+- Output topic writes
+- Consumer offset commits
+
+Either all succeed or none do.
+
+---
+
+# Why Doesn't This Work With External Systems?
+
+Suppose the application performs:
+
+```
+Kafka
+
+↓
+
+Consumer
+
+↓
+
+PostgreSQL
+
+↓
+
+Redis
+
+↓
+
+REST API
+
+↓
+
+Kafka
+```
+
+Now multiple independent systems participate.
+
+Each system has its own transaction manager.
+
+Kafka cannot coordinate commits across all of them.
+
+Therefore true distributed Exactly Once Semantics are generally not possible.
+
+---
+
+# Design for Idempotency
+
+Once external systems are involved, retries become inevitable.
+
+Instead of trying to eliminate retries, we make every external side effect safe to execute multiple times.
+
+Examples:
+
+### PostgreSQL
+
+Prefer:
+
+- UPSERT
+- Unique business keys
+
+instead of blindly inserting duplicate rows.
+
+---
+
+### Redis
+
+Good:
+
+```
+SET score = "3-2"
+```
+
+Running it twice produces the same final state.
+
+Not idempotent:
+
+```
+INCR homeGoals
+```
+
+Running it twice increments the score twice.
+
+---
+
+### REST APIs / Payment Services
+
+Use business identifiers or idempotency keys.
+
+Example:
+
+```
+PaymentId = PAY-12345
+```
+
+If the same request is received again:
+
+```
+Already Processed
+
+↓
+
+Return Previous Result
+```
+
+No duplicate charge occurs.
+
+---
+
+# Transactional Outbox
+
+The Transactional Outbox guarantees:
+
+```
+Business Update
+
++
+
+Outbox Insert
+```
+
+commit atomically.
+
+However, duplicate event publication is still possible.
+
+Example:
+
+```
+Read Outbox Row
+
+↓
+
+Publish Kafka ✓
+
+↓
+
+Crash
+
+↓
+
+Mark Published ✗
+```
+
+Restart:
+
+```
+Read Same Outbox Row
+
+↓
+
+Publish Again
+```
+
+Duplicate Kafka event.
+
+Therefore downstream consumers should still be idempotent.
+
+---
+
+# Effectively Once Processing
+
+Effectively Once Processing means:
+
+> The infrastructure may retry operations or deliver duplicate messages, but the application is designed so that duplicate executions do not change the final business outcome.
+
+Examples:
+
+### Payment
+
+Infrastructure:
+
+```
+Charge Request
+
+↓
+
+Retry
+
+↓
+
+Retry
+```
+
+Application:
+
+```
+PaymentId = PAY-123
+
+↓
+
+Already Processed?
+
+↓
+
+Yes
+
+↓
+
+Return Previous Result
+```
+
+Customer is charged only once.
+
+---
+
+### Transactional Outbox
+
+Publisher:
+
+```
+Goal Event
+
+↓
+
+Publish Kafka
+
+↓
+
+Crash
+
+↓
+
+Publish Again
+```
+
+Consumer:
+
+```
+GoalId = 987
+
+↓
+
+Already Processed?
+
+↓
+
+Yes
+
+↓
+
+Ignore
+```
+
+Business outcome:
+
+```
+Goal Processed Once
+```
+
+even though Kafka received duplicate events.
+
+---
+
+# Exactly Once vs Effectively Once
+
+| Exactly Once | Effectively Once |
+|---------------|------------------|
+| Infrastructure guarantees one execution. | Infrastructure may retry or deliver duplicates. |
+| No duplicate processing occurs. | Duplicate processing may occur internally. |
+| Supported by Kafka only when all transactional resources are Kafka resources. | Achieved by designing idempotent business operations. |
+| Difficult across multiple distributed systems. | Practical approach used in modern microservice architectures. |
+
+---
+
+# Mental Model
+
+```
+Kafka Only
+
+↓
+
+Exactly Once Processing
+
+------------------------------------
+
+Kafka + PostgreSQL + Redis + REST API
+
+↓
+
+Retries Are Inevitable
+
+↓
+
+Design Every Side Effect To Be Idempotent
+
+↓
+
+Effectively Once Business Processing
+```
+
+---
+
+# Interview Questions
+
+### Q: Can we guarantee Exactly Once Semantics across Kafka and external systems?
+
+> Generally no. Kafka provides Exactly Once Semantics only for Kafka resources. Once external systems such as PostgreSQL, Redis, REST APIs, or payment services participate, there is no single transaction manager coordinating all resources. Modern systems therefore rely on idempotent operations and reliability patterns such as the Transactional Outbox.
+
+---
+
+### Q: What is Effectively Once Processing?
+
+> Effectively Once Processing means the underlying infrastructure may retry operations or deliver duplicate messages, but the application is designed so that duplicate executions do not change the final business outcome. This is typically achieved using idempotent business operations, unique business identifiers, Transactional Outbox, and idempotent consumers.
+
+---
+
+# Key Takeaways
+
+- Kafka provides true **Exactly Once Processing** only when all transactional resources remain inside Kafka.
+- Once external systems participate, true distributed Exactly Once Semantics are generally not achievable without distributed transactions.
+- Modern distributed systems embrace retries and design external side effects to be idempotent.
+- The Transactional Outbox prevents lost events but may still produce duplicate events.
+- **Idempotent operations + Transactional Outbox = Effectively Once Business Processing.**
