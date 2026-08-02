@@ -8187,3 +8187,2202 @@ A strong answer:
 - A vnode represents ownership of a token range, not a physical node.
 - Each physical node owns many virtual tokens.
 - Virtual Nodes improve load balancing and simplify cluster scaling and recovery.
+
+# Cassandra Compaction Strategies
+
+## Why Do We Need Compaction?
+
+Recall the Cassandra write path:
+
+```
+Write
+
+↓
+
+Commit Log
+
+↓
+
+MemTable
+
+↓
+
+Flush
+
+↓
+
+SSTable
+```
+
+Every MemTable flush creates a **new immutable SSTable**.
+
+Over time:
+
+```
+SSTable1
+
+↓
+
+SSTable2
+
+↓
+
+SSTable3
+
+↓
+
+...
+
+↓
+
+Hundreds of SSTables
+```
+
+---
+
+## Why is That a Problem?
+
+Suppose we need to read:
+
+```
+Match123
+```
+
+Cassandra may need to check multiple SSTables.
+
+```
+Bloom Filter
+
+↓
+
+SSTable1 ?
+
+↓
+
+SSTable2 ?
+
+↓
+
+SSTable3 ?
+
+↓
+
+...
+
+↓
+
+SSTable500 ?
+```
+
+Although Bloom Filters help eliminate unnecessary disk reads, having many SSTables increases:
+
+- Read latency
+- Metadata overhead
+- Disk space
+- Duplicate versions of the same data
+
+---
+
+# Solution: Compaction
+
+Compaction merges multiple SSTables into fewer, larger SSTables.
+
+Example:
+
+Before:
+
+```
+SSTable1
+
+SSTable2
+
+SSTable3
+
+SSTable4
+```
+
+↓
+
+Compaction
+
+↓
+
+After:
+
+```
+SSTable5
+```
+
+Old SSTables are deleted after the new SSTable is successfully written.
+
+---
+
+# What Happens During Compaction?
+
+During compaction Cassandra:
+
+- Reads multiple SSTables
+- Merges rows
+- Keeps the latest version of each row (Last Write Wins)
+- Removes obsolete versions
+- Removes expired tombstones (when safe)
+- Writes a brand-new SSTable
+- Deletes the old SSTables
+- Compaction never modifies an existing SSTable. Instead, Cassandra reads multiple immutable SSTables, merges their contents into a brand-new SSTable, and once that new SSTable is fully written, it atomically replaces the old SSTables, which are then deleted. The original SSTables are never updated in place.
+
+---
+
+# Compaction Strategies
+
+Different workloads require different compaction strategies.
+
+| Strategy | Best For |
+|-----------|----------|
+| STCS | General-purpose / Write-heavy workloads |
+| LCS | Read-heavy workloads |
+| TWCS | Time-series workloads |
+
+---
+
+# 1. STCS (Size-Tiered Compaction Strategy)
+
+STCS groups SSTables of **similar size**.
+
+Example:
+
+```
+10 MB
+
+12 MB
+
+11 MB
+
+↓
+
+Merge
+
+↓
+
+33 MB
+```
+
+Later:
+
+```
+33 MB
+
+35 MB
+
+34 MB
+
+↓
+
+Merge
+
+↓
+
+102 MB
+```
+
+### Advantages
+
+- Excellent write throughput
+- Simple implementation
+- Lower compaction overhead
+
+### Disadvantages
+
+- A partition may exist in multiple SSTables
+- Reads may touch several SSTables
+- Higher read amplification
+
+---
+
+# 2. LCS (Leveled Compaction Strategy)
+
+Instead of grouping by size,
+
+LCS organizes SSTables into **levels**.
+
+```
+Level 0
+
+↓
+
+Level 1
+
+↓
+
+Level 2
+
+↓
+
+Level 3
+```
+
+Within a level:
+
+- SSTables have non-overlapping key ranges
+- Reads usually examine only one SSTable per level
+
+### Advantages
+
+- Very fast reads
+- Low read amplification
+- Good for read-heavy applications
+
+### Disadvantages
+
+- More compaction work
+- Higher write amplification
+- Increased disk I/O
+
+---
+
+# 3. TWCS (Time Window Compaction Strategy)
+
+TWCS groups SSTables by **time windows**.
+
+Example:
+
+```
+10:00 - 11:00
+
+↓
+
+SSTables
+
+↓
+
+Compact Together
+```
+
+```
+11:00 - 12:00
+
+↓
+
+SSTables
+
+↓
+
+Compact Together
+```
+
+```
+12:00 - 1:00
+
+↓
+
+SSTables
+
+↓
+
+Compact Together
+```
+
+Each time window is compacted independently.
+
+Older windows are rarely compacted again.
+
+---
+
+# Why is TWCS Ideal for Time-Series Data?
+
+Example:
+
+```
+Football Match Events
+
+Goal Events
+
+Yellow Cards
+
+Red Cards
+
+Substitutions
+
+VAR Events
+```
+
+During a live match:
+
+- Events are continuously written
+
+After the match:
+
+- Data becomes mostly read-only
+
+TWCS naturally groups writes for each time period and avoids repeatedly compacting historical data.
+
+---
+
+# TWCS Benefits
+
+- Efficient writes
+- Efficient compaction
+- Minimal rewriting of historical data
+- Works well with TTL-based expiration
+- Excellent for logs, metrics, IoT, and sports events
+
+---
+
+# Which Strategy Would You Choose?
+
+| Workload | Strategy |
+|-----------|----------|
+| General-purpose application | STCS |
+| Read-heavy application | LCS |
+| Time-series / Event data | TWCS |
+
+---
+
+# Apple Sports Example
+
+Suppose we are storing:
+
+```
+Match Events
+
+Goal Events
+
+Player Statistics
+
+Live Score Updates
+```
+
+These events are naturally ordered by time.
+
+Most writes happen while the match is in progress.
+
+Once the match finishes, the data becomes mostly immutable.
+
+TWCS is an ideal choice because it compacts data within time windows and minimizes unnecessary rewrites of older match data.
+
+---
+
+# Comparison
+
+| Feature | STCS | LCS | TWCS |
+|----------|------|-----|------|
+| Organizes By | SSTable Size | Levels | Time Windows |
+| Read Performance | Medium | Excellent | Good |
+| Write Performance | Excellent | Medium | Excellent |
+| Write Amplification | Low | High | Low |
+| Read Amplification | High | Low | Low (recent windows) |
+| Best Use Case | General-purpose | Read-heavy | Time-series |
+
+---
+
+# Interview Questions
+
+### Q: Why does Cassandra need compaction?
+
+A strong answer:
+
+> Every MemTable flush creates a new immutable SSTable. Without compaction, the number of SSTables would continue growing, increasing read latency and storage overhead. Compaction merges SSTables, removes obsolete row versions and expired tombstones, and produces fewer, larger SSTables.
+
+---
+
+### Q: Which compaction strategy would you choose for a live sports application?
+
+A strong answer:
+
+> I would choose Time Window Compaction Strategy (TWCS). Sports events are naturally time-series data. Writes occur continuously while a match is in progress, and historical match data becomes mostly immutable afterward. TWCS compacts SSTables within time windows, reducing unnecessary rewrites and providing efficient write performance.
+> Because SSTables are grouped by time windows. Once a window is complete, its data becomes mostly immutable and is compacted within that window only. Unlike STCS, historical data is not repeatedly rewritten during future compactions, reducing write amplification and making TWCS ideal for append-only workloads like live sports events.
+
+---
+
+### Q: Why is LCS faster for reads?
+
+A strong answer:
+
+> LCS organizes SSTables into levels with non-overlapping key ranges. As a result, a read typically needs to examine at most one SSTable per level, significantly reducing read amplification compared to STCS.
+
+---
+
+### Q: Why is STCS good for writes?
+
+A strong answer:
+
+> STCS merges SSTables of similar size, resulting in fewer compaction operations and lower write amplification. This makes it a good default choice for write-heavy workloads.
+
+---
+
+# Key Takeaways
+
+- Every MemTable flush creates a new immutable SSTable.
+- Too many SSTables increase read latency and storage overhead.
+- Compaction merges SSTables and removes obsolete data.
+- STCS groups SSTables by size.
+- LCS organizes SSTables into non-overlapping levels for fast reads.
+- TWCS groups SSTables by time windows and is ideal for time-series workloads.
+- For a live sports platform storing match events, **TWCS is typically the best choice** because the data is naturally time-ordered and becomes mostly immutable after the event.
+
+
+# Secondary Indexes in Cassandra
+
+## What is a Secondary Index?
+
+A Secondary Index allows queries on non-primary key columns.
+
+Example:
+
+```sql
+SELECT *
+FROM MatchEvents
+WHERE playerId = 'Messi';
+```
+
+without making `playerId` part of the primary key.
+
+---
+
+## Why are Secondary Indexes Discouraged?
+
+Since data is distributed across many nodes, Cassandra may need to contact multiple nodes to satisfy an indexed query.
+
+This can lead to higher latency and poor scalability.
+
+---
+
+## Preferred Cassandra Approach
+
+Instead of creating a Secondary Index, Cassandra prefers **query-driven data modeling**.
+
+Create another table optimized for the query.
+
+Example:
+
+```
+MatchEvents
+PK: (matchId, eventTimestamp)
+
+↓
+
+PlayerEvents
+PK: (playerId, eventTimestamp)
+```
+
+This is called **denormalization**.
+
+---
+
+## Materialized Views
+
+Materialized Views automatically maintain alternate query tables.
+
+However, many production systems prefer maintaining denormalized tables in the application for greater control and predictable performance.
+
+---
+
+## Interview Takeaway
+
+> Cassandra favors **creating new tables for new query patterns** rather than relying on Secondary Indexes, especially in large distributed systems.
+
+# Choosing the Right Datastore - Apple Live Sports
+
+The most important design principle is:
+
+> **Choose the database based on the characteristics of the data and access patterns, not because one database can store everything.**
+
+---
+
+# 1. League Metadata
+
+Example:
+
+- Premier League
+- La Liga
+- Bundesliga
+
+Characteristics:
+
+- Small dataset
+- Strong consistency
+- Rare updates
+- Relational
+
+Typical Queries:
+
+- Get League
+- Update League
+- List All Leagues
+
+### Database
+
+**PostgreSQL**
+
+Reason:
+
+- ACID transactions
+- Rich querying
+- Easy updates
+- Relational data
+
+---
+
+# 2. Match Metadata
+
+Example:
+
+- MatchId
+- Home Team
+- Away Team
+- Stadium
+- Referee
+- Kickoff Time
+- Match Status
+
+Characteristics:
+
+- Relational
+- Frequently updated before kickoff
+- Multiple query patterns
+
+Typical Queries:
+
+- Today's matches
+- Matches by league
+- Matches by team
+- Match details
+
+### Database
+
+**PostgreSQL**
+
+Reason:
+
+- Flexible indexes
+- Multiple filtering options
+- Strong consistency
+- Relational model
+
+---
+
+# 3. Teams
+
+Example:
+
+- Team
+- Coach
+- City
+- League
+- Logo
+
+Characteristics:
+
+- Relational
+- Low write volume
+
+### Database
+
+**PostgreSQL**
+
+---
+
+# 4. Players
+
+Example:
+
+- Player
+- Team
+- Position
+- Nationality
+- Age
+
+Characteristics:
+
+- Relational
+- Frequently searched
+- Low write volume
+
+### Database
+
+**PostgreSQL**
+
+---
+
+# 5. Match Events
+
+Example:
+
+- Goals
+- Yellow Cards
+- Red Cards
+- VAR Events
+- Substitutions
+
+Characteristics:
+
+- Extremely high write throughput
+- Append-only
+- Time-series
+- Ordered by timestamp
+
+Typical Queries:
+
+- Match timeline
+- All events for a match
+
+### Database
+
+**Cassandra**
+
+Reason:
+
+- High write throughput
+- Horizontal scalability
+- Excellent for append-only time-series data
+- TWCS is ideal
+
+---
+
+# 6. Live Score
+
+Example:
+
+- Current Score
+- Match Clock
+- Possession
+- Shots
+- Corners
+
+Characteristics:
+
+- Millions of reads
+- Frequent updates
+- Very low latency required
+
+### Database
+
+**Redis**
+
+Reason:
+
+- In-memory storage
+- Sub-millisecond to low-millisecond reads
+- Ideal cache for live data
+
+---
+
+# 7. Leaderboards
+
+Example:
+
+- Top Scorers
+- Top Assists
+- Top Goalkeepers
+
+Characteristics:
+
+- Frequently updated
+- Frequently read
+- Ranking operations
+
+### Database
+
+**Redis (Sorted Sets)**
+
+Reason:
+
+- Efficient ranking
+- Fast reads
+- Built-in sorted data structures
+
+---
+
+# 8. User Data / Favorites
+
+Example:
+
+- Favorite Teams
+- Favorite Players
+- User Preferences
+
+Characteristics:
+
+- Transactional
+- Relational
+- Strong consistency
+
+### Database
+
+**PostgreSQL**
+
+---
+
+# 9. Notifications
+
+Example:
+
+- Goal Scored
+- Match Started
+- Red Card
+
+Characteristics:
+
+- Event-driven
+- Asynchronous
+- Fan-out to multiple consumers
+
+### Technology
+
+**Kafka**
+
+Reason:
+
+- Reliable event streaming
+- Decouples producers and consumers
+- Supports multiple downstream services
+
+---
+
+# 10. Analytics
+
+Example:
+
+- API Calls
+- User Clicks
+- App Usage
+- Viewing Statistics
+
+Characteristics:
+
+- Massive volume
+- Append-only
+- Offline analysis
+
+### Technology
+
+```
+Kafka
+
+↓
+
+Data Lake / Data Warehouse
+```
+
+---
+
+# High-Level Architecture
+
+```
+                Feed Providers
+                       │
+                       ▼
+                    Kafka
+                       │
+      ┌────────────────┼────────────────┐
+      ▼                ▼                ▼
+ Event Service    Score Service   Notification Service
+      │                │                │
+      ▼                ▼                ▼
+ Cassandra         Redis          APNs / FCM
+      │
+      ▼
+Historical Match Events
+
+--------------------------------------------
+
+Reference APIs
+
+      │
+      ▼
+
+PostgreSQL
+
+Leagues
+Teams
+Players
+Match Metadata
+Users
+Favorites
+```
+
+---
+
+# Interview Summary
+
+| Data | Best Choice | Why? |
+|------|-------------|------|
+| League Metadata | PostgreSQL | Relational, ACID, small dataset |
+| Match Metadata | PostgreSQL | Rich querying, multiple filters |
+| Teams | PostgreSQL | Relational reference data |
+| Players | PostgreSQL | Relational reference data |
+| Match Events | Cassandra | High write throughput, time-series |
+| Live Score | Redis | Extremely low-latency reads |
+| Leaderboards | Redis | Sorted Sets for rankings |
+| User Data | PostgreSQL | Transactional, relational |
+| Notifications | Kafka | Event streaming and fan-out |
+| Analytics | Kafka → Data Lake | Massive event ingestion |
+
+---
+
+# Key Takeaway
+
+A senior system designer chooses the datastore based on:
+
+- Data characteristics
+- Access patterns
+- Read/write ratio
+- Consistency requirements
+- Scalability requirements
+
+**Not because one database can store every type of data.**
+
+# Cassandra vs PostgreSQL
+
+## PostgreSQL
+
+Best for:
+
+- Relational data
+- ACID transactions
+- Strong consistency
+- Flexible querying
+- Joins
+- Foreign keys
+
+Examples:
+
+- Users
+- Payments
+- Orders
+- Teams
+- Players
+- Match Metadata
+
+---
+
+## Cassandra
+
+Best for:
+
+- Massive write throughput
+- Time-series data
+- Append-only workloads
+- Horizontal scalability
+- Predictable query patterns
+- High availability
+
+Examples:
+
+- Match Events
+- Logs
+- Metrics
+- IoT Data
+- Clickstream Events
+
+---
+
+# Data Model
+
+### PostgreSQL
+
+- Relational
+- Supports joins
+- Normalized schema
+
+### Cassandra
+
+- Query-driven
+- Denormalized
+- No joins
+- One table per access pattern
+
+---
+
+# Consistency
+
+### PostgreSQL
+
+- Full ACID transactions
+- Strong consistency
+- Ideal for financial and transactional workflows
+
+### Cassandra
+
+- Tunable consistency
+- Eventual consistency
+- Limited transactional support (LWT)
+
+---
+
+# Querying
+
+### PostgreSQL
+
+Excellent for ad-hoc queries.
+
+Example:
+
+```sql
+SELECT *
+FROM Matches
+WHERE league='Premier League'
+AND city='London'
+AND goals >= 3;
+```
+
+### Cassandra
+
+Queries should be known in advance.
+
+Schema is designed around query patterns.
+
+New query patterns often require new tables.
+
+---
+
+# Scaling
+
+### PostgreSQL
+
+- Vertical scaling
+- Read replicas for scaling reads
+- Horizontal write scaling is more complex (typically requires sharding)
+
+### Cassandra
+
+- Peer-to-peer architecture
+- Add more nodes to increase capacity
+- Excellent horizontal scaling
+- No master node
+
+---
+
+# Write Performance
+
+### PostgreSQL
+
+- Optimized for transactional consistency
+- Updates indexes and transaction log
+
+### Cassandra
+
+Write path:
+
+```
+Commit Log
+
+↓
+
+MemTable
+
+↓
+
+Flush
+
+↓
+
+SSTable
+```
+
+Sequential writes make Cassandra ideal for high write throughput.
+
+---
+
+# Apple Sports Example
+
+### Match Metadata
+
+Use **PostgreSQL**
+
+Reason:
+
+- Relational
+- Multiple query patterns
+- Strong consistency
+- Rich querying
+
+---
+
+### Match Events
+
+Use **Cassandra**
+
+Reason:
+
+- High write throughput
+- Append-only
+- Time-series
+- Horizontal scalability
+
+---
+
+# Interview Question
+
+### Why PostgreSQL for Subscription Purchases?
+
+> Subscription purchases require ACID transactions and strong consistency. We cannot risk charging a customer without recording the purchase or vice versa. PostgreSQL provides atomic transactions and immediate consistency, making it the correct choice.
+
+---
+
+### Why Cassandra for Match Events?
+
+> Match events are append-only, time-series data generated at very high volume. Cassandra provides excellent write throughput, horizontal scalability, and predictable low-latency writes, making it a much better fit than a relational database.
+
+---
+
+# Quick Comparison
+
+| Feature | PostgreSQL | Cassandra |
+|----------|------------|-----------|
+| Data Model | Relational | Wide-column / Denormalized |
+| Transactions | Full ACID | Tunable/Eventual Consistency |
+| Joins | ✅ | ❌ |
+| Ad-hoc Queries | ✅ Excellent | ❌ Limited |
+| Horizontal Scaling | Moderate | Excellent |
+| Write Throughput | High | Extremely High |
+| Time-Series | Good | Excellent |
+| Best For | Transactional Systems | Event & Time-Series Systems |
+
+---
+
+# Key Takeaway
+
+**PostgreSQL** is chosen when correctness, relationships, and flexible querying are the priority.
+
+**Cassandra** is chosen when scalability, write throughput, availability, and time-series/event data are the priority.
+
+# Request-Driven vs Event-Driven Architecture
+
+One of the most important architectural concepts is understanding **what starts the work**.
+
+---
+
+# 1. Request-Driven Architecture
+
+A client sends an API request.
+
+Example:
+
+```http
+POST /purchase
+```
+
+Flow:
+
+```
+Client
+
+↓
+
+Purchase API
+
+↓
+
+Purchase Service
+
+↓
+
+Database
+```
+
+The HTTP request initiates the entire workflow.
+
+Typical examples:
+
+- Purchase Order
+- User Registration
+- Payment
+- Login
+
+---
+
+# 2. Event-Driven Architecture
+
+The application reacts to an event instead of an API request.
+
+Example:
+
+```
+Goal Scored
+```
+
+Apple does not generate the goal.
+
+Instead, an external sports provider sends the event.
+
+```
+Sports Provider
+
+↓
+
+Goal Event
+
+↓
+
+Our System
+```
+
+---
+
+# How Do Events Enter the System?
+
+## Option 1 (Most Common)
+
+Sports provider calls an HTTP endpoint.
+
+```
+Sports Provider
+
+↓
+
+POST /feed/events
+
+↓
+
+Ingestion Service
+
+↓
+
+Kafka
+```
+
+The Ingestion Service:
+
+- Validates the payload
+- Performs authentication
+- Publishes the event to Kafka
+
+Very little business logic is performed here.
+
+---
+
+## Option 2
+
+Sports provider publishes directly to Kafka.
+
+```
+Sports Provider
+
+↓
+
+Kafka
+
+↓
+
+Consumers
+```
+
+Common for internal enterprise integrations.
+
+---
+
+## Option 3
+
+Sports provider streams data using WebSockets.
+
+```
+Sports Provider
+
+↓
+
+WebSocket
+
+↓
+
+Ingestion Service
+
+↓
+
+Kafka
+```
+
+Common for real-time feeds.
+
+---
+
+# Where Does Event-Driven Begin?
+
+Before Kafka:
+
+```
+Sports Provider
+
+↓
+
+HTTP / WebSocket
+
+↓
+
+Ingestion Service
+```
+
+This is request/stream driven.
+
+After Kafka:
+
+```
+Kafka
+
+↓
+
+Event Persistence Service
+
+↓
+
+Live Score Service
+
+↓
+
+Notification Service
+```
+
+Everything reacts to events.
+
+No service directly calls another service's API.
+
+---
+
+# Apple Sports Architecture
+
+```
+              Sports Provider
+                     │
+             HTTP / WebSocket
+                     │
+                     ▼
+             Ingestion Service
+                     │
+                     ▼
+                   Kafka
+      ┌──────────────┼──────────────┐
+      ▼              ▼              ▼
+Event Persistence  Live Score   Notification
+     Service         Service       Service
+      │              │              │
+      ▼              ▼              ▼
+ Cassandra         Redis         APNs / FCM
+```
+
+---
+
+# Why Kafka?
+
+Kafka decouples producers from consumers.
+
+The Ingestion Service publishes one event.
+
+Multiple services consume it independently.
+
+Benefits:
+
+- Independent scaling
+- Loose coupling
+- Easy to add new consumers
+- Event replay
+- Fault tolerance
+
+---
+
+# Redis vs Cassandra
+
+When a goal is received:
+
+```
+Goal Event
+
+↓
+
+Kafka
+
+↓
+
+Score Service
+```
+
+The Score Service performs two writes.
+
+### Redis
+
+Updates the current state.
+
+Example:
+
+```
+Score = 3-1
+
+Minute = 80
+
+Possession = 61%
+```
+
+Optimized for:
+
+- Extremely fast reads
+- Active matches
+
+---
+
+### Cassandra
+
+Persists the event.
+
+Example:
+
+```
+80' Goal - Saka
+
+82' Yellow Card
+
+85' Substitution
+```
+
+Optimized for:
+
+- Durable storage
+- Historical timeline
+- High write throughput
+
+---
+
+# Why is Redis "Derived" from Cassandra?
+
+Redis stores only the latest snapshot.
+
+```
+Score = 3-1
+```
+
+Cassandra stores the history.
+
+```
+15' Goal
+
+42' Goal
+
+80' Goal
+```
+
+Replaying the historical events reconstructs the latest score.
+
+Therefore:
+
+> **The current state stored in Redis is derived (computed) from the historical events persisted in Cassandra.**
+
+---
+
+# Redis Recovery
+
+If Redis crashes during a live match:
+
+### Option 1
+
+Replay recent events from Kafka (if still retained).
+
+### Option 2
+
+Replay the current match's events from Cassandra.
+
+Only the events for the active match need to be replayed—not months of historical data.
+
+---
+
+# Key Takeaways
+
+- External providers usually send events via HTTP or WebSockets.
+- The Ingestion Service publishes those events to Kafka.
+- Kafka marks the beginning of the event-driven architecture.
+- Multiple downstream services independently consume the same Kafka events.
+- Redis stores the current computed state for fast reads.
+- Cassandra stores the durable event history.
+- Redis can always be rebuilt by replaying the match events from Kafka (within retention) or Cassandra.
+
+
+# Why Kafka Instead of Direct Service Calls?
+
+Without Kafka:
+
+```
+Sports Feed
+
+↓
+
+Ingestion Service
+
+├──► Event Persistence Service
+├──► Live Score Service
+└──► Notification Service
+```
+
+Problems:
+
+- Tight coupling between producer and consumers
+- Higher request latency
+- Failure in one downstream service can affect the entire request
+- Difficult to add new consumers
+- Producer must handle retries for every consumer
+- Services cannot scale independently
+
+---
+
+# Kafka-Based Architecture
+
+```
+Sports Feed
+
+↓
+
+Ingestion Service
+
+↓
+
+Kafka
+
+├──► Event Persistence Service
+├──► Live Score Service
+├──► Notification Service
+└──► Analytics Service
+```
+
+Benefits:
+
+- Producer only publishes events
+- Consumers are decoupled
+- Independent scaling
+- Fault isolation
+- Easy to add new consumers
+- Event replay
+
+---
+
+# Kafka Hierarchy
+
+```
+Kafka Cluster
+      │
+      ▼
+Brokers
+      │
+      ▼
+Topics
+      │
+      ▼
+Partitions
+      │
+      ▼
+Messages (Events)
+```
+
+A message is:
+
+- Published to a **Topic**
+- Appended to a **Partition**
+- That partition is physically stored on a **Broker**
+
+---
+
+# Apple Sports Example
+
+```
+Topic
+
+match-events
+
+├── Partition 0
+├── Partition 1
+└── Partition 2
+```
+
+Example:
+
+```
+Goal Event
+
+↓
+
+match-events
+
+↓
+
+Partition 1
+
+↓
+
+Broker 2
+```
+
+---
+
+# Why Use matchId as the Partition Key?
+
+Example:
+
+```
+Match123
+
+10' Goal
+
+20' Yellow Card
+
+35' Red Card
+
+60' Substitution
+```
+
+All events for the same match should remain in order.
+
+Producer:
+
+```java
+new ProducerRecord<>(
+    "match-events",
+    matchId,
+    event
+);
+```
+
+Kafka hashes the `matchId`.
+
+```
+Hash(matchId)
+
+↓
+
+Partition 1
+```
+
+Every event for Match123 is appended to the same partition.
+
+Kafka guarantees:
+
+> **Ordering is preserved within a partition.**
+
+---
+
+# Different Matches Scale Horizontally
+
+```
+Partition 1
+
+Match123 Events
+
+-------------------
+
+Partition 2
+
+Match456 Events
+
+-------------------
+
+Partition 3
+
+Match789 Events
+```
+
+Each match can be processed independently while preserving ordering within each match.
+
+---
+
+# Can We Split One Match Across Multiple Partitions?
+
+Generally, **no**.
+
+If events for the same match are written to different partitions:
+
+```
+Goal
+
+↓
+
+Partition 0
+
+Yellow Card
+
+↓
+
+Partition 2
+
+Red Card
+
+↓
+
+Partition 1
+```
+
+Different consumers process different partitions independently.
+
+Kafka provides **no ordering guarantee across partitions**.
+
+---
+
+# Why Not Buffer and Reorder?
+
+Possible idea:
+
+- Hold events temporarily
+- Sort by timestamp
+- Process in order
+
+Problems:
+
+- How long should we wait?
+- Late-arriving events become difficult to handle.
+- Increases processing latency.
+- Adds significant complexity.
+
+---
+
+# What If One Match Becomes a Hotspot?
+
+For a normal football match, timeline events are relatively low.
+
+Examples:
+
+- Goals
+- Cards
+- VAR
+- Substitutions
+
+One partition is typically sufficient.
+
+If processing much higher-frequency data (e.g., player tracking or telemetry), partition by a more granular key such as:
+
+- `playerId`
+- `sensorId`
+- `cameraId`
+
+This increases parallelism but changes the ordering guarantee from **per match** to **per player/sensor**.
+
+---
+
+# Interview Questions
+
+### Q: What partition key would you choose for live sports events?
+
+> I would partition by `matchId` so that all events for a match are routed to the same partition, preserving event order. Different matches are distributed across different partitions, enabling parallel processing across matches.
+
+---
+
+### Q: Why not partition by timestamp?
+
+> Kafka guarantees ordering only within a partition. Partitioning by timestamp would distribute events from the same match across multiple partitions, breaking the event timeline.
+
+---
+
+### Q: What if one partition becomes a bottleneck?
+
+> For match timelines, event volume per match is usually low enough that one partition is sufficient. If processing much higher-frequency data, I would partition by a more granular key (such as `playerId` or `sensorId`), accepting a different ordering guarantee while increasing parallelism.
+
+---
+
+# Key Takeaways
+
+- Kafka decouples producers from consumers.
+- Messages are written to **Topics**.
+- Topics consist of **Partitions**.
+- Partitions are physically stored on **Brokers**.
+- Ordering is guaranteed **within a partition**, not across partitions.
+- For live sports, **`matchId` is the ideal partition key** because it preserves the match timeline while allowing different matches to be processed in parallel.
+
+# Kafka Producer
+
+A **Producer** is the application that publishes messages to Kafka.
+
+Apple Sports example:
+
+```
+Sports Feed
+
+↓
+
+Ingestion Service
+
+↓
+
+Kafka
+```
+
+The Ingestion Service acts as the Kafka Producer.
+
+---
+
+# What Does a Producer Send?
+
+A producer sends:
+
+- Topic
+- Key
+- Value
+
+Example:
+
+```java
+ProducerRecord<String, MatchEvent>
+
+Topic = "match-events"
+
+Key = matchId
+
+Value = Goal Event
+```
+
+---
+
+# Topic
+
+Logical category of messages.
+
+Example:
+
+```
+match-events
+```
+
+---
+
+# Key
+
+Used for partitioning.
+
+Example:
+
+```
+matchId
+```
+
+---
+
+# Value
+
+The actual event payload.
+
+Example:
+
+```json
+{
+  "minute": 80,
+  "event": "GOAL",
+  "player": "Saka"
+}
+```
+
+---
+
+# How Does Kafka Choose a Partition?
+
+## Case 1 - Key Present (Most Common)
+
+```
+matchId
+
+↓
+
+Hash(matchId)
+
+↓
+
+Partition 2
+```
+
+Every event with the same key is routed to the same partition.
+
+Ordering is preserved.
+
+---
+
+## Case 2 - No Key
+
+Kafka distributes messages across partitions for load balancing.
+
+Ordering between related messages is not guaranteed.
+
+---
+
+## Case 3 - Custom Partitioner
+
+Developers can implement custom partitioning logic.
+
+Example:
+
+```
+Premier League
+
+↓
+
+Partition 0
+
+La Liga
+
+↓
+
+Partition 1
+```
+
+Less common than the default hash partitioner.
+
+---
+
+# Why Use matchId as the Partition Key?
+
+Example:
+
+```
+Match123
+
+10' Goal
+
+20' Yellow Card
+
+35' Red Card
+
+60' Substitution
+```
+
+All events for the same match should remain in order.
+
+Producer:
+
+```java
+new ProducerRecord<>(
+    "match-events",
+    matchId,
+    event
+);
+```
+
+Kafka hashes `matchId`.
+
+```
+Hash(matchId)
+
+↓
+
+Partition 1
+```
+
+All Match123 events go to Partition 1.
+
+---
+
+# Does the Producer Remember the Partition?
+
+No.
+
+The producer simply recomputes the hash every time.
+
+Example:
+
+```
+Hash(Match123)
+
+↓
+
+582934
+
+↓
+
+582934 % 3
+
+↓
+
+Partition 1
+```
+
+Since hashing is deterministic, every producer computes the same partition for the same key.
+
+No lookup table is required.
+
+---
+
+# What Happens If We Increase the Number of Partitions?
+
+Example:
+
+Initially:
+
+```
+3 partitions
+
+Hash % 3
+
+↓
+
+Partition 1
+```
+
+Later:
+
+```
+6 partitions
+
+Hash % 6
+
+↓
+
+Partition 4
+```
+
+Future messages for the same key may be routed to a different partition.
+
+Existing messages remain in their original partition.
+
+For topics requiring strict per-key ordering, partition counts should be planned carefully.
+
+---
+
+# Producer Application vs Kafka Producer Client
+
+These are different concepts.
+
+### Producer Application
+
+Your business application.
+
+Example:
+
+```
+Ingestion Service
+```
+
+---
+
+### Kafka Producer Client
+
+A library running **inside** the producer application.
+
+Responsibilities:
+
+- Serialize messages
+- Compute partition
+- Maintain broker metadata
+- Find the leader broker
+- Batch requests
+- Retry failures
+- Handle acknowledgements
+- Send messages over the network
+
+---
+
+# Flow Inside the Producer
+
+```
+Your Application
+
+↓
+
+Kafka Producer Client
+
+↓
+
+Partitioner
+
+↓
+
+Hash(matchId)
+
+↓
+
+Partition
+
+↓
+
+Metadata Cache
+
+↓
+
+Leader Broker
+
+↓
+
+Append Message
+```
+
+---
+
+# Does the Producer Send to a Broker or a Partition?
+
+Logically:
+
+The producer publishes to a **Topic**.
+
+The Kafka Producer Client:
+
+1. Computes the partition using the partitioner.
+2. Looks up which broker is the leader for that partition.
+3. Sends the message directly to that broker.
+
+Flow:
+
+```
+Producer
+
+↓
+
+Topic
+
+↓
+
+Partition (chosen by Producer Client)
+
+↓
+
+Leader Broker
+
+↓
+
+Message Appended
+```
+
+---
+
+# Kafka Hierarchy
+
+```
+Kafka Cluster
+      │
+      ▼
+Brokers
+      │
+      ▼
+Topics
+      │
+      ▼
+Partitions
+      │
+      ▼
+Messages
+```
+
+Messages are:
+
+- Published to a Topic
+- Assigned to a Partition
+- Physically stored on the leader Broker for that partition
+
+---
+
+# Interview Questions
+
+### Q: Who decides which partition a message goes to?
+
+> The Kafka Producer Client (using the partitioner) determines the partition. By default, it hashes the message key (e.g., `matchId`) and maps it to a partition. It then uses cached cluster metadata to identify the leader broker and sends the message directly there.
+
+---
+
+### Q: Does the producer remember which partition a key belongs to?
+
+> No. The producer recomputes the deterministic hash for every message. The same key always maps to the same partition (unless the number of partitions changes).
+
+---
+
+### Q: Where does the Kafka Producer Client run?
+
+> The Kafka Producer Client is a library embedded inside the producer application. It handles serialization, partition selection, metadata lookup, batching, retries, acknowledgements, and communication with the Kafka cluster.
+
+---
+
+# Key Takeaways
+
+- The producer publishes messages to a **Topic**.
+- The **Kafka Producer Client** (library) decides the partition.
+- Partition selection is typically based on `hash(key)`.
+- The Producer Client uses cached metadata to determine the leader broker.
+- The broker simply appends the message to the partition log.
+- Using `matchId` as the partition key preserves event ordering for each match.
+
+# Example - Producer Application Using Kafka
+
+```java
+@Service
+public class IngestionService {
+
+    private final KafkaTemplate<String, MatchEvent> kafkaTemplate;
+
+    public void processEvent(MatchEvent event) {
+
+        kafkaTemplate.send(
+            "match-events",
+            event.getMatchId(),
+            event
+        );
+    }
+}
+```
+
+In this example:
+
+- `IngestionService` is the **Producer Application**.
+- `KafkaTemplate` is Spring's wrapper around the Kafka Producer Client.
+- Calling `kafkaTemplate.send()` ultimately invokes the **Kafka Producer Client**, which publishes the message to Kafka.
+
+---
+
+# What Happens Internally?
+
+```
+Your Application
+
+↓
+
+KafkaTemplate (Spring)
+
+↓
+
+Kafka Producer Client
+
+↓
+
+Serializer
+
+↓
+
+Partitioner
+
+↓
+
+Hash(matchId)
+
+↓
+
+Partition
+
+↓
+
+Metadata Cache
+
+↓
+
+Leader Broker
+
+↓
+
+Append Message
+```
+
+---
+
+# Responsibilities of the Kafka Producer Client
+
+The **Kafka Producer Client** is a library embedded inside the producer application.
+
+It is responsible for:
+
+- Serializing the message
+- Selecting the partition (using the configured partitioner)
+- Discovering brokers using cached cluster metadata
+- Determining the leader broker for the selected partition
+- Batching messages for higher throughput
+- Compressing messages (if enabled)
+- Retrying transient failures
+- Waiting for acknowledgements (`acks`)
+- Sending messages over the network to the Kafka cluster
+
+The application simply invokes:
+
+```java
+kafkaTemplate.send("match-events", event.getMatchId(), event);
+```
+
+(or directly `producer.send(...)` when using the Kafka Java client).
+
+Everything else is handled automatically by the **Kafka Producer Client**.
+
+---
+
+# Interview Summary
+
+> The Kafka Producer Client is a library embedded inside the producer application. The application simply calls `producer.send()` (or Spring's `KafkaTemplate.send()`), while the client library handles serialization, partition selection, broker discovery using cached metadata, batching, retries, acknowledgements, and network communication with the Kafka cluster.
