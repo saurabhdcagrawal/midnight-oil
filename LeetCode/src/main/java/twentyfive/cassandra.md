@@ -10386,3 +10386,303 @@ Everything else is handled automatically by the **Kafka Producer Client**.
 # Interview Summary
 
 > The Kafka Producer Client is a library embedded inside the producer application. The application simply calls `producer.send()` (or Spring's `KafkaTemplate.send()`), while the client library handles serialization, partition selection, broker discovery using cached metadata, batching, retries, acknowledgements, and network communication with the Kafka cluster.
+
+
+# Kafka Offsets
+
+One of the biggest differences between Kafka and traditional message queues is how messages are consumed.
+
+---
+
+# Traditional Queue (RabbitMQ)
+
+```
+Producer
+
+↓
+
+Queue
+
+↓
+
+Consumer
+
+↓
+
+ACK
+
+↓
+
+Message Removed
+```
+
+Once a consumer successfully acknowledges (ACKs) a message, RabbitMQ removes it from the queue.
+
+The message lifecycle is tied to **consumption**.
+
+---
+
+# Kafka
+
+```
+Producer
+
+↓
+
+Topic
+
+↓
+
+Partition (Append-Only Log)
+
+↓
+
+Consumer Reads
+
+↓
+
+Consumer Commits Offset
+
+↓
+
+Message Remains on Disk
+```
+
+Messages are **not deleted** after consumption.
+
+Kafka retains them until its retention policy removes them.
+
+---
+
+# Example
+
+Partition 1
+
+```
+Offset 0   Goal
+
+Offset 1   Yellow Card
+
+Offset 2   Red Card
+
+Offset 3   Substitution
+```
+
+Consumer starts at:
+
+```
+Current Offset = 0
+```
+
+Processes:
+
+```
+Offset 0
+
+Goal
+```
+
+Then commits:
+
+```
+Current Offset = 1
+```
+
+The next poll starts at Offset 1.
+
+Notice:
+
+```
+Offset 0
+
+Goal
+```
+
+still exists in Kafka.
+
+Nothing is deleted.
+
+---
+
+# Who Updates the Offset?
+
+The **consumer** controls the offset.
+
+Kafka stores the committed offset for each consumer group.
+
+There are two common modes.
+
+---
+
+## Auto Commit
+
+The Kafka Consumer Client periodically commits offsets automatically.
+
+---
+
+## Manual Commit (Preferred)
+
+The application processes the message first.
+
+After successful processing:
+
+```java
+consumer.commitSync();
+```
+
+Only then is the offset committed.
+
+This provides better control over retries and failure handling.
+
+---
+
+# Why Keep Messages?
+
+Because multiple consumer groups may read the same event.
+
+Example:
+
+```
+Goal Event
+```
+
+Consumer Group A:
+
+```
+Live Score Service
+```
+
+Consumer Group B:
+
+```
+Analytics Service
+```
+
+Consumer Group C:
+
+```
+Notification Service
+```
+
+Each maintains its own offset.
+
+Example:
+
+```
+Partition
+
+Offset 25
+
+Goal
+
+-----------------------
+
+Live Score Offset = 26
+
+Analytics Offset = 10
+
+Notification Offset = 25
+```
+
+The message remains available until Kafka's retention policy removes it.
+
+---
+
+# When Are Messages Deleted?
+
+Kafka does **not** delete messages after they are consumed.
+
+Messages are removed only when:
+
+- The configured retention time expires (e.g., 7 days)
+- The configured retention size limit is exceeded
+
+Message deletion depends on **retention**, not **consumption**.
+
+---
+
+# Kafka vs RabbitMQ
+
+| Feature | Kafka | RabbitMQ |
+|----------|--------|----------|
+| Architecture | Distributed append-only log | Message queue |
+| Storage | Disk-based | Queue (messages may be stored in memory and/or on disk) |
+| Message after consumption | Retained until retention policy | Removed after successful ACK |
+| Consumer progress | Offsets | ACK / Queue position |
+| Replay messages | Easy | Not available after ACK (without additional mechanisms) |
+| Multiple independent consumers | Excellent (Consumer Groups) | Requires exchanges/bindings; acknowledged messages are not replayed |
+| Best For | Event streaming, analytics, logs | Task queues, work distribution, request-response |
+
+---
+
+# Key Difference
+
+### Kafka
+
+```
+Producer
+
+↓
+
+Partition
+
+↓
+
+Consumer Reads
+
+↓
+
+Commit Offset
+
+↓
+
+Message Stays on Disk
+
+↓
+
+Retention Policy Deletes Later
+```
+
+---
+
+### RabbitMQ
+
+```
+Producer
+
+↓
+
+Queue
+
+↓
+
+Consumer Reads
+
+↓
+
+ACK
+
+↓
+
+Message Removed
+```
+
+---
+
+# Interview Questions
+
+### Q: Does Kafka delete a message after it is consumed?
+
+> No. Kafka retains messages independently of consumption. Consumers track their progress using offsets, and messages remain in the partition until Kafka's retention policy removes them.
+
+---
+
+### Q: Who updates the offset?
+
+> The consumer controls when offsets are committed. After successfully processing a message, it commits the offset (either automatically or manually), and Kafka stores that position for the consumer group.
+
+---
+
+### Q: What is the biggest difference between Kafka and RabbitMQ?
+
+> Kafka is a distributed append-only log where messages are retained independently of consumption and consumers track their progress using offsets. RabbitMQ is a message queue where messages are typically removed after they are successfully acknowledged by a consumer. Kafka is optimized for event streaming and replay, while RabbitMQ is optimized for reliable work distribution and task processing.
