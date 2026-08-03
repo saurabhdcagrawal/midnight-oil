@@ -7374,130 +7374,154 @@ Apple Sports App
 # Apple Sports Backend - Final System Design
 
 ## High-Level Architecture
+# Apple Sports Backend Architecture (Final)
 
 ```text
-                                        APPLE SPORTS BACKEND
+                                              APPLE SPORTS BACKEND
 
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│                            Sports Data Providers                                         │
-│ (Opta, Stats Perform, Genius Sports, etc.)                                               │
-│                                                                                          │
-│ Send live events (goal, foul, timeout, shot, substitution...)                           │
-└──────────────────────────────────────┬───────────────────────────────────────────────────┘
-                                       │
-                                       │ POST /v1/matches/{matchId}/events
-                                       ▼
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│                             Ingestion Service                                             │
-│------------------------------------------------------------------------------------------│
-│ Responsibilities                                                                         │
-│ • Authenticate provider                                                                  │
-│ • Validate payload                                                                       │
-│ • Normalize to canonical event format                                                    │
-│ • Return HTTP 202 Accepted                                                               │
-│ • Publish to Kafka                                                                       │
-└──────────────────────────────────────┬───────────────────────────────────────────────────┘
-                                       │
-                                       ▼
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│                              Kafka : game-events                                         │
-│------------------------------------------------------------------------------------------│
-│ Raw immutable provider events                                                            │
-│ Partition Key = matchId                                                                  │
-│ Ordering guaranteed per match                                                            │
-└──────────────┬────────────────────────────┬────────────────────────────┬─────────────────┘
-               │                            │                            │
-               ▼                            ▼                            ▼
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                        Sports Data Providers                                                               │
+│                                                                                                                            │
+│  Opta • Stats Perform • Genius Sports • SportRadar                                                                         │
+│                                                                                                                            │
+│  Raw Events: GOAL, SHOT_MADE, ASSIST, REBOUND, FOUL, TIMEOUT, SUBSTITUTION, PERIOD_END...                                 │
+└────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────┘
+                                             │
+                                             │ POST /v1/games/{gameId}/events
+                                             ▼
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                          Ingestion Service                                                                 │
+│----------------------------------------------------------------------------------------------------------------------------│
+│ Responsibilities                                                                                                           │
+│ • Authenticate provider                                                                                                    │
+│ • Validate payload                                                                                                         │
+│ • Normalize provider format → Canonical Event                                                                              │
+│ • Return HTTP 202 Accepted                                                                                                 │
+│ • Publish Raw Event to Kafka                                                                                                │
+└────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────┘
+                                             │
+                                             ▼
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                          Kafka : game-events                                                               │
+│----------------------------------------------------------------------------------------------------------------------------│
+│ Raw Immutable Provider Events                                                                                              │
+│ Partition Key = gameId                                                                                                     │
+│ Ordering Guaranteed Per Game                                                                                                │
+└───────────────┬──────────────────────────────┬──────────────────────────────┬──────────────────────────────┐
+                │                              │                              │                              │
+                ▼                              ▼                              ▼                              ▼
 
-┌──────────────────────────────┐   ┌──────────────────────────────┐   ┌──────────────────────────────┐
-│ Game State Consumer          │   │ Storage Service              │   │ Flink / Kafka Streams        │
-│------------------------------│   │------------------------------│   │------------------------------│
-│ Responsibilities             │   │ Responsibilities             │   │ Responsibilities             │
-│ • Validate sequence          │   │ • Store raw provider events  │   │ • Rolling aggregations       │
-│ • Idempotency                │   │ • Immutable event history    │   │ • Player statistics          │
-│ • Compute score              │   │ • Replay support             │   │ • Leaderboards               │
-│ • Compute game state         │   │ • Auditing                   │   │ • Win probability            │
-│ • Update Redis               │   │                              │   │ • Fantasy scoring            │
-│ • Persist latest snapshot    │   │                              │   │                              │
-│ • Publish domain events      │   │                              │   │                              │
-└──────────────┬───────────────┘   └──────────────┬───────────────┘   └──────────────────────────────┘
-               │                                  │
-               │                                  │
-               ▼                                  ▼
-      ┌───────────────────┐             ┌─────────────────────────────┐
-      │ Redis Cluster     │             │ Cassandra                   │
-      │-------------------│             │-----------------------------│
-      │ Current GameState │             │ GameEvent (Raw History)     │
-      │ game:{matchId}    │             │ GameState (Latest Snapshot) │
-      └─────────┬─────────┘             └─────────────────────────────┘
-                │
-                ▼
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│                         Kafka : game-state-events                                        │
-│------------------------------------------------------------------------------------------│
-│ SCORE_UPDATED                                                                            │
-│ LEAD_CHANGED                                                                             │
-│ PERIOD_STARTED                                                                           │
-│ GAME_FINAL                                                                               │
-│ OVERTIME_STARTED                                                                         │
-└──────────────┬──────────────────────────────┬──────────────────────────────┬─────────────┘
-               │                              │                              │
-               ▼                              ▼                              ▼
+┌─────────────────────────────┐    ┌────────────────────────────┐    ┌─────────────────────────────┐    ┌──────────────────────────────┐
+│ Game State Consumer         │    │ Event Storage Service      │    │ Statistics Consumer         │    │ Real-Time Analytics Engine  │
+│                             │    │                            │    │                             │    │ (Apache Flink / Streams)    │
+├─────────────────────────────┤    ├────────────────────────────┤    ├─────────────────────────────┤    ├──────────────────────────────┤
+│ Responsibilities            │    │ Responsibilities           │    │ Responsibilities            │    │ Responsibilities            │
+│ • Validate ordering         │    │ • Persist raw events       │    │ • Match Statistics          │    │ • Rolling Aggregations      │
+│ • Idempotency               │    │ • Immutable history        │    │ • Player Statistics         │    │ • Leaderboards             │
+│ • Compute score             │    │ • Replay support           │    │ • Materialized Views        │    │ • Win Probability          │
+│ • Compute game state        │    │ • Auditing                 │    │ • Persist Statistics        │    │ • Fantasy Points           │
+│ • Update Redis              │    │                            │    │                             │    │ • Player Rankings          │
+│ • Persist Game Snapshot     │    │                            │    │                             │    │                            │
+│ • Publish Business Events   │    │                            │    │                             │    │                            │
+└──────────────┬──────────────┘    └──────────────┬─────────────┘    └──────────────┬──────────────┘    └──────────────┬───────────────┘
+               │                                  │                                 │                                  │
+               ▼                                  ▼                                 ▼                                  ▼
 
-┌──────────────────────────────┐   ┌──────────────────────────────┐   ┌──────────────────────────────┐
-│ SSE Service                  │   │ Notification Service         │   │ Future Consumers             │
-│------------------------------│   │------------------------------│   │------------------------------│
-│ Responsibilities             │   │ Responsibilities             │   │ • Live Activities            │
-│ • Subscribe to state events  │   │ • Subscribe to state events  │   │ • Widgets                    │
-│ • Maintain client sessions   │   │ • Read user preferences      │   │ • ML                         │
-│ • Push live score updates    │   │ • Send APNs                 │   │ • Other services             │
-└──────────────────────────────┘   └──────────────┬───────────────┘   └──────────────────────────────┘
+      ┌────────────────────┐          ┌──────────────────────────┐        ┌──────────────────────────┐       ┌────────────────────────────┐
+      │ Redis Cluster      │          │ Cassandra                │        │ Cassandra               │       │ Redis Sorted Sets         │
+      ├────────────────────┤          ├──────────────────────────┤        ├─────────────────────────┤       ├────────────────────────────┤
+      │ game:{gameId}      │          │ match_events             │        │ match_statistics        │       │ leaderboard:points        │
+      │ Current Game State │          │ Raw Event History        │        │ player_statistics       │       │ leaderboard:assists       │
+      │ Score              │          │                          │        │                         │       │ leaderboard:rebounds      │
+      │ Clock              │          └──────────────────────────┘        └─────────────────────────┘       │ leaderboard:fantasy       │
+      │ Quarter            │                                                                                 └────────────────────────────┘
+      │ Possession         │
+      │ Status             │
+      └──────────┬─────────┘
+                 │
+                 ▼
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                        Kafka : game-state-events                                                           │
+├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Business (Domain) Events                                                                                                   │
+│                                                                                                                            │
+│ • SCORE_UPDATED                                                                                                            │
+│ • LEAD_CHANGED                                                                                                             │
+│ • PERIOD_STARTED                                                                                                           │
+│ • PERIOD_ENDED                                                                                                             │
+│ • GAME_FINAL                                                                                                               │
+│ • OVERTIME_STARTED                                                                                                         │
+└───────────────┬──────────────────────────────┬──────────────────────────────┬──────────────────────────────────────────────┘
+                │                              │                              │
+                ▼                              ▼                              ▼
+
+┌─────────────────────────────┐    ┌─────────────────────────────┐    ┌────────────────────────────────┐
+│ SSE Service                 │    │ Notification Service        │    │ Future Consumers              │
+│                             │    │                             │    │                                │
+├─────────────────────────────┤    ├─────────────────────────────┤    ├────────────────────────────────┤
+│ Responsibilities            │    │ Responsibilities            │    │ • Live Activities             │
+│ • Subscribe state events    │    │ • Subscribe state events    │    │ • Widgets                     │
+│ • Maintain SSE sessions     │    │ • Read Followers Cache      │    │ • ML Models                   │
+│ • Push live updates         │    │ • Send APNs                 │    │ • Search                      │
+│                             │    │                             │    │ • Additional Services         │
+└─────────────────────────────┘    └──────────────┬──────────────┘    └────────────────────────────────┘
                                                    │
                                                    ▼
-                                      ┌─────────────────────────────┐
-                                      │ PostgreSQL                 │
-                                      │----------------------------│
-                                      │ Users                      │
-                                      │ Favorite Teams             │
-                                      │ Notification Preferences   │
-                                      └─────────────────────────────┘
 
-══════════════════════════════════════════════════════════════════════════════════════════════════════
+                                      ┌──────────────────────────────────┐
+                                      │ PostgreSQL                      │
+                                      ├──────────────────────────────────┤
+                                      │ Users                           │
+                                      │ Favorite Teams                  │
+                                      │ Notification Preferences        │
+                                      └──────────────────────────────────┘
 
-                                     CLIENT FACING LAYER
 
-                                   Apple Sports Mobile App
-                                             │
-                     ┌───────────────────────┴────────────────────────┐
-                     │                                                │
-                     ▼                                                ▼
-                REST APIs                                        SSE Stream
-                     │                                                ▲
-                     ▼                                                │
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│                               API / Query Service                                        │
-│------------------------------------------------------------------------------------------│
-│ Responsibilities                                                                         │
-│ • Serve REST APIs                                                                        │
-│ • Read Redis for live data                                                               │
-│ • Read Cassandra for historical data                                                     │
-│ • Stateless and horizontally scalable                                                    │
-│                                                                                          │
-│ Example APIs                                                                             │
-│ GET /v1/games/live                                                                       │
-│ GET /v1/games/{gameId}                                                                   │
-│ GET /v1/games/{gameId}/events                                                            │
-│ GET /v1/teams/{teamId}/schedule                                                          │
-│ GET /v1/standings                                                                        │
-│ GET /v1/players/{playerId}/stats                                                         │
-│ GET /v1/games/{gameId}/stream   (SSE endpoint)                                           │
-└───────────────────────────────┬──────────────────────────────────────────────────────────┘
-                                │
-                    ┌───────────┴────────────┐
-                    ▼                        ▼
-               Redis Cluster           Cassandra
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+                                                  CLIENT FACING LAYER
+
+                                                     Apple Sports App
+
+                                                            │
+                                 ┌──────────────────────────┴──────────────────────────┐
+                                 │                                                     │
+                                 ▼                                                     ▼
+
+                              REST APIs                                           SSE Stream
+
+                                 │                                                     ▲
+                                 ▼                                                     │
+
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                              API / Query Service                                                           │
+├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Responsibilities                                                                                                           │
+│ • Stateless REST APIs                                                                                                      │
+│ • Horizontally Scalable                                                                                                    │
+│ • Read Redis for current game state                                                                                        │
+│ • Read Cassandra for history & statistics                                                                                  │
+│ • Read Redis Sorted Sets for leaderboards                                                                                  │
+│                                                                                                                            │
+│ APIs                                                                                                                       │
+│ GET /v1/games/live                                                                                                         │
+│ GET /v1/games/{gameId}                    → Redis (Current Game State)                                                     │
+│ GET /v1/games/{gameId}/events             → Cassandra (match_events)                                                       │
+│ GET /v1/games/{gameId}/stats              → Cassandra (match_statistics)                                                   │
+│ GET /v1/players/{playerId}/stats          → Cassandra (player_statistics)                                                  │
+│ GET /v1/leaderboards/points               → Redis Sorted Sets                                                              │
+│ GET /v1/leaderboards/fantasy              → Redis Sorted Sets                                                              │
+│ GET /v1/teams/{teamId}/schedule                                                                              │
+│ GET /v1/standings                                                                                                          │
+│ GET /v1/games/{gameId}/stream             → SSE Endpoint                                                                   │
+└───────────────────────────────────────┬───────────────────────────────┬────────────────────────────────────────────────────┘
+                                        │                               │
+                                        ▼                               ▼
+
+                                 Redis Cluster                   Cassandra Cluster
+
+                           Current Game State              Events + Statistics
 ```
-
 ---
 
 # Responsibilities of Each Service
@@ -7512,7 +7536,7 @@ Responsibilities
 - Validate payload
 - Normalize payload into internal canonical format
 - Return **202 Accepted**
-- Publish event to Kafka
+- Publish raw event to **game-events**
 
 ---
 
@@ -7528,7 +7552,7 @@ Responsibilities
 - Compute current game state
 - Update Redis
 - Persist latest game snapshot to Cassandra
-- Publish domain events to **game-state-events**
+- Publish domain events to **game-state-events** *(only after state has been successfully persisted)*
 
 This service owns the authoritative game state.
 
@@ -7545,11 +7569,28 @@ Responsibilities
 - Support replay
 - Support auditing/debugging
 
+Acts as the **System of Record** for all provider events.
+
 It does **not** compute business logic.
 
 ---
 
-## 4. Flink / Kafka Streams
+## 4. Statistics Consumer
+
+Consumes **game-events**.
+
+Responsibilities
+
+- Compute match statistics
+- Compute player statistics
+- Build materialized views
+- Persist statistics to Cassandra
+
+This service owns all statistical data and operates independently of game-state processing.
+
+---
+
+## 5. Flink / Kafka Streams
 
 Consumes **game-events**.
 
@@ -7557,23 +7598,25 @@ Responsibilities
 
 - Rolling aggregations
 - Leaderboards
-- Player statistics
 - Fantasy scoring
 - Win probability
+- Player rankings
 - Real-time analytics
 
 Analytics are completely independent from the critical game-state path.
 
 ---
 
-## 5. API / Query Service
+## 6. API / Query Service
 
 Client-facing REST service.
 
 Reads
 
-- Redis → Live data
-- Cassandra → Historical data
+- Redis → Live game state
+- Cassandra → Historical events
+- Cassandra → Statistics
+- Redis Sorted Sets → Leaderboards
 
 Example APIs
 
@@ -7584,16 +7627,22 @@ GET /v1/games/{gameId}
 
 GET /v1/games/{gameId}/events
 
+GET /v1/games/{gameId}/stats
+
+GET /v1/players/{playerId}/stats
+
+GET /v1/leaderboards/points
+
+GET /v1/leaderboards/fantasy
+
 GET /v1/teams/{teamId}/schedule
 
 GET /v1/standings
-
-GET /v1/players/{playerId}/stats
 ```
 
 ---
 
-## 6. SSE Service
+## 7. SSE Service
 
 Consumes **game-state-events**.
 
@@ -7610,7 +7659,7 @@ It simply forwards domain events.
 
 ---
 
-## 7. Notification Service
+## 8. Notification Service
 
 Consumes **game-state-events**.
 
@@ -7660,15 +7709,38 @@ Used for
 - Auditing
 - Historical event queries
 
-### GameState
+---
 
-Latest snapshot.
+### GameSnapshot
+
+Latest computed game state.
 
 Used for
 
-- Recovery
+- Fast recovery
+- Redis rebuild
 - Historical game state
-- Fast restoration if Redis fails
+
+---
+
+### Statistics
+
+Stores
+
+- Match statistics
+- Player statistics
+
+---
+
+## Redis Sorted Sets
+
+Stores
+
+- Leaderboards
+- Fantasy rankings
+- Player rankings
+
+Optimized for fast ranking queries.
 
 ---
 
@@ -7702,6 +7774,7 @@ Consumers
 
 - Game State Consumer
 - Storage Service
+- Statistics Consumer
 - Flink
 
 ---
@@ -7729,15 +7802,18 @@ Consumers
 # End-to-End Flow
 
 1. Sports provider sends an event.
-2. Ingestion Service validates and normalizes it.
+2. Ingestion Service authenticates, validates and normalizes it.
 3. Event is published to **game-events**.
-4. Game State Consumer computes the latest game state.
-5. Redis is updated with the latest state.
-6. Latest snapshot is persisted to Cassandra.
-7. Domain event is published to **game-state-events**.
-8. SSE Service pushes updates to connected clients.
-9. Notification Service sends push notifications based on user preferences.
-10. Storage Service stores the raw immutable event for replay and auditing.
+4. Storage Service stores the immutable raw event.
+5. Game State Consumer validates ordering and idempotency.
+6. Game State Consumer computes the latest game state.
+7. Redis is updated with the latest state.
+8. Latest game snapshot is persisted to Cassandra.
+9. Domain event is published to **game-state-events**.
+10. SSE Service pushes live updates to connected clients.
+11. Notification Service sends push notifications based on user preferences.
+12. Statistics Consumer updates match and player statistics.
+13. Flink continuously computes leaderboards, fantasy points, rankings and analytics.
 
 ---
 
@@ -7747,9 +7823,964 @@ Consumers
 - Event-driven and loosely coupled.
 - Redis serves live requests with very low latency.
 - Cassandra provides durable historical storage.
+- Immutable event history enables replay and auditing.
+- Game snapshots enable fast recovery without replaying the entire event history.
 - PostgreSQL stores relational user preferences.
 - Kafka enables independent scaling of consumers.
 - SSE delivers real-time updates without polling.
 - Notification processing is isolated from the critical game-state path.
+- Analytics are completely independent of score computation.
 
-This architecture is simple enough to explain in an interview while still demonstrating production-ready design and clear service ownership.
+This architecture is simple enough to explain in an interview while still demonstrating production-ready design, scalability, and clear service ownership.
+
+---
+# Webhooks vs Polling vs Streaming
+
+## How Does the Sports Provider Send Data?
+
+For this design, I assume the sports data provider integrates with our system using an **HTTP webhook**.
+
+The provider sends an HTTP `POST` request whenever a game event occurs.
+
+Example
+
+```http
+POST /v1/matches/{matchId}/events
+Content-Type: application/json
+
+{
+    "eventId":"evt-123",
+    "matchId":"match-456",
+    "eventType":"SHOT_MADE",
+    "team":"Lakers",
+    "points":3,
+    "timestamp":"2026-08-03T20:15:22Z"
+}
+```
+
+Our **Ingestion Service** receives the request, performs lightweight validation, publishes the event to Kafka, and immediately returns **202 Accepted**.
+
+---
+
+# Why Return 202 Accepted?
+
+The provider should not wait while we:
+
+- Compute game state
+- Update Redis
+- Persist Cassandra
+- Compute analytics
+- Send notifications
+- Push SSE updates
+
+Instead
+
+```
+Sports Provider
+
+↓
+
+POST /events
+
+↓
+
+Ingestion Service
+
+↓
+
+Validate
+
+↓
+
+Publish to Kafka
+
+↓
+
+HTTP 202 Accepted
+```
+
+Everything after Kafka happens asynchronously.
+
+Kafka becomes the asynchronous boundary for the system.
+
+---
+
+# Why Webhooks?
+
+Sports events only occur when something happens.
+
+Examples
+
+- Goal
+- Shot made
+- Foul
+- Timeout
+- Period end
+- Game end
+
+Instead of repeatedly asking the provider whether anything changed, the provider pushes updates to us only when events occur.
+
+This provides
+
+- Lower latency
+- Lower network traffic
+- Better scalability
+- Simpler integration
+
+---
+
+# Polling
+
+Instead of the provider calling us, we repeatedly call the provider.
+
+Example
+
+```http
+GET /provider/matches/{matchId}/events
+```
+
+Every second
+
+```
+Our Service
+
+↓
+
+GET /events
+
+↓
+
+No Events
+
+↓
+
+GET /events
+
+↓
+
+No Events
+
+↓
+
+GET /events
+
+↓
+
+Goal!
+```
+
+Problems
+
+- Lots of unnecessary requests
+- Higher latency
+- Wasted bandwidth
+- Not ideal for real-time sports
+
+---
+
+# Streaming
+
+Some providers expose
+
+- Kafka
+- WebSocket
+- gRPC Streaming
+
+Example
+
+```
+Sports Provider
+
+↓
+
+Kafka Topic
+
+↓
+
+Our Consumer
+```
+
+or
+
+```
+Sports Provider
+
+↓
+
+WebSocket
+
+↓
+
+Our Consumer
+```
+
+This provides even lower latency than webhooks.
+
+If the provider offered a streaming interface, only the ingestion layer would change.
+
+The rest of the architecture would remain exactly the same.
+
+---
+
+# Comparison
+
+| Integration Method | Who Initiates? | Communication | Best For |
+|-------------------|----------------|--------------|----------|
+| Polling | Our system | Repeated HTTP GET | Simple systems, not ideal for live sports |
+| Webhook | Sports Provider | HTTP POST | Real-time event delivery |
+| Kafka / Streaming | Sports Provider | Persistent stream | Highest throughput and lowest latency |
+
+---
+
+# REST vs Webhook
+
+A webhook is **not a different protocol**.
+
+It is simply a REST/HTTP endpoint that another system calls automatically when an event occurs.
+
+Our endpoint
+
+```http
+POST /v1/matches/{matchId}/events
+```
+
+is a normal HTTP REST endpoint.
+
+Because the provider calls it automatically whenever an event occurs, it is acting as a **webhook receiver**.
+
+---
+
+# Synchronous vs Asynchronous
+
+The HTTP request itself is synchronous.
+
+```
+Sports Provider
+
+↓
+
+POST /events
+
+↓
+
+Ingestion Service
+
+↓
+
+HTTP 202 Accepted
+```
+
+Everything after publishing to Kafka is asynchronous.
+
+```
+Kafka
+
+↓
+
+Game State Consumer
+
+↓
+
+Storage Service
+
+↓
+
+Analytics
+
+↓
+
+Notification Service
+
+↓
+
+SSE Service
+```
+
+The provider receives a response in a few milliseconds while the rest of the platform continues processing independently.
+
+---
+
+# Why This Fits Our Architecture
+
+```
+Sports Provider
+
+↓
+
+Webhook (HTTP POST)
+
+↓
+
+Ingestion Service
+
+↓
+
+Kafka (game-events)
+
+↓
+
+Game State Consumer
+
+↓
+
+Redis
+
+↓
+
+Kafka (game-state-events)
+
+↓
+
+SSE / Notifications / Future Consumers
+```
+
+The webhook is simply the entry point into our event-driven architecture.
+
+---
+
+# Interview Answer
+
+> I assume the sports provider integrates with us using an HTTP webhook. The provider POSTs live game events to the Ingestion Service whenever something happens in a match. The Ingestion Service performs lightweight authentication, validation, and normalization, publishes the event to Kafka, and immediately returns **202 Accepted**. Kafka acts as the asynchronous boundary, allowing downstream services such as Game State, Storage, Analytics, Notifications, and SSE to process the event independently. If the provider instead exposed Kafka or another streaming interface, I would replace only the ingestion layer while keeping the rest of the architecture unchanged.
+
+> The game-events topic contains raw immutable provider events that represent facts occurring during the game. The Game State Consumer processes these events, applies business rules, updates the current game state, and publishes higher-level domain events such as SCORE_UPDATED, LEAD_CHANGED, or GAME_FINAL to a separate game-state-events topic. This keeps downstream services like Notifications and SSE simple because they consume meaningful business events instead of implementing sports-specific logic themselves.
+
+# Apple Sports System Design
+# Raw Events vs Business (Domain) Events
+
+In an event-driven architecture, it is a good practice to separate **raw provider events** from **business (domain) events**.
+
+This keeps the system loosely coupled and prevents downstream services from implementing business logic.
+
+---
+
+# Two Kafka Topics
+
+```
+game-events
+```
+
+Contains **raw provider events** exactly as they occur.
+
+Examples:
+
+- GOAL
+- SHOT_MADE
+- SHOT_ATTEMPT
+- FOUL
+- TIMEOUT
+- SUBSTITUTION
+- FREE_THROW
+- PERIOD_END
+
+---
+
+```
+game-state-events
+```
+
+Contains **business/domain events** produced after applying business rules.
+
+Examples:
+
+- SCORE_UPDATED
+- LEAD_CHANGED
+- PERIOD_STARTED
+- PERIOD_ENDED
+- GAME_FINAL
+- OVERTIME_STARTED
+
+These events represent meaningful state changes rather than low-level provider actions.
+
+---
+
+# High-Level Flow
+
+```
+Sports Provider
+
+↓
+
+Ingestion Service
+
+↓
+
+Kafka : game-events
+
+↓
+
+Game State Consumer
+
+↓
+
+Apply Business Rules
+
+↓
+
+Update Redis
+
+↓
+
+Persist Snapshot
+
+↓
+
+Kafka : game-state-events
+
+↓
+
+SSE Service
+
+Notification Service
+
+Future Consumers
+```
+
+---
+
+# Example 1 - Basketball Score
+
+## Raw Provider Event
+
+Provider sends:
+
+```json
+{
+    "matchId":"NBA123",
+    "player":"LeBron James",
+    "team":"LAL",
+    "type":"SHOT_MADE",
+    "points":2
+}
+```
+
+This is simply a fact that occurred.
+
+It does **not** contain the latest score.
+
+---
+
+## Game State Consumer
+
+The Game State Consumer processes the event.
+
+Responsibilities:
+
+- Validate ordering
+- Check idempotency
+- Compute latest score
+- Update game state
+
+Current score:
+
+```
+102 - 100
+```
+
+After processing:
+
+```
+104 - 100
+```
+
+---
+
+## Business Event
+
+The Game State Consumer publishes:
+
+```json
+{
+    "type":"SCORE_UPDATED",
+    "matchId":"NBA123",
+    "homeScore":104,
+    "awayScore":100
+}
+```
+
+Notice that the provider never sent this event.
+
+It was derived from business logic.
+
+---
+
+# Example 2 - Lead Change
+
+Current score:
+
+```
+102 - 103
+```
+
+Raw provider event:
+
+```json
+{
+    "type":"SHOT_MADE",
+    "team":"LAL",
+    "points":2
+}
+```
+
+New score:
+
+```
+104 - 103
+```
+
+The Lakers now take the lead.
+
+The Game State Consumer publishes:
+
+```json
+{
+    "type":"LEAD_CHANGED",
+    "matchId":"NBA123",
+    "newLeader":"LAL"
+}
+```
+
+Again, this is a business event computed by the application.
+
+---
+
+# Example 3 - End Of Quarter
+
+Raw provider events:
+
+```
+CLOCK = 00:00
+
+↓
+
+PERIOD_END
+```
+
+Business event:
+
+```json
+{
+    "type":"PERIOD_ENDED",
+    "period":3
+}
+```
+
+---
+
+# Example 4 - Game Finished
+
+Raw provider event:
+
+```
+FINAL_WHISTLE
+```
+
+Business event:
+
+```json
+{
+    "type":"GAME_FINAL",
+    "winner":"LAL",
+    "finalScore":"110-104"
+}
+```
+
+---
+
+# Why Separate The Two?
+
+Suppose the Notification Service consumed raw provider events.
+
+It would receive:
+
+```
+SHOT_ATTEMPT
+
+↓
+
+SHOT_MADE
+
+↓
+
+FREE_THROW
+
+↓
+
+FOUL
+
+↓
+
+TIMEOUT
+
+↓
+
+SUBSTITUTION
+```
+
+The Notification Service would need to understand:
+
+- Basketball rules
+- Scoring rules
+- Lead changes
+- Quarter transitions
+
+This tightly couples the Notification Service to sports logic.
+
+---
+
+Instead, it consumes business events:
+
+```
+SCORE_UPDATED
+
+↓
+
+LEAD_CHANGED
+
+↓
+
+GAME_FINAL
+
+↓
+
+OVERTIME_STARTED
+```
+
+Now it simply reacts to meaningful events.
+
+No sports-specific calculations are required.
+
+---
+
+# SSE Service
+
+Similarly, the SSE Service should not calculate scores.
+
+Instead of consuming:
+
+```
+SHOT_MADE
+```
+
+it consumes:
+
+```json
+{
+    "type":"SCORE_UPDATED",
+    "homeScore":104,
+    "awayScore":100
+}
+```
+
+Its responsibility is simply to push updates to connected clients.
+
+---
+
+# Benefits
+
+## Separation of Concerns
+
+Provider events represent facts.
+
+Business events represent business decisions.
+
+---
+
+## Simpler Consumers
+
+Downstream services consume meaningful state changes instead of implementing game rules.
+
+---
+
+## Loose Coupling
+
+If provider payloads change, only the Game State Consumer needs to change.
+
+Notification Service, SSE Service, Widgets, and other consumers remain unaffected.
+
+---
+
+## Easier Extensibility
+
+New consumers can subscribe to business events without understanding provider-specific event formats.
+
+Examples:
+
+- Live Activities
+- Widgets
+- Analytics
+- Machine Learning
+- Recommendation Systems
+
+---
+
+# Raw Events vs Business Events
+
+| Raw Provider Events | Business (Domain) Events |
+|---------------------|--------------------------|
+| GOAL | SCORE_UPDATED |
+| SHOT_MADE | LEAD_CHANGED |
+| SHOT_ATTEMPT | PERIOD_STARTED |
+| FREE_THROW | PERIOD_ENDED |
+| FOUL | GAME_FINAL |
+| TIMEOUT | OVERTIME_STARTED |
+| SUBSTITUTION | MATCH_DELAYED |
+
+---
+
+# Interview Questions
+
+### Q: Why have two Kafka topics?
+
+> The `game-events` topic stores immutable raw provider events that describe what happened during a game. The Game State Consumer processes these events, applies business rules, updates the current game state, and publishes higher-level domain events to the `game-state-events` topic. Downstream services consume these business events instead of implementing sports-specific logic.
+
+---
+
+### Q: Why shouldn't Notification Service consume raw events?
+
+> Notification Service should focus on sending notifications, not interpreting sports rules. By consuming business events such as `SCORE_UPDATED` or `GAME_FINAL`, it remains simple, loosely coupled, and independent of provider-specific event formats.
+
+---
+
+### Q: Who owns the business logic?
+
+> The Game State Consumer owns the business logic. It validates events, ensures idempotency, computes the latest game state, updates Redis and Cassandra, and publishes business events for downstream consumers.
+
+---
+
+# Key Takeaways
+
+- `game-events` contains raw immutable provider events.
+- `game-state-events` contains higher-level business events derived from those raw events.
+- The Game State Consumer is responsible for transforming raw events into business events.
+- Downstream services consume business events, keeping them simple and loosely coupled.
+- This separation improves maintainability, extensibility, and scalability in an event-driven architecture.
+
+
+# CompletableFuture in the Game State Consumer
+
+One question that often comes up during system design interviews is:
+
+> **Should we use `CompletableFuture` inside the Game State Consumer to improve performance?**
+
+The answer is:
+
+> **Yes, but only for truly independent operations.**
+
+---
+
+# What Should Remain Sequential?
+
+The Game State Consumer owns the authoritative game state.
+
+Its core business logic must execute in order.
+
+```text
+Receive Event
+        ↓
+Validate Ordering
+        ↓
+Validate Idempotency
+        ↓
+Compute Latest Game State
+```
+
+These steps are dependent on each other and **must remain sequential**.
+
+---
+
+# What Can Be Parallelized?
+
+Once the latest game state has been computed, some I/O operations become independent.
+
+For example:
+
+```text
+Update Redis
+
+Persist Snapshot to Cassandra
+```
+
+These two operations do not depend on each other.
+
+Therefore they can execute concurrently.
+
+---
+
+# Recommended Flow
+
+```text
+Receive Event
+        ↓
+Validate Ordering
+        ↓
+Validate Idempotency
+        ↓
+Compute Latest Game State
+        ↓
+ ┌───────────────┬────────────────┐
+ │               │                │
+ ▼               ▼                │
+Update Redis   Persist Snapshot   │
+ │               │                │
+ └─────── Wait For Both ──────────┘
+                 ↓
+Publish SCORE_UPDATED Event
+```
+
+---
+
+# Why Publish Last?
+
+The domain event should only be published **after** Redis and Cassandra have been successfully updated.
+
+Otherwise:
+
+```text
+Publish SCORE_UPDATED
+        ↓
+Client Immediately Reads Redis
+        ↓
+Redis Still Contains Old Score
+```
+
+Clients would observe inconsistent state.
+
+Publishing after persistence ensures downstream consumers only see committed state.
+
+---
+
+# Sample Implementation
+
+```java
+public void process(GameEvent event) {
+
+    GameState latestState = computeLatestState(event);
+
+    CompletableFuture<Void> redisFuture =
+            CompletableFuture.runAsync(() ->
+                    redisRepository.update(latestState));
+
+    CompletableFuture<Void> cassandraFuture =
+            CompletableFuture.runAsync(() ->
+                    cassandraRepository.saveSnapshot(latestState));
+
+    CompletableFuture
+            .allOf(redisFuture, cassandraFuture)
+            .join();
+
+    kafkaProducer.publish(
+            new ScoreUpdatedEvent(latestState));
+}
+```
+
+---
+
+# Where CompletableFuture Makes Sense
+
+Good use cases include independent I/O operations.
+
+Examples:
+
+```text
+Update Redis
+
+Persist Cassandra Snapshot
+
+Call Multiple Independent Services
+
+Fetch Data From Multiple Services
+
+Send Multiple Notifications
+```
+
+---
+
+## Notification Service Example
+
+```text
+Goal Scored
+      │
+      ├── Send APNs
+      ├── Send Email
+      ├── Send SMS
+      └── Update Analytics
+```
+
+Each task is independent and can execute concurrently.
+
+```java
+CompletableFuture<Void> push =
+        CompletableFuture.runAsync(this::sendPushNotification);
+
+CompletableFuture<Void> email =
+        CompletableFuture.runAsync(this::sendEmail);
+
+CompletableFuture<Void> sms =
+        CompletableFuture.runAsync(this::sendSms);
+
+CompletableFuture<Void> analytics =
+        CompletableFuture.runAsync(this::updateAnalytics);
+
+CompletableFuture
+        .allOf(push, email, sms, analytics)
+        .join();
+```
+
+---
+
+# Query Service Example
+
+Instead of making sequential service calls:
+
+```java
+GameState game = gameService.get(gameId);
+PlayerStats stats = statsService.get(gameId);
+Standings standings = standingsService.get();
+```
+
+Use parallel requests:
+
+```java
+CompletableFuture<GameState> gameFuture =
+        CompletableFuture.supplyAsync(() -> gameService.get(gameId));
+
+CompletableFuture<PlayerStats> statsFuture =
+        CompletableFuture.supplyAsync(() -> statsService.get(gameId));
+
+CompletableFuture<Standings> standingsFuture =
+        CompletableFuture.supplyAsync(() -> standingsService.get());
+
+CompletableFuture
+        .allOf(gameFuture, statsFuture, standingsFuture)
+        .join();
+
+GameState game = gameFuture.join();
+PlayerStats stats = statsFuture.join();
+Standings standings = standingsFuture.join();
+```
+
+This reduces overall response latency because all service calls execute concurrently.
+
+---
+
+# Where NOT to Use CompletableFuture
+
+Do **not** parallelize operations that depend on each other.
+
+For example:
+
+```text
+Validate Ordering
+        ↓
+Validate Idempotency
+        ↓
+Compute Game State
+```
+
+These steps must execute sequentially to preserve correctness.
+
+---
+
+# Interview Sound Bite
+
+> Use `CompletableFuture` only for independent work. In the Game State Consumer, ordering validation, idempotency checks, and game-state computation must remain sequential. After the new state has been computed, independent I/O operations such as updating Redis and persisting a Cassandra snapshot can execute concurrently. Only after both complete should the domain event be published, ensuring downstream consumers observe a consistent and durable state.
