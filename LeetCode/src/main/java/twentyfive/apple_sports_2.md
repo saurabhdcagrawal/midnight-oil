@@ -8784,3 +8784,22 @@ These steps must execute sequentially to preserve correctness.
 # Interview Sound Bite
 
 > Use `CompletableFuture` only for independent work. In the Game State Consumer, ordering validation, idempotency checks, and game-state computation must remain sequential. After the new state has been computed, independent I/O operations such as updating Redis and persisting a Cassandra snapshot can execute concurrently. Only after both complete should the domain event be published, ensuring downstream consumers observe a consistent and durable state.
+
+
+```text
+Sports Provider
+      ↓
+Ingestion Service
+      ↓
+Kafka (game-events)
+      ↓
+Game State Consumer
+      ↓
+Redis + Cassandra
+      ↓
+Kafka (game-state-events)
+      ↓
+SSE
+      ↓
+Apple Sports App
+```
