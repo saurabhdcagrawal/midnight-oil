@@ -15418,3 +15418,4 @@ Effectively Once Business Processing
 - Modern distributed systems embrace retries and design external side effects to be idempotent.
 - The Transactional Outbox prevents lost events but may still produce duplicate events.
 - **Idempotent operations + Transactional Outbox = Effectively Once Business Processing.**
+- Kafka provides exactly-once processing only when all transactional resources are Kafka resources. Once external systems participate, true distributed exactly-once semantics are generally not possible, so modern systems achieve effectively-once business processing using patterns like the Transactional Outbox together with idempotent operations and consumers.
