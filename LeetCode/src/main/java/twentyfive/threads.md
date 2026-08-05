@@ -2228,3 +2228,2464 @@ Protects the Game object's internal state
 ```
 
 A senior Java engineer keeps these three responsibilities separate.
+
+# Java CompletableFuture - Senior Interview Notes
+
+---
+
+# Why CompletableFuture?
+
+Suppose we need to fetch a Player.
+
+Traditional code
+
+```java
+Player player = playerService.getPlayer(playerId);
+```
+
+The request thread waits until the Player is returned.
+
+```
+Request Thread
+
+↓
+
+Call API
+
+↓
+
+WAIT
+
+↓
+
+Player Returned
+
+↓
+
+Continue
+```
+
+This blocks the thread.
+
+---
+
+# CompletableFuture
+
+Instead we can do
+
+```java
+CompletableFuture<Player> future =
+        CompletableFuture.supplyAsync(() ->
+                playerService.getPlayer(playerId));
+```
+
+Now
+
+```
+Request Thread
+
+↓
+
+Create CompletableFuture
+
+↓
+
+Worker Thread Fetches Player
+
+↓
+
+Request Thread Continues
+```
+
+The request thread is no longer blocked.
+
+---
+
+# What does CompletableFuture contain?
+
+Initially it does NOT contain a Player.
+
+It contains a promise that
+
+```
+A Player
+
+WILL
+
+be available later.
+```
+
+Initially
+
+```
+CompletableFuture<Player>
+
+↓
+
+PENDING
+```
+
+Later
+
+```
+CompletableFuture<Player>
+
+↓
+
+COMPLETED
+
+↓
+
+Player
+```
+
+or
+
+```
+CompletableFuture<Player>
+
+↓
+
+FAILED
+
+↓
+
+Exception
+```
+
+So a CompletableFuture has three states.
+
+```
+PENDING
+
+↓
+
+COMPLETED
+
+or
+
+FAILED
+```
+
+---
+
+# supplyAsync()
+
+```java
+CompletableFuture<Player> future =
+        CompletableFuture.supplyAsync(() ->
+                playerService.getPlayer(playerId));
+```
+
+Question
+
+What thread executes
+
+```java
+playerService.getPlayer(...)
+```
+
+Answer
+
+A worker thread from the ForkJoinPool
+(or a custom Executor if supplied).
+
+The request thread immediately continues.
+
+---
+
+# How do we get the result?
+
+Two methods.
+
+```
+future.get()
+
+future.join()
+```
+
+---
+
+# future.get()
+
+```java
+Player player = future.get();
+```
+
+Behavior
+
+- waits until completion
+- returns Player
+
+Throws checked exceptions
+
+```java
+InterruptedException
+
+ExecutionException
+```
+
+So Java forces us to write
+
+```java
+try {
+
+    Player player = future.get();
+
+} catch (InterruptedException e) {
+
+} catch (ExecutionException e) {
+
+}
+```
+
+---
+
+# future.join()
+
+```java
+Player player = future.join();
+```
+
+Also waits.
+
+Also returns Player.
+
+But throws
+
+```java
+CompletionException
+```
+
+which is an unchecked exception.
+
+So
+
+```java
+Player player = future.join();
+```
+
+needs no try/catch.
+
+---
+
+# get() vs join()
+
+| Feature | get() | join() |
+|----------|--------|---------|
+| Waits | ✅ | ✅ |
+| Returns Result | ✅ | ✅ |
+| Checked Exception | ✅ | ❌ |
+| Runtime Exception | ❌ | ✅ |
+| Preferred with CompletableFuture | ❌ | ✅ |
+
+---
+
+# Chaining Futures
+
+Suppose
+
+```java
+Player player =
+        playerService.getPlayer(id);
+
+Team team =
+        teamService.getTeam(player.getTeamId());
+```
+
+Notice
+
+```
+Player
+
+↓
+
+Team
+```
+
+Team depends on Player.
+
+---
+
+# thenApply()
+
+Suppose after getting Player we simply need
+
+```java
+player.getName()
+```
+
+```java
+CompletableFuture<String> future =
+        CompletableFuture
+                .supplyAsync(() ->
+                        playerService.getPlayer(id))
+                .thenApply(player ->
+                        player.getName());
+```
+
+Input
+
+```
+Player
+```
+
+Output
+
+```
+String
+```
+
+No asynchronous call.
+
+Only transformation.
+
+Think of
+
+```
+Stream.map()
+```
+
+```
+Player
+
+↓
+
+String
+```
+
+---
+
+# thenCompose()
+
+Suppose instead
+
+```java
+player ->
+teamService.getTeamAsync(player.getTeamId())
+```
+
+returns
+
+```java
+CompletableFuture<Team>
+```
+
+NOT
+
+```java
+Team
+```
+
+If we write
+
+```java
+.thenApply(player ->
+        teamService.getTeamAsync(player.getTeamId()))
+```
+
+the result becomes
+
+```java
+CompletableFuture<
+        CompletableFuture<Team>>
+```
+
+Future inside another Future.
+
+Almost never desired.
+
+Instead use
+
+```java
+.thenCompose(player ->
+        teamService.getTeamAsync(player.getTeamId()))
+```
+
+Java automatically flattens
+
+```
+Future
+
+↓
+
+Future
+
+↓
+
+Team
+```
+
+into
+
+```
+Future
+
+↓
+
+Team
+```
+
+---
+
+# Rule
+
+If lambda returns
+
+```java
+String
+
+Integer
+
+Player
+
+Game
+```
+
+Use
+
+```java
+thenApply()
+```
+
+If lambda returns
+
+```java
+CompletableFuture<Team>
+
+CompletableFuture<Player>
+
+CompletableFuture<Game>
+```
+
+Use
+
+```java
+thenCompose()
+```
+
+---
+
+# thenApply vs thenCompose
+
+| thenApply | thenCompose |
+|------------|-------------|
+| Synchronous transformation | Starts another async operation |
+| Returns normal object | Returns CompletableFuture |
+| Similar to Stream.map() | Similar to Stream.flatMap() |
+
+---
+
+# Running Independent Tasks
+
+Suppose
+
+```java
+Player player =
+        playerService.getPlayer(id);
+
+Stats stats =
+        statsService.getStats(id);
+```
+
+Neither depends on the other.
+
+They can execute in parallel.
+
+---
+
+# Parallel Execution
+
+```java
+CompletableFuture<Player> playerFuture =
+        CompletableFuture.supplyAsync(() ->
+                playerService.getPlayer(id));
+
+CompletableFuture<Stats> statsFuture =
+        CompletableFuture.supplyAsync(() ->
+                statsService.getStats(id));
+```
+
+Both start immediately.
+
+```
+Player Thread
+
+↓
+
+Player API
+
+--------------------
+
+Stats Thread
+
+↓
+
+Stats API
+```
+
+---
+
+# thenCombine()
+
+After BOTH complete
+
+build
+
+```java
+PlayerResponse
+```
+
+```java
+CompletableFuture<PlayerResponse> responseFuture =
+        playerFuture.thenCombine(
+                statsFuture,
+                (player, stats) ->
+                        new PlayerResponse(player, stats));
+```
+
+Timeline
+
+```
+Player Future
+
+↓
+
+Player
+
+---------------
+
+Stats Future
+
+↓
+
+Stats
+
+↓
+
+thenCombine()
+
+↓
+
+PlayerResponse
+```
+
+---
+
+# Why not just join()?
+
+This works
+
+```java
+Player player = playerFuture.join();
+
+Stats stats = statsFuture.join();
+
+return new PlayerResponse(player, stats);
+```
+
+Because both futures already started.
+
+However
+
+```
+join()
+```
+
+blocks the current thread.
+
+```
+thenCombine()
+```
+
+keeps everything inside the asynchronous pipeline.
+
+This is the preferred CompletableFuture style.
+
+---
+
+# Mental Model
+
+thenApply()
+
+```
+Player
+
+↓
+
+String
+```
+
+Simple transformation.
+
+---
+
+thenCompose()
+
+```
+Player
+
+↓
+
+Future<Team>
+```
+
+Chain another async call.
+
+---
+
+thenCombine()
+
+```
+Player Future
+
+AND
+
+Stats Future
+
+↓
+
+Combine
+
+↓
+
+Response
+```
+
+Used when tasks are independent.
+
+---
+
+# Sports Backend Example
+
+```java
+CompletableFuture<Game> gameFuture =
+        gameService.getGameAsync(gameId);
+
+CompletableFuture<Odds> oddsFuture =
+        oddsService.getOddsAsync(gameId);
+
+CompletableFuture<Standings> standingsFuture =
+        standingsService.getStandingsAsync(leagueId);
+```
+
+All execute simultaneously.
+
+Then
+
+```java
+gameFuture
+        .thenCombine(oddsFuture,
+                GameWithOdds::new)
+        .thenCombine(standingsFuture,
+                (gameOdds, standings) ->
+                        new MatchResponse(
+                                gameOdds,
+                                standings));
+```
+
+---
+
+# Summary Table
+
+| Situation | Method |
+|-----------|--------|
+| Start async task | supplyAsync() |
+| Wait for result | join() |
+| Wait with checked exceptions | get() |
+| Transform object | thenApply() |
+| Chain another async API | thenCompose() |
+| Combine two independent async tasks | thenCombine() |
+
+---
+
+# Apple / Audible Interview Answer
+
+Question
+
+"When would you use thenApply(), thenCompose(), and thenCombine()?"
+
+Answer
+
+> I use `thenApply()` when I want to synchronously transform the result of a completed future. I use `thenCompose()` when the transformation itself is asynchronous and returns another CompletableFuture, because it avoids nested futures by flattening them. I use `thenCombine()` when I have two independent asynchronous operations running in parallel and want to combine both results once they complete.
+
+# CompletableFuture vs Kafka - When to Use Which?
+
+One of the most common misconceptions is thinking that **CompletableFuture and Kafka solve the same problem.**
+
+They don't.
+
+They solve **completely different architectural problems.**
+
+---
+
+# The Wrong Question
+
+Many engineers think
+
+```
+CompletableFuture
+
+vs
+
+Kafka
+```
+
+This is the wrong comparison.
+
+Instead ask
+
+```
+Am I solving
+
+Request Parallelism
+
+OR
+
+Event Distribution?
+```
+
+---
+
+# Problem 1 - User is Waiting (HTTP Request)
+
+Suppose a user opens the ESPN app.
+
+```
+GET /match/123
+```
+
+The request reaches
+
+```
+Game Service
+```
+
+To build the response we need
+
+- Redis Cache
+- Odds Service
+- Standings Service
+- Player Service
+
+Architecture
+
+```
+                Game Service
+
+                    │
+
+        ┌───────────┼───────────┐
+
+        │           │           │
+
+     Redis      Odds API     Player API
+
+                    │
+
+            Standings API
+```
+
+Notice
+
+All these operations are
+
+- independent
+- required for ONE response
+
+The user is waiting.
+
+---
+
+# Should we use Kafka?
+
+Imagine
+
+```
+User
+
+↓
+
+GET /match/123
+
+↓
+
+Publish Kafka Event
+```
+
+Now
+
+```
+Kafka Consumer
+
+↓
+
+Fetch Redis
+
+↓
+
+Fetch Odds
+
+↓
+
+Fetch Player
+
+↓
+
+Publish Another Event
+
+↓
+
+Eventually Return Response
+```
+
+This would be terrible.
+
+Why?
+
+Because Kafka is not designed for request-response communication.
+
+The user wants the response immediately.
+
+---
+
+# Correct Solution
+
+Run everything in parallel using CompletableFuture.
+
+```java
+CompletableFuture<Game> gameFuture =
+        CompletableFuture.supplyAsync(() ->
+                gameService.getGame(gameId));
+
+CompletableFuture<Odds> oddsFuture =
+        CompletableFuture.supplyAsync(() ->
+                oddsService.getOdds(gameId));
+
+CompletableFuture<PlayerStats> playerFuture =
+        CompletableFuture.supplyAsync(() ->
+                playerService.getPlayerStats(gameId));
+
+CompletableFuture<Standings> standingsFuture =
+        CompletableFuture.supplyAsync(() ->
+                standingsService.getStandings(leagueId));
+```
+
+Wait for all
+
+```java
+CompletableFuture.allOf(
+        gameFuture,
+        oddsFuture,
+        playerFuture,
+        standingsFuture).join();
+```
+
+Build response
+
+```java
+return new MatchResponse(
+        gameFuture.join(),
+        oddsFuture.join(),
+        playerFuture.join(),
+        standingsFuture.join());
+```
+
+---
+
+# Timeline
+
+```
+User Request
+
+↓
+
+Game Service
+
+↓
+
+Redis ----------150ms
+
+Odds ----------250ms
+
+Player---------200ms
+
+Standings------300ms
+
+↓
+
+allOf()
+
+↓
+
+300ms
+
+↓
+
+Return Response
+```
+
+Without parallelism
+
+```
+150
+
++
+
+250
+
++
+
+200
+
++
+
+300
+
+=
+
+900 ms
+```
+
+With CompletableFuture
+
+```
+300 ms
+```
+
+Huge improvement.
+
+---
+
+# Problem 2 - Provider Sends Webhook
+
+Now imagine a completely different scenario.
+
+```
+Sports Provider
+
+↓
+
+Webhook
+
+↓
+
+Game Service
+```
+
+A touchdown occurred.
+
+Need to
+
+- Update Redis
+- Update Cassandra
+- Update Analytics
+- Notify Users
+
+Architecture
+
+```
+Webhook
+
+↓
+
+Game Service
+```
+
+---
+
+# Could we use CompletableFuture?
+
+Technically yes.
+
+```java
+CompletableFuture.runAsync(() -> updateRedis());
+
+CompletableFuture.runAsync(() -> updateCassandra());
+
+CompletableFuture.runAsync(() -> sendNotification());
+```
+
+Would it work?
+
+Yes.
+
+Would it be the best architecture?
+
+Usually NO.
+
+---
+
+# Why Kafka is Better
+
+Instead
+
+```
+Webhook
+
+↓
+
+Validate
+
+↓
+
+Persist Event
+
+↓
+
+Publish Kafka Event
+```
+
+Now
+
+```
+                 Kafka
+
+         ┌────────┼────────┐
+
+         │        │        │
+
+Redis   Analytics  Notification
+
+Consumer Consumer    Consumer
+
+         │        │        │
+
+Update   Store    Send Push
+```
+
+Notice
+
+Each service
+
+- works independently
+- retries independently
+- scales independently
+- can replay messages
+- is loosely coupled
+
+Kafka provides
+
+- durability
+- retries
+- ordering
+- buffering
+- replay
+- decoupling
+
+All things CompletableFuture cannot provide.
+
+---
+
+# The Difference
+
+## CompletableFuture
+
+```
+One Request
+
+↓
+
+Need Several Results
+
+↓
+
+Run in Parallel
+
+↓
+
+Return One Response
+```
+
+Used
+
+Inside ONE JVM
+
+Inside ONE Service
+
+Inside ONE Request
+
+---
+
+## Kafka
+
+```
+One Event Happened
+
+↓
+
+Many Services Need It
+
+↓
+
+Distribute Event
+
+↓
+
+Each Service Processes Independently
+```
+
+Used
+
+Between Microservices
+
+Across Multiple Services
+
+Event Driven Architecture
+
+---
+
+# Sports Backend Examples
+
+## Example 1 - User Opens Match
+
+```
+GET /match/123
+```
+
+Need
+
+- Redis
+- Odds
+- Player Stats
+- Standings
+
+Use
+
+```
+CompletableFuture
+```
+
+Because
+
+Only THIS request needs the data.
+
+---
+
+## Example 2 - Score Update Arrives
+
+```
+Provider
+
+↓
+
+Webhook
+```
+
+Need
+
+- Redis
+- Cassandra
+- Analytics
+- Notifications
+
+Use
+
+```
+Kafka
+```
+
+Because
+
+Many downstream services need the event.
+
+---
+
+# Mental Model
+
+## CompletableFuture
+
+```
+HTTP Request
+
+↓
+
+One Service
+
+↓
+
+Parallel API Calls
+
+↓
+
+Return Response
+```
+
+---
+
+## Kafka
+
+```
+Event
+
+↓
+
+Kafka
+
+↓
+
+Service A
+
+Service B
+
+Service C
+
+↓
+
+Each Processes Independently
+```
+
+---
+
+# Simple Rule
+
+## Is a user waiting?
+
+```
+YES
+
+↓
+
+CompletableFuture
+```
+
+---
+
+## Is an event being distributed?
+
+```
+YES
+
+↓
+
+Kafka
+```
+
+---
+
+# CompletableFuture vs Kafka
+
+| CompletableFuture | Kafka |
+|-------------------|-------|
+| Inside one service | Between services |
+| Parallelizes work | Distributes events |
+| Request-response | Event-driven |
+| One JVM | Multiple microservices |
+| Low latency | Reliable asynchronous processing |
+| Used when client is waiting | Used when no client is waiting |
+
+---
+
+# Apple / Audible Interview Answer
+
+**Question**
+
+Why didn't you use Kafka instead of CompletableFuture?
+
+**Answer**
+
+> Kafka and CompletableFuture solve different problems. CompletableFuture is used within a single service to execute multiple independent tasks concurrently while building a response for a client request. Kafka is used for asynchronous communication between microservices where durability, retries, ordering, replay, and loose coupling are required. In my Sports backend, I would use CompletableFuture to fetch Redis, odds, standings, and player statistics in parallel for a GET request. For provider webhook events, I would publish the event to Kafka so downstream services like Redis, Cassandra, Analytics, and Notification services can process it independently.
+
+---
+
+# Interview Mental Model
+
+```
+User Waiting?
+
+↓
+
+YES
+
+↓
+
+CompletableFuture
+
+-------------------------
+
+Need to Notify Multiple Services?
+
+↓
+
+YES
+
+↓
+
+Kafka
+```
+
+# CompletableFuture - Complete Production Example
+
+---
+
+# Problem
+
+Suppose a user opens the Sports application.
+
+```
+GET /match/123
+```
+
+To build the response we need data from multiple independent services.
+
+- Player Service
+- Odds Service
+- Stats Service
+
+Each service is independent and can execute in parallel.
+
+---
+
+# Complete Example
+
+```java
+public MatchResponse getMatchDetails(Long matchId,
+                                     Long playerId,
+                                     Long leagueId) {
+
+    // Start all asynchronous tasks
+
+    CompletableFuture<Player> playerFuture =
+            CompletableFuture.supplyAsync(() ->
+                    playerService.getPlayer(playerId));
+
+    CompletableFuture<Odds> oddsFuture =
+            CompletableFuture.supplyAsync(() ->
+                    oddsService.getOdds(matchId));
+
+    CompletableFuture<Stats> statsFuture =
+            CompletableFuture.supplyAsync(() ->
+                    statsService.getStats(leagueId));
+
+    // Wait until ALL tasks complete
+
+    CompletableFuture.allOf(
+            playerFuture,
+            oddsFuture,
+            statsFuture)
+            .join();
+
+    // Retrieve results
+    // (returns immediately because all futures have already completed)
+
+    Player player = playerFuture.join();
+
+    Odds odds = oddsFuture.join();
+
+    Stats stats = statsFuture.join();
+
+    // Build final response
+
+    return new MatchResponse(
+            player,
+            odds,
+            stats
+    );
+}
+```
+
+---
+
+# Step-by-Step Execution
+
+## Step 1
+
+Client sends
+
+```
+GET /match/123
+```
+
+Spring creates a request thread.
+
+```
+Request Thread
+```
+
+---
+
+## Step 2
+
+The request thread starts all asynchronous tasks.
+
+```
+Request Thread
+
+↓
+
+playerFuture
+
+↓
+
+Worker Thread A
+```
+
+```
+Request Thread
+
+↓
+
+oddsFuture
+
+↓
+
+Worker Thread B
+```
+
+```
+Request Thread
+
+↓
+
+statsFuture
+
+↓
+
+Worker Thread C
+```
+
+Notice
+
+All three tasks begin immediately.
+
+---
+
+## Step 3
+
+The request thread reaches
+
+```java
+CompletableFuture.allOf(
+        playerFuture,
+        oddsFuture,
+        statsFuture)
+        .join();
+```
+
+The request thread now waits.
+
+Meanwhile
+
+```
+Worker Thread A
+
+↓
+
+Player Service
+```
+
+```
+Worker Thread B
+
+↓
+
+Odds Service
+```
+
+```
+Worker Thread C
+
+↓
+
+Stats Service
+```
+
+All three services execute simultaneously.
+
+---
+
+## Step 4
+
+Suppose the services take
+
+```
+Player Service
+
+300 ms
+```
+
+```
+Odds Service
+
+200 ms
+```
+
+```
+Stats Service
+
+250 ms
+```
+
+Timeline
+
+```
+Player ----------------------300 ms
+
+Odds ----------------200 ms
+
+Stats --------------250 ms
+
+↓
+
+allOf()
+
+↓
+
+300 ms
+
+↓
+
+Continue
+```
+
+The request waits only for the slowest task.
+
+Without parallel execution
+
+```
+300
+
++
+
+200
+
++
+
+250
+
+=
+
+750 ms
+```
+
+With CompletableFuture
+
+```
+300 ms
+```
+
+---
+
+## Step 5
+
+Now the request thread executes
+
+```java
+Player player = playerFuture.join();
+
+Odds odds = oddsFuture.join();
+
+Stats stats = statsFuture.join();
+```
+
+Question
+
+Why don't these block?
+
+Because
+
+```
+allOf().join()
+```
+
+has already waited until every future completed.
+
+So each
+
+```java
+future.join()
+```
+
+returns immediately.
+
+---
+
+## Step 6
+
+Finally
+
+```java
+return new MatchResponse(
+        player,
+        odds,
+        stats);
+```
+
+Spring Boot converts
+
+```
+MatchResponse
+```
+
+into JSON and returns it to the client.
+
+---
+
+# Visual Flow
+
+```
+                     Request Thread
+
+                           │
+
+        ┌──────────────────┼──────────────────┐
+
+        │                  │                  │
+
+Player Future        Odds Future        Stats Future
+
+        │                  │                  │
+
+ Worker Thread A     Worker Thread B    Worker Thread C
+
+        │                  │                  │
+
+ Player Service      Odds Service       Stats Service
+
+        │                  │                  │
+
+        └──────────────────┼──────────────────┘
+
+                  CompletableFuture.allOf()
+
+                           │
+
+                         join()
+
+                           │
+
+                 All Futures Completed
+
+                           │
+
+             playerFuture.join()
+
+             oddsFuture.join()
+
+             statsFuture.join()
+
+                           │
+
+                  Build MatchResponse
+
+                           │
+
+                  Return HTTP Response
+```
+
+---
+
+# Why not call join() immediately?
+
+❌ Incorrect
+
+```java
+CompletableFuture<Player> playerFuture =
+        CompletableFuture.supplyAsync(() ->
+                playerService.getPlayer(playerId));
+
+Player player = playerFuture.join();
+```
+
+Timeline
+
+```
+Create Future
+
+↓
+
+Immediately Wait
+
+↓
+
+Player Returned
+
+↓
+
+Continue
+```
+
+Very little benefit.
+
+---
+
+# Correct Pattern
+
+```
+Start Future A
+
+↓
+
+Start Future B
+
+↓
+
+Start Future C
+
+↓
+
+Let them all execute in parallel
+
+↓
+
+Wait once
+
+↓
+
+Retrieve all results
+
+↓
+
+Build response
+```
+
+---
+
+# Rule
+
+Never do this
+
+```
+Start Future
+
+↓
+
+Immediately join()
+```
+
+Instead
+
+```
+Start ALL futures
+
+↓
+
+Wait once
+
+↓
+
+Collect all results
+```
+
+---
+
+# Interview Explanation
+
+> When a request arrives, I immediately start all independent I/O operations using `CompletableFuture.supplyAsync()`. Each task runs concurrently on a worker thread. Instead of blocking after every API call, I allow all tasks to execute in parallel and wait only once using `CompletableFuture.allOf().join()`. After all tasks complete, each individual `join()` returns immediately because the results are already available. Finally, I combine the results into a single response object. This reduces the response time from the sum of all API latencies to approximately the duration of the slowest API call.
+
+# CompletableFuture Exception Handling - Complete Interview Notes
+
+---
+
+# The Problem
+
+Suppose we have two asynchronous operations.
+
+```java
+CompletableFuture<Player> playerFuture =
+        CompletableFuture.supplyAsync(() ->
+                playerService.getPlayer(playerId));
+
+CompletableFuture<Odds> oddsFuture =
+        CompletableFuture.supplyAsync(() ->
+                oddsService.getOdds(matchId));
+```
+
+Everything works fine until one service fails.
+
+For example
+
+```
+Odds Service
+
+↓
+
+500 Internal Server Error
+```
+
+or
+
+```
+Odds Service
+
+↓
+
+Network Timeout
+```
+
+Question
+
+**What happens now?**
+
+---
+
+# Default Behavior (No Exception Handling)
+
+Suppose we wait for both futures.
+
+```java
+CompletableFuture.allOf(
+        playerFuture,
+        oddsFuture)
+        .join();
+```
+
+Timeline
+
+```
+Player Future
+
+↓
+
+SUCCESS
+
+-------------------------
+
+Odds Future
+
+↓
+
+EXCEPTION
+```
+
+Result
+
+```
+CompletableFuture.allOf()
+
+↓
+
+EXCEPTION
+```
+
+The request immediately fails.
+
+Even though
+
+```
+Player Future
+```
+
+completed successfully,
+
+the overall request fails because one future completed exceptionally.
+
+---
+
+# Why?
+
+`CompletableFuture.allOf()` succeeds only if **every future succeeds**.
+
+If even one future fails,
+
+```
+allOf().join()
+```
+
+throws an exception.
+
+---
+
+# Three Ways to Handle Exceptions
+
+Java provides three methods.
+
+```
+exceptionally()
+
+handle()
+
+whenComplete()
+```
+
+Each has a different purpose.
+
+---
+
+# 1. exceptionally()
+
+Think of it as
+
+```
+try
+
+↓
+
+Exception?
+
+↓
+
+Return Default Value
+
+↓
+
+Continue
+```
+
+Example
+
+```java
+CompletableFuture<Odds> oddsFuture =
+        CompletableFuture
+                .supplyAsync(() ->
+                        oddsService.getOdds(matchId))
+                .exceptionally(ex -> {
+
+                    System.out.println(ex);
+
+                    return Odds.empty();
+
+                });
+```
+
+Timeline
+
+```
+Odds Service
+
+↓
+
+Exception
+
+↓
+
+exceptionally()
+
+↓
+
+Odds.empty()
+
+↓
+
+Future Completes Successfully
+```
+
+Instead of failing,
+
+the future returns a fallback value.
+
+---
+
+# Sports Backend Example
+
+Suppose the Odds provider is temporarily unavailable.
+
+Without exception handling
+
+```
+HTTP 500
+```
+
+The entire request fails.
+
+With
+
+```java
+.exceptionally(...)
+```
+
+Return
+
+```
+Odds.empty()
+```
+
+The response still contains
+
+- Match Details
+- Player Statistics
+- Standings
+
+Only
+
+```
+Odds
+
+↓
+
+Unavailable
+```
+
+Much better user experience.
+
+---
+
+# When should I use exceptionally()?
+
+Whenever I want to recover from an exception and provide a default value.
+
+---
+
+# 2. handle()
+
+Think of it as
+
+```
+Success
+
+OR
+
+Failure
+
+↓
+
+Always Execute
+```
+
+Method signature
+
+```java
+.handle((result, ex) -> ...)
+```
+
+Notice
+
+It receives BOTH
+
+```
+Result
+
+AND
+
+Exception
+```
+
+Example
+
+```java
+CompletableFuture<Odds> oddsFuture =
+        CompletableFuture
+                .supplyAsync(() ->
+                        oddsService.getOdds(matchId))
+                .handle((odds, ex) -> {
+
+                    if (ex != null) {
+
+                        return Odds.empty();
+
+                    }
+
+                    return odds;
+
+                });
+```
+
+Timeline
+
+Success
+
+```
+Odds
+
+↓
+
+handle()
+
+↓
+
+Odds
+```
+
+Failure
+
+```
+Exception
+
+↓
+
+handle()
+
+↓
+
+Odds.empty()
+```
+
+Unlike
+
+```
+exceptionally()
+```
+
+this method always executes.
+
+---
+
+# When should I use handle()?
+
+When I want to process BOTH
+
+- successful results
+- failed results
+
+inside one method.
+
+---
+
+# Difference Between exceptionally() and handle()
+
+## exceptionally()
+
+Only executes
+
+```
+ON FAILURE
+```
+
+---
+
+## handle()
+
+Executes
+
+```
+ON SUCCESS
+
+AND
+
+ON FAILURE
+```
+
+---
+
+# 3. whenComplete()
+
+Think of it as
+
+```
+finally
+```
+
+It is mainly used for
+
+- Logging
+- Metrics
+- Auditing
+- Monitoring
+
+Example
+
+```java
+CompletableFuture<Odds> oddsFuture =
+        CompletableFuture
+                .supplyAsync(() ->
+                        oddsService.getOdds(matchId))
+                .whenComplete((odds, ex) -> {
+
+                    if (ex == null) {
+
+                        log.info("Odds retrieved successfully");
+
+                    } else {
+
+                        log.error("Odds retrieval failed", ex);
+
+                    }
+
+                });
+```
+
+Notice
+
+It does NOT recover from the exception.
+
+It simply observes the outcome.
+
+Timeline
+
+```
+Odds Service
+
+↓
+
+Exception
+
+↓
+
+whenComplete()
+
+↓
+
+Log Error
+
+↓
+
+Future Still Fails
+```
+
+The exception continues to propagate.
+
+---
+
+# When should I use whenComplete()?
+
+Whenever I only want to
+
+- log
+- audit
+- publish metrics
+
+without changing the result.
+
+---
+
+# Summary
+
+## exceptionally()
+
+```
+Failure
+
+↓
+
+Recover
+
+↓
+
+Return Default Value
+```
+
+---
+
+## handle()
+
+```
+Success
+
+↓
+
+Transform
+
+OR
+
+Failure
+
+↓
+
+Recover
+```
+
+---
+
+## whenComplete()
+
+```
+Success
+
+↓
+
+Log
+
+---------------------
+
+Failure
+
+↓
+
+Log
+
+↓
+
+Continue Original Result
+```
+
+---
+
+# Real Sports Backend Example
+
+Suppose
+
+```
+GET /match/123
+```
+
+Needs
+
+```
+Redis
+
+Odds
+
+Player
+
+Standings
+```
+
+Suppose
+
+```
+Odds Service
+
+↓
+
+Timeout
+```
+
+Without exception handling
+
+```
+HTTP 500
+```
+
+With
+
+```java
+.exceptionally(ex -> Odds.empty())
+```
+
+Flow
+
+```
+Redis
+
+↓
+
+Player
+
+↓
+
+Standings
+
+↓
+
+Odds.empty()
+
+↓
+
+Build MatchResponse
+
+↓
+
+HTTP 200
+```
+
+The user still receives useful data.
+
+Only the odds section is unavailable.
+
+---
+
+# Which One Should I Use?
+
+## Need fallback data?
+
+Use
+
+```java
+exceptionally()
+```
+
+---
+
+## Need to process both success and failure?
+
+Use
+
+```java
+handle()
+```
+
+---
+
+## Need only logging or metrics?
+
+Use
+
+```java
+whenComplete()
+```
+
+---
+
+# Comparison Table
+
+| Feature | exceptionally() | handle() | whenComplete() |
+|----------|-----------------|----------|----------------|
+| Executes on Success | ❌ | ✅ | ✅ |
+| Executes on Failure | ✅ | ✅ | ✅ |
+| Can Recover from Failure | ✅ | ✅ | ❌ |
+| Can Return Different Value | ✅ | ✅ | ❌ |
+| Best Use Case | Fallback Value | Transform + Recovery | Logging / Metrics |
+
+---
+
+# Timeline Comparison
+
+## exceptionally()
+
+```
+Future
+
+↓
+
+Exception
+
+↓
+
+Fallback Value
+
+↓
+
+Continue
+```
+
+---
+
+## handle()
+
+```
+Future
+
+↓
+
+Success
+
+↓
+
+Transform
+
+OR
+
+↓
+
+Failure
+
+↓
+
+Fallback
+
+↓
+
+Continue
+```
+
+---
+
+## whenComplete()
+
+```
+Future
+
+↓
+
+Success / Failure
+
+↓
+
+Log
+
+↓
+
+Original Result Continues
+```
+
+---
+
+# Apple / Audible Interview Question
+
+**Question**
+
+What happens if one CompletableFuture fails?
+
+**Answer**
+
+> By default, if one CompletableFuture completes exceptionally, `CompletableFuture.allOf().join()` also completes exceptionally and the overall request fails. If I want to tolerate partial failures, such as the Odds service being temporarily unavailable, I can use `exceptionally()` or `handle()` to return a fallback object like `Odds.empty()`. If I simply want to log the outcome without changing the result, I use `whenComplete()`. This allows the application to degrade gracefully while still returning useful data to the client.
