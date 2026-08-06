@@ -11161,3 +11161,1251 @@ When would you use `flatMap()` instead of `map()`?
 **Answer**
 
 > I use `map()` when I'm transforming the value already inside a `Mono`, such as extracting a player's name from a `Player`. I use `flatMap()` when the transformation performs another asynchronous operation that returns a `Mono`, such as calling a Team Service using the player's `teamId`. It's the Reactive equivalent of `thenCompose()` in `CompletableFuture` because it flattens nested reactive types.
+
+# Reactive Programming - `zip()`
+
+`Mono.zip()` is the Reactive equivalent of `CompletableFuture.allOf()` or `thenCombine()`.
+
+Use it when you have **multiple independent asynchronous calls** that can execute in parallel.
+
+---
+
+# Problem Statement
+
+Suppose our Match Service needs
+
+- Player
+- Odds
+- Stats
+
+These services are completely independent.
+
+```
+               Match Service
+
+                    │
+
+      ┌─────────────┼─────────────┐
+
+      │             │             │
+
+ Player MS      Odds MS      Stats MS
+```
+
+None of these calls depends on another.
+
+---
+
+# CompletableFuture Version
+
+```java
+CompletableFuture<Player> playerFuture =
+        playerService.getPlayerAsync(playerId);
+
+CompletableFuture<Odds> oddsFuture =
+        oddsService.getOddsAsync(matchId);
+
+CompletableFuture<Stats> statsFuture =
+        statsService.getStatsAsync(matchId);
+
+CompletableFuture.allOf(
+        playerFuture,
+        oddsFuture,
+        statsFuture).join();
+
+Player player = playerFuture.join();
+Odds odds = oddsFuture.join();
+Stats stats = statsFuture.join();
+```
+
+Execution
+
+```
+Player Service
+
+||
+
+Odds Service
+
+||
+
+Stats Service
+
+↓
+
+Wait For All
+
+↓
+
+Continue
+```
+
+---
+
+# Reactive Version
+
+Each service returns a `Mono`.
+
+## PlayerService
+
+```java
+public Mono<Player> getPlayer(Long playerId) {
+
+    return webClient
+
+            .get()
+
+            .uri("/players/" + playerId)
+
+            .retrieve()
+
+            .bodyToMono(Player.class);
+}
+```
+
+---
+
+## OddsService
+
+```java
+public Mono<Odds> getOdds(Long matchId) {
+
+    return webClient
+
+            .get()
+
+            .uri("/odds/" + matchId)
+
+            .retrieve()
+
+            .bodyToMono(Odds.class);
+}
+```
+
+---
+
+## StatsService
+
+```java
+public Mono<Stats> getStats(Long matchId) {
+
+    return webClient
+
+            .get()
+
+            .uri("/stats/" + matchId)
+
+            .retrieve()
+
+            .bodyToMono(Stats.class);
+}
+```
+
+---
+
+# Calling All Three Services
+
+```java
+Mono<Player> playerMono =
+        playerService.getPlayer(playerId);
+
+Mono<Odds> oddsMono =
+        oddsService.getOdds(matchId);
+
+Mono<Stats> statsMono =
+        statsService.getStats(matchId);
+
+Mono<Tuple3<Player, Odds, Stats>> result =
+
+        Mono.zip(
+                playerMono,
+                oddsMono,
+                statsMono);
+```
+
+Notice
+
+All three requests start independently.
+
+```
+Player Service
+
+||
+
+Odds Service
+
+||
+
+Stats Service
+```
+
+---
+
+# Extracting the Results
+
+```java
+Mono<MatchResponse> response =
+
+        Mono.zip(
+                playerMono,
+                oddsMono,
+                statsMono)
+
+        .map(tuple -> {
+
+            Player player = tuple.getT1();
+
+            Odds odds = tuple.getT2();
+
+            Stats stats = tuple.getT3();
+
+            return new MatchResponse(
+                    player,
+                    odds,
+                    stats);
+
+        });
+```
+
+Flow
+
+```
+Mono<Player>
+
+||
+
+Mono<Odds>
+
+||
+
+Mono<Stats>
+
+↓
+
+Mono.zip()
+
+↓
+
+Tuple3<Player, Odds, Stats>
+
+↓
+
+map()
+
+↓
+
+MatchResponse
+```
+
+---
+
+# When Do We Use zip()?
+
+Use `zip()` only when the service calls are **independent**.
+
+Example
+
+```
+Player
+
+||
+
+Odds
+
+||
+
+Stats
+```
+
+They don't depend on one another.
+
+---
+
+# When NOT to Use zip()
+
+Suppose
+
+```
+Player
+
+↓
+
+Need teamId
+
+↓
+
+Team Service
+```
+
+Here
+
+Team depends on Player.
+
+Use
+
+```java
+flatMap()
+```
+
+NOT
+
+```java
+zip()
+```
+
+---
+
+# Rule
+
+## map()
+
+When transforming an object.
+
+```
+Player
+
+↓
+
+String
+```
+
+---
+
+## flatMap()
+
+When calling another asynchronous service that depends on the previous result.
+
+```
+Player
+
+↓
+
+Need teamId
+
+↓
+
+Team
+```
+
+---
+
+## zip()
+
+When multiple asynchronous calls are independent.
+
+```
+Player
+
+||
+
+Odds
+
+||
+
+Stats
+```
+
+---
+
+# Comparison
+
+| CompletableFuture | Reactive | Use Case |
+|-------------------|----------|----------|
+| `thenApply()` | `map()` | Transform a value |
+| `thenCompose()` | `flatMap()` | Chain dependent async calls |
+| `allOf()` / `thenCombine()` | `Mono.zip()` | Combine independent async calls |
+
+---
+
+# Sports System Example
+
+Suppose we need
+
+- Player Profile
+- Betting Odds
+- Match Statistics
+
+```java
+Mono<MatchResponse> response =
+
+        Mono.zip(
+
+                playerService.getPlayer(playerId),
+
+                oddsService.getOdds(matchId),
+
+                statsService.getStats(matchId))
+
+        .map(tuple ->
+
+                new MatchResponse(
+
+                        tuple.getT1(),
+
+                        tuple.getT2(),
+
+                        tuple.getT3()
+
+                ));
+```
+
+Execution
+
+```
+Player Service
+
+||
+
+Odds Service
+
+||
+
+Stats Service
+
+↓
+
+Mono.zip()
+
+↓
+
+MatchResponse
+```
+
+---
+
+# Apple Interview Takeaways
+
+- `Mono.zip()` is the Reactive equivalent of `CompletableFuture.allOf()`.
+- Use it for **independent** asynchronous operations.
+- Use `flatMap()` when one service depends on the result of another.
+- Use `map()` to transform an object already inside a `Mono`.
+
+---
+
+# Quick Summary
+
+| Operation | CompletableFuture | Reactive |
+|-----------|-------------------|----------|
+| Transform result | `thenApply()` | `map()` |
+| Chain dependent async call | `thenCompose()` | `flatMap()` |
+| Combine independent async calls | `allOf()` / `thenCombine()` | `Mono.zip()` |
+
+---
+
+# Apple Interview Answer
+
+**Question**
+
+When would you use `Mono.zip()`?
+
+**Answer**
+
+> I use `Mono.zip()` when multiple asynchronous operations are independent and can execute in parallel. For example, if my Match Service needs player details, betting odds, and match statistics from three different microservices, I can start all three requests simultaneously and use `Mono.zip()` to combine their results into a single response. If one operation depends on the result of another, I would use `flatMap()` instead.
+
+
+# Reactive Programming - Error Handling
+
+Reactive programming provides operators to handle failures without breaking the reactive pipeline.
+
+Think of it as the Reactive equivalent of:
+
+- `try/catch` in synchronous programming
+- `exceptionally()` in `CompletableFuture`
+
+---
+
+# Traditional Java
+
+```java
+try {
+
+    Player player =
+            playerRepository.findById(playerId);
+
+    return player;
+
+}
+catch (Exception ex) {
+
+    log.error("Failed to fetch player", ex);
+
+    return defaultPlayer;
+
+}
+```
+
+Flow
+
+```
+Call Database
+
+↓
+
+Success
+
+↓
+
+Player
+
+OR
+
+↓
+
+Exception
+
+↓
+
+Return Default Player
+```
+
+---
+
+# CompletableFuture
+
+```java
+CompletableFuture<Player> playerFuture =
+
+        CompletableFuture
+
+                .supplyAsync(() ->
+
+                        playerService.getPlayer(playerId))
+
+                .exceptionally(ex -> {
+
+                    log.error("Player Service Failed", ex);
+
+                    return defaultPlayer;
+
+                });
+```
+
+Flow
+
+```
+CompletableFuture
+
+↓
+
+Success
+
+↓
+
+Player
+
+OR
+
+↓
+
+Exception
+
+↓
+
+Return Default Player
+```
+
+---
+
+# Reactive
+
+Reactive provides similar operators.
+
+## onErrorReturn()
+
+```java
+Mono<Player> playerMono =
+
+        playerService.getPlayer(playerId)
+
+                .onErrorReturn(defaultPlayer);
+```
+
+Flow
+
+```
+Player Service
+
+↓
+
+Success
+
+↓
+
+Player
+
+OR
+
+↓
+
+Failure
+
+↓
+
+Return Default Player
+```
+
+Use this when you always want to return the same fallback object.
+
+---
+
+# onErrorResume()
+
+Sometimes a default object isn't enough.
+
+Instead,
+
+call another service.
+
+```java
+Mono<Player> playerMono =
+
+        playerService.getPlayer(playerId)
+
+                .onErrorResume(ex -> {
+
+                    log.error("Player Service Failed", ex);
+
+                    return cacheService.getCachedPlayer(playerId);
+
+                });
+```
+
+Notice
+
+```java
+cacheService.getCachedPlayer(...)
+```
+
+returns
+
+```java
+Mono<Player>
+```
+
+Execution
+
+```
+Player Service
+
+↓
+
+Failure
+
+↓
+
+Redis Cache
+
+↓
+
+Player
+```
+
+Instead of returning a fixed object,
+
+we execute another asynchronous operation.
+
+---
+
+# Sports System Example
+
+Suppose
+
+Odds Service
+
+fails.
+
+Instead of failing the entire request,
+
+retrieve the latest cached odds.
+
+```java
+Mono<Odds> oddsMono =
+
+        oddsService.getOdds(matchId)
+
+                .onErrorResume(ex ->
+
+                        cacheService.getCachedOdds(matchId));
+```
+
+Execution
+
+```
+Odds Service
+
+↓
+
+Failure
+
+↓
+
+Redis
+
+↓
+
+Cached Odds
+
+↓
+
+Continue Request
+```
+
+This is a common production pattern.
+
+---
+
+# Difference Between the Operators
+
+## onErrorReturn()
+
+Returns
+
+```
+A fixed object
+```
+
+Example
+
+```java
+.onErrorReturn(defaultPlayer)
+```
+
+Use when
+
+- A simple fallback value is sufficient.
+
+---
+
+## onErrorResume()
+
+Returns
+
+```
+Another Mono
+```
+
+Example
+
+```java
+.onErrorResume(ex ->
+
+        cacheService.getCachedPlayer(playerId))
+```
+
+Use when
+
+- You want to recover by calling another service.
+- Read from Redis.
+- Read from another database.
+- Retry another endpoint.
+
+---
+
+# Comparison
+
+| Traditional | CompletableFuture | Reactive |
+|--------------|-------------------|----------|
+| `try/catch` | `exceptionally()` | `onErrorReturn()` / `onErrorResume()` |
+
+---
+
+# When Should I Use Which?
+
+| Situation | Operator |
+|-----------|----------|
+| Return a fixed default value | `onErrorReturn()` |
+| Call another asynchronous service | `onErrorResume()` |
+
+---
+
+# Apple Interview Takeaways
+
+- Reactive handles errors as part of the pipeline.
+- `onErrorReturn()` returns a predefined fallback object.
+- `onErrorResume()` switches to another reactive flow, such as Redis or another microservice.
+- `onErrorResume()` is more flexible because it allows another asynchronous operation.
+
+---
+
+# Apple Interview Answer
+
+**Question**
+
+How do you handle errors in Reactive Programming?
+
+**Answer**
+
+> Reactive programming provides operators such as `onErrorReturn()` and `onErrorResume()` to recover from failures without breaking the reactive pipeline. `onErrorReturn()` is useful when a fixed fallback value is sufficient, while `onErrorResume()` allows switching to another asynchronous operation, such as retrieving data from Redis or calling another microservice. Conceptually, they are similar to `try/catch` in synchronous code and `exceptionally()` in `CompletableFuture`, but the error handling remains part of the reactive stream.
+
+# Reactive Programming - Flux
+
+So far we have learned **Mono**.
+
+A `Mono<T>` represents **zero or one** asynchronous value.
+
+But what if we need to return **many values**?
+
+That's where `Flux<T>` comes in.
+
+---
+
+# What is Flux?
+
+`Flux<T>` represents
+
+> **Zero to many asynchronous values.**
+
+Think of it as a stream of objects.
+
+---
+
+# Mono vs Flux
+
+| Reactive Type | Meaning |
+|--------------|---------|
+| `Mono<Player>` | Zero or one Player |
+| `Flux<Player>` | Zero to many Players |
+
+---
+
+# Examples
+
+## Mono
+
+```java
+Mono<Player>
+```
+
+Represents
+
+```
+Messi
+```
+
+One player.
+
+---
+
+## Flux
+
+```java
+Flux<Player>
+```
+
+Represents
+
+```
+Messi
+
+Ronaldo
+
+Mbappe
+
+Haaland
+```
+
+A stream of players.
+
+---
+
+# Traditional Java
+
+Suppose we want all players.
+
+```java
+List<Player> players =
+        playerRepository.findAll();
+```
+
+Returns
+
+```java
+List<Player>
+```
+
+The application waits until the **entire list** is loaded.
+
+---
+
+# Reactive
+
+```java
+Flux<Player> players =
+        playerService.getPlayers();
+```
+
+Returns
+
+```java
+Flux<Player>
+```
+
+Instead of waiting for every player,
+
+the data can be streamed.
+
+---
+
+# Traditional Flow
+
+```
+Database
+
+↓
+
+Read All Players
+
+↓
+
+Create List
+
+↓
+
+Return List
+```
+
+The client receives everything at once.
+
+---
+
+# Reactive Flow
+
+```
+Database
+
+↓
+
+Player 1
+
+↓
+
+Send
+
+↓
+
+Player 2
+
+↓
+
+Send
+
+↓
+
+Player 3
+
+↓
+
+Send
+
+↓
+
+Player 4
+
+↓
+
+Send
+```
+
+The client can start processing data immediately.
+
+---
+
+# Why Not Just Return List?
+
+Suppose we have
+
+```
+10 Million Players
+```
+
+Traditional
+
+```
+Read All
+
+↓
+
+Store All
+
+↓
+
+Return List
+```
+
+Problems
+
+- High memory usage
+- Client waits until everything is loaded
+- Higher latency
+
+---
+
+Flux
+
+```
+Player 1
+
+↓
+
+Send
+
+↓
+
+Player 2
+
+↓
+
+Send
+
+↓
+
+Player 3
+
+↓
+
+Send
+```
+
+Advantages
+
+- Lower memory usage
+- Lower latency
+- Streaming
+- Better scalability
+
+---
+
+# Controller Example
+
+```java
+@GetMapping("/players")
+public Flux<Player> getPlayers() {
+
+    return playerService.getPlayers();
+
+}
+```
+
+Spring WebFlux streams the players to the client as they become available.
+
+---
+
+# map() with Flux
+
+Just like `Mono`.
+
+```java
+Flux<String> playerNames =
+
+        playerService.getPlayers()
+
+                .map(player ->
+                        player.getName());
+```
+
+Flow
+
+```
+Flux<Player>
+
+↓
+
+map()
+
+↓
+
+Flux<String>
+```
+
+---
+
+# flatMap() with Flux
+
+Suppose each player belongs to a team.
+
+```java
+Flux<Team> teams =
+
+        playerService.getPlayers()
+
+                .flatMap(player ->
+
+                        teamService.getTeam(
+                                player.getTeamId()));
+```
+
+Flow
+
+```
+Flux<Player>
+
+↓
+
+Player
+
+↓
+
+Team Service
+
+↓
+
+Mono<Team>
+
+↓
+
+flatMap()
+
+↓
+
+Flux<Team>
+```
+
+---
+
+# When Should I Use Mono?
+
+Use `Mono` when returning
+
+- One Player
+- One Match
+- One Team
+- One Order
+- One User
+
+Example
+
+```
+GET /players/{id}
+```
+
+Returns
+
+```java
+Mono<Player>
+```
+
+---
+
+# When Should I Use Flux?
+
+Use `Flux` when returning
+
+- Many Players
+- Many Matches
+- Many Orders
+- Live Event Streams
+- Kafka Messages
+- Server-Sent Events
+- WebSockets
+
+Example
+
+```
+GET /players
+```
+
+Returns
+
+```java
+Flux<Player>
+```
+
+---
+
+# Comparison
+
+| Traditional | Reactive |
+|-------------|----------|
+| `Player` | `Mono<Player>` |
+| `List<Player>` | `Flux<Player>` |
+
+---
+
+# CompletableFuture vs Reactive
+
+| CompletableFuture | Reactive |
+|-------------------|----------|
+| `CompletableFuture<Player>` | `Mono<Player>` |
+| `CompletableFuture<List<Player>>` *(conceptually)* | `Flux<Player>` |
+
+> **Note:** This is a conceptual comparison. A `CompletableFuture<List<Player>>` returns the entire list when it's ready, whereas a `Flux<Player>` streams each player individually as it becomes available.
+
+---
+
+# Sports System Examples
+
+## Mono
+
+```
+Get Player Details
+
+↓
+
+Mono<Player>
+```
+
+---
+
+## Flux
+
+```
+Get All Players
+
+↓
+
+Flux<Player>
+```
+
+---
+
+## Another Example
+
+```
+Live Match Updates
+
+↓
+
+Goal
+
+↓
+
+Yellow Card
+
+↓
+
+Red Card
+
+↓
+
+Substitution
+```
+
+A continuous stream of events.
+
+Perfect use case for
+
+```java
+Flux<MatchEvent>
+```
+
+---
+
+# Apple Interview Takeaways
+
+- `Mono<T>` represents **zero or one** asynchronous value.
+- `Flux<T>` represents **zero to many** asynchronous values.
+- `Flux` is ideal for streaming data.
+- `map()` and `flatMap()` work with `Flux` just as they do with `Mono`.
+- Use `Mono` for single-resource APIs and `Flux` for collections or continuous event streams.
+
+---
+
+# Apple Interview Answer
+
+**Question**
+
+When would you use `Mono` versus `Flux`?
+
+**Answer**
+
+> I use `Mono<T>` when an operation produces at most one result, such as retrieving a player by ID or returning a single order. I use `Flux<T>` when an operation produces multiple results or a continuous stream of data, such as retrieving all players, streaming live match events, consuming Kafka messages, or implementing Server-Sent Events. Unlike returning a `List`, `Flux` streams items as they become available, improving scalability and reducing memory usage for large datasets.
