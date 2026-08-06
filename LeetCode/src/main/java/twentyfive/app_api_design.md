@@ -3396,3 +3396,16 @@ This simple model supports:
 * Multiple leaderboard metrics
 
 without changing the overall architecture.
+
+
+GET /v1/leagues/{leagueId}/seasons/{seasonId}/leaderboards/{metric}?limit=100
+
+where metric is an enum such as:
+
+POINTS
+GOALS
+ASSISTS
+REBOUNDS
+ACES
+SAVES
+CLEAN_SHEETS
