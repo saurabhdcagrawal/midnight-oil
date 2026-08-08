@@ -2173,4 +2173,4185 @@ Solutions include
 - ReadWriteLock
 - atomic fields
 
-The interview discussion emphasized understanding the trade-offs rather than memorizing a single solution.
+The interview discussion emphasized understanding the trade-offs rather than memorizing a single solution.	
+
+
+Here is the consolidated version so far, including the correction that **association objects represent relationships and don't own the add/remove operations**.
+
+# Sports League Management System — LLD
+
+## 1. Goal
+
+Design a Sports League Management System that allows users to:
+
+* Browse sports and leagues
+* View seasons
+* View teams and players
+* View upcoming and completed matches
+* View match statistics
+* View player and team statistics
+* View league standings
+
+The system should support multiple sports such as basketball, football, and soccer.
+
+---
+
+# 2. Domain Classes
+
+## Sport
+
+### Attributes
+
+* `sportId`
+* `sportName`
+
+### Behavior
+
+Currently no major domain behavior.
+
+---
+
+## League
+
+### Attributes
+
+* `leagueId`
+* `leagueName`
+* `sport`
+
+### Behavior
+
+Currently no major domain behavior.
+
+### Relationship
+
+```text
+Sport 1 ───────── * League
+```
+
+A sport can have many leagues.
+
+A league belongs to one sport.
+
+---
+
+## Season
+
+### Attributes
+
+* `seasonId`
+* `seasonTitle`
+* `league`
+
+### Behavior
+
+* `addTeam()`
+* `removeTeam()`
+
+### Relationship
+
+```text
+League 1 ───────── * Season
+```
+
+A league can have multiple seasons.
+
+---
+
+## Team
+
+### Attributes
+
+* `teamId`
+* `teamTitle`
+* `logo`
+
+### Behavior
+
+* `addPlayer()`
+* `removePlayer()`
+
+---
+
+## SeasonTeam
+
+Association entity between `Season` and `Team`.
+
+### Attributes
+
+* `season`
+* `team`
+
+### Behavior
+
+None for now.
+
+### Relationship
+
+```text
+Season * ───────── * Team
+          │
+          ↓
+      SeasonTeam
+```
+
+A team can participate in multiple seasons.
+
+A season can contain multiple teams.
+
+### Important
+
+`SeasonTeam` represents the **relationship**.
+
+It should not own:
+
+```text
+addTeam()
+removeTeam()
+```
+
+Those operations belong naturally to `Season` (or eventually a service).
+
+---
+
+## Player
+
+### Attributes
+
+* `playerId`
+* `playerName`
+* `position`
+
+### Behavior
+
+No major behavior identified yet.
+
+---
+
+## PlayerTeam
+
+Association entity between `Player` and `Team`.
+
+### Attributes
+
+* `player`
+* `team`
+* `startDate`
+* `endDate`
+
+### Behavior
+
+None for now.
+
+### Relationship
+
+```text
+Player * ───────── * Team
+          │
+          ↓
+      PlayerTeam
+```
+
+A player can play for multiple teams during their career.
+
+A team has multiple players.
+
+`startDate` and `endDate` allow us to track the player's history.
+
+### Important
+
+`PlayerTeam` represents the **relationship**.
+
+It should not own:
+
+```text
+addPlayer()
+removePlayer()
+```
+
+Those operations belong naturally to `Team` (or eventually a service).
+
+---
+
+# 3. Match
+
+### Attributes
+
+* `matchId`
+* `matchDate`
+* `homeTeam`
+* `awayTeam`
+* `venue`
+* `homeScore`
+* `awayScore`
+* `matchStatus`
+* `scheduledStart`
+* `actualStart`
+* `actualEnd`
+* `season`
+
+### Behavior
+
+* `schedule()`
+* `start()`
+* `updateScore()`
+* `updateStatus()`
+* `end()`
+
+### Relationship
+
+```text
+Season 1 ───────── * Match
+
+Match
+ ├── homeTeam → Team
+ ├── awayTeam → Team
+ └── season → Season
+```
+
+We do **not** need `league` directly inside `Match`.
+
+We can derive:
+
+```text
+Match
+  ↓
+Season
+  ↓
+League
+  ↓
+Sport
+```
+
+---
+
+# 4. MatchStatistics
+
+Statistics associated with a match.
+
+### Attributes
+
+* `match`
+* `totalPoints`
+* `totalAssists`
+* `totalRebounds`
+* sport-specific statistics
+
+### Behavior
+
+* `updateStatistics()`
+
+The exact statistics will depend on the sport.
+
+For example, basketball may have:
+
+```text
+points
+assists
+rebounds
+steals
+blocks
+```
+
+Football/soccer may have:
+
+```text
+shots
+shotsOnTarget
+possession
+corners
+fouls
+```
+
+We should not force every sport's statistics into one giant class.
+
+---
+
+# 5. PlayerStatistics
+
+Statistics for a player during a match.
+
+### Attributes
+
+* `player`
+* `match`
+* `points`
+* `assists`
+* `rebounds`
+* sport-specific statistics
+
+### Behavior
+
+* `updateStatistics()`
+
+Conceptually:
+
+```text
+Player
+   +
+Match
+   ↓
+PlayerStatistics
+```
+
+This allows us to answer:
+
+> How did a particular player perform in a particular match?
+
+---
+
+# 6. TeamStatistics
+
+Statistics for a team during a match.
+
+### Attributes
+
+* `team`
+* `match`
+* `fouls`
+* `substitutions`
+* `possession`
+* sport-specific statistics
+
+### Behavior
+
+* `updateStatistics()`
+
+---
+
+# 7. LeagueStandings
+
+Candidate entity — **not finalized yet**.
+
+We need to decide whether standings should be:
+
+```text
+Persisted as an object/entity
+```
+
+or
+
+```text
+Calculated dynamically from match results
+```
+
+We'll decide this when we discuss behavior and services.
+
+---
+
+# 8. Current Relationship Model
+
+```text
+Sport
+  │
+  │ 1
+  ↓
+League
+  │
+  │ 1
+  ↓
+Season
+  │
+  │ *
+  ↓
+SeasonTeam
+  ↑
+  │ *
+  │
+Team
+```
+
+Player relationship:
+
+```text
+Player
+  │
+  │ 1
+  ↓
+PlayerTeam
+  ↑
+  │ *
+  │
+Team
+```
+
+Match:
+
+```text
+Season
+  │
+  │ 1
+  ↓
+Match
+ ├── homeTeam → Team
+ ├── awayTeam → Team
+ └── season → Season
+```
+
+Statistics:
+
+```text
+Match
+ ├── MatchStatistics
+ ├── PlayerStatistics
+ └── TeamStatistics
+```
+
+---
+
+# 9. Important LLD Mental Model
+
+Up to this point, the process is very similar to database modeling:
+
+```text
+Database Modeling          LLD
+-----------------          ----------------
+Table                  →   Class
+Column                 →   Attribute
+Foreign Key            →   Object reference
+1-to-many              →   Collection/reference
+Many-to-many            →   Association entity
+```
+
+But LLD eventually goes beyond the data model:
+
+```text
+Entities
+   ↓
+Relationships
+   ↓
+Behavior
+   ↓
+Interfaces
+   ↓
+Polymorphism
+   ↓
+Design Patterns
+   ↓
+Services
+```
+
+We are currently at:
+
+```text
+Entities + Relationships + Initial Behavior
+```
+
+
+# Sports League Management System — Classes & Attributes
+
+```text
+Sport
+- sportId
+- sportName
+
+League
+- leagueId
+- leagueName
+- sport
+
+Season
+- seasonId
+- seasonTitle
+- league
+
+Team
+- teamId
+- teamTitle
+- logo
+
+SeasonTeam
+- season
+- team
+
+Player
+- playerId
+- playerName
+- position
+
+PlayerTeam
+- player
+- team
+- startDate
+- endDate
+
+Match
+- matchId
+- matchDate
+- homeTeam
+- awayTeam
+- venue
+- homeScore
+- awayScore
+- matchStatus
+- scheduledStart
+- actualStart
+- actualEnd
+- season
+
+MatchStatistics
+- match
+- totalPoints
+- totalAssists
+- totalRebounds
+- sportSpecificStatistics
+
+PlayerStatistics
+- player
+- match
+- points
+- assists
+- rebounds
+- sportSpecificStatistics
+
+TeamStatistics
+- team
+- match
+- fouls
+- substitutions
+- possession
+- sportSpecificStatistics
+
+LeagueStandings
+- TBD
+```
+
+## Compact View
+
+```text
+Sport
+  sportId, sportName
+
+League
+  leagueId, leagueName, sport
+
+Season
+  seasonId, seasonTitle, league
+
+Team
+  teamId, teamTitle, logo
+
+SeasonTeam
+  season, team
+
+Player
+  playerId, playerName, position
+
+PlayerTeam
+  player, team, startDate, endDate
+
+Match
+  matchId, matchDate, homeTeam, awayTeam, venue,
+  homeScore, awayScore, matchStatus,
+  scheduledStart, actualStart, actualEnd, season
+
+MatchStatistics
+  match, totalPoints, totalAssists, totalRebounds,
+  sportSpecificStatistics
+
+PlayerStatistics
+  player, match, points, assists, rebounds,
+  sportSpecificStatistics
+
+TeamStatistics
+  team, match, fouls, substitutions, possession,
+  sportSpecificStatistics
+
+LeagueStandings
+  TBD
+```
+
+## Relationships
+
+```text
+Sport 1 ─────── * League 1 ─────── * Season
+                                      │
+                                      │
+                                      * 
+                                      ↓
+                                  SeasonTeam
+                                      ↑
+                                      *
+                                      │
+                                      Team
+
+Player * ─────── * Team
+         │
+         ↓
+     PlayerTeam
+
+Season 1 ─────── * Match
+                    │
+          ┌─────────┼─────────┐
+          ↓         ↓         ↓
+      MatchStats PlayerStats TeamStats
+```
+
+Absolutely. Here is the **single pasteable Saurabh's format** covering everything we've designed **up through `StatisticsService`**.
+
+# Sports League Management System — LLD
+
+## Classes, Attributes, Behavior & Design So Far
+
+---
+
+# 1. Goal
+
+Design a Sports League Management System that allows users to:
+
+* Browse sports and leagues
+* View seasons
+* View teams and players
+* View matches
+* View live match updates
+* View match statistics
+* View player/team statistics
+* View league standings
+
+The system should support multiple sports such as:
+
+```text
+Basketball
+Football
+Soccer
+```
+
+---
+
+# 2. Domain Classes
+
+## Sport
+
+```text
+Sport
+- sportId
+- sportName
+```
+
+---
+
+## League
+
+```text
+League
+- leagueId
+- leagueName
+- sport
+```
+
+Relationship:
+
+```text
+Sport 1 ─────── * League
+```
+
+A sport can have many leagues.
+
+---
+
+## Season
+
+```text
+Season
+- seasonId
+- seasonTitle
+- league
+```
+
+Relationship:
+
+```text
+League 1 ─────── * Season
+```
+
+---
+
+## Team
+
+```text
+Team
+- teamId
+- teamTitle
+- logo
+```
+
+Behavior:
+
+```text
++ addPlayer()
++ removePlayer()
+```
+
+---
+
+## SeasonTeam
+
+Association between Season and Team.
+
+```text
+SeasonTeam
+- season
+- team
+```
+
+Relationship:
+
+```text
+Season * ─────── * Team
+          │
+          ↓
+      SeasonTeam
+```
+
+A team can participate in multiple seasons.
+
+A season can contain multiple teams.
+
+### Important
+
+`SeasonTeam` represents the relationship.
+
+It does NOT need to own:
+
+```text
+addTeam()
+removeTeam()
+```
+
+Those operations belong to `Season` or a service such as `SeasonService`.
+
+---
+
+## Player
+
+```text
+Player
+- playerId
+- playerName
+- position
+```
+
+A player can play for multiple teams over their career.
+
+---
+
+## PlayerTeam
+
+Association between Player and Team.
+
+```text
+PlayerTeam
+- player
+- team
+- startDate
+- endDate
+```
+
+Relationship:
+
+```text
+Player * ─────── * Team
+          │
+          ↓
+      PlayerTeam
+```
+
+`startDate` and `endDate` allow us to track team history.
+
+### Important
+
+`PlayerTeam` represents the relationship.
+
+It does NOT need to own:
+
+```text
+addPlayer()
+removePlayer()
+```
+
+Those operations belong to `Team` or a service such as `RosterService`.
+
+---
+
+# 3. Match
+
+```text
+Match
+- matchId
+- matchDate
+- homeTeam
+- awayTeam
+- venue
+- homeScore
+- awayScore
+- matchStatus
+- scheduledStart
+- actualStart
+- actualEnd
+- season
+```
+
+Behavior:
+
+```text
++ schedule()
++ start()
++ updateScore()
++ updateStatus()
++ end()
+```
+
+Relationship:
+
+```text
+Season 1 ─────── * Match
+
+Match
+ ├── homeTeam → Team
+ ├── awayTeam → Team
+ └── season → Season
+```
+
+We don't need `league` directly in Match.
+
+We can derive:
+
+```text
+Match
+  ↓
+Season
+  ↓
+League
+  ↓
+Sport
+```
+
+---
+
+# 4. Statistics Classes
+
+## MatchStatistics
+
+```text
+MatchStatistics
+- match
+- totalPoints
+- totalAssists
+- totalRebounds
+- sportSpecificStatistics
+```
+
+Behavior:
+
+```text
++ updateStatistics()
+```
+
+---
+
+## PlayerStatistics
+
+```text
+PlayerStatistics
+- player
+- match
+- points
+- assists
+- rebounds
+- sportSpecificStatistics
+```
+
+Behavior:
+
+```text
++ updateStatistics()
+```
+
+These are statistics for a specific player in a specific match.
+
+---
+
+## TeamStatistics
+
+```text
+TeamStatistics
+- team
+- match
+- fouls
+- substitutions
+- possession
+- sportSpecificStatistics
+```
+
+Behavior:
+
+```text
++ updateStatistics()
+```
+
+These are statistics for a specific team in a specific match.
+
+---
+
+## LeagueStandings
+
+Potential domain concept:
+
+```text
+LeagueStandings
+- season
+- team
+- wins
+- losses
+- draws
+- points
+- rank
+```
+
+This represents accumulated season state.
+
+It may be persisted in the database:
+
+```text
+LEAGUE_STANDINGS
+----------------
+season_id
+team_id
+wins
+losses
+draws
+points
+rank
+```
+
+Important:
+
+A database table does NOT automatically require a Java class.
+
+But `LeagueStandings` is useful as a domain concept because the application explicitly needs to serve current standings.
+
+---
+
+# 5. MatchResult
+
+We decided we don't necessarily need a persistent `MatchResult` entity.
+
+The result can be calculated from:
+
+```text
+homeScore
+awayScore
+```
+
+For example:
+
+```text
+homeScore > awayScore → HOME_WIN
+homeScore < awayScore → AWAY_WIN
+homeScore == awayScore → DRAW
+```
+
+It can simply be a temporary value:
+
+```text
+MatchResult
+- winnerTeam
+- loserTeam
+- resultType
+```
+
+or even:
+
+```text
+enum MatchResult {
+    HOME_WIN,
+    AWAY_WIN,
+    DRAW
+}
+```
+
+No separate database table is necessarily required.
+
+---
+
+# 6. GameEvent
+
+Represents something that happened during a match.
+
+```text
+GameEvent
+- eventType
+- timestamp
+- team
+- player
+```
+
+Example:
+
+```text
+GameEvent
+eventType = THREE_POINT_SHOT
+team = Lakers
+player = Player123
+```
+
+The important idea:
+
+```text
+GameEvent
+→ describes WHAT happened
+
+SportRuleEngine
+→ decides WHAT that event means
+```
+
+We don't put `sportName` in `GameEvent`.
+
+The sport can be derived from:
+
+```text
+Match
+  ↓
+Season
+  ↓
+League
+  ↓
+Sport
+```
+
+---
+
+# 7. SportRuleEngine
+
+Purpose:
+
+Keep `Match` generic and put sport-specific rules behind an interface.
+
+```text
+SportRuleEngine
+```
+
+No fields initially.
+
+Behavior:
+
+```text
++ applyEvent(match, event)
++ calculateResult(match)
++ calculateStandingsPoints(result)
+```
+
+---
+
+# 8. Sport Rule Implementations
+
+```text
+SportRuleEngine
+        │
+        ├── BasketballRuleEngine
+        ├── FootballRuleEngine
+        └── SoccerRuleEngine
+```
+
+Each implementation follows the same interface but has different rules.
+
+### Basketball
+
+```text
+BasketballRuleEngine
+
+applyEvent()
+    THREE_POINT_SHOT → +3
+    FREE_THROW       → +1
+
+calculateResult()
+    higher score → winner
+
+calculateStandingsPoints()
+    WIN  → +1
+    LOSS → +0
+```
+
+### Soccer
+
+```text
+SoccerRuleEngine
+
+applyEvent()
+    GOAL → +1
+
+calculateResult()
+    higher score → winner
+    equal score  → draw
+
+calculateStandingsPoints()
+    WIN  → +3
+    DRAW → +1
+    LOSS → +0
+```
+
+### Football
+
+```text
+FootballRuleEngine
+
+applyEvent()
+    TOUCHDOWN  → +6
+    FIELD_GOAL → +3
+
+calculateResult()
+    higher score → winner
+
+calculateStandingsPoints()
+    sport-specific rules
+```
+
+---
+
+# 9. Strategy Pattern
+
+The `SportRuleEngine` is the Strategy interface.
+
+```text
+              SportRuleEngine
+                     │
+        ┌────────────┼────────────┐
+        ↓            ↓            ↓
+ Basketball      Football      Soccer
+ RuleEngine      RuleEngine    RuleEngine
+```
+
+The `Match` doesn't need to know the details of each sport.
+
+Instead:
+
+```text
+Match
+  ↓
+SportRuleEngine
+```
+
+### Why?
+
+Without Strategy:
+
+```text
+if basketball
+    ...
+else if football
+    ...
+else if soccer
+    ...
+```
+
+With Strategy:
+
+```text
+SportRuleEngine
+      ↓
+appropriate implementation
+```
+
+Adding a new sport does not require rewriting `Match`.
+
+---
+
+# 10. SportRuleEngineFactory
+
+The Factory decides which rule engine to provide.
+
+```text
+SportRuleEngineFactory
+
++ getRuleEngine(sport)
+```
+
+Example:
+
+```text
+Basketball → BasketballRuleEngine
+Football   → FootballRuleEngine
+Soccer     → SoccerRuleEngine
+```
+
+Flow:
+
+```text
+Match
+  ↓
+get Sport
+  ↓
+SportRuleEngineFactory
+  ↓
+SportRuleEngine
+```
+
+### Strategy + Factory
+
+Strategy answers:
+
+```text
+How do we implement different sport rules?
+```
+
+Factory answers:
+
+```text
+Which rule implementation should we use?
+```
+
+---
+
+# 11. Services
+
+Current candidate services:
+
+```text
+MatchService
+TeamService
+PlayerService
+RosterService
+SeasonService
+StandingService
+LeagueService
+StatisticsService
+```
+
+Important:
+
+We don't create a service simply because a class exists.
+
+A service should represent a meaningful application workflow.
+
+---
+
+# 12. MatchService
+
+Primary responsibility:
+
+Coordinate match-related workflows.
+
+```text
+MatchService
+
++ recordEvent(matchId, event)
++ getMatch(matchId)
+```
+
+Main workflow:
+
+```text
+recordEvent(matchId, event)
+
+1. match = getMatch(matchId)
+
+2. ruleEngine =
+       factory.getRuleEngine(match.getSport())
+
+3. ruleEngine.applyEvent(match, event)
+
+4. statisticsService.update(...)
+
+5. matchRepository.save(match)
+```
+
+Full flow:
+
+```text
+API
+ ↓
+MatchService
+ ↓
+getMatch(matchId)
+ ↓
+Match
+ ↓
+SportRuleEngineFactory
+ ↓
+SportRuleEngine
+ ↓
+applyEvent(match, event)
+ ↓
+StatisticsService
+ ↓
+Repository
+ ↓
+Database
+```
+
+---
+
+# 13. StatisticsService
+
+We decided that `MatchService` should not directly update every type of statistic.
+
+Instead:
+
+```text
+MatchService
+      ↓
+StatisticsService
+      ↓
+ ┌───────────────┬────────────────┬────────────────┐
+ ↓               ↓                ↓
+MatchStats     TeamStats       PlayerStats
+```
+
+Candidate behavior:
+
+```text
+StatisticsService
+
++ updateMatchStatistics(match, event)
+
++ updateTeamStatistics(team, match, event)
+
++ updatePlayerStatistics(player, match, event)
+```
+
+Example:
+
+```text
+GameEvent
+team = Lakers
+player = LeBron
+event = THREE_POINT_SHOT
+
+        ↓
+
+MatchService
+        ↓
+BasketballRuleEngine
+        ↓
+Match score updated
+        ↓
+StatisticsService
+        ├── MatchStatistics → update
+        ├── TeamStatistics  → update
+        └── PlayerStatistics → update
+```
+
+Important separation:
+
+```text
+SportRuleEngine
+→ decides what the event means
+
+StatisticsService
+→ maintains statistics
+```
+
+---
+
+# 14. Current Overall Design
+
+```text
+                         API
+                          │
+                          ↓
+                    MatchService
+                          │
+              ┌───────────┴───────────┐
+              ↓                       ↓
+      SportRuleEngineFactory    StatisticsService
+              │                       │
+              ↓               ┌───────┼────────┐
+       SportRuleEngine         ↓       ↓        ↓
+              │              Match   Team    Player
+       ┌──────┼──────┐       Stats   Stats    Stats
+       ↓      ↓      ↓
+ Basketball Football Soccer
+   Engine     Engine  Engine
+              │
+              ↓
+            Match
+              │
+              ↓
+          Repository
+              │
+              ↓
+           Database
+```
+
+---
+
+# 15. Important LLD Principle We've Established
+
+Database model and domain model **do not need to be identical**.
+
+```text
+Database
+    ≠
+Java Domain Model
+```
+
+A database table does not automatically require a Java class.
+
+For example:
+
+```text
+SEASON_TEAM
+PLAYER_TEAM
+LEAGUE_STANDINGS
+```
+
+may exist in the database, while the Java domain model can choose which concepts deserve classes.
+
+Similarly, a calculated value does not automatically need a database table.
+
+Example:
+
+```text
+MatchResult
+```
+
+can simply be calculated from the Match.
+
+---
+
+# Current Classes / Interfaces
+
+```text
+Sport
+League
+Season
+Team
+SeasonTeam
+Player
+PlayerTeam
+Match
+
+MatchStatistics
+PlayerStatistics
+TeamStatistics
+LeagueStandings
+
+GameEvent
+
+SportRuleEngine
+BasketballRuleEngine
+FootballRuleEngine
+SoccerRuleEngine
+
+SportRuleEngineFactory
+```
+
+# Current Services
+
+```text
+MatchService
+StatisticsService
+
+TeamService
+PlayerService
+RosterService
+SeasonService
+StandingService
+LeagueService
+
+(Still to be refined)
+```
+
+# Patterns Used So Far
+
+```text
+Strategy Pattern
+    → SportRuleEngine
+
+Factory Pattern
+    → SportRuleEngineFactory
+```
+
+# Next
+
+Next we should refine the remaining **services and their responsibilities**, then move to:
+
+```text
+Repositories / DAO
+        ↓
+REST APIs
+        ↓
+Database Design
+        ↓
+Complete Java Implementation
+        ↓
+SOLID + Interview Follow-ups
+```
+Absolutely. I'll keep **all the code**, but organize it in the same **Saurabh's format** you've been using: **purpose → class → attributes → behavior → relationships → code → interview takeaway**. This is the version I'd keep as your master LLD note.
+
+# Sports League Management System — Complete LLD
+
+## Saurabh's Format
+
+---
+
+# 0. What Are We Designing?
+
+A Sports League Management System that allows users to:
+
+* View sports
+* View leagues
+* View seasons
+* View teams and players
+* View matches
+* Record live match events
+* View match statistics
+* View player/team statistics
+* View league standings
+
+The system should support multiple sports:
+
+```text
+Basketball
+Football
+Soccer
+```
+
+The key design goal is:
+
+> **Different sports have different rules, but Match should remain generic.**
+
+This is where the **Strategy Pattern** becomes useful.
+
+---
+
+# 1. Domain Model
+
+## Overall Relationship
+
+```text
+Sport
+  │
+  └────── 1 : N ──────> League
+                           │
+                           └────── 1 : N ──────> Season
+                                                    │
+                                                    ├──── N : N ──── Team
+                                                    │                 │
+                                                    │                 │
+                                                    │                 └── N : N ── Player
+                                                    │
+                                                    └──── 1 : N ────── Match
+```
+
+---
+
+# 2. Sport
+
+## Purpose
+
+Represents a sport supported by the system.
+
+## Class
+
+```text
+Sport
+```
+
+## Attributes
+
+```text
+sportId
+sportName
+```
+
+## Behavior
+
+No significant behavior for now.
+
+## Java
+
+```java
+class Sport {
+
+    private String sportId;
+    private String sportName;
+
+    public Sport(String sportId, String sportName) {
+        this.sportId = sportId;
+        this.sportName = sportName;
+    }
+}
+```
+
+---
+
+# 3. League
+
+## Purpose
+
+Represents a league belonging to a sport.
+
+Examples:
+
+```text
+NBA
+Premier League
+NFL
+```
+
+## Attributes
+
+```text
+leagueId
+leagueName
+sport
+```
+
+## Relationship
+
+```text
+Sport 1 ───────── N League
+```
+
+## Java
+
+```java
+class League {
+
+    private String leagueId;
+    private String leagueName;
+    private Sport sport;
+
+    public League(
+            String leagueId,
+            String leagueName,
+            Sport sport) {
+
+        this.leagueId = leagueId;
+        this.leagueName = leagueName;
+        this.sport = sport;
+    }
+}
+```
+
+---
+
+# 4. Season
+
+## Purpose
+
+Represents a particular season of a league.
+
+Example:
+
+```text
+NBA
+ ├── 2025 Season
+ ├── 2026 Season
+ └── 2027 Season
+```
+
+## Attributes
+
+```text
+seasonId
+seasonTitle
+league
+```
+
+## Relationship
+
+```text
+League 1 ───────── N Season
+```
+
+## Java
+
+```java
+class Season {
+
+    private String seasonId;
+    private String seasonTitle;
+    private League league;
+
+    public Season(
+            String seasonId,
+            String seasonTitle,
+            League league) {
+
+        this.seasonId = seasonId;
+        this.seasonTitle = seasonTitle;
+        this.league = league;
+    }
+}
+```
+
+---
+
+# 5. Team
+
+## Purpose
+
+Represents a sports team.
+
+## Attributes
+
+```text
+teamId
+teamTitle
+logo
+```
+
+## Behavior
+
+Conceptually:
+
+```text
+addPlayer()
+removePlayer()
+```
+
+But we do not necessarily put these relationship operations directly inside the entity.
+
+They can be handled through `RosterService`.
+
+## Java
+
+```java
+class Team {
+
+    private String teamId;
+    private String teamTitle;
+    private String logo;
+
+    public Team(
+            String teamId,
+            String teamTitle,
+            String logo) {
+
+        this.teamId = teamId;
+        this.teamTitle = teamTitle;
+        this.logo = logo;
+    }
+}
+```
+
+---
+
+# 6. SeasonTeam
+
+## Purpose
+
+Represents the many-to-many relationship between Season and Team.
+
+```text
+Season * ───────── * Team
+          │
+          ↓
+     SeasonTeam
+```
+
+A team can participate in multiple seasons.
+
+A season contains multiple teams.
+
+## Attributes
+
+```text
+season
+team
+```
+
+## Java
+
+```java
+class SeasonTeam {
+
+    private Season season;
+    private Team team;
+
+    public SeasonTeam(
+            Season season,
+            Team team) {
+
+        this.season = season;
+        this.team = team;
+    }
+}
+```
+
+### Important
+
+`SeasonTeam` represents the **association**.
+
+We don't need:
+
+```text
+addTeam()
+removeTeam()
+```
+
+inside the association object.
+
+That behavior belongs in a service such as:
+
+```text
+SeasonService
+```
+
+---
+
+# 7. Player
+
+## Purpose
+
+Represents a player.
+
+A player can play for different teams over time.
+
+## Attributes
+
+```text
+playerId
+playerName
+position
+```
+
+## Java
+
+```java
+class Player {
+
+    private String playerId;
+    private String playerName;
+    private String position;
+
+    public Player(
+            String playerId,
+            String playerName,
+            String position) {
+
+        this.playerId = playerId;
+        this.playerName = playerName;
+        this.position = position;
+    }
+}
+```
+
+---
+
+# 8. PlayerTeam
+
+## Purpose
+
+Represents the many-to-many relationship between Player and Team.
+
+```text
+Player * ───────── * Team
+          │
+          ↓
+      PlayerTeam
+```
+
+We use this because a player can belong to multiple teams over their career.
+
+## Attributes
+
+```text
+player
+team
+startDate
+endDate
+```
+
+The dates allow us to model team history.
+
+## Java
+
+```java
+class PlayerTeam {
+
+    private Player player;
+    private Team team;
+
+    private LocalDate startDate;
+    private LocalDate endDate;
+
+    public PlayerTeam(
+            Player player,
+            Team team,
+            LocalDate startDate,
+            LocalDate endDate) {
+
+        this.player = player;
+        this.team = team;
+        this.startDate = startDate;
+        this.endDate = endDate;
+    }
+}
+```
+
+---
+
+# 9. Match
+
+## Purpose
+
+Represents a game between two teams.
+
+## Attributes
+
+```text
+matchId
+
+homeTeam
+awayTeam
+
+season
+venue
+
+homeScore
+awayScore
+
+status
+
+scheduledStart
+actualStart
+actualEnd
+```
+
+We don't need `league` directly.
+
+We can derive:
+
+```text
+Match
+  ↓
+Season
+  ↓
+League
+  ↓
+Sport
+```
+
+## Behavior
+
+```text
+start()
+updateScore()
+end()
+```
+
+## Java
+
+```java
+class Match {
+
+    private String matchId;
+
+    private Team homeTeam;
+    private Team awayTeam;
+
+    private Season season;
+
+    private String venue;
+
+    private int homeScore;
+    private int awayScore;
+
+    private MatchStatus status;
+
+    private LocalDateTime scheduledStart;
+    private LocalDateTime actualStart;
+    private LocalDateTime actualEnd;
+
+
+    public Match(
+            String matchId,
+            Team homeTeam,
+            Team awayTeam,
+            Season season,
+            String venue,
+            LocalDateTime scheduledStart) {
+
+        this.matchId = matchId;
+        this.homeTeam = homeTeam;
+        this.awayTeam = awayTeam;
+        this.season = season;
+        this.venue = venue;
+        this.scheduledStart = scheduledStart;
+
+        this.homeScore = 0;
+        this.awayScore = 0;
+
+        this.status = MatchStatus.SCHEDULED;
+    }
+
+
+    public void start() {
+
+        if (status != MatchStatus.SCHEDULED) {
+            throw new IllegalStateException(
+                    "Match cannot be started");
+        }
+
+        status = MatchStatus.LIVE;
+        actualStart = LocalDateTime.now();
+    }
+
+
+    public void updateScore(
+            Team team,
+            int points) {
+
+        if (status != MatchStatus.LIVE) {
+            throw new IllegalStateException(
+                    "Match is not live");
+        }
+
+        if (team.equals(homeTeam)) {
+
+            homeScore += points;
+
+        } else if (team.equals(awayTeam)) {
+
+            awayScore += points;
+
+        } else {
+
+            throw new IllegalArgumentException(
+                    "Team does not belong to this match");
+        }
+    }
+
+
+    public void end() {
+
+        if (status != MatchStatus.LIVE) {
+            throw new IllegalStateException(
+                    "Match is not live");
+        }
+
+        status = MatchStatus.COMPLETED;
+        actualEnd = LocalDateTime.now();
+    }
+
+
+    public Team getHomeTeam() {
+        return homeTeam;
+    }
+
+    public Team getAwayTeam() {
+        return awayTeam;
+    }
+
+    public Season getSeason() {
+        return season;
+    }
+
+    public int getHomeScore() {
+        return homeScore;
+    }
+
+    public int getAwayScore() {
+        return awayScore;
+    }
+
+    public MatchStatus getStatus() {
+        return status;
+    }
+}
+```
+
+---
+
+# 10. Match Status
+
+```java
+enum MatchStatus {
+
+    SCHEDULED,
+    LIVE,
+    COMPLETED,
+    CANCELLED
+}
+```
+
+---
+
+# 11. GameEvent
+
+## Purpose
+
+Represents something that happens during a match.
+
+Examples:
+
+```text
+GOAL
+THREE_POINT_SHOT
+FREE_THROW
+TOUCHDOWN
+FIELD_GOAL
+```
+
+## Attributes
+
+```text
+eventType
+timestamp
+team
+player
+```
+
+## Java
+
+```java
+class GameEvent {
+
+    private GameEventType eventType;
+    private LocalDateTime timestamp;
+
+    private Team team;
+    private Player player;
+
+
+    public GameEvent(
+            GameEventType eventType,
+            LocalDateTime timestamp,
+            Team team,
+            Player player) {
+
+        this.eventType = eventType;
+        this.timestamp = timestamp;
+        this.team = team;
+        this.player = player;
+    }
+
+
+    public GameEventType getEventType() {
+        return eventType;
+    }
+
+    public Team getTeam() {
+        return team;
+    }
+
+    public Player getPlayer() {
+        return player;
+    }
+}
+```
+
+```java
+enum GameEventType {
+
+    GOAL,
+    THREE_POINT_SHOT,
+    FREE_THROW,
+    TOUCHDOWN,
+    FIELD_GOAL
+}
+```
+
+---
+
+# 12. Statistics
+
+We have three levels of statistics.
+
+```text
+MatchStatistics
+PlayerStatistics
+TeamStatistics
+```
+
+---
+
+## MatchStatistics
+
+```text
+MatchStatistics
+- match
+- totalPoints
+- totalAssists
+- totalRebounds
+```
+
+```java
+class MatchStatistics {
+
+    private Match match;
+
+    private int totalPoints;
+    private int totalAssists;
+    private int totalRebounds;
+
+    public void updateStatistics(
+            GameEvent event) {
+
+        // Update match-level statistics
+    }
+}
+```
+
+---
+
+## PlayerStatistics
+
+```text
+PlayerStatistics
+- player
+- match
+- points
+- assists
+- rebounds
+```
+
+```java
+class PlayerStatistics {
+
+    private Player player;
+    private Match match;
+
+    private int points;
+    private int assists;
+    private int rebounds;
+
+    public void updateStatistics(
+            GameEvent event) {
+
+        // Update player-level statistics
+    }
+}
+```
+
+---
+
+## TeamStatistics
+
+```text
+TeamStatistics
+- team
+- match
+- fouls
+- substitutions
+- possession
+```
+
+```java
+class TeamStatistics {
+
+    private Team team;
+    private Match match;
+
+    private int fouls;
+    private int substitutions;
+    private double possession;
+
+    public void updateStatistics(
+            GameEvent event) {
+
+        // Update team-level statistics
+    }
+}
+```
+
+---
+
+# 13. LeagueStandings
+
+## Purpose
+
+Represents accumulated standings for a team in a particular season.
+
+## Attributes
+
+```text
+season
+team
+
+wins
+losses
+draws
+points
+rank
+```
+
+We do NOT need `league`.
+
+Why?
+
+```text
+LeagueStandings
+      ↓
+    Season
+      ↓
+    League
+```
+
+## Java
+
+```java
+class LeagueStandings {
+
+    private Season season;
+    private Team team;
+
+    private int wins;
+    private int losses;
+    private int draws;
+
+    private int points;
+    private int rank;
+
+
+    public void recordWin(
+            int pointsEarned) {
+
+        wins++;
+        points += pointsEarned;
+    }
+
+
+    public void recordLoss(
+            int pointsEarned) {
+
+        losses++;
+        points += pointsEarned;
+    }
+
+
+    public void recordDraw(
+            int pointsEarned) {
+
+        draws++;
+        points += pointsEarned;
+    }
+
+
+    public int getPoints() {
+        return points;
+    }
+}
+```
+
+---
+
+# 14. MatchResult
+
+## Purpose
+
+Represents the result calculated after a match.
+
+It does not necessarily need to be persisted.
+
+```text
+HOME_WIN
+AWAY_WIN
+DRAW
+```
+
+## Java
+
+```java
+enum MatchResultType {
+
+    HOME_WIN,
+    AWAY_WIN,
+    DRAW
+}
+```
+
+```java
+class MatchResult {
+
+    private MatchResultType resultType;
+
+    private Team winner;
+    private Team loser;
+
+
+    public MatchResult(
+            MatchResultType resultType,
+            Team winner,
+            Team loser) {
+
+        this.resultType = resultType;
+        this.winner = winner;
+        this.loser = loser;
+    }
+
+
+    public MatchResultType getResultType() {
+        return resultType;
+    }
+
+    public Team getWinner() {
+        return winner;
+    }
+
+    public Team getLoser() {
+        return loser;
+    }
+}
+```
+
+---
+
+# 15. Strategy Pattern — SportRuleEngine
+
+## Problem
+
+Different sports have different rules.
+
+For example:
+
+```text
+Basketball
+3-point shot → +3
+
+Soccer
+Goal → +1
+
+Football
+Touchdown → +6
+```
+
+We don't want:
+
+```text
+if basketball
+else if soccer
+else if football
+```
+
+inside `Match`.
+
+## Solution
+
+Create an interface:
+
+```java
+interface SportRuleEngine {
+
+    void applyEvent(
+            Match match,
+            GameEvent event);
+
+    MatchResult calculateResult(
+            Match match);
+
+    int calculateStandingsPoints(
+            MatchResult result);
+}
+```
+
+---
+
+# 16. BasketballRuleEngine
+
+```java
+class BasketballRuleEngine
+        implements SportRuleEngine {
+
+
+    @Override
+    public void applyEvent(
+            Match match,
+            GameEvent event) {
+
+        int points;
+
+        switch (event.getEventType()) {
+
+            case THREE_POINT_SHOT:
+                points = 3;
+                break;
+
+            case FREE_THROW:
+                points = 1;
+                break;
+
+            default:
+                throw new IllegalArgumentException(
+                        "Unsupported basketball event");
+        }
+
+        match.updateScore(
+                event.getTeam(),
+                points);
+    }
+
+
+    @Override
+    public MatchResult calculateResult(
+            Match match) {
+
+        if (match.getHomeScore()
+                > match.getAwayScore()) {
+
+            return new MatchResult(
+                    MatchResultType.HOME_WIN,
+                    match.getHomeTeam(),
+                    match.getAwayTeam());
+        }
+
+        if (match.getAwayScore()
+                > match.getHomeScore()) {
+
+            return new MatchResult(
+                    MatchResultType.AWAY_WIN,
+                    match.getAwayTeam(),
+                    match.getHomeTeam());
+        }
+
+        return new MatchResult(
+                MatchResultType.DRAW,
+                null,
+                null);
+    }
+
+
+    @Override
+    public int calculateStandingsPoints(
+            MatchResult result) {
+
+        if (result.getResultType()
+                == MatchResultType.HOME_WIN
+                ||
+            result.getResultType()
+                == MatchResultType.AWAY_WIN) {
+
+            return 1;
+        }
+
+        return 0;
+    }
+}
+```
+
+---
+
+# 17. SoccerRuleEngine
+
+```java
+class SoccerRuleEngine
+        implements SportRuleEngine {
+
+
+    @Override
+    public void applyEvent(
+            Match match,
+            GameEvent event) {
+
+        if (event.getEventType()
+                != GameEventType.GOAL) {
+
+            throw new IllegalArgumentException(
+                    "Unsupported soccer event");
+        }
+
+        match.updateScore(
+                event.getTeam(),
+                1);
+    }
+
+
+    @Override
+    public MatchResult calculateResult(
+            Match match) {
+
+        if (match.getHomeScore()
+                > match.getAwayScore()) {
+
+            return new MatchResult(
+                    MatchResultType.HOME_WIN,
+                    match.getHomeTeam(),
+                    match.getAwayTeam());
+        }
+
+        if (match.getAwayScore()
+                > match.getHomeScore()) {
+
+            return new MatchResult(
+                    MatchResultType.AWAY_WIN,
+                    match.getAwayTeam(),
+                    match.getHomeTeam());
+        }
+
+        return new MatchResult(
+                MatchResultType.DRAW,
+                null,
+                null);
+    }
+
+
+    @Override
+    public int calculateStandingsPoints(
+            MatchResult result) {
+
+        switch (result.getResultType()) {
+
+            case HOME_WIN:
+            case AWAY_WIN:
+                return 3;
+
+            case DRAW:
+                return 1;
+
+            default:
+                return 0;
+        }
+    }
+}
+```
+
+---
+
+# 18. FootballRuleEngine
+
+```java
+class FootballRuleEngine
+        implements SportRuleEngine {
+
+
+    @Override
+    public void applyEvent(
+            Match match,
+            GameEvent event) {
+
+        int points;
+
+        switch (event.getEventType()) {
+
+            case TOUCHDOWN:
+                points = 6;
+                break;
+
+            case FIELD_GOAL:
+                points = 3;
+                break;
+
+            default:
+                throw new IllegalArgumentException(
+                        "Unsupported football event");
+        }
+
+        match.updateScore(
+                event.getTeam(),
+                points);
+    }
+
+
+    @Override
+    public MatchResult calculateResult(
+            Match match) {
+
+        if (match.getHomeScore()
+                > match.getAwayScore()) {
+
+            return new MatchResult(
+                    MatchResultType.HOME_WIN,
+                    match.getHomeTeam(),
+                    match.getAwayTeam());
+        }
+
+        if (match.getAwayScore()
+                > match.getHomeScore()) {
+
+            return new MatchResult(
+                    MatchResultType.AWAY_WIN,
+                    match.getAwayTeam(),
+                    match.getHomeTeam());
+        }
+
+        return new MatchResult(
+                MatchResultType.DRAW,
+                null,
+                null);
+    }
+
+
+    @Override
+    public int calculateStandingsPoints(
+            MatchResult result) {
+
+        return result.getResultType()
+                == MatchResultType.HOME_WIN
+                ||
+               result.getResultType()
+                == MatchResultType.AWAY_WIN
+                ? 1
+                : 0;
+    }
+}
+```
+
+---
+
+# 19. Factory Pattern
+
+## Problem
+
+Who decides which `SportRuleEngine` to use?
+
+We don't want:
+
+```text
+MatchService
+
+if basketball
+    new BasketballRuleEngine()
+
+if soccer
+    new SoccerRuleEngine()
+```
+
+Instead, use a Factory.
+
+## Java
+
+```java
+class SportRuleEngineFactory {
+
+    public SportRuleEngine getRuleEngine(
+            SportType sport) {
+
+        switch (sport) {
+
+            case BASKETBALL:
+                return new BasketballRuleEngine();
+
+            case SOCCER:
+                return new SoccerRuleEngine();
+
+            case FOOTBALL:
+                return new FootballRuleEngine();
+
+            default:
+                throw new IllegalArgumentException(
+                        "Unsupported sport");
+        }
+    }
+}
+```
+
+```java
+enum SportType {
+
+    BASKETBALL,
+    FOOTBALL,
+    SOCCER
+}
+```
+
+---
+
+# 20. Strategy + Factory
+
+## Strategy answers
+
+> How do we support different sport rules?
+
+```text
+SportRuleEngine
+       │
+ ┌─────┼────────┐
+ ↓     ↓        ↓
+Basket Soccer Football
+```
+
+## Factory answers
+
+> Which implementation should I use?
+
+```text
+SportRuleEngineFactory
+        │
+        ├── BasketballRuleEngine
+        ├── SoccerRuleEngine
+        └── FootballRuleEngine
+```
+
+---
+
+# 21. Repositories
+
+## Purpose
+
+Repositories handle persistence.
+
+Services handle business logic.
+
+```text
+Service
+   ↓
+Repository
+   ↓
+Database
+```
+
+---
+
+# 22. MatchRepository
+
+```java
+interface MatchRepository {
+
+    Match findById(
+            String matchId);
+
+    void save(
+            Match match);
+}
+```
+
+---
+
+# 23. StandingRepository
+
+```java
+interface StandingRepository {
+
+    List<LeagueStandings> findBySeason(
+            String seasonId);
+
+    LeagueStandings findBySeasonAndTeam(
+            String seasonId,
+            String teamId);
+
+    void save(
+            LeagueStandings standings);
+
+    void update(
+            LeagueStandings standings);
+}
+```
+
+---
+
+# 24. StatisticsRepository
+
+```java
+interface StatisticsRepository {
+
+    MatchStatistics getMatchStatistics(
+            String matchId);
+
+    PlayerStatistics getPlayerStatistics(
+            String playerId,
+            String matchId);
+
+    TeamStatistics getTeamStatistics(
+            String teamId,
+            String matchId);
+
+
+    void saveMatchStatistics(
+            MatchStatistics statistics);
+
+    void savePlayerStatistics(
+            PlayerStatistics statistics);
+
+    void saveTeamStatistics(
+            TeamStatistics statistics);
+}
+```
+
+---
+
+# 25. StatisticsService
+
+## Responsibility
+
+Maintains:
+
+```text
+MatchStatistics
+TeamStatistics
+PlayerStatistics
+```
+
+## Behavior
+
+```text
+updateStatistics()
+updateMatchStatistics()
+updateTeamStatistics()
+updatePlayerStatistics()
+```
+
+## Java
+
+```java
+class StatisticsService {
+
+    private StatisticsRepository statisticsRepository;
+
+
+    public StatisticsService(
+            StatisticsRepository statisticsRepository) {
+
+        this.statisticsRepository =
+                statisticsRepository;
+    }
+
+
+    public void updateStatistics(
+            Match match,
+            GameEvent event) {
+
+        updateMatchStatistics(
+                match,
+                event);
+
+        updateTeamStatistics(
+                event.getTeam(),
+                match,
+                event);
+
+        updatePlayerStatistics(
+                event.getPlayer(),
+                match,
+                event);
+    }
+
+
+    private void updateMatchStatistics(
+            Match match,
+            GameEvent event) {
+
+        MatchStatistics statistics =
+                statisticsRepository
+                        .getMatchStatistics(
+                                "matchId");
+
+        statistics.updateStatistics(event);
+
+        statisticsRepository
+                .saveMatchStatistics(statistics);
+    }
+
+
+    private void updateTeamStatistics(
+            Team team,
+            Match match,
+            GameEvent event) {
+
+        TeamStatistics statistics =
+                statisticsRepository
+                        .getTeamStatistics(
+                                "teamId",
+                                "matchId");
+
+        statistics.updateStatistics(event);
+
+        statisticsRepository
+                .saveTeamStatistics(statistics);
+    }
+
+
+    private void updatePlayerStatistics(
+            Player player,
+            Match match,
+            GameEvent event) {
+
+        if (player == null) {
+            return;
+        }
+
+        PlayerStatistics statistics =
+                statisticsRepository
+                        .getPlayerStatistics(
+                                "playerId",
+                                "matchId");
+
+        statistics.updateStatistics(event);
+
+        statisticsRepository
+                .savePlayerStatistics(statistics);
+    }
+}
+```
+
+---
+
+# 26. StandingService
+
+## Responsibility
+
+Maintains accumulated season standings.
+
+```text
+StandingService
+        ↓
+LeagueStandings
+```
+
+## Behavior
+
+```text
+updateStandings()
+getStandings()
+```
+
+## Java
+
+```java
+class StandingService {
+
+    private StandingRepository standingRepository;
+
+
+    public StandingService(
+            StandingRepository standingRepository) {
+
+        this.standingRepository =
+                standingRepository;
+    }
+
+
+    public void updateStandings(
+            Season season,
+            MatchResult result,
+            int points) {
+
+        if (result.getWinner() != null) {
+
+            LeagueStandings winnerStanding =
+                    standingRepository
+                            .findBySeasonAndTeam(
+                                    "seasonId",
+                                    "winnerTeamId");
+
+            winnerStanding.recordWin(points);
+
+            standingRepository
+                    .update(winnerStanding);
+        }
+
+
+        if (result.getLoser() != null) {
+
+            LeagueStandings loserStanding =
+                    standingRepository
+                            .findBySeasonAndTeam(
+                                    "seasonId",
+                                    "loserTeamId");
+
+            loserStanding.recordLoss(0);
+
+            standingRepository
+                    .update(loserStanding);
+        }
+    }
+
+
+    public List<LeagueStandings> getStandings(
+            String seasonId) {
+
+        return standingRepository
+                .findBySeason(seasonId);
+    }
+}
+```
+
+---
+
+# 27. MatchService
+
+## Responsibility
+
+`MatchService` is the **orchestrator**.
+
+It does not implement basketball/soccer/football rules.
+
+It coordinates:
+
+```text
+Match
+RuleEngine
+StatisticsService
+StandingService
+Repositories
+```
+
+---
+
+# 28. Record Event Flow
+
+```text
+recordEvent(matchId, event)
+
+        ↓
+
+1. Load Match
+
+        ↓
+
+2. Get SportRuleEngine
+
+        ↓
+
+3. Apply Event
+
+        ↓
+
+4. Update Statistics
+
+        ↓
+
+5. Persist Match
+```
+
+## Java
+
+```java
+class MatchService {
+
+    private MatchRepository matchRepository;
+
+    private SportRuleEngineFactory ruleEngineFactory;
+
+    private StatisticsService statisticsService;
+
+    private StandingService standingService;
+
+
+    public MatchService(
+            MatchRepository matchRepository,
+            SportRuleEngineFactory ruleEngineFactory,
+            StatisticsService statisticsService,
+            StandingService standingService) {
+
+        this.matchRepository =
+                matchRepository;
+
+        this.ruleEngineFactory =
+                ruleEngineFactory;
+
+        this.statisticsService =
+                statisticsService;
+
+        this.standingService =
+                standingService;
+    }
+
+
+    public Match getMatch(
+            String matchId) {
+
+        return matchRepository
+                .findById(matchId);
+    }
+
+
+    public void recordEvent(
+            String matchId,
+            GameEvent event) {
+
+        // 1. Get Match
+        Match match =
+                matchRepository
+                        .findById(matchId);
+
+
+        // 2. Get appropriate rule engine
+        SportType sport =
+                getSportType(match);
+
+        SportRuleEngine ruleEngine =
+                ruleEngineFactory
+                        .getRuleEngine(sport);
+
+
+        // 3. Apply sport-specific behavior
+        ruleEngine.applyEvent(
+                match,
+                event);
+
+
+        // 4. Update statistics
+        statisticsService
+                .updateStatistics(
+                        match,
+                        event);
+
+
+        // 5. Persist match
+        matchRepository
+                .save(match);
+    }
+
+
+    public void startMatch(
+            String matchId) {
+
+        Match match =
+                matchRepository
+                        .findById(matchId);
+
+        match.start();
+
+        matchRepository.save(match);
+    }
+
+
+    public void endMatch(
+            String matchId) {
+
+        Match match =
+                matchRepository
+                        .findById(matchId);
+
+
+        SportRuleEngine ruleEngine =
+                ruleEngineFactory
+                        .getRuleEngine(
+                                getSportType(match));
+
+
+        // Calculate result
+        MatchResult result =
+                ruleEngine
+                        .calculateResult(match);
+
+
+        // Calculate league points
+        int points =
+                ruleEngine
+                        .calculateStandingsPoints(
+                                result);
+
+
+        // Complete match
+        match.end();
+
+        matchRepository
+                .save(match);
+
+
+        // Update standings
+        standingService
+                .updateStandings(
+                        match.getSeason(),
+                        result,
+                        points);
+    }
+
+
+    private SportType getSportType(
+            Match match) {
+
+        /*
+         * match
+         *   ↓
+         * season
+         *   ↓
+         * league
+         *   ↓
+         * sport
+         */
+
+        return SportType.SOCCER;
+    }
+}
+```
+
+---
+
+# 29. Complete Match Event Flow
+
+This is the most important flow to understand.
+
+```text
+Client
+   │
+   │ POST /matches/{matchId}/events
+   ↓
+MatchController
+   │
+   ↓
+MatchService
+   │
+   ├── MatchRepository.findById()
+   │
+   ├── SportRuleEngineFactory
+   │          ↓
+   │     SportRuleEngine
+   │
+   ├── ruleEngine.applyEvent()
+   │          ↓
+   │       Match
+   │
+   ├── StatisticsService
+   │          ↓
+   │       Statistics
+   │
+   └── MatchRepository.save()
+              ↓
+           Database
+```
+
+---
+
+# 30. Match Completion Flow
+
+```text
+Client
+   │
+   │ POST /matches/{matchId}/end
+   ↓
+MatchController
+   ↓
+MatchService
+   ↓
+SportRuleEngine
+   │
+   ├── calculateResult()
+   │
+   └── calculateStandingsPoints()
+             │
+             ↓
+      StandingService
+             ↓
+       LeagueStandings
+             ↓
+       StandingRepository
+             ↓
+          Database
+```
+
+---
+
+# 31. Controllers / REST APIs
+
+Controllers should be **thin**.
+
+They should not contain business logic.
+
+Correct:
+
+```text
+Controller
+    ↓
+Service
+    ↓
+Repository
+```
+
+Incorrect:
+
+```text
+Controller
+    ↓
+Business Logic
+    ↓
+SQL
+```
+
+---
+
+# 32. MatchController
+
+## APIs
+
+```text
+GET  /matches/{matchId}
+
+POST /matches/{matchId}/events
+
+POST /matches/{matchId}/start
+
+POST /matches/{matchId}/end
+```
+
+## Java
+
+```java
+class MatchController {
+
+    private MatchService matchService;
+
+
+    public MatchController(
+            MatchService matchService) {
+
+        this.matchService =
+                matchService;
+    }
+
+
+    public Match getMatch(
+            String matchId) {
+
+        return matchService
+                .getMatch(matchId);
+    }
+
+
+    public void recordEvent(
+            String matchId,
+            GameEvent event) {
+
+        matchService
+                .recordEvent(
+                        matchId,
+                        event);
+    }
+
+
+    public void startMatch(
+            String matchId) {
+
+        matchService
+                .startMatch(matchId);
+    }
+
+
+    public void endMatch(
+            String matchId) {
+
+        matchService
+                .endMatch(matchId);
+    }
+}
+```
+
+---
+
+# 33. StandingController
+
+## API
+
+```text
+GET /seasons/{seasonId}/standings
+```
+
+## Java
+
+```java
+class StandingController {
+
+    private StandingService standingService;
+
+
+    public StandingController(
+            StandingService standingService) {
+
+        this.standingService =
+                standingService;
+    }
+
+
+    public List<LeagueStandings> getStandings(
+            String seasonId) {
+
+        return standingService
+                .getStandings(seasonId);
+    }
+}
+```
+
+---
+
+# 34. Statistics APIs
+
+```text
+GET /matches/{matchId}/statistics
+
+GET /matches/{matchId}/teams/{teamId}/statistics
+
+GET /matches/{matchId}/players/{playerId}/statistics
+```
+
+---
+
+# 35. Complete Service Layer
+
+```text
+                    Services
+                       │
+       ┌───────────────┼────────────────┐
+       ↓               ↓                ↓
+ MatchService   StatisticsService  StandingService
+       │               │                │
+       ↓               ↓                ↓
+ RuleEngine      StatisticsRepo    StandingRepo
+```
+
+We intentionally keep this small.
+
+We don't create a service just because we have a class.
+
+---
+
+# 36. Complete Architecture
+
+```text
+                         REST API
+                            │
+                            ↓
+                      Controllers
+                            │
+                            ↓
+                         Services
+                            │
+             ┌──────────────┼──────────────┐
+             ↓              ↓              ↓
+       MatchService   StatisticsService  StandingService
+             │
+             ↓
+   SportRuleEngineFactory
+             │
+             ↓
+      SportRuleEngine
+             │
+      ┌──────┼─────────┐
+      ↓      ↓         ↓
+ Basketball Soccer   Football
+  Engine    Engine    Engine
+      │
+      ↓
+    Match
+      │
+      ↓
+ Repositories
+      │
+      ↓
+   Database
+```
+
+---
+
+# 37. All Classes So Far
+
+## Domain
+
+```text
+Sport
+League
+Season
+Team
+SeasonTeam
+Player
+PlayerTeam
+Match
+GameEvent
+MatchResult
+
+MatchStatistics
+PlayerStatistics
+TeamStatistics
+LeagueStandings
+```
+
+## Strategy
+
+```text
+SportRuleEngine
+BasketballRuleEngine
+SoccerRuleEngine
+FootballRuleEngine
+```
+
+## Factory
+
+```text
+SportRuleEngineFactory
+```
+
+## Services
+
+```text
+MatchService
+StatisticsService
+StandingService
+```
+
+## Repositories
+
+```text
+MatchRepository
+StatisticsRepository
+StandingRepository
+```
+
+## Controllers
+
+```text
+MatchController
+StandingController
+```
+
+---
+
+# 38. Patterns Used
+
+## Strategy Pattern
+
+```text
+SportRuleEngine
+      │
+ ┌────┼─────┐
+ ↓    ↓     ↓
+NBA Soccer Football
+```
+
+Used because sport-specific behavior varies.
+
+---
+
+## Factory Pattern
+
+```text
+SportRuleEngineFactory
+        ↓
+correct RuleEngine
+```
+
+Used to hide object creation/selection from `MatchService`.
+
+---
+
+# 39. SOLID
+
+## S — Single Responsibility
+
+```text
+Match
+→ owns match state
+
+SportRuleEngine
+→ owns sport-specific rules
+
+MatchService
+→ orchestrates match workflow
+
+StatisticsService
+→ manages statistics
+
+StandingService
+→ manages standings
+
+Repository
+→ persistence
+```
+
+Each has a clear responsibility.
+
+---
+
+## O — Open/Closed
+
+To add:
+
+```text
+Tennis
+```
+
+we create:
+
+```text
+TennisRuleEngine
+```
+
+without changing the existing rule-engine implementations.
+
+---
+
+## L — Liskov Substitution
+
+Any:
+
+```text
+BasketballRuleEngine
+SoccerRuleEngine
+FootballRuleEngine
+```
+
+can be used wherever:
+
+```text
+SportRuleEngine
+```
+
+is expected.
+
+---
+
+## I — Interface Segregation
+
+Repositories and interfaces expose only the operations needed by their consumers.
+
+---
+
+## D — Dependency Inversion
+
+Services depend on:
+
+```text
+MatchRepository
+StandingRepository
+StatisticsRepository
+```
+
+interfaces rather than concrete database implementations.
+
+```text
+MatchService
+      ↓
+MatchRepository
+   interface
+      ↑
+PostgresMatchRepository
+```
+
+---
+
+# 40. Important Interview Explanations
+
+## Why not put sport rules inside Match?
+
+Because Match would become:
+
+```text
+if basketball...
+if soccer...
+if football...
+```
+
+and violate SRP / become difficult to extend.
+
+Instead:
+
+```text
+Match
+  ↓
+SportRuleEngine
+```
+
+---
+
+## Why Factory?
+
+The service shouldn't have to know:
+
+```text
+new SoccerRuleEngine()
+new BasketballRuleEngine()
+```
+
+The Factory handles selection.
+
+---
+
+## Why is MatchService needed?
+
+The entity represents the match state.
+
+The service coordinates the workflow:
+
+```text
+load
+→ apply rule
+→ update statistics
+→ persist
+```
+
+---
+
+## Why StatisticsService?
+
+Because `MatchService` shouldn't know how every statistic is calculated or persisted.
+
+```text
+MatchService
+    ↓
+StatisticsService
+    ↓
+MatchStats
+TeamStats
+PlayerStats
+```
+
+---
+
+## Why StandingService?
+
+Standings are accumulated season state.
+
+After a match:
+
+```text
+MatchResult
+    ↓
+StandingService
+    ↓
+LeagueStandings
+```
+
+---
+
+## Why Season in LeagueStandings instead of League?
+
+Because:
+
+```text
+League
+ ├── 2025 Season
+ └── 2026 Season
+```
+
+Standings are meaningful for a **specific season**.
+
+Therefore:
+
+```text
+LeagueStandings
+- season
+- team
+```
+
+and:
+
+```text
+season → league
+```
+
+allows us to derive the league.
+
+---
+
+# 41. DB vs Object Model
+
+Important LLD distinction:
+
+```text
+Database Model
+        ≠
+Java Domain Model
+```
+
+For example:
+
+```text
+PLAYER_TEAM
+SEASON_TEAM
+```
+
+are association tables in the DB.
+
+In Java, we can represent them as:
+
+```text
+PlayerTeam
+SeasonTeam
+```
+
+when they have meaningful domain information.
+
+But a database table does not automatically require a Java class.
+
+Likewise:
+
+```text
+MatchResult
+```
+
+can be a temporary calculated object without requiring a database table.
+
+---
+
+# 42. Final Interview Mental Model
+
+When the interviewer gives you:
+
+> "Design a sports league management system."
+
+Think:
+
+```text
+                 REQUIREMENTS
+                      ↓
+                  Nouns
+                      ↓
+             Entities + Relationships
+                      ↓
+                   Behavior
+                      ↓
+             What varies by sport?
+                      ↓
+                Strategy Pattern
+                      ↓
+             How select the strategy?
+                      ↓
+                 Factory
+                      ↓
+                  Services
+                      ↓
+                Repositories
+                      ↓
+                  REST APIs
+                      ↓
+                 Database
+```
+
+The most important flow to remember:
+
+```text
+GameEvent
+    ↓
+MatchService
+    ↓
+SportRuleEngineFactory
+    ↓
+SportRuleEngine
+    ↓
+Match updated
+    ↓
+StatisticsService
+    ↓
+Repository
+```
+
+When match ends:
+
+```text
+MatchService
+    ↓
+RuleEngine.calculateResult()
+    ↓
+RuleEngine.calculateStandingsPoints()
+    ↓
+StandingService
+    ↓
+LeagueStandings
+    ↓
+Repository
+```
+
+---
+
+# 43. The Interview Answer in One Minute
+
+> "I modeled Sport, League, Season, Team, Player and Match as the core domain entities. Since a player can move between teams and teams participate across seasons, I modeled those many-to-many relationships through PlayerTeam and SeasonTeam.
+>
+> Match behavior is generic, while sport-specific rules vary, so I use a Strategy Pattern through SportRuleEngine, with Basketball, Soccer and Football implementations. A Factory selects the appropriate rule engine based on the sport.
+>
+> MatchService orchestrates match workflows. StatisticsService manages match, team and player statistics, while StandingService manages accumulated season standings. Persistence is isolated behind repository interfaces.
+>
+> The REST controllers remain thin and delegate to services. This gives us clear separation of concerns and makes adding another sport straightforward without changing Match or the existing rule implementations."
+
+---
+
+# 44. What We Have Completed
+
+```text
+Requirements                    ✅
+Entities                        ✅
+Attributes                      ✅
+Relationships                   ✅
+Entity Behavior                 ✅
+GameEvent                       ✅
+Strategy Pattern                ✅
+Factory Pattern                 ✅
+Services                        ✅
+Repositories / DAO              ✅
+REST APIs                       ✅
+Architecture                    ✅
+SOLID                           ✅
+Interview Explanation           ✅
+```
+
+## Remaining
+
+```text
+Database Schema
+↓
+Spring Boot implementation
+↓
+Walk through complete use cases
+↓
+Interview follow-up questions
+```
+
+The next useful step is to **implement this as a realistic Spring Boot LLD**, rather than adding more design abstractions.
+
+# Match Event → Statistics → Standings
+
+## 1. API Request
+
+```text
+POST /matches/{matchId}/events
+```
+
+```text
+GameEvent
+- eventType
+- team
+- player
+- timestamp
+```
+
+---
+
+## 2. Event Processing
+
+```text
+MatchController
+      ↓
+MatchService
+```
+
+### MatchService
+
+```text
+1. match = matchRepository.findById(matchId)
+
+2. ruleEngine =
+   ruleEngineFactory.getRuleEngine(match's sport)
+
+3. ruleEngine.applyEvent(match, event)
+```
+
+Example:
+
+```text
+GOAL
+ ↓
+SoccerRuleEngine
+ ↓
+match.updateScore(team, 1)
+```
+
+**RuleEngine handles sport-specific scoring rules.**
+
+---
+
+## 3. Update Statistics
+
+After applying the event:
+
+```text
+StatisticsService.updateStatistics(match, event)
+```
+
+Updates:
+
+```text
+PlayerStatistics
+    → player's relevant stat
+
+TeamStatistics
+    → team's relevant stat
+
+MatchStatistics
+    → match aggregate statistics
+```
+
+Then repositories persist the changes.
+
+---
+
+## 4. Match Ends
+
+```text
+MatchService.endMatch()
+        ↓
+ruleEngine.calculateResult(match)
+```
+
+Example:
+
+```text
+Team A = 3
+Team B = 1
+
+→ Team A wins
+```
+
+Then:
+
+```text
+ruleEngine.calculateStandingsPoints(result)
+```
+
+For soccer:
+
+```text
+Win  → 3
+Draw → 1
+Loss → 0
+```
+
+---
+
+## 5. Update Standings
+
+```text
+StandingService
+      ↓
+LeagueStandings
+      ↓
+Repository
+      ↓
+Database
+```
+
+Updates:
+
+```text
+Team A
+- wins++
+- points += 3
+
+Team B
+- losses++
+```
+
+---
+
+## 6. Complete Flow
+
+```text
+EVENT
+  ↓
+MatchController
+  ↓
+MatchService
+  ↓
+RuleEngine
+  ↓
+Match Score
+  ↓
+StatisticsService
+  ↓
+Player / Team / Match Statistics
+
+
+MATCH ENDS
+  ↓
+RuleEngine
+  ↓
+Result + Standings Points
+  ↓
+StandingService
+  ↓
+LeagueStandings
+```
+
+## Key Responsibilities
+
+```text
+MatchService
+→ orchestrates
+
+RuleEngine
+→ sport-specific rules
+
+Match
+→ owns score/state
+
+StatisticsService
+→ updates statistics
+
+StandingService
+→ updates standings
+
+Repository
+→ persistence
+```
+
