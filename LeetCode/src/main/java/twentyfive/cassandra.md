@@ -15418,4 +15418,638 @@ Effectively Once Business Processing
 - Modern distributed systems embrace retries and design external side effects to be idempotent.
 - The Transactional Outbox prevents lost events but may still produce duplicate events.
 - **Idempotent operations + Transactional Outbox = Effectively Once Business Processing.**
-- Kafka provides exactly-once processing only when all transactional resources are Kafka resources. Once external systems participate, true distributed exactly-once semantics are generally not possible, so modern systems achieve effectively-once business processing using patterns like the Transactional Outbox together with idempotent operations and consumers.
+- Kafka provides exactly-once processing only when all transactional resources are Kafka resources. Once external systems participate, true distributed exactly-once semantics a	re generally not possible, so modern systems achieve effectively-once business processing using patterns like the Transactional Outbox together with idempotent operations and consumers.
+
+
+# Redis Interview Notes (Part 1) – Data Structures
+
+# What is Redis?
+
+Redis is an **in-memory key-value data store** that supports rich data structures such as Strings, Hashes, Sets, Sorted Sets, Lists, and Streams.
+
+Because data resides primarily in memory, Redis provides **sub-millisecond latency**, making it ideal for caching, leaderboards, session storage, counters, distributed locks, and pub/sub.
+
+Key characteristics:
+
+* In-memory
+* Extremely fast
+* Rich data structures
+* Optional persistence (RDB/AOF)
+* Supports horizontal scaling using Redis Cluster
+
+---
+
+# Why Redis?
+
+Redis is **not** a replacement for PostgreSQL.
+
+PostgreSQL remains the **source of truth**.
+
+Redis serves as a **low-latency cache** and read optimization layer.
+
+Architecture:
+
+```text
+                PostgreSQL
+          (Source of Truth)
+                  │
+                  │
+         Frequently Accessed Data
+                  │
+                  ▼
+               Redis
+                  │
+                  ▼
+             APIs / Services
+```
+
+Benefits:
+
+* Reduces database load
+* Sub-millisecond reads
+* Handles very high read throughput
+* Improves API latency
+
+---
+
+# Apple Sports Use Cases
+
+| Data                | Redis Structure |
+| ------------------- | --------------- |
+| Current Match State | Hash            |
+| Match Status        | String          |
+| Followers           | Set             |
+| Device Tokens       | Set             |
+| Leaderboards        | Sorted Set      |
+| Counters            | String + INCR   |
+| Idempotency         | String + SETNX  |
+
+---
+
+# Redis Key Naming Convention
+
+Redis does **not** interpret `:` specially.
+
+It is simply a naming convention used to organize keys.
+
+Examples:
+
+```text
+match:123:status
+
+user:101
+
+followers:team:Lakers
+
+devices:user:101
+```
+
+The colon improves readability and groups related keys logically.
+
+---
+
+# String
+
+## Use Case
+
+Store a single value.
+
+Examples:
+
+```redis
+SET match:123:status LIVE
+
+GET match:123:status
+```
+
+Result:
+
+```text
+LIVE
+```
+
+---
+
+## Counters
+
+```redis
+SET requestCounter 100
+
+INCR requestCounter
+```
+
+Result:
+
+```text
+101
+```
+
+Another increment:
+
+```redis
+INCR requestCounter
+```
+
+Result:
+
+```text
+102
+```
+
+Redis stores the value as a **String**.
+
+`INCR` works only if the String contains a valid integer.
+
+If the key does not exist:
+
+```redis
+INCR requestCounter
+```
+
+Redis treats the value as `0` and creates:
+
+```text
+requestCounter = 1
+```
+
+---
+
+## Atomic Operations
+
+`INCR` is atomic.
+
+Instead of:
+
+```text
+GET
+
+↓
+
+Increment
+
+↓
+
+SET
+```
+
+being executed separately (causing race conditions),
+
+Redis performs the entire increment as one indivisible operation.
+
+Benefits:
+
+* No lost updates
+* Thread-safe across concurrent clients
+* Ideal for counters
+
+---
+
+## Time Complexity
+
+| Operation | Complexity |
+| --------- | ---------- |
+| SET       | O(1)       |
+| GET       | O(1)       |
+| INCR      | O(1)       |
+
+---
+
+# Hash
+
+## Use Case
+
+Store one object with multiple attributes.
+
+Instead of multiple Redis keys:
+
+```text
+match:123:status
+
+match:123:homeScore
+
+match:123:awayScore
+```
+
+Use one Redis key:
+
+```text
+match:123
+```
+
+Fields:
+
+```text
+status      -> LIVE
+
+homeScore   -> 100
+
+awayScore   -> 98
+
+quarter     -> 4
+
+venue        -> Chase Center
+```
+
+---
+
+## Commands
+
+Create / Update fields:
+
+```redis
+HSET match:123 status LIVE
+
+HSET match:123 homeScore 100
+
+HSET match:123 awayScore 98
+```
+
+Read one field:
+
+```redis
+HGET match:123 homeScore
+```
+
+Read another field:
+
+```redis
+HGET match:123 status
+```
+
+Read the entire object:
+
+```redis
+HGETALL match:123
+```
+
+Redis also supports setting multiple fields in one command:
+
+```redis
+HSET match:123 status LIVE homeScore 100 awayScore 98
+```
+
+---
+
+## Time Complexity
+
+Most operations are:
+
+```text
+O(1)
+```
+
+---
+
+## When to Use
+
+Use a Hash when storing a logical object with multiple related fields.
+
+Examples:
+
+* Match State
+* User Profile
+* Device Metadata
+
+---
+
+# Set
+
+## Use Case
+
+Store a collection of **unique** values.
+
+Order is **not guaranteed**.
+
+Apple Sports example:
+
+```text
+followers:team:Lakers
+
+↓
+
+101
+
+205
+
+301
+```
+
+Perfect for storing follower IDs.
+
+---
+
+## Commands
+
+Add:
+
+```redis
+SADD followers:team:Lakers 101
+```
+
+Get all members:
+
+```redis
+SMEMBERS followers:team:Lakers
+```
+
+Remove:
+
+```redis
+SREM followers:team:Lakers 101
+```
+
+Membership check:
+
+```redis
+SISMEMBER followers:team:Lakers 101
+```
+
+---
+
+## Characteristics
+
+* Unique elements
+* No duplicates
+* Unordered
+* Fast membership checks
+
+---
+
+## Time Complexity
+
+| Command   | Complexity |
+| --------- | ---------- |
+| SADD      | O(1)       |
+| SREM      | O(1)       |
+| SISMEMBER | O(1)       |
+| SMEMBERS  | O(N)       |
+
+---
+
+## Apple Sports Examples
+
+Followers:
+
+```text
+followers:team:Lakers
+
+↓
+
+{101,205,301}
+```
+
+Device Tokens:
+
+```text
+devices:user:101
+
+↓
+
+token1
+
+token2
+
+token3
+```
+
+User Subscriptions:
+
+```text
+subscriptions:user:101
+
+↓
+
+Lakers
+
+NBA
+
+LeBron
+```
+
+---
+
+# Sorted Set (ZSET)
+
+## Use Case
+
+Store **unique members** along with a **numeric score**.
+
+Redis automatically keeps members sorted by score.
+
+Perfect for:
+
+* Leaderboards
+* Rankings
+* Trending Content
+* Top Players
+
+---
+
+## General Syntax
+
+```redis
+ZADD key score member
+```
+
+Score comes **before** the member.
+
+Example:
+
+```redis
+ZADD leaderboard_NFL_2026 1000 Saurabh 950 Rahul 900 John
+```
+
+Conceptually:
+
+```text
+leaderboard_NFL_2026
+
+↓
+
+Saurabh -> 1000
+
+Rahul -> 950
+
+John -> 900
+```
+
+Redis automatically maintains the ordering.
+
+---
+
+## Increase Score
+
+Example:
+
+```redis
+ZINCRBY leaderboard_NFL_2026 3 LeBron
+```
+
+Redis updates LeBron's score and reorders the leaderboard if necessary.
+
+---
+
+## Get Top Players
+
+Top 3:
+
+```redis
+ZREVRANGE leaderboard_NFL_2026 0 2
+```
+
+`REV` returns the highest scores first.
+
+---
+
+## Get Player Score
+
+```redis
+ZSCORE leaderboard_NFL_2026 LeBron
+```
+
+---
+
+## Remove Player
+
+```redis
+ZREM leaderboard_NFL_2026 LeBron
+```
+
+---
+
+## Time Complexity
+
+| Command   | Complexity   |
+| --------- | ------------ |
+| ZADD      | O(log N)     |
+| ZINCRBY   | O(log N)     |
+| ZREM      | O(log N)     |
+| ZSCORE    | O(1)         |
+| ZREVRANGE | O(log N + M) |
+
+---
+
+## Apple Sports Examples
+
+Fantasy Leaderboard
+
+```text
+User101 -> 250
+
+User205 -> 240
+
+User301 -> 225
+```
+
+NBA Scoring Leaderboard
+
+```text
+LeBron -> 35
+
+Curry -> 28
+
+Luka -> 24
+```
+
+Trending Teams
+
+```text
+Lakers -> 120000 searches
+```
+
+Most Viewed Matches
+
+```text
+Match123 -> 2M views
+```
+
+---
+
+# Mental Model
+
+## String
+
+One value
+
+```text
+match:123:status
+
+↓
+
+LIVE
+```
+
+---
+
+## Hash
+
+One object
+
+```text
+match:123
+
+↓
+
+status
+
+homeScore
+
+awayScore
+
+quarter
+```
+
+---
+
+## Set
+
+Unique collection
+
+```text
+followers:team:Lakers
+
+↓
+
+101
+
+205
+
+301
+```
+
+---
+
+## Sorted Set
+
+Unique collection with ranking
+
+```text
+leaderboard
+
+↓
+
+35  LeBron
+
+28  Curry
+
+24  Luka
+```
+
+---
+
+# Interview Summary
+
+| Data Structure | Use Case                                                              |
+| -------------- | --------------------------------------------------------------------- |
+| String         | One value, counters, sessions                                         |
+| Hash           | Objects with multiple fields                                          |
+| Set            | Unique collections (followers, subscriptions, device tokens)          |
+| Sorted Set     | Ranked collections (leaderboards, trending content, fantasy rankings) |
+
+## Key Interview Rule
+
+* **String** → One value
+* **Hash** → One object
+* **Set** → Unique collection
+* **Sorted Set** → Unique collection with ranking
+

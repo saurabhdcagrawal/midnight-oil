@@ -3409,3 +3409,8571 @@ REBOUNDS
 ACES
 SAVES
 CLEAN_SHEETS
+
+# Apple Sports System Design
+
+# Leaderboard Service – Failure Handling (Part 1)
+
+---
+
+# Failure Scenario 1
+
+## Duplicate Kafka Messages
+
+Kafka provides **at-least-once delivery**.
+
+Therefore, the same event may be delivered multiple times.
+
+Example:
+
+```json
+{
+  "playerId": 30,
+  "leagueId": "NBA",
+  "seasonId": "2026",
+  "metric": "POINTS",
+  "value": 2504,
+  "eventId": "evt-123"
+}
+```
+
+Suppose the Leaderboard Service receives this event twice.
+
+---
+
+# Will the Leaderboard Become Incorrect?
+
+No.
+
+Our design is naturally **idempotent**.
+
+Why?
+
+Because the Statistics Service publishes the **latest cumulative score**, not the score delta.
+
+Example:
+
+```
+Current Score
+
+2501
+```
+
+Statistics Service publishes:
+
+```
+Season Points = 2504
+```
+
+Leaderboard updates:
+
+```
+Player 30 → 2504
+```
+
+If the same event is delivered again:
+
+```
+Player 30 → 2504
+```
+
+Nothing changes.
+
+The leaderboard remains correct.
+
+---
+
+# Why This Works
+
+Good event:
+
+```json
+{
+    "playerId":30,
+    "value":2504
+}
+```
+
+Bad event:
+
+```json
+{
+    "playerId":30,
+    "pointsScored":3
+}
+```
+
+If the Leaderboard Service processed:
+
+```
++3
+```
+
+twice:
+
+```
+2501
+
+↓
+
+2504
+
+↓
+
+2507 ❌
+```
+
+The ranking would become incorrect.
+
+Publishing the **final cumulative value** makes updates idempotent.
+
+---
+
+# Why Do We Still Include eventId?
+
+Although eventId is not required for leaderboard correctness, it is still useful for:
+
+* Logging
+* Tracing
+* Auditing
+* Debugging
+* Future non-idempotent workflows
+
+---
+
+# Failure Scenario 2
+
+## Out-of-Order Events
+
+Example:
+
+Event A
+
+```
+Score = 2504
+
+Sequence = 105
+```
+
+Event B
+
+```
+Score = 2501
+
+Sequence = 103
+```
+
+Due to retries or network delays, Event A arrives first.
+
+Later, Event B arrives.
+
+If the service blindly updates Redis:
+
+```
+2504
+
+↓
+
+2501 ❌
+```
+
+The leaderboard becomes stale.
+
+---
+
+# Solution
+
+Each event should include an ordering field.
+
+Preferred:
+
+```
+sequenceNumber
+```
+
+Alternative:
+
+```
+updatedTimestamp
+```
+
+A sequence number is generally preferred because:
+
+* It provides deterministic ordering.
+* It does not rely on synchronized clocks.
+* It avoids clock-skew issues across distributed systems.
+
+---
+
+# Processing Logic
+
+Current Redis state:
+
+```
+Player 30
+
+Score = 2504
+
+Sequence = 105
+```
+
+Incoming event:
+
+```
+Score = 2501
+
+Sequence = 103
+```
+
+Comparison:
+
+```
+103 < 105
+```
+
+↓
+
+Discard the event.
+
+The leaderboard remains correct.
+
+---
+
+# Interview Answer
+
+> Since the Statistics Service publishes cumulative values, stale events should not overwrite newer data. Each event includes an ordering field such as a sequence number. Before updating the leaderboard, the Leaderboard Service compares the incoming sequence number with the latest processed sequence for that player. If the event is older, it is ignored.
+
+---
+
+# Where Should We Store the Latest Sequence?
+
+A natural choice is **Redis**, because the Leaderboard Service already uses Redis on every update.
+
+Advantages:
+
+* Low latency
+* No additional database lookup
+* Fast validation before updating the leaderboard
+
+---
+
+# Possible Redis Design
+
+## Structure 1
+
+Leaderboard
+
+```
+Key
+
+NBA:2026:POINTS
+```
+
+Contents:
+
+```
+PlayerId        Score
+
+30              2504
+
+7               2400
+
+15              2100
+```
+
+---
+
+## Structure 2
+
+Latest Sequence
+
+```
+Key
+
+NBA:2026:POINTS:SEQUENCE
+```
+
+Contents:
+
+```
+PlayerId        Sequence
+
+30              105
+
+7               98
+
+15              110
+```
+
+Processing flow:
+
+```
+Receive Event
+
+↓
+
+Read latest sequence
+
+↓
+
+Incoming Sequence > Stored Sequence ?
+
+        YES
+         │
+         ▼
+Update leaderboard
+
+Update stored sequence
+
+        NO
+         │
+         ▼
+Discard event
+```
+
+---
+
+# Can We Store the Sequence in the Same Redis Sorted Set?
+
+This was an important design discussion.
+
+A Redis Sorted Set conceptually stores:
+
+```
+Member
+
+↓
+
+Score
+```
+
+Example:
+
+```
+Player30 → 2504
+```
+
+The score determines the ordering.
+
+However, we also want to store:
+
+```
+Player30
+
+Score = 2504
+
+Sequence = 105
+```
+
+A Sorted Set provides only **one score per member**.
+
+If we replaced the score with the sequence number:
+
+```
+Player30 → 105
+```
+
+the leaderboard ordering would become incorrect.
+
+Similarly, combining both values into one numeric field would break ranking semantics.
+
+Therefore, the sequence should be stored separately.
+
+---
+
+# Better Design
+
+Use two Redis data structures:
+
+### Redis Sorted Set
+
+Responsible only for rankings.
+
+```
+Player30 → 2504
+```
+
+---
+
+### Redis Hash (or another metadata structure)
+
+Responsible for player metadata.
+
+```
+Player30
+
+Sequence = 105
+```
+
+This cleanly separates:
+
+* Ranking data
+* Metadata
+
+---
+
+# New Consistency Question
+
+Using two Redis structures introduces another challenge.
+
+Suppose we:
+
+1. Update the leaderboard.
+2. Crash before updating the sequence.
+
+Now:
+
+Leaderboard:
+
+```
+Player30 → 2504
+```
+
+Sequence:
+
+```
+Player30 → 104
+```
+
+The next delivery of the same event may be processed incorrectly.
+
+This introduces the need for **atomic updates** across both Redis structures.
+
+Possible solutions (to be covered during Redis deep dive):
+
+* Redis transactions
+* Lua scripts
+* Other atomic update mechanisms
+
+---
+
+# Key Takeaways
+
+* Design events to be **idempotent** by publishing cumulative values instead of deltas.
+* Use **sequence numbers** to detect stale or out-of-order events.
+* Store the latest processed sequence in Redis for fast validation.
+* Keep ranking data and metadata separate.
+* Multiple Redis structures may require **atomic updates** to maintain consistency.
+
+# Apple Sports System Design
+
+# Leaderboard Service – Failure Recovery & Scaling
+
+---
+
+# Failure Scenario 3
+
+## Redis Crash
+
+Assume the Redis cluster crashes and all in-memory leaderboard data is lost.
+
+Remaining systems are still available:
+
+* PostgreSQL (Statistics Service)
+* Kafka
+* Cassandra (Leaderboard Snapshots)
+
+---
+
+# Recovery Strategy
+
+## Option 1 (Preferred)
+
+### Redis Replica
+
+```text
+          Primary Redis
+                ❌
+                 │
+         Automatic Failover
+                 │
+                 ▼
+            Redis Replica
+```
+
+Promote a healthy replica to the new primary.
+
+Advantages:
+
+* Fast recovery
+* Minimal downtime
+* No replay required
+* Preferred for single-node failures
+
+---
+
+## Option 2
+
+### Full Redis Cluster Loss
+
+If the entire Redis cluster is lost:
+
+### Step 1
+
+Restore the latest leaderboard snapshot from Cassandra.
+
+Example:
+
+```text
+Snapshot Time
+
+10:00 AM
+```
+
+---
+
+### Step 2
+
+Replay Kafka events that occurred after the snapshot.
+
+```text
+10:00 Snapshot
+
+↓
+
+10:01
+
+10:02
+
+10:03
+```
+
+Replay only the missing events.
+
+Eventually Redis catches up to the latest leaderboard state.
+
+---
+
+# Why Not Replay the Entire Kafka Topic?
+
+Suppose a season contains:
+
+```text
+50 Million Events
+```
+
+Replaying everything would be very slow.
+
+Snapshots significantly reduce recovery time.
+
+---
+
+# Snapshot Frequency Trade-off
+
+Suppose snapshots are taken every:
+
+```text
+30 Minutes
+```
+
+Worst case:
+
+Redis crashes after 29 minutes.
+
+Need to replay:
+
+```text
+29 Minutes of Kafka Events
+```
+
+Trade-off:
+
+Frequent snapshots:
+
+* Faster recovery
+* More writes to Cassandra
+
+Less frequent snapshots:
+
+* Lower storage/write cost
+* Longer replay during recovery
+
+---
+
+# Snapshot Metadata
+
+When storing a snapshot, also persist Kafka checkpoint information.
+
+Example:
+
+```text
+Snapshot
+
+LeagueId      : NBA
+
+SeasonId      : 2026
+
+Metric        : POINTS
+
+SnapshotTime  : 10:00 AM
+
+KafkaPartition : 7
+
+KafkaOffset    : 4523118
+```
+
+---
+
+# Why Store Kafka Offset?
+
+During recovery:
+
+1. Restore leaderboard snapshot.
+2. Resume Kafka consumption from the stored offset.
+
+Example:
+
+```text
+Restore Snapshot
+
+↓
+
+Kafka Offset
+
+4523118
+
+↓
+
+Resume Replay
+
+4523119
+```
+
+This avoids replaying already processed events.
+
+---
+
+# Why Offset Instead of Timestamp?
+
+Kafka guarantees ordering using:
+
+```text
+Partition
+
+↓
+
+Offset
+```
+
+Timestamps may:
+
+* Be identical
+* Have clock skew
+* Not guarantee ordering
+
+Offsets provide deterministic replay.
+
+---
+
+# Multiple Kafka Partitions
+
+If the topic has multiple partitions:
+
+Store an offset for each partition.
+
+Example:
+
+```text
+Partition 0 → Offset 1051
+
+Partition 1 → Offset 8842
+
+Partition 2 → Offset 12771
+
+Partition 3 → Offset 592
+```
+
+Recovery resumes independently for each partition.
+
+---
+
+# Scaling
+
+Suppose tonight is the NBA Finals.
+
+Traffic suddenly becomes:
+
+```text
+Reads
+
+100K/sec
+
+↓
+
+5 Million/sec
+```
+
+---
+
+# Scaling Stateless Services
+
+Both the API layer and Leaderboard Service are stateless.
+
+Therefore they can scale horizontally behind a Load Balancer.
+
+```text
+               Load Balancer
+                     │
+          ┌──────────┼──────────┐
+          ▼          ▼          ▼
+        API        API        API
+
+          ┌──────────┼──────────┐
+          ▼          ▼          ▼
+    Leaderboard  Leaderboard  Leaderboard
+      Service      Service      Service
+```
+
+---
+
+# Redis Scaling
+
+Redis supports two different scaling strategies.
+
+These solve different problems.
+
+---
+
+# 1. Redis Replicas
+
+Purpose:
+
+**Read Scaling**
+
+Example:
+
+```text
+                 Primary
+                     │
+          ┌──────────┴──────────┐
+          ▼                     ▼
+      Replica 1            Replica 2
+```
+
+Characteristics:
+
+* Primary receives writes.
+* Replicas serve read traffic.
+* Every replica contains the complete dataset.
+
+Benefits:
+
+* Higher read throughput.
+* High availability.
+* Faster failover.
+
+---
+
+# 2. Redis Cluster
+
+Purpose:
+
+**Capacity Scaling**
+
+Instead of storing every leaderboard on one Redis node:
+
+```text
+             Redis Cluster
+
+      ┌────────┬────────┬────────┐
+      ▼        ▼        ▼
+    Node A   Node B   Node C
+```
+
+Example:
+
+Node A
+
+```text
+NBA:2026:POINTS
+
+NBA:2026:ASSISTS
+```
+
+Node B
+
+```text
+NFL:2026:YARDS
+```
+
+Node C
+
+```text
+ATP:2026:ACES
+```
+
+Each node stores only part of the dataset.
+
+Benefits:
+
+* Increased storage capacity.
+* Higher write throughput.
+* Horizontal scaling.
+
+---
+
+# Redis Replicas vs Redis Cluster
+
+| Redis Replicas                | Redis Cluster                            |
+| ----------------------------- | ---------------------------------------- |
+| Same dataset on every node    | Dataset partitioned across nodes         |
+| Solves read scaling           | Solves memory/capacity scaling           |
+| Primary handles writes        | Each shard handles writes for its keys   |
+| Reads distributed to replicas | Requests routed to the appropriate shard |
+
+---
+
+# Can We Use Both?
+
+Yes.
+
+Production systems often combine both.
+
+```text
+               Redis Cluster
+
+         Shard A (Primary)
+                 │
+              Replica
+
+         Shard B (Primary)
+                 │
+              Replica
+
+         Shard C (Primary)
+                 │
+              Replica
+```
+
+The cluster partitions data across shards.
+
+Each shard has replicas for:
+
+* Read scaling
+* High availability
+
+---
+
+# Hot Leaderboards
+
+Example:
+
+```text
+NBA:2026:POINTS
+```
+
+During the NBA Finals, this single leaderboard may receive millions of read requests.
+
+Read traffic can be distributed across the replicas of the shard that owns this leaderboard.
+
+---
+
+# Are Leaderboards Already Precomputed?
+
+Yes.
+
+Every scoring event updates Redis immediately.
+
+```text
+PLAYER_STATS_UPDATED
+
+↓
+
+Leaderboard Service
+
+↓
+
+Redis Sorted Set
+```
+
+When users request:
+
+```http
+GET /leaderboards/POINTS
+```
+
+The service simply retrieves an already maintained ranking.
+
+It does **not** compute rankings on demand.
+
+This is one of the primary reasons for using Redis Sorted Sets.
+
+---
+
+# Interview Summary
+
+A strong interview answer:
+
+> "The API layer and Leaderboard Service are stateless, so I would scale them horizontally behind a load balancer. I would use a Redis Cluster to partition leaderboard data across multiple nodes as the dataset grows, and Redis replicas to scale read traffic and provide high availability. For Redis recovery, I would first fail over to a replica if available. If the entire Redis cluster is lost, I would restore the latest leaderboard snapshot from Cassandra and replay Kafka events starting from the stored offsets associated with that snapshot."
+
+# Apple Sports System Design
+
+# Leaderboard Service – Observability & Monitoring
+
+---
+
+# Goal
+
+Suppose users report:
+
+> **"The leaderboard is not updating."**
+
+As the on-call engineer, the objective is to quickly identify **where** in the event pipeline the failure or latency is occurring.
+
+The most effective approach is to follow the **entire request path**.
+
+```text id="9pb8z6"
+Sports Provider
+        │
+        ▼
+Ingestion Service
+        │
+        ▼
+Kafka
+        │
+        ▼
+Statistics Service
+        │
+        ▼
+Leaderboard Service
+        │
+        ▼
+Redis
+        │
+        ▼
+Leaderboard API
+        │
+        ▼
+Apple Sports App
+```
+
+---
+
+# Step 1 – Sports Provider
+
+First verify that upstream providers are sending events correctly.
+
+Monitor:
+
+* Incoming event rate
+* Stale timestamps
+* Failed webhook deliveries
+* Authentication failures
+* Provider-side outages
+
+Questions to ask:
+
+* Are we receiving events?
+* Are events delayed?
+* Has the event rate suddenly dropped?
+
+---
+
+# Step 2 – Ingestion Service
+
+Ensure events are being accepted and published successfully.
+
+Monitor:
+
+* Requests/sec
+* P95 / P99 latency
+* HTTP 5xx errors
+* Request timeouts
+* CPU utilization
+* Memory utilization
+* Rate-limited requests
+
+Questions:
+
+* Is the service overloaded?
+* Are requests timing out?
+* Is event validation failing?
+
+---
+
+# Step 3 – Kafka
+
+Kafka is the event backbone.
+
+The most important metric is:
+
+## Consumer Lag
+
+High consumer lag indicates downstream services cannot keep up.
+
+Monitor:
+
+* Consumer lag
+* Messages/sec
+* Consumer health
+* Broker health
+* Producer errors
+
+---
+
+## Scaling During High Lag
+
+First response:
+
+Scale the Leaderboard Service consumers horizontally (up to the current number of Kafka partitions).
+
+Adding Kafka partitions is typically a **capacity-planning decision**, not the immediate response during an incident.
+
+---
+
+# Step 4 – Statistics Service
+
+Verify player statistics are being updated correctly.
+
+Monitor:
+
+* Processing latency
+* Error rate
+* CPU
+* Memory
+* Database latency
+* Connection pool utilization
+
+Questions:
+
+* Are statistics being computed?
+* Is PostgreSQL healthy?
+* Is the service falling behind?
+
+---
+
+# Step 5 – Redis
+
+Redis serves live leaderboard queries.
+
+Monitor:
+
+* Read latency
+* Write latency
+* Memory usage
+* Evictions
+* Replication lag
+* Failovers
+* Cluster health
+
+Questions:
+
+* Is Redis responding?
+* Are replicas synchronized?
+* Is memory exhausted?
+
+---
+
+# Step 6 – Leaderboard API
+
+Even if Redis is healthy, users may still experience failures if the API layer is unhealthy.
+
+Monitor:
+
+* Requests/sec
+* Error rate
+* HTTP 4xx / 5xx
+* P95 latency
+* P99 latency
+* Load balancer health
+
+Questions:
+
+* Can clients reach the service?
+* Is API latency increasing?
+* Are instances healthy?
+
+---
+
+# Why P95 and P99?
+
+Average latency can hide problems.
+
+Example:
+
+| Requests |   Latency |
+| -------- | --------: |
+| 95%      |     20 ms |
+| 5%       | 2 seconds |
+
+Average latency still appears acceptable.
+
+P95 and P99 reveal how the slowest requests are performing.
+
+For user-facing systems like Apple Sports, tail latency is often more important than the average.
+
+---
+
+# Dashboard Strategy
+
+Create dashboards for each stage:
+
+## Sports Provider
+
+* Incoming event rate
+* Provider latency
+* Authentication failures
+
+---
+
+## Ingestion Service
+
+* Throughput
+* Error rate
+* P95/P99 latency
+* CPU
+* Memory
+
+---
+
+## Kafka
+
+* Consumer lag
+* Broker health
+* Messages/sec
+* Failed publishes
+
+---
+
+## Statistics Service
+
+* Processing latency
+* Error rate
+* Database latency
+* Connection pool usage
+
+---
+
+## Redis
+
+* Read latency
+* Write latency
+* Memory usage
+* Replication lag
+* Cluster health
+
+---
+
+## Leaderboard API
+
+* Request rate
+* Error rate
+* P95/P99 latency
+* Load balancer health
+
+---
+
+# Alerting
+
+Examples of production alerts:
+
+* Kafka consumer lag exceeds threshold.
+* Redis memory exceeds 80–90%.
+* Redis replication lag increases.
+* API P99 latency exceeds SLA.
+* Ingestion Service error rate increases.
+* Statistics Service processing latency spikes.
+* Sports Provider event rate suddenly drops.
+
+These alerts allow engineers to respond before users notice stale or delayed leaderboards.
+
+---
+
+# Interview Answer
+
+> "When troubleshooting stale leaderboards, I would trace the entire event pipeline rather than focusing on a single component. I'd first verify that the Sports Provider is delivering fresh events, then check the Ingestion Service's throughput, latency, and error rates. Next I'd inspect Kafka consumer lag to determine whether downstream processing is delayed. I'd then validate the Statistics Service and PostgreSQL health, followed by Redis latency, memory usage, and replication status. Finally, I'd examine the Leaderboard API's request rate, error rate, and P95/P99 latency. Monitoring every stage of the pipeline helps isolate the bottleneck quickly and reduces mean time to recovery (MTTR)."
+
+---
+
+# Key Takeaways
+
+* Always debug the **entire event pipeline**.
+* Kafka consumer lag is one of the most valuable health indicators.
+* Monitor **P95/P99 latency**, not just averages.
+* Scale stateless services horizontally behind a load balancer.
+* Instrument every service with metrics, dashboards, and alerts to quickly identify production issues.
+
+# Fantasy Leaderboard Service
+
+## Functional Requirements
+
+1. Users can draft fantasy teams by selecting real-world athletes participating in a sport (e.g., NBA). Multiple users may own the same athlete.
+
+2. Users can create private fantasy leagues or join platform-managed public leagues.
+
+3. Each fantasy league maintains an independent leaderboard for its participating fantasy teams.
+
+4. As real-world games progress, athlete scoring events should update the corresponding fantasy team scores based on predefined fantasy scoring rules.
+
+5. The Fantasy Leaderboard Service should maintain a near real-time ranking of fantasy teams within each fantasy league.
+
+6. The service should support the following operations:
+
+   * Retrieve the Top **N** fantasy teams within a league.
+   * Retrieve the current rank of a user's fantasy team within a league.
+   * Retrieve the neighboring fantasy teams (users immediately above and below a given user) within a league.
+
+---
+
+# Non-Functional Requirements
+
+1. Fantasy leaderboards should reflect real-world scoring events within **1 second**.
+
+2. Support approximately **50 million registered users**.
+
+3. Support approximately **10 million fantasy leagues** (private and public).
+
+4. A user may participate in up to **100 fantasy leagues**.
+
+5. Handle approximately **1 million leaderboard read requests per second** during peak sporting events.
+
+6. Handle approximately **10,0000 fantasy score updates per second** during peak live games. Peak lives games 10000 events/sec QPS(queries per second)
+
+7. The system should be highly available and fault tolerant.
+
+8. The system should scale horizontally to support increasing numbers of users, leagues, and live sporting events.
+
+9. Ensure leaderboard rankings remain consistent despite duplicate or out-of-order event delivery.
+
+
+# Fantasy Leaderboard Service
+
+## Requirements, Scale and APIs
+
+---
+
+# Problem Statement
+
+Design a **Fantasy Leaderboard Service** that maintains real-time rankings of users participating in fantasy sports leagues based on the live performance of real-world athletes.
+
+Unlike the professional athlete leaderboard, this service ranks **fantasy teams (users)** instead of athletes.
+
+---
+
+# Functional Requirements
+
+1. Users can draft fantasy teams by selecting real-world athletes participating in a sport (e.g., NBA). Multiple users may own the same athlete.
+
+2. Users can create private fantasy leagues or join platform-managed public leagues.
+
+3. Each fantasy league maintains an independent leaderboard for its participating fantasy teams.
+
+4. As real-world games progress, athlete scoring events should update the corresponding fantasy team scores based on predefined fantasy scoring rules.
+
+5. The Fantasy Leaderboard Service should maintain a near real-time ranking of fantasy teams within each fantasy league.
+
+6. Support the following operations:
+
+* Retrieve the Top **N** fantasy teams within a league.
+* Retrieve the current rank of a user's fantasy team.
+* Retrieve neighboring fantasy teams immediately above and below a given user.
+
+---
+
+# Non-Functional Requirements
+
+1. Fantasy leaderboards should reflect real-world scoring events within **1 second**.
+
+2. Support approximately **50 million registered users**.
+
+3. Support approximately **10 million fantasy leagues**.
+
+4. A user may participate in up to **100 fantasy leagues**.
+
+5. Handle approximately **1 million read requests/sec** during peak sporting events.
+
+6. Handle approximately **100,000 fantasy leaderboard updates/sec** during live games.
+
+7. High availability.
+
+8. Fault tolerance.
+
+9. Horizontal scalability.
+
+10. Ensure leaderboard correctness despite duplicate or out-of-order event delivery.
+
+---
+
+# Capacity Estimation
+
+Registered Users
+
+```text
+50 Million
+```
+
+Fantasy Leagues
+
+```text
+10 Million
+```
+
+Maximum leagues per user
+
+```text
+100
+```
+
+Peak Read Throughput
+
+```text
+1 Million Requests/sec
+```
+
+Peak Write Throughput
+
+```text
+100,000 Fantasy Score Updates/sec
+```
+
+---
+
+# Why Is the Write Rate Higher Than the Athlete Leaderboard?
+
+Professional Athlete Leaderboard
+
+```text
+Player Scores
+
+↓
+
+Update One Athlete
+```
+
+Fantasy Leaderboard
+
+```text
+Player Scores
+
+↓
+
+Many Fantasy Users Own That Player
+
+↓
+
+Update Thousands of Fantasy Teams
+
+↓
+
+Update Thousands of Leaderboard Entries
+```
+
+One real-world scoring event can update many fantasy teams.
+
+This **fan-out** is the primary scaling challenge of the Fantasy Leaderboard Service.
+
+---
+
+# Service Boundary
+
+This interview focuses on the **Fantasy Leaderboard Service**, not the entire Fantasy Sports Platform.
+
+Assume the following already exist:
+
+* Fantasy League Service
+* User Service
+* Draft/Roster Management Service
+
+These services are responsible for:
+
+* Creating fantasy leagues
+* Joining leagues
+* Drafting fantasy teams
+* Managing league membership
+
+The Leaderboard Service only maintains and serves rankings.
+
+---
+
+# Leaderboard APIs
+
+## Get Top N Teams
+
+```http
+GET /v1/fantasy-leagues/{leagueId}/leaderboard?limit=100
+```
+
+Returns the highest-ranked fantasy teams within a league.
+
+---
+
+## Get User Rank
+
+```http
+GET /v1/fantasy-leagues/{leagueId}/users/{userId}/rank
+```
+
+Returns the current ranking of a user's fantasy team.
+
+---
+
+## Get Neighboring Teams
+
+```http
+GET /v1/fantasy-leagues/{leagueId}/users/{userId}/neighbors?before=10&after=10
+```
+
+Returns users immediately above and below the specified user.
+
+---
+
+# APIs Not Owned By This Service
+
+These belong to the Fantasy League Service and are considered out of scope:
+
+```http
+POST /v1/fantasy-leagues
+```
+
+Create a fantasy league.
+
+---
+
+```http
+POST /v1/fantasy-leagues/{leagueId}/teams
+```
+
+Create a fantasy team and draft players.
+
+These operations are assumed to already exist and are not part of the Leaderboard Service.
+
+---
+
+# Key Difference From the Athlete Leaderboard
+
+Professional Athlete Leaderboard
+
+```text
+Sports Event
+
+↓
+
+Statistics Service
+
+↓
+
+Athlete Leaderboard
+```
+
+Fantasy Leaderboard
+
+```text
+Sports Event
+
+↓
+
+Statistics Service
+
+↓
+
+Fantasy Scoring Service
+
+↓
+
+Fantasy Leaderboard
+```
+
+The additional **Fantasy Scoring Service** maps athlete performance to fantasy team scores before updating the leaderboard.
+
+---
+
+# Key Takeaways
+
+* The service ranks **fantasy teams**, not athletes.
+* Every fantasy league has an independent leaderboard.
+* One real-world scoring event may update thousands of fantasy teams.
+* The Leaderboard Service focuses only on maintaining and querying rankings.
+* League creation, drafting, and roster management belong to separate services.
+
+# Fantasy Leaderboard Service
+
+## High-Level Architecture Discussion
+
+---
+
+# High-Level Architecture
+
+Unlike the professional athlete leaderboard, the Fantasy Leaderboard Service ranks **fantasy teams (users)** instead of athletes.
+
+A real-world sporting event must first be translated into fantasy points before the leaderboard can be updated.
+
+---
+
+# Simplified Architecture (Preferred)
+
+For a system whose primary responsibility is fantasy sports:
+
+```text
+Sports Provider
+        │
+        ▼
+Ingestion Service
+        │
+        ▼
+Kafka (RAW_GAME_EVENT)
+        │
+        ▼
+Fantasy Scoring Service
+        │
+        ▼
+Kafka (FANTASY_SCORE_UPDATED)
+        │
+        ▼
+Fantasy Leaderboard Service
+        │
+        ▼
+Redis
+```
+
+This keeps the architecture focused and avoids introducing unnecessary services.
+
+---
+
+# Step-by-Step Flow
+
+Suppose Steph Curry hits a three-pointer.
+
+The Sports Provider sends:
+
+```json
+{
+    "matchId":100,
+    "playerId":30,
+    "eventType":"THREE_POINTER"
+}
+```
+
+---
+
+## Step 1
+
+The Ingestion Service
+
+Responsibilities:
+
+* Authenticate sports provider
+* Validate payload
+* Normalize vendor-specific payloads
+* Publish a `RAW_GAME_EVENT` to Kafka
+* Return HTTP 202
+
+---
+
+## Step 2
+
+Fantasy Scoring Service
+
+Consumes:
+
+```text
+RAW_GAME_EVENT
+```
+
+Responsibilities:
+
+* Determine fantasy scoring rule
+
+Example:
+
+```text
+THREE_POINTER
+
+↓
+
++3 Fantasy Points
+```
+
+* Determine which fantasy teams own the player
+* Update each affected fantasy team's cumulative score
+* Persist updated fantasy scores
+* Publish a new event:
+
+```text
+FANTASY_SCORE_UPDATED
+```
+
+Example:
+
+```json
+{
+    "leagueId":123,
+    "userId":456,
+    "fantasyScore":108
+}
+```
+
+---
+
+## Step 3
+
+Fantasy Leaderboard Service
+
+Consumes:
+
+```text
+FANTASY_SCORE_UPDATED
+```
+
+Responsibilities:
+
+* Update the corresponding Redis Sorted Set
+* Re-rank the fantasy teams
+* Serve leaderboard queries
+
+Redis key example:
+
+```text
+FantasyLeague:123
+```
+
+Members:
+
+```text
+UserId
+
+↓
+
+Fantasy Score
+```
+
+---
+
+# Why Two Kafka Event Types?
+
+The system intentionally uses two event types.
+
+## Event 1
+
+Produced by the Ingestion Service.
+
+```text
+RAW_GAME_EVENT
+```
+
+Example:
+
+```json
+{
+    "playerId":30,
+    "eventType":"THREE_POINTER"
+}
+```
+
+This represents a real-world sporting event.
+
+---
+
+## Event 2
+
+Produced by the Fantasy Scoring Service.
+
+```text
+FANTASY_SCORE_UPDATED
+```
+
+Example:
+
+```json
+{
+    "leagueId":123,
+    "userId":456,
+    "fantasyScore":108
+}
+```
+
+This represents an updated fantasy team score.
+
+The Leaderboard Service only consumes fantasy score updates.
+
+---
+
+# Why Not Update Redis Directly?
+
+Separating scoring from leaderboard maintenance provides clear service boundaries.
+
+Fantasy Scoring Service:
+
+* Applies fantasy scoring rules
+* Updates fantasy team scores
+* Publishes score updates
+
+Fantasy Leaderboard Service:
+
+* Maintains rankings
+* Updates Redis
+* Serves leaderboard APIs
+
+Each service has a single responsibility.
+
+---
+
+# Statistics Service Discussion
+
+An alternative architecture introduces a dedicated Statistics Service.
+
+```text
+RAW_GAME_EVENT
+
+↓
+
+Statistics Service
+
+↓
+
+PLAYER_STATS_UPDATED
+
+↓
+
+Fantasy Scoring Service
+
+↓
+
+FANTASY_SCORE_UPDATED
+
+↓
+
+Leaderboard Service
+```
+
+In this design, the Statistics Service maintains authoritative player statistics and publishes `PLAYER_STATS_UPDATED` events.
+
+---
+
+# Do We Need a Statistics Service?
+
+Not necessarily.
+
+It depends on the scope.
+
+---
+
+## Option A (Preferred)
+
+No Statistics Service.
+
+Use:
+
+```text
+RAW_GAME_EVENT
+
+↓
+
+Fantasy Scoring Service
+```
+
+Advantages:
+
+* Simpler architecture
+* Lower latency
+* Fewer services
+* Fewer Kafka topics
+* Easier to explain in an interview
+
+Recommended when designing only the Fantasy Leaderboard Service.
+
+---
+
+## Option B
+
+Dedicated Statistics Service.
+
+Advantages:
+
+* Single source of truth for player statistics
+* Reusable by:
+
+  * Athlete Leaderboards
+  * Player Profiles
+  * Team Statistics
+  * Live Box Scores
+  * Fantasy Sports
+  * Analytics
+
+Recommended when designing an entire Sports Platform instead of only the Fantasy Leaderboard Service.
+
+---
+
+# Key Design Decision
+
+For the Fantasy Leaderboard interview problem, prefer the simpler architecture:
+
+```text
+Sports Provider
+        │
+        ▼
+Ingestion Service
+        │
+        ▼
+Kafka (RAW_GAME_EVENT)
+        │
+        ▼
+Fantasy Scoring Service
+        │
+        ▼
+Kafka (FANTASY_SCORE_UPDATED)
+        │
+        ▼
+Fantasy Leaderboard Service
+        │
+        ▼
+Redis
+```
+
+This design satisfies all requirements while keeping service responsibilities clear and avoiding unnecessary complexity.
+
+---
+
+# Key Takeaways
+
+* Two Kafka event types are sufficient:
+
+  * `RAW_GAME_EVENT`
+  * `FANTASY_SCORE_UPDATED`
+* The Fantasy Scoring Service converts real-world sports events into fantasy team scores.
+* The Fantasy Leaderboard Service only maintains rankings and serves leaderboard queries.
+* Introduce a dedicated Statistics Service only if the platform contains multiple products that require centralized player statistics.
+
+
+# Fantasy Leaderboard Service
+
+## Data Model, Persistence & Fantasy Score Update Pipeline
+
+---
+
+# Core Entities
+
+## User
+
+```text
+User
+-----
+userId
+```
+
+---
+
+## FantasyLeague
+
+```text
+FantasyLeague
+-------------
+leagueId
+name
+sport
+seasonId
+```
+
+---
+
+## FantasyTeam
+
+One fantasy team belongs to one user within one fantasy league.
+
+```text
+FantasyTeam
+-----------
+teamId
+userId
+leagueId
+```
+
+---
+
+## FantasyRoster
+
+Stores the athletes drafted by each fantasy team.
+
+```text
+FantasyRoster
+-------------
+teamId
+playerId
+```
+
+Example:
+
+| Team  | Player |
+| ----- | ------ |
+| Team1 | Curry  |
+| Team1 | Jokic  |
+| Team2 | Curry  |
+| Team3 | Tatum  |
+
+This table answers:
+
+> **Which fantasy teams own a given player?**
+
+---
+
+## FantasyTeamScore
+
+Stores the durable cumulative fantasy score for every fantasy team.
+
+```text
+FantasyTeamScore
+----------------
+teamId
+leagueId
+score
+lastUpdated
+```
+
+---
+
+# Why Not Store a FantasyLeaderboard Table?
+
+The leaderboard is **not** the source of truth.
+
+The source of truth is:
+
+```text
+FantasyTeamScore
+```
+
+The leaderboard is simply a sorted representation of those scores.
+
+Redis Sorted Sets maintain the ranking efficiently.
+
+Therefore, a separate relational `FantasyLeaderboard` table is unnecessary.
+
+---
+
+# Persistence
+
+## PostgreSQL
+
+System of Record
+
+Stores:
+
+* FantasyLeague
+* FantasyTeam
+* FantasyRoster
+* FantasyTeamScore
+
+Reasons:
+
+* Highly relational data
+* ACID transactions
+* Durable storage
+* Millions of rows are well within PostgreSQL's capabilities
+
+---
+
+## Redis
+
+Used for two purposes.
+
+### 1. Player Ownership Cache
+
+Fantasy rosters change infrequently but are read for every scoring event.
+
+Instead of querying PostgreSQL repeatedly:
+
+```sql
+SELECT teamId
+FROM FantasyRoster
+WHERE playerId = 30;
+```
+
+cache the mapping in Redis.
+
+Example:
+
+```text
+Key
+
+player:30
+
+Value
+
+Team1
+Team2
+Team5
+Team18
+...
+```
+
+When Curry scores:
+
+```text
+Redis
+
+↓
+
+Return all fantasy teams owning Curry
+```
+
+This significantly reduces database reads.
+
+---
+
+### 2. Leaderboard
+
+Redis Sorted Sets maintain rankings.
+
+Example:
+
+```text
+Key
+
+FantasyLeague:123
+
+Member
+
+teamId
+
+Score
+
+fantasyScore
+```
+
+Redis automatically maintains ordering as scores change.
+
+---
+
+# Fantasy Score Update Flow
+
+Suppose Steph Curry hits a three-pointer.
+
+Sports Provider publishes:
+
+```text
+RAW_GAME_EVENT
+```
+
+Example:
+
+```json
+{
+    "playerId":30,
+    "eventType":"THREE_POINTER"
+}
+```
+
+---
+
+## Step 1
+
+Fantasy Scoring Service consumes the event.
+
+Lookup:
+
+```text
+player:30
+```
+
+Redis returns:
+
+```text
+Team1
+
+Team2
+
+Team3
+
+...
+```
+
+These are all fantasy teams that own Curry.
+
+---
+
+## Step 2
+
+For every affected fantasy team:
+
+Read current score:
+
+```text
+100
+```
+
+Apply fantasy scoring rule:
+
+```text
++3
+```
+
+New score:
+
+```text
+103
+```
+
+Persist:
+
+```text
+FantasyTeamScore
+
+103
+```
+
+---
+
+## Step 3
+
+Immediately publish:
+
+```text
+FANTASY_SCORE_UPDATED
+```
+
+Example:
+
+```json
+{
+    "leagueId":10,
+    "teamId":1,
+    "score":103
+}
+```
+
+The event carries the **new cumulative fantasy score**.
+
+The Leaderboard Service does **not** need to query PostgreSQL again.
+
+---
+
+## Step 4
+
+Fantasy Leaderboard Service consumes:
+
+```text
+FANTASY_SCORE_UPDATED
+```
+
+Updates Redis:
+
+```text
+ZADD
+
+Key
+
+FantasyLeague:10
+
+Member
+
+Team1
+
+Score
+
+103
+```
+
+Redis automatically reorders the leaderboard.
+
+---
+
+# Why Doesn't the Leaderboard Service Read PostgreSQL?
+
+The Fantasy Scoring Service has already:
+
+1. Calculated the new score.
+2. Persisted it.
+3. Published the updated score.
+
+Therefore the Leaderboard Service can directly update Redis using the event.
+
+This avoids an unnecessary database read.
+
+---
+
+# Comparison With Athlete Leaderboard
+
+## Athlete Leaderboard
+
+One sports event updates one leaderboard entry.
+
+```text
+Player Scores
+
+↓
+
+Leaderboard Service
+
+↓
+
+Redis
+```
+
+Simple one-to-one update.
+
+---
+
+## Fantasy Leaderboard
+
+One sports event affects many fantasy teams.
+
+```text
+Player Scores
+
+↓
+
+Find Teams Owning Player
+
+↓
+
+Update Fantasy Scores
+
+↓
+
+Leaderboard Updates
+```
+
+This introduces a **fan-out** problem.
+
+---
+
+# Architecture Option 1 (Preferred Initial Design)
+
+Keep the architecture simple.
+
+```text
+Sports Provider
+        │
+        ▼
+Ingestion Service
+        │
+        ▼
+Kafka (RAW_GAME_EVENT)
+        │
+        ▼
+Fantasy Scoring Service
+        │
+        ▼
+Thread Pool (Parallel Updates)
+        │
+        ▼
+PostgreSQL
+        │
+        ▼
+Kafka (FANTASY_SCORE_UPDATED)
+        │
+        ▼
+Fantasy Leaderboard Service
+        │
+        ▼
+Redis
+```
+
+The Fantasy Scoring Service uses an internal thread pool to process multiple team score updates in parallel.
+
+Advantages:
+
+* Simpler architecture
+* Fewer Kafka topics
+* Lower latency
+* Easier to explain
+
+---
+
+# Architecture Option 2 (Scaling Fan-Out)
+
+If a single scoring event affects an extremely large number of fantasy teams, introduce another Kafka stage.
+
+```text
+RAW_GAME_EVENT
+
+↓
+
+Fantasy Scoring Service
+
+↓
+
+Kafka (TEAM_SCORE_UPDATE)
+
+↓
+
+Score Update Workers
+
+↓
+
+PostgreSQL
+
+↓
+
+Kafka (FANTASY_SCORE_UPDATED)
+
+↓
+
+Fantasy Leaderboard Service
+
+↓
+
+Redis
+```
+
+Benefits:
+
+* Independent scaling of score-update workers
+* Better backpressure handling
+* Durable work queue
+* Suitable for extremely large fan-out scenarios
+
+---
+
+# Which Architecture Should Be Presented?
+
+Start with **Option 1**.
+
+It satisfies the current requirements with minimal complexity.
+
+If the interviewer later increases the scale (e.g., millions of fantasy teams affected by a single player event), evolve the design to **Option 2**.
+
+This demonstrates sound engineering judgment by introducing complexity only when justified.
+
+---
+
+# Key Takeaways
+
+* PostgreSQL is the source of truth for fantasy team scores.
+* Redis caches player ownership mappings to avoid repeated database lookups.
+* Redis Sorted Sets maintain fantasy leaderboard rankings.
+* The Leaderboard Service never recalculates scores—it simply updates Redis from `FANTASY_SCORE_UPDATED` events.
+* Unlike the athlete leaderboard, the fantasy leaderboard introduces a **fan-out** problem because one player event can affect many fantasy teams.
+* Prefer a simpler thread-pool-based design initially, and introduce an additional Kafka stage only if fan-out becomes a bottleneck.
+
+# Fantasy Leaderboard Service
+
+## Reliability, Idempotency & Transactional Outbox
+
+---
+
+# Idempotency
+
+Kafka provides **at-least-once delivery**, so the same event may be delivered multiple times.
+
+Example:
+
+```text
+eventId = abc123
+
+Team1
+
++3 Fantasy Points
+```
+
+If processed twice:
+
+```text
+100
+
+↓
+
+103
+
+↓
+
+106 ❌
+```
+
+The same fantasy score should never be applied twice.
+
+---
+
+# Solution
+
+Every event carries a unique **eventId**.
+
+Example:
+
+```json
+{
+    "eventId":"abc123",
+    "teamId":1,
+    "leagueId":10,
+    "fantasyPoints":3
+}
+```
+
+Before processing an event, the consumer performs an idempotency check.
+
+---
+
+# Consumer-Side Deduplication
+
+Store processed event IDs in Redis.
+
+Example:
+
+```text
+processed:abc123
+```
+
+Processing flow:
+
+1. Check whether the eventId already exists.
+2. If it exists, ignore the event.
+3. Otherwise:
+
+```text
+SETNX processed:abc123
+TTL = 24 hours
+```
+
+Then process the event normally.
+
+Redis is a good choice because:
+
+* Extremely fast lookup
+* Automatic expiration using TTL
+* No need to store processed IDs permanently
+
+---
+
+# Why the Leaderboard Service Is Naturally Idempotent
+
+The Fantasy Leaderboard Service does **not** receive:
+
+```text
++3
+```
+
+Instead it receives the final cumulative score.
+
+Example:
+
+```json
+{
+    "teamId":1,
+    "leagueId":10,
+    "score":103
+}
+```
+
+It executes:
+
+```text
+ZADD FantasyLeague:10 Team1 103
+```
+
+If the same event is delivered twice:
+
+```text
+ZADD FantasyLeague:10 Team1 103
+```
+
+Redis simply overwrites the existing value.
+
+The ranking remains unchanged.
+
+Therefore the Leaderboard Service is naturally idempotent.
+
+The critical place where deduplication is required is **before updating PostgreSQL**.
+
+---
+
+# Failure Scenario
+
+Suppose the Fantasy Score Worker performs:
+
+```text
+Update PostgreSQL
+```
+
+John's score changes:
+
+```text
+100
+
+↓
+
+103
+```
+
+The database transaction commits successfully.
+
+Immediately afterwards the worker crashes before publishing:
+
+```text
+FANTASY_SCORE_UPDATED
+```
+
+Result:
+
+PostgreSQL
+
+```text
+John = 103
+```
+
+Redis
+
+```text
+John = 100
+```
+
+The database and leaderboard become inconsistent.
+
+---
+
+# Solution — Transactional Outbox Pattern
+
+Instead of only updating the score, perform both operations within the same database transaction.
+
+```sql
+BEGIN;
+
+UPDATE FantasyTeamScore
+SET score = 103
+WHERE teamId = 1;
+
+INSERT INTO Outbox
+(
+    eventType,
+    payload,
+    status
+)
+VALUES
+(
+    'FANTASY_SCORE_UPDATED',
+    ...,
+    'PENDING'
+);
+
+COMMIT;
+```
+
+Now both operations succeed or fail together.
+
+Either:
+
+* Score update commits.
+* Outbox record commits.
+
+Or neither commits.
+
+This guarantees consistency.
+
+---
+
+# Outbox Publisher
+
+A separate Outbox Publisher continuously reads pending records.
+
+```text
+FantasyTeamScore
+
+↓
+
+Outbox
+
+↓
+
+Outbox Publisher
+
+↓
+
+Kafka
+
+↓
+
+Fantasy Leaderboard Service
+```
+
+After successful publication, the outbox record is marked as published.
+
+---
+
+# Crash Recovery
+
+Suppose the worker crashes immediately after the database transaction commits.
+
+The Outbox table already contains:
+
+```text
+FANTASY_SCORE_UPDATED
+```
+
+The Outbox Publisher eventually publishes the event to Kafka.
+
+The Fantasy Leaderboard Service receives it and updates Redis.
+
+No score updates are lost.
+
+---
+
+# Why Not Publish Directly to Kafka?
+
+PostgreSQL and Kafka do not participate in the same distributed transaction.
+
+This creates the classic failure scenario:
+
+```text
+UPDATE PostgreSQL
+
+↓
+
+Crash
+
+↓
+
+Kafka Event Never Published
+```
+
+The Transactional Outbox Pattern solves this problem by ensuring the database update and event creation occur atomically.
+
+---
+
+# CDC Alternative
+
+Instead of polling the Outbox table, many production systems use:
+
+```text
+PostgreSQL
+
+↓
+
+Transaction Log
+
+↓
+
+Debezium (CDC)
+
+↓
+
+Kafka
+```
+
+Debezium monitors the database transaction log.
+
+Whenever a new Outbox record is committed, it automatically publishes the corresponding Kafka event.
+
+Benefits:
+
+* No polling
+* Lower latency
+* Better scalability
+* Widely adopted in event-driven architectures
+
+---
+
+# Reliability Summary
+
+## Idempotency
+
+* Every event carries a unique `eventId`.
+* Consumers perform deduplication using Redis (`SETNX` + TTL).
+* Prevents duplicate score updates.
+
+---
+
+## Leaderboard Updates
+
+* Events contain the **final cumulative score**, not score deltas.
+* Updating Redis with the same score multiple times is naturally idempotent.
+
+---
+
+## Reliable Event Publishing
+
+* Use the Transactional Outbox Pattern.
+* Update `FantasyTeamScore` and insert an Outbox record in the same database transaction.
+* A dedicated Outbox Publisher (or CDC using Debezium) reliably publishes events to Kafka.
+
+This guarantees that whenever a fantasy score is successfully committed to PostgreSQL, the corresponding leaderboard update event will eventually be delivered, even if the application crashes immediately after the transaction commits.
+
+
+# Fantasy Leaderboard Service
+
+## PostgreSQL Scaling & Redis Recovery
+
+---
+
+# Scaling PostgreSQL
+
+The Fantasy Scoring Service performs frequent updates to the `FantasyTeamScore` table.
+
+As traffic grows, PostgreSQL should be scaled incrementally before introducing distributed complexity.
+
+---
+
+## 1. Vertical Scaling
+
+Initially scale a single PostgreSQL instance by increasing:
+
+* CPU
+* Memory
+* Faster NVMe SSDs
+
+This is the simplest scaling strategy and should always be considered before sharding.
+
+---
+
+## 2. Connection Pooling
+
+Do not allow thousands of workers to create thousands of database connections.
+
+Use a connection pool such as **HikariCP** (Spring Boot's default connection pool).
+
+```text id="s8y8kc"
+Fantasy Score Workers
+          │
+          ▼
+       HikariCP
+          │
+          ▼
+     PostgreSQL
+```
+
+Benefits:
+
+* Reuses existing database connections.
+* Reduces connection establishment overhead.
+* Prevents exhausting PostgreSQL's maximum connection limit.
+
+---
+
+## 3. Batch Updates
+
+Instead of executing one SQL update per fantasy team, process updates in batches.
+
+Example:
+
+Instead of:
+
+```sql id="3pgkh5"
+UPDATE Team1;
+UPDATE Team2;
+...
+UPDATE Team500;
+```
+
+Execute batched updates within a transaction.
+
+Benefits:
+
+* Fewer network round trips.
+* Lower transaction overhead.
+* Better write throughput.
+
+---
+
+## 4. Table Partitioning
+
+Partition large tables such as:
+
+```text id="3ecyr0"
+FantasyTeamScore
+```
+
+by:
+
+```text id="laj0dk"
+leagueId
+```
+
+Benefits:
+
+* Smaller indexes.
+* Faster index lookups.
+* Faster maintenance operations.
+* Improved write performance.
+
+This is **table partitioning inside PostgreSQL**, not distributed sharding.
+
+---
+
+## 5. Database Sharding
+
+When a single PostgreSQL instance becomes insufficient, shard by:
+
+```text id="zpmw1x"
+leagueId
+```
+
+Example:
+
+```text id="2jizqh"
+leagueId % N
+```
+
+Each PostgreSQL instance stores a subset of fantasy leagues.
+
+Advantages:
+
+* Even distribution of write load.
+* No cross-shard score updates because each fantasy team belongs to one league.
+* Natural shard key aligned with the domain model.
+
+---
+
+## 6. Archive Old Leagues
+
+Completed seasons and inactive fantasy leagues no longer receive writes.
+
+Move them to colder storage to reduce the size of the active database.
+
+Examples:
+
+* Cold PostgreSQL instance
+* Object storage
+* Data warehouse
+
+---
+
+# Scaling Strategy
+
+```text id="f7cbzs"
+Vertical Scaling
+        ↓
+Connection Pooling
+        ↓
+Batch Updates
+        ↓
+Table Partitioning
+        ↓
+Database Sharding
+```
+
+This progression introduces distributed complexity only when necessary.
+
+---
+
+# Redis Recovery
+
+Redis maintains the in-memory leaderboard rankings.
+
+If Redis is lost, the system must rebuild the leaderboard.
+
+---
+
+## High Availability
+
+Deploy Redis using primary-replica replication.
+
+```text id="cvljlwm"
+Redis Primary
+        │
+        ▼
+Redis Replica
+```
+
+If the primary fails, promote a replica with minimal interruption.
+
+---
+
+## Catastrophic Failure
+
+If the entire Redis cluster is lost:
+
+Periodically persist leaderboard snapshots.
+
+Each snapshot stores:
+
+* `leagueId`
+* Leaderboard state
+* Corresponding Kafka offset
+
+Example:
+
+```text id="5cmfrs"
+League 123
+
+John 103
+
+Mike 98
+
+Sarah 95
+
+Kafka Offset = 9,582,341
+```
+
+---
+
+## Recovery Process
+
+### Step 1
+
+Restore the latest leaderboard snapshot into Redis.
+
+### Step 2
+
+Resume Kafka consumption from the stored offset.
+
+```text id="mjlwm5"
+Snapshot Offset
+
+↓
+
+Replay Remaining Events
+
+↓
+
+Latest State
+```
+
+Only events after the snapshot need to be replayed.
+
+---
+
+# Why Store the Kafka Offset?
+
+Without the offset, the system cannot determine where replay should begin.
+
+The stored offset identifies exactly which events are already reflected in the snapshot.
+
+---
+
+# Active vs Inactive Leagues
+
+Fantasy leagues are user-created.
+
+Not all leagues are active simultaneously.
+
+Examples:
+
+* Office League
+* Friends League
+* Family League
+* Public League
+
+Many leagues may receive little or no traffic.
+
+Therefore, avoid assuming every league must always reside in Redis.
+
+---
+
+# Redis Cluster
+
+A single Redis instance is insufficient to store millions of active leaderboards.
+
+Deploy a Redis Cluster.
+
+```text id="jlwm6"
+                Redis Cluster
+
+      ┌────────┬────────┬────────┐
+      │ Node 1 │ Node 2 │ Node 3 │
+      ├────────┼────────┼────────┤
+      │League1 │League4 │League7 │
+      │League2 │League5 │League8 │
+      │League3 │League6 │League9 │
+      └────────┴────────┴────────┘
+```
+
+Leaderboards are distributed across nodes using the Redis key:
+
+```text id="jlwm8"
+FantasyLeague:<leagueId>
+```
+
+Redis Cluster hashes the key and routes requests to the appropriate shard.
+
+---
+
+# Cache Only Active Leaderboards
+
+Instead of storing every leaderboard in Redis:
+
+* Keep active/hot leagues in Redis.
+* Store inactive leagues durably in PostgreSQL.
+* Load inactive leaderboards into Redis on demand.
+
+Example:
+
+```text id="jlwm9"
+GET Leaderboard
+
+↓
+
+Redis Hit
+
+↓
+
+Return Immediately
+```
+
+If not found:
+
+```text id="jlwma"
+PostgreSQL
+
+↓
+
+Rebuild Leaderboard
+
+↓
+
+Store in Redis
+
+↓
+
+Return Response
+```
+
+This cache-aside approach optimizes memory usage while preserving low-latency access for active leagues.
+
+---
+
+# Key Takeaways
+
+* PostgreSQL remains the durable source of truth.
+* Scale PostgreSQL gradually: vertical scaling → connection pooling → batch updates → partitioning → sharding.
+* `leagueId` is the natural partitioning and sharding key because every fantasy team belongs to exactly one league.
+* Redis replication provides high availability for node failures.
+* Periodic leaderboard snapshots plus Kafka offsets enable fast recovery after catastrophic Redis failures.
+* Use a Redis Cluster to horizontally scale memory and throughput.
+* Keep only active leaderboards in Redis; inactive user-created leagues can be reconstructed from PostgreSQL when needed.
+
+
+# Fantasy Leaderboard Service
+
+## PostgreSQL Scaling & Redis Recovery
+
+---
+
+# Scaling PostgreSQL
+
+The Fantasy Scoring Service performs frequent updates to the `FantasyTeamScore` table.
+
+As traffic grows, PostgreSQL should be scaled incrementally before introducing distributed complexity.
+
+---
+
+## 1. Vertical Scaling
+
+Initially scale a single PostgreSQL instance by increasing:
+
+* CPU
+* Memory
+* Faster NVMe SSDs
+
+This is the simplest scaling strategy and should always be considered before sharding.
+
+---
+
+## 2. Connection Pooling
+
+Do not allow thousands of workers to create thousands of database connections.
+
+Use a connection pool such as **HikariCP** (Spring Boot's default connection pool).
+
+```text id="s8y8kc"
+Fantasy Score Workers
+          │
+          ▼
+       HikariCP
+          │
+          ▼
+     PostgreSQL
+```
+
+Benefits:
+
+* Reuses existing database connections.
+* Reduces connection establishment overhead.
+* Prevents exhausting PostgreSQL's maximum connection limit.
+
+---
+
+## 3. Batch Updates
+
+Instead of executing one SQL update per fantasy team, process updates in batches.
+
+Example:
+
+Instead of:
+
+```sql id="3pgkh5"
+UPDATE Team1;
+UPDATE Team2;
+...
+UPDATE Team500;
+```
+
+Execute batched updates within a transaction.
+
+Benefits:
+
+* Fewer network round trips.
+* Lower transaction overhead.
+* Better write throughput.
+
+---
+
+## 4. Table Partitioning
+
+Partition large tables such as:
+
+```text id="3ecyr0"
+FantasyTeamScore
+```
+
+by:
+
+```text id="laj0dk"
+leagueId
+```
+
+Benefits:
+
+* Smaller indexes.
+* Faster index lookups.
+* Faster maintenance operations.
+* Improved write performance.
+
+This is **table partitioning inside PostgreSQL**, not distributed sharding.
+
+---
+
+## 5. Database Sharding
+
+When a single PostgreSQL instance becomes insufficient, shard by:
+
+```text id="zpmw1x"
+leagueId
+```
+
+Example:
+
+```text id="2jizqh"
+leagueId % N
+```
+
+Each PostgreSQL instance stores a subset of fantasy leagues.
+
+Advantages:
+
+* Even distribution of write load.
+* No cross-shard score updates because each fantasy team belongs to one league.
+* Natural shard key aligned with the domain model.
+
+---
+
+## 6. Archive Old Leagues
+
+Completed seasons and inactive fantasy leagues no longer receive writes.
+
+Move them to colder storage to reduce the size of the active database.
+
+Examples:
+
+* Cold PostgreSQL instance
+* Object storage
+* Data warehouse
+
+---
+
+# Scaling Strategy
+
+```text id="f7cbzs"
+Vertical Scaling
+        ↓
+Connection Pooling
+        ↓
+Batch Updates
+        ↓
+Table Partitioning
+        ↓
+Database Sharding
+```
+
+This progression introduces distributed complexity only when necessary.
+
+---
+
+# Redis Recovery
+
+Redis maintains the in-memory leaderboard rankings.
+
+If Redis is lost, the system must rebuild the leaderboard.
+
+---
+
+## High Availability
+
+Deploy Redis using primary-replica replication.
+
+```text id="cvljlwm"
+Redis Primary
+        │
+        ▼
+Redis Replica
+```
+
+If the primary fails, promote a replica with minimal interruption.
+
+---
+
+## Catastrophic Failure
+
+If the entire Redis cluster is lost:
+
+Periodically persist leaderboard snapshots.
+
+Each snapshot stores:
+
+* `leagueId`
+* Leaderboard state
+* Corresponding Kafka offset
+
+Example:
+
+```text id="5cmfrs"
+League 123
+
+John 103
+
+Mike 98
+
+Sarah 95
+
+Kafka Offset = 9,582,341
+```
+
+---
+
+## Recovery Process
+
+### Step 1
+
+Restore the latest leaderboard snapshot into Redis.
+
+### Step 2
+
+Resume Kafka consumption from the stored offset.
+
+```text id="mjlwm5"
+Snapshot Offset
+
+↓
+
+Replay Remaining Events
+
+↓
+
+Latest State
+```
+
+Only events after the snapshot need to be replayed.
+
+---
+
+# Why Store the Kafka Offset?
+
+Without the offset, the system cannot determine where replay should begin.
+
+The stored offset identifies exactly which events are already reflected in the snapshot.
+
+---
+
+# Active vs Inactive Leagues
+
+Fantasy leagues are user-created.
+
+Not all leagues are active simultaneously.
+
+Examples:
+
+* Office League
+* Friends League
+* Family League
+* Public League
+
+Many leagues may receive little or no traffic.
+
+Therefore, avoid assuming every league must always reside in Redis.
+
+---
+
+# Redis Cluster
+
+A single Redis instance is insufficient to store millions of active leaderboards.
+
+Deploy a Redis Cluster.
+
+```text id="jlwm6"
+                Redis Cluster
+
+      ┌────────┬────────┬────────┐
+      │ Node 1 │ Node 2 │ Node 3 │
+      ├────────┼────────┼────────┤
+      │League1 │League4 │League7 │
+      │League2 │League5 │League8 │
+      │League3 │League6 │League9 │
+      └────────┴────────┴────────┘
+```
+
+Leaderboards are distributed across nodes using the Redis key:
+
+```text id="jlwm8"
+FantasyLeague:<leagueId>
+```
+
+Redis Cluster hashes the key and routes requests to the appropriate shard.
+
+---
+
+# Cache Only Active Leaderboards
+
+Instead of storing every leaderboard in Redis:
+
+* Keep active/hot leagues in Redis.
+* Store inactive leagues durably in PostgreSQL.
+* Load inactive leaderboards into Redis on demand.
+
+Example:
+
+```text id="jlwm9"
+GET Leaderboard
+
+↓
+
+Redis Hit
+
+↓
+
+Return Immediately
+```
+
+If not found:
+
+```text id="jlwma"
+PostgreSQL
+
+↓
+
+Rebuild Leaderboard
+
+↓
+
+Store in Redis
+
+↓
+
+Return Response
+```
+
+This cache-aside approach optimizes memory usage while preserving low-latency access for active leagues.
+
+---
+
+# Key Takeaways
+
+* PostgreSQL remains the durable source of truth.
+* Scale PostgreSQL gradually: vertical scaling → connection pooling → batch updates → partitioning → sharding.
+* `leagueId` is the natural partitioning and sharding key because every fantasy team belongs to exactly one league.
+* Redis replication provides high availability for node failures.
+* Periodic leaderboard snapshots plus Kafka offsets enable fast recovery after catastrophic Redis failures.
+* Use a Redis Cluster to horizontally scale memory and throughput.
+* Keep only active leaderboards in Redis; inactive user-created leagues can be reconstructed from PostgreSQL when needed.
+
+
+
+**Why Apache Flink instead of plain Kafka consumers?**
+
+Kafka consumers are well suited for simple stateless event processing. However, once we need **stateful stream processing**—such as computing rolling 5-minute averages, ball possession, distance covered, heat maps, or other live match statistics—we need much more than simply consuming events.
+
+Without a stream processing framework, we would have to implement:
+
+* Window management
+* Stateful storage
+* Timer-based window eviction
+* Handling out-of-order and late-arriving events
+* Checkpointing
+* Failure recovery
+* Stateful scaling across multiple instances
+* Exactly-once processing
+
+Implementing these capabilities ourselves significantly increases the complexity of the application.
+
+Apache Flink provides these capabilities out of the box. It manages state, event-time windows, watermarks, checkpointing, recovery, and parallel execution, allowing developers to focus on implementing the business logic rather than building the underlying stream-processing infrastructure.
+
+
+**Why Apache Flink instead of plain Kafka consumers?**
+
+Kafka consumers are well suited for simple stateless event processing. However, once we need **stateful stream processing**—such as computing rolling 5-minute averages, ball possession, distance covered, heat maps, or other live match statistics—we need much more than simply consuming events.
+
+Without a stream processing framework, we would have to implement:
+
+* Window management
+* Stateful storage
+* Timer-based window eviction
+* Handling out-of-order and late-arriving events
+* Checkpointing
+* Failure recovery
+* Stateful scaling across multiple instances
+* Exactly-once processing
+
+
+# Apache Flink - High-Level Interview Notes
+
+## Why Apache Flink?
+
+Kafka consumers are sufficient for **stateless** event processing.
+
+However, once we need **stateful stream processing**, such as:
+
+* Rolling 5-minute averages
+* Distance covered
+* Ball possession
+* Heat maps
+* Live player statistics
+
+Kafka consumers become difficult to manage because we would have to implement:
+
+* Window management
+* Stateful storage
+* Timer-based window eviction
+* Handling out-of-order events
+* Checkpointing
+* Failure recovery
+* Stateful scaling
+* Exactly-once processing
+
+Apache Flink provides these capabilities out of the box, allowing developers to focus on the business logic instead of building stream-processing infrastructure.
+
+---
+
+# Stateful Stream Processing
+
+A computation is **stateful** when processing the current event requires information from previously processed events.
+
+Examples:
+
+* Average speed over the last 5 minutes
+* Distance covered
+* Ball possession
+* Heat maps
+
+Example:
+
+```text
+Current Event
++
+Previous Events
+↓
+New Result
+```
+
+Without remembering previous events, these calculations are impossible.
+
+---
+
+# High-Level Flink Architecture
+
+```text
+Sports Provider
+        │
+        ▼
+Telemetry Ingestion Service
+        │
+        ▼
+Kafka
+(match-telemetry-events)
+        │
+        ▼
+Apache Flink
+        │
+        ▼
+Live Match Statistics
+        │
+        ▼
+Leaderboard / Analytics / AI / Replay
+```
+
+Flink continuously consumes telemetry events from Kafka and computes live statistics.
+
+---
+
+# Event Time vs Processing Time
+
+Every telemetry event contains two important timestamps.
+
+## Event Time
+
+The time when the event actually occurred on the field.
+
+Example:
+
+```text
+Player scores at 12:05:10
+```
+
+The sports provider assigns this timestamp before sending the event.
+
+Example:
+
+```json
+{
+  "eventTimestamp": "12:05:10"
+}
+```
+
+Event Time is used for all business calculations because it accurately represents when the event happened.
+
+---
+
+## Processing Time
+
+The time when Flink receives the event.
+
+Example:
+
+```text
+Event occurs      : 12:05:10
+Received by Flink : 12:05:12
+```
+
+Processing time can vary because of:
+
+* Network latency
+* Congestion
+* Retries
+* Temporary outages
+
+Therefore, processing time should not be used for sports statistics.
+
+---
+
+# Watermarks
+
+Since events may arrive late or out of order, Flink cannot immediately close an event-time window.
+
+A **watermark** represents Flink's estimate that it has received almost all events up to a particular event timestamp.
+
+Example:
+
+Window:
+
+```text
+12:00:00 → 12:05:00
+```
+
+Allowed lateness:
+
+```text
+5 seconds
+```
+
+Flink waits until approximately:
+
+```text
+12:05:05
+```
+
+before finalizing the window.
+
+Events arriving before the watermark advances are still included.
+
+Events arriving after the window has been finalized are considered late.
+
+---
+
+## Who decides the watermark?
+
+The application developer configures a **watermark strategy**, for example:
+
+* Maximum expected out-of-order delay = 5 seconds.
+
+Flink then automatically generates moving watermarks using the event timestamps from the incoming stream.
+
+Important distinction:
+
+* **Allowed lateness** is a configuration.
+* **Watermark** is a continuously advancing timestamp generated by Flink.
+
+---
+
+# Checkpointing
+
+State is typically maintained in memory while Flink processes the stream.
+
+If a TaskManager crashes, all in-memory state would normally be lost.
+
+Checkpointing solves this problem.
+
+At configurable intervals, Flink asynchronously creates snapshots of:
+
+* Operator state
+* Window state
+* Aggregation state
+* Kafka offsets
+
+These snapshots are stored in durable storage such as:
+
+* Amazon S3
+* HDFS
+* Cloud object storage
+
+If a failure occurs:
+
+1. Flink restores the latest checkpoint.
+2. Restores the saved operator state.
+3. Resumes consuming Kafka from the saved offsets.
+4. Continues processing without rebuilding all state from scratch.
+
+---
+
+# Why Event Time Matters
+
+Example:
+
+```text
+12:05:10  Player scores
+12:05:12  Event reaches Flink
+```
+
+Although Flink receives the event two seconds later, it still processes it as an event that occurred at **12:05:10**, ensuring accurate statistics.
+
+---
+
+# Key Interview Takeaways
+
+## Why Flink?
+
+Use Flink whenever the application requires **stateful stream processing**, including rolling windows, continuous aggregations, event-time processing, and fault-tolerant state management.
+
+---
+
+## What is Stateful Processing?
+
+The computation depends on both the current event and previously processed events.
+
+---
+
+## Why Event Time?
+
+Business calculations should be based on when an event actually occurred, not when it was received over the network.
+
+---
+
+## What is a Watermark?
+
+A watermark is Flink's indication that it has likely received all events up to a specific event timestamp, allowing event-time windows to be safely closed while still tolerating a configurable amount of late-arriving data.
+
+---
+
+## What is Checkpointing?
+
+Checkpointing periodically snapshots operator state and Kafka offsets to durable storage so Flink can recover from failures without losing stateful computations.
+
+
+Implementing these capabilities ourselves significantly increases the complexity of the application.
+
+Apache Flink provides these capabilities out of the box. It manages state, event-time windows, watermarks, checkpointing, recovery, and parallel execution, allowing developers to focus on implementing the business logic rather than building the underlying stream-processing infrastructure.
+
+
+# Sports Telemetry Ingestion Pipeline
+
+## Problem Statement
+
+Design a highly scalable telemetry ingestion platform capable of ingesting real-time sports telemetry from multiple sports (NBA, NFL, MLB, MLS, Formula 1) and making it available to downstream analytics systems.
+
+---
+
+# Functional Requirements
+
+1. Ingest real-time telemetry events from external sports providers.
+2. Support multiple sports with a generic ingestion pipeline.
+3. Validate and normalize incoming telemetry into a canonical event format.
+4. Publish telemetry for downstream consumers.
+5. Persist telemetry for historical analysis, replay, and machine learning.
+
+---
+
+# Non-Functional Requirements
+
+* Support approximately **500,000 telemetry events/second**.
+* Support approximately **2,000 concurrent live games**.
+* P99 ingestion latency **< 100 ms**.
+* Horizontally scalable.
+* Highly available.
+* Durable (no event loss).
+* Preserve ordering where required.
+* Support replay after failures.
+
+---
+
+# Capacity Estimation
+
+Assumptions:
+
+* 500,000 telemetry events/sec
+* Approximately 1 KB per event
+
+Approximate throughput:
+
+* **500 MB/sec**
+* **~43 TB/day**
+
+This immediately rules out using a traditional OLTP database such as PostgreSQL for raw telemetry storage.
+
+---
+
+# Telemetry Ingestion API
+
+```http
+POST /v1/matches/{matchId}/events
+```
+
+Example payload:
+
+```json
+{
+  "eventId": "evt-12345",
+  "providerId": "stats-perform",
+  "matchId": "match-1001",
+  "sportId": "NBA",
+  "playerId": "player-30",
+  "teamId": "team-12",
+  "eventTimestamp": 1754523012345,
+  "eventType": "PLAYER_POSITION",
+  "payload": {
+    "x": 52.34,
+    "y": 18.92,
+    "speed": 7.4,
+    "heartRate": 152
+  }
+}
+```
+
+---
+
+# Why expose a REST endpoint?
+
+Instead of allowing providers to publish directly to Kafka, the ingestion endpoint provides a controlled entry point for the platform.
+
+Responsibilities include:
+
+* Authenticate and authorize providers.
+* Rate limit incoming requests.
+* Validate payloads.
+* Perform request deduplication.
+* Transform provider-specific payloads into a canonical event model.
+* Publish validated events to Kafka.
+
+This keeps downstream systems provider-agnostic.
+
+---
+
+# High-Level Architecture
+
+```text
+Sports Provider
+        │
+        ▼
+Load Balancer
+        │
+        ▼
+Telemetry Ingestion Service
+        │
+        ▼
+Kafka
+(match-telemetry-events)
+        │
+        ├───────────────┐
+        ▼               ▼
+Telemetry         Live Match
+Persistence       Statistics (Flink)
+Service
+        │
+        ▼
+Cassandra
+```
+
+---
+
+# Why Kafka?
+
+Kafka satisfies all major requirements:
+
+* High throughput
+* Low latency (well within the 100 ms SLA)
+* Durable event storage
+* Replay capability
+* Multiple independent consumers
+* Horizontal scalability
+
+Kafka becomes the central event bus for the telemetry platform.
+
+---
+
+# Why Cassandra?
+
+Raw telemetry is an append-heavy workload.
+
+Cassandra is a good fit because it offers:
+
+* Extremely high write throughput
+* Horizontal scalability
+* High availability
+* Efficient storage of large volumes of time-series data
+
+The Telemetry Persistence Service asynchronously consumes telemetry events from Kafka and stores them in Cassandra.
+
+---
+
+# Kafka Partitioning
+
+The initial recommendation is to partition by:
+
+```text
+matchId
+```
+
+Benefits:
+
+* Preserves ordering within a match.
+* All telemetry for a game is processed together.
+* Simplifies downstream processing.
+
+Potential challenge:
+
+Large events (for example, an NBA Finals game) can create a **hot partition**.
+
+Possible future optimization:
+
+Use a composite partition key such as:
+
+```text
+matchId + entityId
+```
+
+to distribute the load while preserving ordering for each tracked entity.
+
+---
+
+# Why Kafka Consumers Are Not Enough
+
+Simple Kafka consumers work well for stateless event processing.
+
+However, many sports analytics require **stateful stream processing**, such as:
+
+* Rolling 5-minute average speed
+* Distance covered
+* Ball possession
+* Heat maps
+* Sprint detection
+* Live player statistics
+
+Without a stream processing framework, developers would need to implement:
+
+* Stateful storage
+* Window management
+* Timer-based eviction
+* Handling out-of-order events
+* Checkpointing
+* Failure recovery
+* Stateful scaling
+* Exactly-once processing
+
+---
+
+# Why Apache Flink?
+
+Apache Flink provides these capabilities out of the box.
+
+Instead of building stream-processing infrastructure yourself, Flink offers:
+
+* Stateful stream processing
+* Event-time windows
+* Watermarks
+* Automatic state management
+* Checkpointing
+* Failure recovery
+* Parallel execution
+* Exactly-once processing
+
+This allows developers to focus on business logic rather than stream-processing infrastructure.
+
+---
+
+# High-Level Flink Architecture
+
+```text
+Sports Provider
+        │
+        ▼
+Telemetry Ingestion Service
+        │
+        ▼
+Kafka
+(match-telemetry-events)
+        │
+        ▼
+Apache Flink
+        │
+        ▼
+Live Match Statistics
+        │
+        ▼
+Leaderboard / Analytics / AI / Replay
+```
+
+---
+
+# Interview Summary
+
+**When would I introduce Apache Flink?**
+
+Once the system needs **stateful stream processing**, such as rolling-window analytics or continuous aggregations, Kafka consumers alone become insufficient because they require custom implementations for state management, windows, checkpointing, recovery, and out-of-order event handling.
+
+Apache Flink provides these capabilities natively, enabling scalable, fault-tolerant, real-time stream processing while allowing developers to focus on the business logic.
+
+	
+# Apache Flink - High-Level Interview Notes
+
+## Why Apache Flink?
+
+Kafka consumers are sufficient for **stateless** event processing.
+
+However, once we need **stateful stream processing**, such as:
+
+* Rolling 5-minute averages
+* Distance covered
+* Ball possession
+* Heat maps
+* Live player statistics
+
+Kafka consumers become difficult to manage because we would have to implement:
+
+* Window management
+* Stateful storage
+* Timer-based window eviction
+* Handling out-of-order events
+* Checkpointing
+* Failure recovery
+* Stateful scaling
+* Exactly-once processing
+
+Apache Flink provides these capabilities out of the box, allowing developers to focus on the business logic instead of building stream-processing infrastructure.
+
+---
+
+# Stateful Stream Processing
+
+A computation is **stateful** when processing the current event requires information from previously processed events.
+
+Examples:
+
+* Average speed over the last 5 minutes
+* Distance covered
+* Ball possession
+* Heat maps
+
+Example:
+
+```text
+Current Event
++
+Previous Events
+↓
+New Result
+```
+
+Without remembering previous events, these calculations are impossible.
+
+---
+
+# High-Level Flink Architecture
+
+```text
+Sports Provider
+        │
+        ▼
+Telemetry Ingestion Service
+        │
+        ▼
+Kafka
+(match-telemetry-events)
+        │
+        ▼
+Apache Flink
+        │
+        ▼
+Live Match Statistics
+        │
+        ▼
+Leaderboard / Analytics / AI / Replay
+```
+
+Flink continuously consumes telemetry events from Kafka and computes live statistics.
+
+---
+
+# Event Time vs Processing Time
+
+Every telemetry event contains two important timestamps.
+
+## Event Time
+
+The time when the event actually occurred on the field.
+
+Example:
+
+```text
+Player scores at 12:05:10
+```
+
+The sports provider assigns this timestamp before sending the event.
+
+Example:
+
+```json
+{
+  "eventTimestamp": "12:05:10"
+}
+```
+
+Event Time is used for all business calculations because it accurately represents when the event happened.
+
+---
+
+## Processing Time
+
+The time when Flink receives the event.
+
+Example:
+
+```text
+Event occurs      : 12:05:10
+Received by Flink : 12:05:12
+```
+
+Processing time can vary because of:
+
+* Network latency
+* Congestion
+* Retries
+* Temporary outages
+
+Therefore, processing time should not be used for sports statistics.
+
+---
+
+# Watermarks
+
+Since events may arrive late or out of order, Flink cannot immediately close an event-time window.
+
+A **watermark** represents Flink's estimate that it has received almost all events up to a particular event timestamp.
+
+Example:
+
+Window:
+
+```text
+12:00:00 → 12:05:00
+```
+
+Allowed lateness:
+
+```text
+5 seconds
+```
+
+Flink waits until approximately:
+
+```text
+12:05:05
+```
+
+before finalizing the window.
+
+Events arriving before the watermark advances are still included.
+
+Events arriving after the window has been finalized are considered late.
+
+---
+
+## Who decides the watermark?
+
+The application developer configures a **watermark strategy**, for example:
+
+* Maximum expected out-of-order delay = 5 seconds.
+
+Flink then automatically generates moving watermarks using the event timestamps from the incoming stream.
+
+Important distinction:
+
+* **Allowed lateness** is a configuration.
+* **Watermark** is a continuously advancing timestamp generated by Flink.
+
+---
+
+# Checkpointing
+
+State is typically maintained in memory while Flink processes the stream.
+
+If a TaskManager crashes, all in-memory state would normally be lost.
+
+Checkpointing solves this problem.
+
+At configurable intervals, Flink asynchronously creates snapshots of:
+
+* Operator state
+* Window state
+* Aggregation state
+* Kafka offsets
+
+These snapshots are stored in durable storage such as:
+
+* Amazon S3
+* HDFS
+* Cloud object storage
+
+If a failure occurs:
+
+1. Flink restores the latest checkpoint.
+2. Restores the saved operator state.
+3. Resumes consuming Kafka from the saved offsets.
+4. Continues processing without rebuilding all state from scratch.
+
+---
+
+# Why Event Time Matters
+
+Example:
+
+```text
+12:05:10  Player scores
+12:05:12  Event reaches Flink
+```
+
+Although Flink receives the event two seconds later, it still processes it as an event that occurred at **12:05:10**, ensuring accurate statistics.
+
+---
+
+# Key Interview Takeaways
+
+## Why Flink?
+
+Use Flink whenever the application requires **stateful stream processing**, including rolling windows, continuous aggregations, event-time processing, and fault-tolerant state management.
+
+---
+
+## What is Stateful Processing?
+
+The computation depends on both the current event and previously processed events.
+
+---
+
+## Why Event Time?
+
+Business calculations should be based on when an event actually occurred, not when it was received over the network.
+
+---
+
+## What is a Watermark?
+
+A watermark is Flink's indication that it has likely received all events up to a specific event timestamp, allowing event-time windows to be safely closed while still tolerating a configurable amount of late-arriving data.
+
+---
+
+## What is Checkpointing?
+
+Checkpointing periodically snapshots operator state and Kafka offsets to durable storage so Flink can recover from failures without losing stateful computations.
+
+## Kafka Consumer vs Apache Flink
+
+A Kafka consumer is sufficient for **simple event processing** and **simple keyed aggregations**, such as updating points, rebounds, assists, or team scores as events arrive. These computations maintain simple state (for example, incrementing a counter) and can be implemented with a Kafka consumer updating Redis or a database.
+
+However, when we need **advanced stateful stream processing**, such as:
+
+* Rolling 5-minute averages
+* Sliding or tumbling window aggregations
+* Ball possession over time
+* Distance covered
+* Heat maps
+* Event-time processing
+* Out-of-order event handling
+
+the complexity increases significantly. We now need capabilities such as:
+
+* Window management
+* Event-time processing
+* Watermarks for late-arriving events
+* Time-based state eviction
+* Checkpointing
+* Failure recovery
+* Exactly-once processing
+* Scalable state management
+
+Apache Flink provides these capabilities out of the box, allowing us to focus on implementing the business logic rather than building and maintaining the stream-processing infrastructure ourselves.
+
+**Interview Summary**
+
+> A Kafka consumer is ideal for simple event processing and straightforward keyed aggregations. When the application requires advanced stateful stream processing with event-time windows, rolling aggregations, out-of-order event handling, and fault-tolerant state management, Apache Flink is the appropriate choice.
+
+# Live Match Statistics Service
+
+## Problem Statement
+
+Design a service that computes and serves **live sports statistics** from telemetry events in real time.
+
+The service should support multiple sports (NBA, NFL, MLB, MLS, etc.) and provide low-latency APIs for applications such as Apple Sports.
+
+---
+
+# Clarifying Questions
+
+### 1. Is this for one sport or multiple sports?
+
+Assume **multiple sports**.
+
+The ingestion and streaming pipeline remains generic, while the business logic for computing statistics is sport-specific.
+
+Examples:
+
+* NBA Rules Engine
+* NFL Rules Engine
+* Soccer Rules Engine
+
+---
+
+### 2. What statistics are we computing?
+
+#### Player Statistics
+
+* Points
+* Rebounds
+* Assists
+* Distance Covered
+* Average Speed (Rolling 5 Minutes)
+* Sprint Count
+* Minutes Played
+
+#### Team Statistics
+
+* Team Score
+* Ball Possession %
+* Field Goal %
+* Fouls
+* Turnovers
+
+#### Match Statistics
+
+* Quarter Score
+* Match Score
+* Time Remaining
+* Timeouts
+* Heat Maps
+
+---
+
+# Functional Requirements
+
+1. Consume telemetry events from Kafka.
+2. Compute player, team, and match statistics in real time.
+3. Continuously update live statistics.
+4. Expose APIs to retrieve statistics.
+5. Persist finalized statistics after the match ends.
+
+---
+
+# Non-Functional Requirements
+
+* Statistics visible within approximately **1 second**.
+* Support approximately **500K telemetry events/sec**.
+* Support approximately **2 million concurrent viewers**.
+* Highly available.
+* Horizontally scalable.
+* Fault tolerant.
+* Event-time processing.
+* Replay capability.
+
+---
+
+# Kafka Consumer vs Apache Flink
+
+A Kafka consumer is sufficient for **simple event processing** and **simple keyed aggregations**, such as:
+
+* Points
+* Rebounds
+* Assists
+* Team Score
+
+These computations maintain simple state (for example, incrementing a counter) and can be implemented using a Kafka consumer updating Redis.
+
+However, when the application requires **advanced stateful stream processing**, such as:
+
+* Rolling averages
+* Sliding/Tumbling windows
+* Distance covered
+* Ball possession
+* Heat maps
+* Event-time processing
+* Out-of-order event handling
+
+the complexity increases significantly.
+
+These workloads require:
+
+* Window management
+* Event-time processing
+* Watermarks
+* Time-based state eviction
+* Checkpointing
+* Failure recovery
+* Exactly-once processing
+* Scalable state management
+
+Apache Flink provides these capabilities out of the box, allowing developers to focus on the business logic instead of building stream-processing infrastructure.
+
+---
+
+# REST APIs
+
+## Match Statistics
+
+```http
+GET /v1/matches/{matchId}/statistics
+```
+
+Returns:
+
+* Match score
+* Quarter
+* Time remaining
+* Team statistics
+
+---
+
+## Player Statistics
+
+```http
+GET /v1/matches/{matchId}/players/{playerId}/statistics
+```
+
+Returns:
+
+* Points
+* Rebounds
+* Assists
+* Distance covered
+* Average speed
+* Minutes played
+
+---
+
+## Team Statistics
+
+```http
+GET /v1/matches/{matchId}/teams/{teamId}/statistics
+```
+
+Returns:
+
+* Score
+* Ball possession
+* Field goal percentage
+* Fouls
+* Turnovers
+
+---
+
+## Why only GET APIs?
+
+This is a read-only service.
+
+Clients never update statistics directly.
+
+Statistics are continuously computed by Flink consuming telemetry events from Kafka.
+
+---
+
+# Data Model
+
+## MatchStatistics
+
+```text
+matchId (PK)
+
+homeTeamId
+awayTeamId
+
+homeScore
+awayScore
+
+currentQuarter
+
+timeRemaining
+
+status (LIVE / FINISHED)
+
+lastUpdated
+```
+
+---
+
+## PlayerStatistics
+
+```text
+(matchId, playerId)
+
+points
+rebounds
+assists
+
+distanceCovered
+
+avgSpeedLast5Min
+
+minutesPlayed
+
+lastUpdated
+```
+
+---
+
+## TeamStatistics
+
+```text
+(matchId, teamId)
+
+score
+
+ballPossession
+
+fieldGoalPercentage
+
+turnovers
+
+timeoutsRemaining
+
+lastUpdated
+```
+
+---
+
+# High-Level Architecture
+
+```text
+Sports Provider
+        │
+        ▼
+Telemetry Ingestion Service
+        │
+        ▼
+Kafka
+(match-telemetry-events)
+        │
+        ▼
+Apache Flink
+        │
+        ├──────────────┐
+        ▼              ▼
+Redis        PostgreSQL (Final Statistics)
+        │
+        ▼
+Statistics API
+        │
+        ▼
+Apple Sports App
+```
+
+---
+
+# Component Responsibilities
+
+## Telemetry Ingestion Service
+
+* Authenticate providers
+* Validate requests
+* Deduplicate events
+* Convert to canonical event format
+* Publish to Kafka
+* Return HTTP 202
+
+---
+
+## Kafka
+
+Acts as the central event bus.
+
+Benefits:
+
+* High throughput
+* Durable storage
+* Replay capability
+* Decouples ingestion from computation
+* Multiple downstream consumers
+
+---
+
+## Apache Flink
+
+Consumes telemetry events and computes live statistics.
+
+Examples:
+
+### Simple Keyed Aggregations
+
+* Points
+* Rebounds
+* Assists
+* Team Score
+
+### Advanced Stateful Stream Processing
+
+* Rolling average speed
+* Distance covered
+* Ball possession
+* Heat maps
+* Sprint detection
+
+Flink also provides:
+
+* Event-time processing
+* Window management
+* Watermarks
+* Checkpointing
+* Failure recovery
+
+---
+
+## Redis
+
+Stores the latest live statistics.
+
+Benefits:
+
+* Sub-millisecond reads
+* Extremely high throughput
+* Ideal for millions of concurrent users refreshing live scores
+
+The Statistics API simply reads from Redis.
+
+---
+
+## PostgreSQL
+
+Stores finalized statistics once a match is complete.
+
+Example workflow:
+
+```text
+MATCH_ENDED Event
+
+↓
+
+Persist Final Match Statistics
+
+↓
+
+PostgreSQL
+```
+
+Why PostgreSQL?
+
+* Data volume is relatively small (millions of rows, not billions).
+* ACID guarantees.
+* Easy historical queries.
+* Career statistics.
+* Reporting and analytics.
+
+Redis stores temporary live data, while PostgreSQL becomes the permanent system of record after the match concludes.
+
+---
+
+# Interview Summary
+
+* Use Kafka as the event bus.
+* Use Apache Flink for the statistics computation pipeline.
+* Use Redis as the low-latency serving layer for live statistics.
+* Use PostgreSQL to persist finalized statistics after the match ends.
+* Expose read-only REST APIs that serve data directly from Redis.
+* Separate the concerns of ingestion, computation, serving, and historical storage to achieve scalability and maintainability.
+
+
+# Live Match Statistics Service - Architecture & Scaling
+
+## High-Level Architecture
+
+```text
+                 Sports Provider
+                        │
+                        ▼
+           Telemetry Ingestion Service
+                        │
+                        ▼
+                     Kafka
+        (match-telemetry-events Topic)
+                        │
+                        ▼
+                  Apache Flink
+          (Source → Operators → Sink)
+              │                    │
+              │                    ▼
+              │               Redis Sink
+              │                    │
+              ▼                    ▼
+      Checkpoints (S3)         Redis Cluster
+              │                    │
+              │                    ▼
+              │             Statistics API
+              │                    │
+              ▼                    ▼
+        Failure Recovery      Apple Sports App
+
+                After MATCH_ENDED
+                       │
+                       ▼
+          Persist Final Statistics
+                       │
+                       ▼
+                  PostgreSQL
+```
+
+---
+
+# Component Responsibilities
+
+## Telemetry Ingestion Service
+
+Responsibilities:
+
+* Authenticate providers
+* Validate requests
+* Deduplicate events
+* Convert provider payload into a canonical format
+* Publish telemetry events to Kafka
+* Return HTTP 202 Accepted
+
+The service is stateless and can be horizontally scaled behind a load balancer.
+
+---
+
+## Kafka
+
+Kafka acts as the central event bus.
+
+Benefits:
+
+* High throughput
+* Durable event log
+* Replay capability
+* Decouples ingestion from downstream consumers
+* Supports multiple consumers
+
+Partitioning Strategy:
+
+```
+Partition Key = matchId
+```
+
+This preserves ordering for events belonging to the same match while enabling parallel processing across matches.
+
+---
+
+## Apache Flink
+
+Consumes telemetry events from Kafka and computes live statistics.
+
+Examples of simple keyed aggregations:
+
+* Points
+* Rebounds
+* Assists
+* Team score
+
+Examples of advanced stateful stream processing:
+
+* Rolling average speed
+* Distance covered
+* Ball possession
+* Heat maps
+* Sprint detection
+
+Flink provides:
+
+* Event-time processing
+* Window management
+* Watermarks
+* Checkpointing
+* Failure recovery
+* Exactly-once processing
+
+---
+
+# Flink Sink
+
+Every Flink pipeline consists of:
+
+```
+Source
+    ↓
+Operators
+    ↓
+Sink
+```
+
+For this system:
+
+```
+Kafka Source
+      ↓
+Flink Operators
+      ↓
+Redis Sink
+```
+
+Redis is the serving layer for the application and therefore acts as the primary sink for live statistics.
+
+---
+
+# Redis
+
+Redis stores the latest computed statistics.
+
+Benefits:
+
+* Sub-millisecond reads
+* Extremely high throughput
+* Ideal for millions of concurrent users refreshing live scores
+
+The Statistics API simply reads the latest values from Redis.
+
+Redis is **not** the system of record.
+
+---
+
+# PostgreSQL
+
+PostgreSQL stores finalized statistics after the match ends.
+
+Example workflow:
+
+```
+MATCH_ENDED Event
+        ↓
+Persist Final Statistics
+        ↓
+PostgreSQL
+```
+
+Reasons:
+
+* Historical match statistics
+* Career statistics
+* Reporting
+* Analytics
+* Permanent storage
+
+Live updates remain in Redis during the match.
+
+---
+
+# Flink Checkpointing
+
+Checkpointing is Flink's fault-tolerance mechanism.
+
+At configurable intervals, Flink snapshots:
+
+* Operator state
+* Window state
+* Aggregation state
+* Kafka offsets
+
+These checkpoints are stored in durable object storage such as:
+
+* Amazon S3
+* HDFS
+* Azure Blob Storage
+
+Checkpoints are **not** stored in Redis or PostgreSQL.
+
+Purpose:
+
+If a TaskManager fails:
+
+1. Restore the latest checkpoint.
+2. Restore operator state.
+3. Resume consuming Kafka from the saved offsets.
+4. Continue processing without rebuilding all state.
+
+---
+
+# Separation of Responsibilities
+
+| Component        | Responsibility                               |
+| ---------------- | -------------------------------------------- |
+| Kafka            | Durable event log and replay                 |
+| Apache Flink     | Stream processing and statistics computation |
+| Redis            | Serve low-latency live statistics            |
+| PostgreSQL       | Store finalized historical statistics        |
+| Amazon S3 / HDFS | Store Flink checkpoints for recovery         |
+
+---
+
+# Scaling Strategy
+
+## Telemetry Ingestion Service
+
+Stateless.
+
+Scale horizontally behind a load balancer.
+
+---
+
+## Kafka
+
+Scale by:
+
+* Adding brokers
+* Increasing partitions
+
+Partition by:
+
+```
+matchId
+```
+
+---
+
+## Apache Flink
+
+Scale by:
+
+* Increasing parallelism
+* Adding TaskManagers
+
+Flink automatically distributes processing across the cluster.
+
+---
+
+## Redis
+
+A single Redis node is insufficient for millions of concurrent viewers.
+
+Use:
+
+```
+Redis Cluster
+```
+
+Shard by:
+
+```
+matchId
+```
+
+Each live match resides on a different Redis shard.
+
+---
+
+## Statistics API
+
+Stateless.
+
+Scale horizontally behind a load balancer.
+
+---
+
+# Hot Match Scenario
+
+Example:
+
+NBA Finals receives 5 million concurrent viewers.
+
+Potential issue:
+
+One Redis key becomes extremely hot.
+
+Possible optimizations:
+
+* Redis read replicas
+* Small API-side cache (for example, 100–250 ms TTL)
+* Horizontal API scaling
+
+A CDN is generally not useful because statistics change continuously during a live match.
+
+---
+
+# Interview Summary
+
+* Kafka provides durable, scalable event ingestion.
+* Apache Flink computes both simple keyed aggregations and advanced event-time analytics.
+* Redis acts as the Flink sink and serves live statistics with sub-millisecond latency.
+* PostgreSQL stores finalized historical statistics after the match ends.
+* Flink checkpoints state and Kafka offsets to Amazon S3 (or HDFS) for fault recovery.
+* Every layer can scale independently, enabling support for hundreds of thousands of telemetry events per second and millions of concurrent readers.
+
+# Live Match Statistics Service - Sport-Specific Business Logic
+
+## Supporting Multiple Sports
+
+The streaming infrastructure should remain **generic**, while the business rules should be **sport-specific**.
+
+The same pipeline can support:
+
+* NBA
+* NFL
+* Soccer
+* MLB
+
+without changing Kafka, Flink, Redis, or the APIs.
+
+Only the business logic changes.
+
+---
+
+# High-Level Architecture
+
+```text
+                    Kafka
+                      │
+                      ▼
+                 Apache Flink
+                      │
+             Statistics Operator
+                      │
+          StatisticsProcessorFactory
+                      │
+      ┌───────────────┼───────────────┐
+      ▼               ▼               ▼
+ NBAStatistics   SoccerStatistics   NFLStatistics
+   Processor        Processor         Processor
+      │               │               │
+      └───────────────┼───────────────┘
+                      ▼
+                 Redis Sink
+```
+
+The Flink pipeline remains identical for every sport.
+
+Only the processor implementation changes.
+
+---
+
+# Strategy Pattern
+
+Common interface:
+
+```java
+public interface StatisticsProcessor {
+
+    SportType getSport();
+
+    void process(TelemetryEvent event,
+                 StatisticsContext context);
+}
+```
+
+Each sport implements this interface.
+
+Examples:
+
+* NBAStatisticsProcessor
+* SoccerStatisticsProcessor
+* NFLStatisticsProcessor
+
+---
+
+# Processor Factory
+
+A factory maps each sport to its corresponding processor.
+
+Example:
+
+```text
+NBA     → NBAStatisticsProcessor
+
+Soccer  → SoccerStatisticsProcessor
+
+NFL     → NFLStatisticsProcessor
+```
+
+When an event arrives, the Flink operator selects the correct processor based on the sport.
+
+---
+
+# Example
+
+Incoming telemetry:
+
+```json
+{
+  "sport": "NBA",
+  "eventType": "REBOUND"
+}
+```
+
+Routing:
+
+```text
+NBAStatisticsProcessor
+        │
+        ▼
+Increment Player Rebounds
+Increment Team Statistics (if applicable)
+```
+
+Another example:
+
+```json
+{
+  "sport": "SOCCER",
+  "eventType": "GOAL"
+}
+```
+
+Routing:
+
+```text
+SoccerStatisticsProcessor
+        │
+        ▼
+Increment Player Goals
+Increment Team Score
+```
+
+---
+
+# Responsibilities
+
+## Apache Flink
+
+Provides the streaming infrastructure:
+
+* Kafka consumption
+* Event-time processing
+* Window management
+* Watermarks
+* Checkpointing
+* Failure recovery
+* State management
+* Redis sink
+
+Flink **does not contain the business rules**.
+
+---
+
+## Statistics Processor
+
+Contains the sport-specific business logic.
+
+Examples:
+
+### NBA
+
+* 2-point shot → +2 points
+* 3-point shot → +3 points
+* Rebound → Increment rebounds
+* Foul → Increment personal and team fouls
+
+### Soccer
+
+* Goal → Increment player goals and team score
+* Yellow Card
+* Red Card
+* Possession calculations
+
+Each sport encapsulates its own scoring and statistics rules.
+
+---
+
+# Separation of Concerns
+
+```text
+Apache Flink
+│
+├── Streaming Infrastructure
+│     • Kafka Source
+│     • Event Time
+│     • Watermarks
+│     • Windows
+│     • Checkpointing
+│     • Redis Sink
+│
+└── Statistics Operator
+       │
+       ▼
+StatisticsProcessorFactory
+       │
+       ├── NBA Processor
+       ├── Soccer Processor
+       └── NFL Processor
+```
+
+This cleanly separates infrastructure from business logic.
+
+---
+
+# Design Benefits
+
+* Supports multiple sports without changing the streaming pipeline.
+* New sports can be added by implementing another `StatisticsProcessor`.
+* Business rules remain isolated and maintainable.
+* Follows the **Strategy Pattern**.
+* Adheres to the **Open/Closed Principle**:
+
+  * Open for extension (add new sports).
+  * Closed for modification (no changes to the Flink pipeline).
+
+---
+
+# Interview Summary
+
+When supporting multiple sports, keep the ingestion, streaming, checkpointing, and serving infrastructure generic. Encapsulate sport-specific rules behind a `StatisticsProcessor` interface using the Strategy Pattern. The Flink job invokes the appropriate processor based on the event's sport, allowing the platform to support new sports without modifying the underlying streaming architecture.
+
+# Framework-Independent Business Logic
+
+One important design principle is that the **business logic should be independent of the streaming framework**.
+
+Whether the application uses:
+
+* Apache Flink
+* A Spring Boot Kafka Consumer
+* Another stream processing framework
+
+the business rules should remain unchanged.
+
+The streaming framework is responsible for **executing** the business logic, not implementing it.
+
+---
+
+# Without Apache Flink
+
+Architecture:
+
+```text id="0wryuj"
+Kafka
+
+    │
+
+    ▼
+
+Statistics Consumer
+(Spring Boot)
+
+    │
+
+    ▼
+
+StatisticsProcessorFactory
+
+    │
+
+ ┌──┴──────────────┐
+ ▼                 ▼
+
+NBAProcessor   SoccerProcessor
+
+    │
+
+    ▼
+
+Redis
+```
+
+The Kafka consumer receives events and delegates processing to the appropriate sport-specific processor.
+
+Example:
+
+```java id="uikwhu"
+@KafkaListener(topics = "match-telemetry-events")
+public void consume(TelemetryEvent event) {
+
+    StatisticsProcessor processor =
+            factory.getProcessor(event.getSport());
+
+    StatisticsContext context =
+            loadFromRedis(event);
+
+    processor.process(event, context);
+
+    saveToRedis(context);
+}
+```
+
+---
+
+# With Apache Flink
+
+Architecture:
+
+```text id="gjlwm5"
+Kafka Source
+
+      │
+
+      ▼
+
+Apache Flink
+
+      │
+
+      ▼
+
+Statistics Operator
+
+      │
+
+      ▼
+
+StatisticsProcessorFactory
+
+      │
+
+ ┌────┴─────────────┐
+ ▼                  ▼
+
+NBAProcessor   SoccerProcessor
+
+      │
+
+      ▼
+
+Redis Sink
+```
+
+The Flink operator invokes exactly the same business logic.
+
+Example:
+
+```java id="jlwm51"
+public void processElement(
+        TelemetryEvent event,
+        Context ctx,
+        Collector<StatisticsResult> out) {
+
+    StatisticsProcessor processor =
+            factory.getProcessor(event.getSport());
+
+    StatisticsContext context = getState();
+
+    processor.process(event, context);
+
+    updateState(context);
+
+    out.collect(buildStatistics(context));
+}
+```
+
+The only difference is how the state is managed.
+
+---
+
+# State Management Comparison
+
+## Spring Boot Kafka Consumer
+
+The application is responsible for managing state.
+
+Typical flow:
+
+```text id="jlwm52"
+Receive Event
+
+↓
+
+Load Current Statistics (Redis)
+
+↓
+
+Process Event
+
+↓
+
+Update Statistics
+
+↓
+
+Save Back to Redis
+```
+
+The application must implement:
+
+* State storage
+* Window management
+* Timers
+* Late-event handling
+* Checkpointing
+* Failure recovery
+
+---
+
+## Apache Flink
+
+Flink manages state internally.
+
+Typical flow:
+
+```text id="jlwm53"
+Receive Event
+
+↓
+
+Read Flink State
+
+↓
+
+Process Event
+
+↓
+
+Update Flink State
+
+↓
+
+Write Result to Redis
+```
+
+Flink automatically provides:
+
+* Event-time processing
+* Window management
+* Watermarks
+* Stateful operators
+* Checkpointing
+* Failure recovery
+* Offset coordination
+
+The developer focuses primarily on implementing the business logic.
+
+---
+
+# Separation of Responsibilities
+
+## Streaming Framework
+
+Responsible for:
+
+* Reading from Kafka
+* State management
+* Event-time processing
+* Window management
+* Watermarks
+* Checkpointing
+* Recovery
+* Writing to Redis
+
+---
+
+## Statistics Processors
+
+Responsible only for business rules.
+
+Examples:
+
+### NBA
+
+* 2-point shot → Add 2 points
+* 3-point shot → Add 3 points
+* Rebound → Increment rebound count
+* Personal foul → Update player and team fouls
+
+### Soccer
+
+* Goal → Update player goals and team score
+* Yellow card
+* Red card
+* Possession calculations
+
+---
+
+# Key Design Principle
+
+The business logic should be **framework-independent**.
+
+Changing the execution engine (for example, replacing a Spring Boot Kafka consumer with Apache Flink) should not require rewriting the sport-specific business rules.
+
+Only the surrounding infrastructure changes.
+
+---
+
+# Interview Summary
+
+Apache Flink is an execution engine for stream processing. It provides state management, event-time processing, windowing, checkpointing, and recovery. The actual scoring and statistics logic should be encapsulated in reusable `StatisticsProcessor` implementations that are independent of Flink. This separation of concerns keeps the business logic reusable, maintainable, and easy to extend as new sports are added.
+
+
+# Live Match Statistics Service - Failure Handling
+
+Failure handling is a critical part of a production-ready streaming system. The architecture should ensure that no single component failure causes data loss or prolonged downtime.
+
+---
+
+# 1. Telemetry Ingestion Service Failure
+
+The Telemetry Ingestion Service is stateless.
+
+Architecture:
+
+```text
+               Load Balancer
+                     │
+          ┌──────────┼──────────┐
+          ▼          ▼          ▼
+     Ingestion   Ingestion   Ingestion
+      Service      Service     Service
+```
+
+If one instance crashes:
+
+* Traffic is routed to healthy instances.
+* No state is lost.
+* The service scales horizontally.
+
+---
+
+# 2. Kafka Broker Failure
+
+Kafka provides durability through replication.
+
+Configuration:
+
+```text
+Replication Factor = 3
+```
+
+Example:
+
+```text
+Broker 1 (Leader)
+
+Broker 2 (Follower)
+
+Broker 3 (Follower)
+```
+
+If the leader broker fails:
+
+* Kafka elects a new leader.
+* Producers and consumers continue.
+* No telemetry events are lost.
+
+---
+
+# 3. Apache Flink Failure
+
+If a TaskManager crashes:
+
+```text
+Checkpoint #120
+
+        ↓
+
+TaskManager Failure
+
+        ↓
+
+Restart TaskManager
+
+        ↓
+
+Restore Checkpoint
+
+        ↓
+
+Resume from Kafka Offsets
+```
+
+Checkpoint contains:
+
+* Operator state
+* Window state
+* Aggregation state
+* Kafka offsets
+
+Benefits:
+
+* No recomputation from the beginning.
+* No loss of stateful computations.
+* Fast recovery.
+
+---
+
+# 4. Redis Failure
+
+Redis acts as the **serving layer**, not the system of record.
+
+If Redis crashes:
+
+```text
+Restart Redis
+
+       ↓
+
+Flink restores checkpoint
+
+       ↓
+
+Resume processing
+
+       ↓
+
+Repopulate Redis
+```
+
+Important distinction:
+
+Redis does **not** contain Flink checkpoints.
+
+Flink restores its internal state from checkpoint storage (for example, Amazon S3), resumes consuming Kafka from the saved offsets, and writes the latest computed statistics back to Redis.
+
+---
+
+# 5. PostgreSQL Failure
+
+When the match ends:
+
+```text
+MATCH_ENDED
+
+      ↓
+
+Persist Final Statistics
+
+      ↓
+
+PostgreSQL
+```
+
+If PostgreSQL is unavailable:
+
+```text
+MATCH_ENDED
+
+      ↓
+
+Persistence Queue / Kafka Topic
+
+      ↓
+
+Retry Worker
+
+      ↓
+
+PostgreSQL
+```
+
+This prevents temporary database outages from blocking the live statistics pipeline.
+
+---
+
+# 6. Duplicate Telemetry Events
+
+Providers may retry requests.
+
+Example:
+
+```text
+SHOT_MADE
+
+eventId = 1001
+```
+
+received twice.
+
+Solution:
+
+Implement idempotency using:
+
+* eventId
+* provider sequence number (if available)
+
+Duplicate events are ignored.
+
+---
+
+# 7. Out-of-Order Events
+
+Example:
+
+```text
+12:00:06 arrives first
+
+12:00:05 arrives later
+```
+
+Solution:
+
+* Event-time processing
+* Watermarks
+* Configurable allowed lateness
+
+This ensures rolling windows and time-based statistics remain accurate.
+
+---
+
+# 8. Hot Match Scenario
+
+Example:
+
+NBA Finals receives millions of concurrent viewers.
+
+Potential issue:
+
+A single Redis key becomes extremely hot.
+
+Possible optimizations:
+
+* Redis Cluster
+* Redis read replicas
+* Small API-side cache (100–250 ms)
+* Horizontal API scaling
+
+A CDN is generally not effective because live statistics change continuously.
+
+---
+
+# Failure Handling Summary
+
+| Failure                     | Solution                                              |
+| --------------------------- | ----------------------------------------------------- |
+| Telemetry Ingestion Service | Stateless service behind a load balancer              |
+| Kafka Broker                | Replication and leader election                       |
+| Apache Flink                | Checkpoint recovery and Kafka offset restoration      |
+| Redis                       | Repopulate from Flink after checkpoint recovery       |
+| PostgreSQL                  | Asynchronous persistence with retries                 |
+| Duplicate Events            | Idempotency using eventId or provider sequence number |
+| Out-of-Order Events         | Event-time processing with watermarks                 |
+| Hot Matches                 | Redis Cluster, replicas, API cache                    |
+
+---
+
+# Key Interview Takeaways
+
+* Stateless services are horizontally scalable and easy to recover.
+* Kafka ensures durable event storage and replay.
+* Flink checkpoints operator state and Kafka offsets to durable storage (such as Amazon S3) for fault recovery.
+* Redis serves low-latency live statistics but is not the source of truth.
+* PostgreSQL stores finalized historical statistics after the match ends.
+* Event-time processing and idempotency ensure correctness despite duplicate or late-arriving telemetry events.
+* Each layer has a clearly defined responsibility, making the system resilient and scalable.
+
+# Live Match Statistics Service - Optimizations & Trade-offs
+
+## 1. Reduce Redis Write Throughput
+
+Telemetry may arrive at hundreds of thousands of events per second.
+
+Example:
+
+```text id="v0yjlwm"
+500,000 telemetry events/sec
+```
+
+Updating Redis for every telemetry event may generate unnecessary write traffic.
+
+Example:
+
+```text id="ufshmx"
+12:00:01.001
+
+Player Position
+
+↓
+
+Redis Update
+
+12:00:01.020
+
+Player Position
+
+↓
+
+Redis Update
+
+12:00:01.040
+
+Player Position
+
+↓
+
+Redis Update
+```
+
+The client cannot perceive updates every few milliseconds.
+
+### Optimization
+
+Continue processing every telemetry event in Flink, but publish aggregated statistics to Redis at small intervals (for example, every **100–250 ms**).
+
+Benefits:
+
+* Significantly fewer Redis writes.
+* Reduced network traffic.
+* Lower Redis CPU utilization.
+* No noticeable impact on user experience.
+
+This technique is commonly referred to as **write coalescing** or **micro-batching**.
+
+---
+
+# 2. Redis Pipelining
+
+Instead of sending multiple commands individually:
+
+```text id="f0jlwm"
+SET PlayerStatistics
+
+SET TeamStatistics
+
+SET MatchStatistics
+```
+
+Pipeline multiple commands together.
+
+Benefits:
+
+* Fewer network round trips.
+* Higher throughput.
+* Lower latency under heavy write load.
+
+---
+
+# 3. Persist Only Final Statistics
+
+Avoid updating PostgreSQL for every telemetry event.
+
+Instead:
+
+```text id="y0jlwm"
+Live Match
+
+↓
+
+Redis
+
+↓
+
+MATCH_ENDED Event
+
+↓
+
+Persist Final Statistics
+
+↓
+
+PostgreSQL
+```
+
+Benefits:
+
+* Lower database write load.
+* Reduced transaction overhead.
+* PostgreSQL stores only finalized historical data.
+
+---
+
+# 4. Kafka Compression
+
+Telemetry events are repetitive.
+
+Enable Kafka message compression:
+
+* Snappy
+* LZ4
+* Zstandard (Zstd)
+
+Benefits:
+
+* Lower network bandwidth.
+* Higher producer throughput.
+* Reduced storage consumption.
+
+---
+
+# 5. Hot Match Optimization
+
+Example:
+
+NBA Finals receives millions of concurrent viewers.
+
+Potential issue:
+
+A single match becomes a hot key in Redis.
+
+Possible optimizations:
+
+* Redis Cluster
+* Redis read replicas
+* Small API-side cache (100–250 ms TTL)
+* Horizontal API scaling
+
+A CDN is generally not useful because live statistics change continuously.
+
+---
+
+# Technology Trade-offs
+
+## Why Redis instead of PostgreSQL?
+
+| Redis                      | PostgreSQL                       |
+| -------------------------- | -------------------------------- |
+| In-memory                  | Disk-based                       |
+| Sub-millisecond reads      | Higher read latency              |
+| Optimized for live serving | Optimized for historical storage |
+| Temporary live statistics  | Permanent system of record       |
+
+Redis serves live statistics.
+
+PostgreSQL stores finalized historical statistics.
+
+---
+
+## Why Apache Flink instead of Kafka Consumers?
+
+| Kafka Consumer             | Apache Flink                        |
+| -------------------------- | ----------------------------------- |
+| Simple event processing    | Advanced stateful stream processing |
+| Simple keyed aggregations  | Rolling/windowed aggregations       |
+| Manual event-time handling | Built-in event-time processing      |
+| Manual window management   | Built-in window operators           |
+| Manual checkpointing       | Automatic checkpointing             |
+| Manual failure recovery    | Built-in recovery                   |
+
+A Kafka consumer is sufficient for simple event processing and straightforward keyed aggregations.
+
+Apache Flink becomes the preferred choice when the application requires rolling windows, event-time processing, watermarks, and fault-tolerant state management.
+
+---
+
+## Why Kafka?
+
+Kafka provides:
+
+* High throughput.
+* Durable event storage.
+* Replay capability.
+* Loose coupling between producers and consumers.
+* Support for multiple downstream consumers.
+
+---
+
+# Final Interview Summary
+
+### Architecture
+
+Sports Provider
+
+↓
+
+Telemetry Ingestion Service
+
+↓
+
+Kafka
+
+↓
+
+Apache Flink
+
+↓
+
+Redis
+
+↓
+
+Statistics API
+
+↓
+
+Apple Sports App
+
+↓
+
+MATCH_ENDED
+
+↓
+
+PostgreSQL
+
+---
+
+### Responsibilities
+
+| Component                   | Responsibility                                           |
+| --------------------------- | -------------------------------------------------------- |
+| Telemetry Ingestion Service | Validate, authenticate, deduplicate, publish events      |
+| Kafka                       | Durable event bus and replay                             |
+| Apache Flink                | Compute live statistics using stateful stream processing |
+| Redis                       | Serve low-latency live statistics                        |
+| Statistics API              | Expose read-only APIs                                    |
+| PostgreSQL                  | Store finalized historical statistics                    |
+| Amazon S3 / HDFS            | Store Flink checkpoints                                  |
+
+---
+
+### Key Design Principles
+
+* Separate streaming infrastructure from sport-specific business logic.
+* Keep business logic framework-independent using the Strategy Pattern.
+* Use Kafka for durable event streaming.
+* Use Apache Flink for advanced stream processing.
+* Use Redis for low-latency live reads.
+* Persist finalized statistics to PostgreSQL.
+* Recover Flink state using checkpoints stored in durable object storage.
+* Design each component to scale independently.
+* Optimize Redis writes through write coalescing and pipelining while maintaining near real-time user experience.
+
+# Standings Service
+
+## Problem Statement
+
+Design a service that maintains **league standings** as matches complete.
+
+Examples:
+
+* NBA Eastern Conference
+* NFL AFC East
+* MLB AL East
+
+Unlike the Live Statistics Service, this service **does not process telemetry**. It only updates league standings after a game has officially finished.
+
+---
+
+# Functional Requirements
+
+1. Consume completed match events.
+2. Update league standings.
+3. Compute:
+
+   * Wins
+   * Losses
+   * Draws (if applicable)
+   * Winning Percentage
+   * Rank
+4. Expose APIs to retrieve standings.
+5. Persist standings for historical reporting.
+
+---
+
+# Non-Functional Requirements
+
+* Highly available.
+* Horizontally scalable.
+* Fault tolerant.
+* Low-latency reads.
+* Eventual consistency is acceptable.
+
+---
+
+# High-Level Architecture
+
+```text
+                Sports Provider
+                       │
+                       ▼
+          Telemetry Ingestion Service
+                       │
+                       ▼
+                    Kafka
+               (match-events)
+                       │
+                       ▼
+              Standings Consumer
+                       │
+              Load Current Standings
+                       │
+                       ▼
+            StandingsProcessorFactory
+                       │
+        ┌──────────────┴──────────────┐
+        ▼                             ▼
+NBAStandingsProcessor       SoccerStandingsProcessor
+        │                             │
+        └──────────────┬──────────────┘
+                       ▼
+           Updated League Standings
+                ┌────────┴────────┐
+                ▼                 ▼
+             PostgreSQL         Redis
+                │                 │
+                └────────┬────────┘
+                         ▼
+                  Standings API
+                         │
+                         ▼
+                  Apple Sports App
+```
+
+---
+
+# Why does it start with the Sports Provider?
+
+The Sports Provider is the source of all sports events.
+
+The Telemetry Ingestion Service publishes events to Kafka.
+
+Examples of events:
+
+* MATCH_STARTED
+* SHOT_MADE
+* GOAL
+* REBOUND
+* MATCH_ENDED
+
+The Standings Service only cares about:
+
+```text
+MATCH_COMPLETED
+```
+
+or
+
+```text
+MATCH_ENDED
+```
+
+---
+
+# Kafka Event
+
+Example:
+
+```json
+{
+  "matchId": 123,
+  "leagueId": "NBA",
+  "winnerTeamId": "LAL",
+  "loserTeamId": "GSW",
+  "completedAt": "2026-08-07T20:15:00Z"
+}
+```
+
+---
+
+# Processing Flow
+
+1. Receive MATCH_COMPLETED event.
+2. Load current standings.
+3. Apply league-specific business rules.
+4. Persist updated standings.
+5. Update Redis cache.
+6. Commit Kafka offset.
+
+---
+
+# Standings Business Logic
+
+The consumer itself should not contain NBA or Soccer rules.
+
+Instead, use the Strategy Pattern.
+
+---
+
+## Interface
+
+```java
+public interface StandingsProcessor {
+
+    LeagueType getLeague();
+
+    void updateStandings(
+            MatchCompletedEvent event,
+            LeagueStandings standings);
+}
+```
+
+---
+
+## NBA Implementation
+
+Example logic:
+
+* Winner:
+
+  * Wins++
+  * Games Played++
+* Loser:
+
+  * Losses++
+  * Games Played++
+* Recalculate Winning %
+* Recalculate Rankings
+
+---
+
+## Soccer Implementation
+
+Soccer may support draws.
+
+Example:
+
+```text
+If Draw
+
+↓
+
+TeamA Draw++
+
+TeamB Draw++
+
+↓
+
+Recompute Rankings
+```
+
+Different league.
+
+Different business rules.
+
+Same interface.
+
+---
+
+# Consumer Flow
+
+```text
+Receive Kafka Event
+
+↓
+
+Load League Standings
+
+↓
+
+ProcessorFactory
+
+↓
+
+NBAProcessor / SoccerProcessor
+
+↓
+
+Save Standings
+
+↓
+
+Update Redis
+
+↓
+
+Commit Kafka Offset
+```
+
+The consumer never knows NBA-specific rules.
+
+It simply delegates to the appropriate processor.
+
+---
+
+# Data Model
+
+```text
+LeagueStanding
+
+leagueId
+
+season
+
+teamId
+
+wins
+
+losses
+
+draws
+
+gamesPlayed
+
+winningPercentage
+
+rank
+
+lastUpdated
+```
+
+---
+
+# REST API
+
+```http
+GET /v1/leagues/{leagueId}/standings
+```
+
+Example:
+
+```json
+[
+  {
+    "rank":1,
+    "team":"Lakers",
+    "wins":53,
+    "losses":20
+  }
+]
+```
+
+---
+
+# Redis Caching
+
+Standings change infrequently but are read extremely often.
+
+Store one cache entry per league.
+
+Example:
+
+```text
+standings:NBA
+
+standings:NFL
+
+standings:MLS
+```
+
+Each key stores the complete ordered standings table.
+
+API flow:
+
+```text
+Client
+
+↓
+
+Standings API
+
+↓
+
+Redis
+```
+
+This avoids millions of database reads.
+
+---
+
+# PostgreSQL
+
+PostgreSQL is the permanent system of record.
+
+Stores:
+
+* Season standings
+* Historical standings
+* Reporting
+* Analytics
+
+Redis is only the serving cache.
+
+---
+
+# Transaction Strategy
+
+Do **not** use distributed transactions between PostgreSQL and Redis.
+
+Recommended processing order:
+
+```text
+Receive Kafka Message
+
+↓
+
+Update PostgreSQL
+
+↓
+
+COMMIT PostgreSQL
+
+↓
+
+Update Redis
+
+↓
+
+Commit Kafka Offset
+```
+
+---
+
+# Why commit the Kafka offset last?
+
+The Kafka offset indicates that processing has completed successfully.
+
+If Redis update fails:
+
+```text
+Update PostgreSQL
+
+↓
+
+COMMIT
+
+↓
+
+Update Redis
+
+↓
+
+FAIL
+```
+
+Do **not** commit the Kafka offset.
+
+Kafka will redeliver the message.
+
+---
+
+# Idempotency
+
+Since a message may be replayed before the Kafka offset is committed, processing must be idempotent.
+
+Possible approaches:
+
+* Track processed `matchId`
+* Track processed `eventId`
+* Use a unique database constraint
+* Ignore already-processed matches
+
+This prevents duplicate standings updates.
+
+---
+
+# Failure Handling
+
+## Consumer Failure
+
+Kafka redelivers the message.
+
+---
+
+## PostgreSQL Failure
+
+Do not commit the Kafka offset.
+
+Retry processing.
+
+---
+
+## Redis Failure
+
+Do not commit the Kafka offset.
+
+Replay the message after restart.
+
+---
+
+## Duplicate Events
+
+Ignore duplicate `matchId` or `eventId`.
+
+---
+
+# Scaling
+
+## Kafka
+
+Partition by:
+
+```text
+leagueId
+```
+
+Benefits:
+
+* Ordering within a league.
+* Parallel processing across leagues.
+
+---
+
+## Consumer
+
+Stateless.
+
+Scale horizontally using Kafka consumer groups.
+
+---
+
+## Redis
+
+Cache latest standings.
+
+One key per league.
+
+---
+
+## PostgreSQL
+
+Stores durable historical standings.
+
+---
+
+# Why Kafka Consumer instead of Flink?
+
+A simple Kafka consumer is sufficient because:
+
+* Updates only occur when a match finishes.
+* No rolling windows.
+* No event-time processing.
+* No watermarks.
+* No checkpointing.
+* No advanced stateful stream processing.
+
+Apache Flink would add unnecessary complexity.
+
+---
+
+# Design Patterns
+
+* Event-Driven Architecture
+* Strategy Pattern
+* Factory Pattern
+* Cache-Aside Serving Pattern
+* Idempotent Consumer Pattern
+
+---
+
+# Interview Summary
+
+* Sports Provider publishes match lifecycle events through the Telemetry Ingestion Service.
+* Kafka delivers `MATCH_COMPLETED` events to the Standings Service.
+* The consumer delegates league-specific business rules to a `StandingsProcessor` using the Strategy Pattern.
+* PostgreSQL is the system of record.
+* Redis caches the latest standings for low-latency reads.
+* Kafka offsets are committed only after PostgreSQL and Redis updates succeed.
+* Idempotency protects against message reprocessing.
+* Partition Kafka by `leagueId` to preserve ordering while enabling horizontal scaling.
+
+
+# Live Sports Notification Service
+
+## Problem Statement
+
+Design a service that delivers live sports notifications to users of the Apple Sports app.
+
+Example notifications:
+
+* Goal scored
+* Three-pointer
+* Touchdown
+* Match started
+* Match ended
+* Lead changed
+
+Users can subscribe to:
+
+* Teams
+* Players
+* Leagues
+* Individual matches
+
+Notifications should be delivered through Apple Push Notification service (APNs).
+
+---
+
+# Clarifying Questions
+
+## Scope
+
+Support multiple sports:
+
+* NBA
+* NFL
+* MLB
+* Soccer
+* NHL
+
+---
+
+## Event Source
+
+Events are received from an external Sports Provider through a webhook.
+
+---
+
+## Notification Types
+
+Support notifications for:
+
+* Player scored
+* Lead changed
+* Match started
+* Match ended
+* Overtime started
+* Breaking news (future)
+
+---
+
+## Delivery Latency
+
+Target:
+
+* 2–5 seconds
+
+---
+
+## Reliability
+
+* At-least-once delivery
+* Minimize duplicate notifications
+
+---
+
+## User Preferences
+
+Users can subscribe to:
+
+* Teams
+* Players
+* Leagues
+* Matches
+
+Users can also configure notification preferences such as:
+
+* Score updates
+* Final score only
+* DND (Do Not Disturb) hours
+
+---
+
+# Functional Requirements
+
+* Subscribe to teams, players, leagues, and matches.
+* Unsubscribe.
+* Deliver push notifications.
+* Respect user notification preferences.
+* Retry failed notifications.
+* Support millions of users.
+
+---
+
+# Non-Functional Requirements
+
+* Low latency
+* Highly available
+* Horizontally scalable
+* Fault tolerant
+* Millions of concurrent users
+* At-least-once delivery
+
+---
+
+# High-Level Architecture
+
+```text
+                  Sports Provider
+                         │
+                         ▼
+            Telemetry Ingestion Service
+                         │
+                         ▼
+                 Kafka (match-events)
+                         │
+                         ▼
+          Match Event Processing Service
+        (Sport-specific Business Logic)
+                         │
+                         ▼
+                Kafka (domain-events)
+                         │
+                         ▼
+               Notification Service
+                         │
+          Lookup Followers (Redis)
+                         │
+                         ▼
+                     Fan-out
+                         │
+                         ▼
+            Kafka (notification-jobs)
+                         │
+                         ▼
+              Notification Workers
+                         │
+                         ▼
+                        APNs
+                         │
+                         ▼
+                  Apple Sports App
+```
+
+---
+
+# Why Three Kafka Topics?
+
+## Topic 1 - match-events
+
+Published by the Telemetry Ingestion Service.
+
+Contains raw provider events.
+
+Examples:
+
+* GOAL
+* SHOT_MADE
+* REBOUND
+* FOUL
+* MATCH_STARTED
+* MATCH_ENDED
+* PLAYER_POSITION_CHANGED
+* HEARTBEAT
+
+These events are provider-specific.
+
+---
+
+## Topic 2 - domain-events
+
+Published by the Match Event Processing Service.
+
+Contains business events.
+
+Examples:
+
+* PLAYER_SCORED
+* LEAD_CHANGED
+* MATCH_STARTED
+* MATCH_COMPLETED
+* OVERTIME_STARTED
+
+This creates a **canonical event model** for all downstream consumers.
+
+Benefits:
+
+* Removes provider-specific details.
+* Centralizes business logic.
+* Downstream services remain independent of the sports provider.
+* Makes switching providers much easier.
+
+---
+
+## Topic 3 - notification-jobs
+
+Created after fan-out.
+
+Each message represents a notification for one user.
+
+Example:
+
+```json
+{
+  "userId": 101,
+  "deviceToken": "...",
+  "title": "Lakers scored!",
+  "matchId": 123
+}
+```
+
+Notification Workers consume this topic and send notifications through APNs.
+
+---
+
+# Why Match Event Processing?
+
+Without this layer, every downstream service must filter raw provider events.
+
+Example:
+
+Raw provider events:
+
+* PLAYER_POSITION_CHANGED
+* HEARTBEAT
+* PLAYER_SPEED_UPDATED
+* GOAL
+
+Notification Service would need logic like:
+
+```java
+if(event == GOAL)
+    notify();
+
+else if(event == HEARTBEAT)
+    ignore();
+
+else if(event == PLAYER_POSITION_CHANGED)
+    ignore();
+```
+
+Every downstream consumer would duplicate this filtering.
+
+Instead:
+
+```text
+Raw Events
+
+↓
+
+Match Event Processing
+
+↓
+
+Canonical Domain Events
+
+↓
+
+Consumers
+```
+
+This centralizes business rules and simplifies downstream services.
+
+---
+
+# Notification Service Responsibilities
+
+* Consume domain events.
+* Lookup interested users.
+* Apply notification preferences.
+* Respect DND hours.
+* Perform fan-out.
+* Publish notification jobs.
+
+The Notification Service does **not** send push notifications directly.
+
+---
+
+# Subscription Model
+
+Do not model subscriptions as:
+
+```text
+User
+
+↓
+
+Favorite Team
+```
+
+Instead, create an inverted index.
+
+Redis:
+
+```text
+followers:team:Lakers
+
+↓
+
+{101,205,340,...}
+```
+
+```text
+followers:player:LeBron
+
+↓
+
+{101,455,901,...}
+```
+
+```text
+followers:league:NBA
+
+↓
+
+{100,200,300,...}
+```
+
+```text
+followers:match:123
+
+↓
+
+{10,45,89,...}
+```
+
+Benefits:
+
+* O(1) lookup
+* No user scanning
+* Very scalable
+
+---
+
+# Fan-out
+
+Input:
+
+One business event.
+
+```text
+PLAYER_SCORED
+```
+
+Output:
+
+Millions of notification jobs.
+
+```text
+PLAYER_SCORED
+
+↓
+
+Notification Service
+
+↓
+
+Lookup Followers
+
+↓
+
+User101
+
+User102
+
+User103
+
+...
+
+User2000000
+```
+
+Each user receives an independent notification job.
+
+This is the **fan-out** stage.
+
+---
+
+# Notification Workers
+
+Workers consume:
+
+```text
+notification-jobs
+```
+
+Responsibilities:
+
+* Build APNs request
+* Call APNs
+* Retry failures
+* Send failed requests to DLQ
+* Update notification status (if persistence is required)
+
+Workers contain no business logic.
+
+They only deliver notifications.
+
+---
+
+# Redis
+
+Redis stores:
+
+## Subscription Index
+
+```text
+followers:team:Lakers
+```
+
+## User Preferences
+
+```text
+user:101
+
+deviceToken
+
+notificationPreferences
+
+DND Hours
+```
+
+Redis acts as a cache.
+
+---
+
+# PostgreSQL
+
+Stores:
+
+* User subscriptions
+* User notification preferences
+* Device registrations
+* Notification history (optional)
+
+PostgreSQL is the system of record.
+
+Redis caches frequently accessed data.
+
+---
+
+# Fan-out Partitioning
+
+Do **not** partition notification jobs by:
+
+```text
+matchId
+```
+
+Reason:
+
+A popular match could create millions of notifications that all go to one Kafka partition, creating a hot partition.
+
+Instead:
+
+```text
+Partition Key = userId
+```
+
+Benefits:
+
+* Even load distribution.
+* Preserves notification ordering for each user.
+* Scales horizontally.
+
+---
+
+# Processing Flow
+
+```text
+Receive Domain Event
+
+↓
+
+Lookup Followers
+
+↓
+
+Merge Followers
+(team/player/league/match)
+
+↓
+
+Remove Duplicate Users
+
+↓
+
+Apply User Preferences
+
+↓
+
+Create Notification Jobs
+
+↓
+
+Publish notification-jobs Topic
+```
+
+---
+
+# Notification Delivery Flow
+
+```text
+Notification Worker
+
+↓
+
+Read Notification Job
+
+↓
+
+Call APNs
+
+↓
+
+Success
+
+↓
+
+ACK Kafka Offset
+```
+
+If delivery fails:
+
+```text
+Retry
+
+↓
+
+DLQ
+
+↓
+
+Manual Investigation
+```
+
+---
+
+# Design Patterns
+
+* Event-Driven Architecture
+* Strategy Pattern (sport-specific business rules in Match Event Processing)
+* Publish-Subscribe
+* Fan-out
+* Inverted Index
+* Worker Queue
+* Retry with DLQ
+
+---
+
+# Key Design Decisions
+
+* Separate raw provider events from business events using a Match Event Processing Service.
+* Use a canonical event model so downstream services are independent of the sports provider.
+* Store follower mappings as inverted indexes in Redis.
+* Perform fan-out by creating one notification job per user.
+* Use a dedicated Kafka topic for notification jobs.
+* Partition notification jobs by `userId`, not `matchId`, to avoid hot partitions and preserve per-user notification ordering.
+* Isolate APNs integration inside Notification Workers.
+* Use PostgreSQL as the source of truth and Redis as a high-performance cache.
+
+
+# Live Sports Notification Service - Duplicate Notifications & Delivery Semantics
+
+## Problem
+
+The Notification Workers consume notification jobs from Kafka and deliver them to Apple Push Notification service (APNs).
+
+Kafka provides **at-least-once delivery**, which means a notification job may be delivered to a worker more than once.
+
+Example:
+
+```text
+Notification Worker
+
+↓
+
+Call APNs
+
+↓
+
+APNs returns SUCCESS
+
+↓
+
+Worker crashes
+
+↓
+
+Kafka Offset NOT committed
+
+↓
+
+Kafka redelivers message
+
+↓
+
+Duplicate notification
+```
+
+Without additional safeguards, users may receive duplicate push notifications.
+
+---
+
+# Why Exactly-Once Is Difficult
+
+Three independent systems are involved:
+
+```text
+Kafka
+
+Redis
+
+APNs
+```
+
+There is no distributed transaction spanning all three systems.
+
+Because APNs is an external service, we cannot guarantee true exactly-once notification delivery.
+
+The practical goal is:
+
+* At-least-once delivery
+* Minimize duplicate notifications
+* Provide recovery for failures
+
+---
+
+# Notification ID
+
+During fan-out, generate a deterministic notification identifier.
+
+Example:
+
+```text
+notificationId =
+hash(userId + eventId + notificationType)
+```
+
+Every notification job carries this identifier.
+
+Example:
+
+```json
+{
+  "notificationId": "abc123",
+  "userId": 101,
+  "eventId": 56789,
+  "title": "Lakers scored!"
+}
+```
+
+---
+
+# Idempotency
+
+Workers perform an idempotency check before processing.
+
+Example using Redis:
+
+```text
+processed-notification:{notificationId}
+```
+
+Use an atomic operation such as:
+
+```text
+SETNX(notificationId)
+```
+
+If the key already exists:
+
+* The notification has already been claimed.
+* Skip processing.
+
+Apply a TTL (for example, 24–48 hours) so processed IDs eventually expire.
+
+---
+
+# Recommended Worker Flow
+
+```text
+Receive Notification Job
+
+↓
+
+SETNX(notificationId)
+
+│
+├── Key Exists
+│       ↓
+│     Skip Processing
+│
+└── Success
+        ↓
+
+Call APNs
+
+↓
+
+Commit Kafka Offset
+```
+
+This minimizes duplicate notifications while allowing workers to scale horizontally.
+
+---
+
+# Remaining Edge Cases
+
+Consider this sequence:
+
+```text
+SETNX(notificationId)
+
+↓
+
+Worker crashes
+
+↓
+
+Kafka redelivers message
+```
+
+The next worker observes the Redis key and skips processing.
+
+However, the first worker may have crashed:
+
+* Before calling APNs
+* During the APNs request
+* After APNs accepted the request
+
+Because APNs is an external system, the application cannot determine exactly where the failure occurred.
+
+This is one reason true exactly-once delivery cannot be guaranteed.
+
+---
+
+# Improving Reliability
+
+Instead of storing only "processed", maintain a processing status.
+
+Example:
+
+```text
+notificationId
+
+Status = PENDING
+```
+
+Worker flow:
+
+```text
+Receive Job
+
+↓
+
+Create/Claim notificationId
+
+Status = PENDING
+
+↓
+
+Call APNs
+
+↓
+
+Status = SENT
+
+↓
+
+Commit Kafka Offset
+```
+
+If a worker crashes, notification records remaining in the **PENDING** state can be identified by a background recovery process and retried or investigated.
+
+---
+
+# Design Trade-off
+
+It is generally preferable to design for:
+
+* At-least-once delivery
+* Idempotent processing
+* Recovery of incomplete work
+
+rather than attempting distributed transactions across Kafka, Redis, and APNs.
+
+---
+
+# Interview Summary
+
+* Kafka provides at-least-once message delivery.
+* Notification jobs should include a deterministic `notificationId`.
+* Workers use an atomic idempotency check (for example, Redis `SETNX`) to reduce duplicate processing.
+* Kafka offsets are committed only after notification processing completes.
+* True exactly-once delivery is not achievable because APNs is an external system outside the transaction boundary.
+* Tracking notification state (such as **PENDING** and **SENT**) provides better observability and enables recovery for interrupted deliveries.
+
+
+# Live Sports Notification Service - Duplicate Notifications & Delivery Semantics
+
+## Problem
+
+The Notification Workers consume notification jobs from Kafka and deliver them to Apple Push Notification service (APNs).
+
+Kafka provides **at-least-once delivery**, which means a notification job may be delivered to a worker more than once.
+
+Example:
+
+```text
+Notification Worker
+
+↓
+
+Call APNs
+
+↓
+
+APNs returns SUCCESS
+
+↓
+
+Worker crashes
+
+↓
+
+Kafka Offset NOT committed
+
+↓
+
+Kafka redelivers message
+
+↓
+
+Duplicate notification
+```
+
+Without additional safeguards, users may receive duplicate push notifications.
+
+---
+
+# Why Exactly-Once Is Difficult
+
+Three independent systems are involved:
+
+```text
+Kafka
+
+Redis
+
+APNs
+```
+
+There is no distributed transaction spanning all three systems.
+
+Because APNs is an external service, we cannot guarantee true exactly-once notification delivery.
+
+The practical goal is:
+
+* At-least-once delivery
+* Minimize duplicate notifications
+* Provide recovery for failures
+
+---
+
+# Notification ID
+
+During fan-out, generate a deterministic notification identifier.
+
+Example:
+
+```text
+notificationId =
+hash(userId + eventId + notificationType)
+```
+
+Every notification job carries this identifier.
+
+Example:
+
+```json
+{
+  "notificationId": "abc123",
+  "userId": 101,
+  "eventId": 56789,
+  "title": "Lakers scored!"
+}
+```
+
+---
+
+# Idempotency
+
+Workers perform an idempotency check before processing.
+
+Example using Redis:
+
+```text
+processed-notification:{notificationId}
+```
+
+Use an atomic operation such as:
+
+```text
+SETNX(notificationId)
+```
+
+If the key already exists:
+
+* The notification has already been claimed.
+* Skip processing.
+
+Apply a TTL (for example, 24–48 hours) so processed IDs eventually expire.
+
+---
+
+# Recommended Worker Flow
+
+```text
+Receive Notification Job
+
+↓
+
+SETNX(notificationId)
+
+│
+├── Key Exists
+│       ↓
+│     Skip Processing
+│
+└── Success
+        ↓
+
+Call APNs
+
+↓
+
+Commit Kafka Offset
+```
+
+This minimizes duplicate notifications while allowing workers to scale horizontally.
+
+---
+
+# Remaining Edge Cases
+
+Consider this sequence:
+
+```text
+SETNX(notificationId)
+
+↓
+
+Worker crashes
+
+↓
+
+Kafka redelivers message
+```
+
+The next worker observes the Redis key and skips processing.
+
+However, the first worker may have crashed:
+
+* Before calling APNs
+* During the APNs request
+* After APNs accepted the request
+
+Because APNs is an external system, the application cannot determine exactly where the failure occurred.
+
+This is one reason true exactly-once delivery cannot be guaranteed.
+
+---
+
+# Improving Reliability
+
+Instead of storing only "processed", maintain a processing status.
+
+Example:
+
+```text
+notificationId
+
+Status = PENDING
+```
+
+Worker flow:
+
+```text
+Receive Job
+
+↓
+
+Create/Claim notificationId
+
+Status = PENDING
+
+↓
+
+Call APNs
+
+↓
+
+Status = SENT
+
+↓
+
+Commit Kafka Offset
+```
+
+If a worker crashes, notification records remaining in the **PENDING** state can be identified by a background recovery process and retried or investigated.
+
+---
+
+# Design Trade-off
+
+It is generally preferable to design for:
+
+* At-least-once delivery
+* Idempotent processing
+* Recovery of incomplete work
+
+rather than attempting distributed transactions across Kafka, Redis, and APNs.
+
+---
+
+# Interview Summary
+
+* Kafka provides at-least-once message delivery.
+* Notification jobs should include a deterministic `notificationId`.
+* Workers use an atomic idempotency check (for example, Redis `SETNX`) to reduce duplicate processing.
+* Kafka offsets are committed only after notification processing completes.
+* True exactly-once delivery is not achievable because APNs is an external system outside the transaction boundary.
+* Tracking notification state (such as **PENDING** and **SENT**) provides better observability and enables recovery for interrupted deliveries.
+
+
+# Live Sports Notification Service - Idempotency & Duplicate Handling
+
+## Problem
+
+Kafka provides **at-least-once delivery**.
+
+If a consumer crashes before committing the Kafka offset, Kafka redelivers the same message.
+
+Without idempotency, duplicate notifications may be created or delivered.
+
+---
+
+# Duplicate Domain Event Example
+
+Suppose the Match Event Processing Service publishes:
+
+```text
+PLAYER_SCORED
+
+eventId = 500
+```
+
+Notification Service consumes the event.
+
+It looks up followers.
+
+```text
+Followers
+
+↓
+
+User101
+
+User102
+```
+
+It creates two notification jobs.
+
+```text
+Notification A
+
+user101
+
+eventId=500
+```
+
+```text
+Notification B
+
+user102
+
+eventId=500
+```
+
+Now suppose the Notification Service crashes **before committing the Kafka offset**.
+
+Kafka redelivers:
+
+```text
+PLAYER_SCORED
+
+eventId=500
+```
+
+Without idempotency, the service performs fan-out again and creates duplicate notification jobs.
+
+---
+
+# Why Auto-Increment IDs Do Not Work
+
+Suppose the first fan-out creates:
+
+```text
+NotificationId = 1001
+```
+
+After replay:
+
+```text
+NotificationId = 1002
+```
+
+Although they represent the same logical notification, the IDs are different.
+
+Redis cannot detect duplicates.
+
+---
+
+# Deterministic Notification ID
+
+Instead, generate a deterministic identifier.
+
+Example:
+
+```text
+notificationId =
+userId:eventId:notificationType
+```
+
+For example:
+
+```text
+101:500:PLAYER_SCORED
+```
+
+If the event is replayed, the same notification generates the same identifier.
+
+This allows duplicate detection.
+
+---
+
+# EventId vs NotificationId
+
+This is an important distinction.
+
+## Notification Service
+
+Unit of work:
+
+```text
+One Domain Event
+```
+
+Example:
+
+```text
+PLAYER_SCORED
+
+eventId=500
+```
+
+Here, **eventId** alone is sufficient.
+
+If Kafka redelivers the same domain event, the Notification Service can detect that `eventId=500` has already been processed and skip fan-out.
+
+---
+
+## Notification Worker
+
+Unit of work:
+
+```text
+One Notification Job
+```
+
+After fan-out:
+
+```text
+eventId=500
+
+↓
+
+User101
+
+User102
+
+User103
+```
+
+All notification jobs share the same eventId.
+
+If the worker used only `eventId` for idempotency:
+
+```text
+User101
+
+eventId=500
+
+↓
+
+Sent Successfully
+```
+
+Then:
+
+```text
+User102
+
+eventId=500
+```
+
+would incorrectly be considered a duplicate.
+
+User102 would never receive the notification.
+
+Therefore the worker requires a unique identifier per user.
+
+Example:
+
+```text
+notificationId =
+userId:eventId
+```
+
+or
+
+```text
+userId:eventId:notificationType
+```
+
+---
+
+# Two Layers of Idempotency
+
+## Layer 1 – Notification Service
+
+Consumes:
+
+```text
+Domain Event
+```
+
+Uses:
+
+```text
+eventId
+```
+
+Purpose:
+
+Prevent duplicate fan-out.
+
+This avoids creating millions of duplicate notification jobs.
+
+---
+
+## Layer 2 – Notification Worker
+
+Consumes:
+
+```text
+Notification Job
+```
+
+Uses:
+
+```text
+notificationId
+
+(userId + eventId + notificationType)
+```
+
+Purpose:
+
+Prevent duplicate delivery to APNs.
+
+This provides a second safety net in case duplicate notification jobs are produced.
+
+---
+
+# Worker Processing Flow
+
+```text
+Receive Notification Job
+
+↓
+
+notificationId already processed?
+
+        │
+   ┌────┴────┐
+   │         │
+  Yes       No
+   │         │
+   ▼         ▼
+ Skip     Call APNs
+
+              ↓
+
+      Commit Kafka Offset
+```
+
+---
+
+# Why Two Layers?
+
+Notification Service idempotency:
+
+* Prevents duplicate fan-out.
+* Saves Kafka bandwidth.
+* Reduces unnecessary worker load.
+
+Worker idempotency:
+
+* Protects against duplicate notification jobs.
+* Prevents duplicate push notifications reaching users.
+
+Together they provide a robust solution for Kafka's at-least-once delivery model.
+
+---
+
+# Interview Summary
+
+* Kafka may redeliver messages if offsets are not committed.
+* The Notification Service should use `eventId` to prevent duplicate fan-out of the same domain event.
+* Notification Workers process user-specific notification jobs, so `eventId` alone is insufficient.
+* Workers should use a deterministic per-user identifier such as `userId + eventId + notificationType`.
+* Auto-increment IDs or random UUIDs are unsuitable for idempotency because retries generate different values.
+* Applying idempotency at both the Notification Service and the Notification Worker minimizes duplicate work and duplicate notifications while maintaining at-least-once delivery.
+
+# Live Sports Notification Service - Subscription Management
+
+## Goal
+
+Allow users to follow and unfollow:
+
+* Teams
+* Players
+* Leagues
+* Matches
+
+These subscriptions determine who receives notifications during fan-out.
+
+---
+
+# REST APIs
+
+Follow a team:
+
+```http
+POST /v1/teams/{teamId}/follow
+Authorization: Bearer <JWT>
+```
+
+The authenticated user's identity is obtained from the JWT or session.
+
+Do **not** pass `userId` in the request body.
+
+---
+
+Unfollow:
+
+```http
+DELETE /v1/teams/{teamId}/follow
+```
+
+Similarly:
+
+```http
+POST /v1/players/{playerId}/follow
+
+POST /v1/leagues/{leagueId}/follow
+
+POST /v1/matches/{matchId}/follow
+```
+
+---
+
+# PostgreSQL Schema
+
+## UserTeamSubscription
+
+```text
+userId
+
+teamId
+
+createdAt
+```
+
+Composite Primary Key:
+
+```text
+(userId, teamId)
+```
+
+Benefits:
+
+* Prevents duplicate subscriptions.
+* Fast lookup.
+* Enforces data integrity.
+
+Similarly:
+
+```text
+UserPlayerSubscription
+
+(userId, playerId)
+```
+
+```text
+UserLeagueSubscription
+
+(userId, leagueId)
+```
+
+```text
+UserMatchSubscription
+
+(userId, matchId)
+```
+
+---
+
+# Redis Data Structures
+
+## Inverted Index (used during fan-out)
+
+```text
+followers:team:Lakers
+
+↓
+
+{101,205,340,...}
+```
+
+```text
+followers:player:LeBron
+
+↓
+
+{101,455,901,...}
+```
+
+```text
+followers:league:NBA
+
+↓
+
+{100,200,300,...}
+```
+
+```text
+followers:match:123
+
+↓
+
+{10,45,89,...}
+```
+
+Purpose:
+
+Quickly identify all users interested in an event without scanning every user.
+
+---
+
+## Forward Index
+
+```text
+subscriptions:user:101
+
+↓
+
+Lakers
+
+NBA
+
+LeBron
+
+Match123
+```
+
+Purpose:
+
+Support APIs such as:
+
+```http
+GET /v1/users/me/subscriptions
+```
+
+without querying PostgreSQL.
+
+---
+
+# Cache Synchronization Approaches
+
+## Option 1 - Synchronous Update (Simple)
+
+```text
+Follow API
+
+↓
+
+Insert PostgreSQL
+
+(COMMIT)
+
+↓
+
+Update Redis
+
+↓
+
+Return 200
+```
+
+Advantages:
+
+* Very simple.
+* Redis updated immediately.
+* Easy to implement.
+
+Disadvantages:
+
+* API depends on Redis.
+* Redis failures require retries or error handling.
+* API has two responsibilities:
+
+  * Persist data
+  * Maintain cache
+
+This is an excellent solution for small and medium-sized systems.
+
+---
+
+## Option 2 - CDC with Debezium + Kafka (Recommended for Large Systems)
+
+```text
+Follow API
+
+↓
+
+PostgreSQL
+
+(COMMIT)
+
+↓
+
+Return 200
+
+↓
+
+Debezium (CDC)
+
+↓
+
+Kafka
+
+(subscription-events)
+
+↓
+
+Subscription Cache Service
+
+↓
+
+Redis
+```
+
+Flow:
+
+1. API inserts into PostgreSQL.
+2. PostgreSQL commits.
+3. Debezium captures the database change from the Write-Ahead Log (WAL).
+4. Debezium publishes a subscription event to Kafka.
+5. Subscription Cache Service consumes the event.
+6. Redis indexes are updated.
+
+Benefits:
+
+* PostgreSQL remains the source of truth.
+* API is completely decoupled from Redis.
+* Durable event stream.
+* Replay capability.
+* Additional services can consume subscription events in the future.
+* Better scalability and maintainability.
+
+Trade-off:
+
+Redis becomes eventually consistent with PostgreSQL.
+
+---
+
+## Option 3 - CDC Directly to Redis
+
+```text
+Follow API
+
+↓
+
+PostgreSQL
+
+↓
+
+Debezium
+
+↓
+
+Redis
+```
+
+Benefits:
+
+* Fewer components.
+* Lower latency.
+
+Limitations:
+
+* No Kafka replay.
+* Harder to support additional downstream consumers.
+* Less resilient if Redis is unavailable.
+
+---
+
+# Which Approach to Choose?
+
+## Small / Medium Systems
+
+```text
+PostgreSQL
+
+↓
+
+Redis
+```
+
+Simple and perfectly acceptable.
+
+---
+
+## Enterprise Systems (Apple Scale)
+
+```text
+PostgreSQL
+
+↓
+
+Debezium
+
+↓
+
+Kafka
+
+↓
+
+Subscription Cache Service
+
+↓
+
+Redis
+```
+
+This provides loose coupling, replay, durability, and allows future consumers (analytics, recommendations, auditing, etc.) to subscribe without changing the Follow API.
+
+---
+
+# Interview Summary
+
+* Authenticate users via JWT/session instead of accepting `userId` in the request.
+* Store subscriptions in PostgreSQL using composite primary keys to prevent duplicates.
+* Maintain both:
+
+  * A **forward index** (`subscriptions:user:{userId}`) for user-facing APIs.
+  * An **inverted index** (`followers:team:{teamId}`) for efficient fan-out.
+* For simpler systems, update Redis synchronously after committing PostgreSQL.
+* For large-scale systems, use **Debezium + Kafka + Subscription Cache Service** to synchronize Redis asynchronously while keeping PostgreSQL as the source of truth.
+
+
+# Live Sports Notification Service - APNs Integration, Device Registration & Failure Handling
+
+# APNs Overview
+
+Apple Push Notification service (APNs) does **not** recognize application user IDs.
+
+APNs routes notifications using **device tokens**.
+
+The Notification Worker must translate:
+
+```text
+userId
+
+↓
+
+deviceToken(s)
+
+↓
+
+APNs
+```
+
+---
+
+# Device Registration Flow
+
+When the Apple Sports app launches for the first time:
+
+```text
+Apple Sports App
+
+↓
+
+Register with APNs
+
+↓
+
+Receive Device Token
+
+↓
+
+POST /v1/devices
+
+↓
+
+Notification Backend
+```
+
+The application authenticates using the user's JWT/session.
+
+The backend associates the authenticated user with the device token.
+
+---
+
+# Device Registration API
+
+```http
+POST /v1/devices
+Authorization: Bearer <JWT>
+```
+
+Example payload:
+
+```json
+{
+  "deviceToken": "abc123xyz...",
+  "platform": "iOS"
+}
+```
+
+The backend extracts the authenticated user from the JWT and stores the mapping.
+
+---
+
+# PostgreSQL Schema
+
+```text
+UserDevice
+
+------------------------
+
+userId
+
+deviceToken
+
+platform
+
+isActive
+
+lastSeen
+
+createdAt
+```
+
+Composite Primary Key:
+
+```text
+(userId, deviceToken)
+```
+
+---
+
+# Redis Cache
+
+Cache active devices for fast lookup.
+
+```text
+devices:user:101
+
+↓
+
+deviceToken1
+
+deviceToken2
+
+deviceToken3
+```
+
+This avoids querying PostgreSQL for every notification.
+
+---
+
+# Multiple Devices
+
+One user may own several Apple devices.
+
+Example:
+
+```text
+User101
+
+├── iPhone
+├── iPad
+└── MacBook
+```
+
+Each device has its own APNs device token.
+
+The Notification Worker sends the same notification to every active device.
+
+---
+
+# Notification Worker Flow
+
+```text
+Receive Notification Job
+
+↓
+
+userId
+
+↓
+
+Lookup Active Device Tokens
+(Redis)
+
+↓
+
+deviceToken1
+
+deviceToken2
+
+deviceToken3
+
+↓
+
+Call APNs
+```
+
+---
+
+# Why Store userId Instead of deviceToken?
+
+## Preferred Design
+
+Notification Job:
+
+```json
+{
+  "notificationId": "...",
+  "userId": 101,
+  "eventId": 500,
+  "payload": { ... }
+}
+```
+
+Worker performs device lookup at processing time.
+
+Benefits:
+
+* Always uses the latest device tokens.
+* Handles users with multiple devices naturally.
+* Supports token rotation without recreating queued jobs.
+* Keeps notification jobs smaller.
+
+---
+
+## Alternative
+
+Store the device token inside every notification job.
+
+Example:
+
+```json
+{
+  "deviceToken": "...",
+  "payload": { ... }
+}
+```
+
+Disadvantages:
+
+* Device tokens may become stale.
+* Multiple jobs are required for users with multiple devices.
+* Harder to handle token updates.
+
+---
+
+# APNs Failure Handling
+
+## Successful Response
+
+```text
+Notification Worker
+
+↓
+
+Call APNs
+
+↓
+
+2xx Success
+
+↓
+
+Commit Kafka Offset
+```
+
+---
+
+## Transient Failures
+
+Examples:
+
+* Timeout
+* Network failure
+* HTTP 429
+* HTTP 500
+* HTTP 503
+
+Handling:
+
+* Retry
+* Exponential Backoff
+* Random Jitter
+
+Example:
+
+```text
+Retry 1
+
+1 second
+
+↓
+
+Retry 2
+
+2 seconds
+
+↓
+
+Retry 3
+
+4 seconds
+
+↓
+
+DLQ
+```
+
+Random jitter prevents thousands of workers from retrying simultaneously.
+
+---
+
+# Circuit Breaker
+
+Wrap APNs calls with a circuit breaker.
+
+```text
+Notification Worker
+
+↓
+
+Circuit Closed
+
+↓
+
+Call APNs
+```
+
+If failure rate exceeds the configured threshold:
+
+```text
+Circuit Opens
+
+↓
+
+Fail Fast
+
+↓
+
+Do not call APNs
+```
+
+After a cool-down period:
+
+```text
+Half Open
+
+↓
+
+Try a small number of requests
+
+↓
+
+Success?
+
+↓
+
+Close Circuit
+
+Else
+
+Open Again
+```
+
+Benefits:
+
+* Prevents overwhelming APNs during outages.
+* Conserves worker resources.
+* Improves overall system stability.
+
+---
+
+# Dead Letter Queue
+
+If retries are exhausted:
+
+```text
+Notification Worker
+
+↓
+
+Retry 3 Times
+
+↓
+
+notification-dlq
+```
+
+The DLQ enables:
+
+* Manual investigation
+* Replay
+* Alerting
+* Operational visibility
+
+---
+
+# Permanent Failures
+
+Some APNs errors should **not** be retried.
+
+Examples:
+
+* Invalid device token
+* Unregistered device
+* Malformed payload
+* Authentication errors caused by invalid requests
+
+Handling:
+
+* Mark notification as failed.
+* Mark device token as inactive in PostgreSQL.
+* Remove the device token from Redis.
+* Commit the Kafka offset.
+
+Retrying permanent failures only wastes resources.
+
+---
+
+# Final Notification Delivery Flow
+
+```text
+Notification Worker
+
+↓
+
+Receive Notification Job
+
+↓
+
+Lookup Device Tokens
+
+↓
+
+Circuit Breaker
+
+↓
+
+Call APNs
+
+        │
+        │
+   Success
+        │
+        ▼
+Commit Kafka Offset
+
+        │
+        │
+Transient Failure
+        │
+        ▼
+Retry + Exponential Backoff + Jitter
+
+        │
+        ▼
+Retry Limit Reached
+
+↓
+
+notification-dlq
+
+        │
+        │
+Permanent Failure
+        │
+        ▼
+Deactivate Device Token
+
+↓
+
+Commit Kafka Offset
+```
+
+---
+
+# Interview Summary
+
+* APNs delivers notifications using **device tokens**, not application user IDs.
+* Users register their device tokens through a Device Registration API after obtaining a token from APNs.
+* Notification jobs should contain `userId`; the worker resolves the latest active device tokens at delivery time.
+* Support multiple devices per user by storing multiple active device tokens.
+* Protect APNs calls with a circuit breaker.
+* Retry transient failures using exponential backoff with jitter.
+* Send jobs to a DLQ after the retry limit.
+* Do not retry permanent APNs errors such as invalid or unregistered device tokens. Instead, deactivate the token and remove it from the cache.
+
+The One Sentence to Remember
+
+RabbitMQ = "Who should do this work?" (Task Queue)
+
+Kafka = "Who wants to know this happened?" (Event Log)
+	
