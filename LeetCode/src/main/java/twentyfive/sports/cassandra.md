@@ -4929,6 +4929,8 @@ R + W > RF
 
 Because the read quorum and write quorum overlap by at least one replica, at least one replica participating in the read has acknowledged the latest successful write. This greatly reduces the chance of stale reads.
 
+Read and write consistency levels are configured seperately. Here both read CL and write CL are chosen as QUORUM.
+R+W>RF
 ---
 
 # Consistency Level Comparison
