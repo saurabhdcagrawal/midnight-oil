@@ -768,8 +768,7 @@ ReadWriteLock allows:
 * Multiple concurrent readers.
 * One exclusive writer.
 
-If both read and write methods were synchronized, every read would wait behind a write and vice versa.
-
+ReadWriteLock allows multiple readers to execute concurrently, while writes remain exclusive. A writer still blocks readers, but unlike synchronized, concurrent reads don't block each other.
 ---
 
 # 4. What happens without a lock?
@@ -11970,6 +11969,7 @@ Commit Kafka Offset
 * Retry transient failures using exponential backoff with jitter.
 * Send jobs to a DLQ after the retry limit.
 * Do not retry permanent APNs errors such as invalid or unregistered device tokens. Instead, deactivate the token and remove it from the cache.
+* We use an idempotency key to make notification delivery effectively idempotent, but because APNs and our idempotency store aren't part of one transaction, we can't guarantee exactly-once external delivery. We choose at-least-once processing and accept a very small duplicate-notification window.
 
 The One Sentence to Remember
 
